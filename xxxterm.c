@@ -19,6 +19,7 @@
  * TODO:
  *	inverse color browsing
  *	tabs, alt-1..n to switch
+ *	favs
  */
 
 #include <stdio.h>
@@ -28,16 +29,48 @@
 #include <webkit/webkit.h>
 #include <libsoup/soup.h>
 
+#define LENGTH(x)		(sizeof x / sizeof x[0])
+#define CLEAN(mask)		(mask & ~(GDK_MOD2_MASK) &	\
+				    ~(GDK_BUTTON1_MASK) &	\
+				    ~(GDK_BUTTON2_MASK) &	\
+				    ~(GDK_BUTTON3_MASK) &	\
+				    ~(GDK_BUTTON4_MASK) &	\
+				    ~(GDK_BUTTON5_MASK))
+
 GtkWidget		*mw;
 GtkWidget		*uri_entry;
+GtkWidget		*tb;
 WebKitWebView		*wv;
+
+int
+quit(struct karg *args)
+{
+	gtk_main_quit();
+
+	return (0);
+}
+
+struct karg {
+	int		i;
+	char		*s;
+};
+
+struct key {
+	guint		mask;
+	guint		modkey;
+	guint		key;
+	int		(*func)(struct karg *);
+	struct karg	arg;
+} keys[] = {
+	{ GDK_CONTROL_MASK,	0,	GDK_q,	quit,	{0} }
+};
 
 void
 activate_uri_entry_cb(GtkWidget* entry, gpointer data)
 {
-	const gchar			*uri = gtk_entry_get_text(GTK_ENTRY(entry));
+	gchar			*uri = gtk_entry_get_text(GTK_ENTRY(entry));
 
-	g_assert (uri);
+	g_assert(uri);
 	webkit_web_view_load_uri(wv, uri);
 }
 
@@ -53,6 +86,16 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, gpointer data)
 		if (uri)
 			gtk_entry_set_text(GTK_ENTRY(uri_entry), uri);
 	}
+}
+
+void
+webview_keypress_cb(WebKitWebView *webview, GdkEventKey *e)
+{
+	int			i;
+
+	for (i = 0; i < LENGTH(keys); i++)
+		if (e->keyval == keys[i].key && CLEAN(e->state) == keys[i].mask)
+			keys[i].func(&keys[i].arg);
 }
 
 GtkWidget *
@@ -107,7 +150,7 @@ create_toolbar(void)
 	g_signal_connect(G_OBJECT(uri_entry), "activate",
 	    G_CALLBACK(activate_uri_entry_cb), NULL);
 	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), i, -1);
-
+tb = toolbar;
 	return (toolbar);
 }
 
@@ -117,11 +160,15 @@ gui(void)
 	GtkWidget		*vbox;
 	
 	vbox = gtk_vbox_new(FALSE, 0);
-	gtk_box_pack_start(GTK_BOX(vbox), create_toolbar(), FALSE, FALSE, 0);
+	gtk_box_pack_end(GTK_BOX(vbox), create_toolbar(), FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(vbox), create_browser(), TRUE, TRUE, 0);
 
 	mw = create_window();
 	gtk_container_add(GTK_CONTAINER(mw), vbox);
+
+	g_object_connect((GObject*)wv,
+	    "signal::key-press-event", (GCallback)webview_keypress_cb, NULL,
+	    NULL);
 
 	webkit_web_view_load_uri(wv, "http://www.peereboom.us/");
 
@@ -138,6 +185,7 @@ main(int argc, char *argv[])
 		g_thread_init(NULL);
 
 	gui();
+	//gtk_widget_hide(tb);
 
 	gtk_main();
 
