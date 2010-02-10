@@ -204,6 +204,8 @@ create_new_tab(char *title)
 	struct tab		*t;
 
 	t = g_malloc0(sizeof *t);
+	TAILQ_INSERT_TAIL(&tabs, t, entry);
+
 	t->label = gtk_label_new(title);
 	t->vbox = gtk_vbox_new(FALSE, 0);
 	t->toolbar = create_toolbar(t);
