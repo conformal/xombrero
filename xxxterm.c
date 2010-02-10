@@ -24,6 +24,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <err.h>
+
+#include <sys/queue.h>
+
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
 #include <webkit/webkit.h>
@@ -37,10 +41,26 @@
 				    ~(GDK_BUTTON4_MASK) &	\
 				    ~(GDK_BUTTON5_MASK))
 
-GtkWidget		*mw;
-GtkWidget		*uri_entry;
-GtkWidget		*tb;
-WebKitWebView		*wv;
+struct tab {
+	TAILQ_ENTRY(tab)	entry;
+	GtkWidget		*vbox;
+	GtkWidget		*label;
+	GtkWidget		*uri_entry;
+	GtkWidget		*toolbar;
+	GtkWidget		*browser_win;
+	WebKitWebView		*wv;
+};
+TAILQ_HEAD(tab_list, tab);
+
+struct karg {
+	int		i;
+	char		*s;
+};
+
+/* globals */
+GtkWidget		*main_window;
+GtkWidget		*notebook;
+struct tab_list		tabs;
 
 int
 quit(struct karg *args)
@@ -50,10 +70,13 @@ quit(struct karg *args)
 	return (0);
 }
 
-struct karg {
-	int		i;
-	char		*s;
-};
+int
+command(struct karg *args)
+{
+	fprintf(stderr, "command\n");
+
+	return (0);
+}
 
 struct key {
 	guint		mask;
@@ -62,36 +85,54 @@ struct key {
 	int		(*func)(struct karg *);
 	struct karg	arg;
 } keys[] = {
-	{ GDK_CONTROL_MASK,	0,	GDK_q,	quit,	{0} }
+	{ GDK_SHIFT_MASK,	0,	GDK_colon,	command,	{0} },
+	{ GDK_CONTROL_MASK,	0,	GDK_q,		quit,		{0} },
 };
 
 void
 activate_uri_entry_cb(GtkWidget* entry, gpointer data)
 {
-	gchar			*uri = gtk_entry_get_text(GTK_ENTRY(entry));
+	const gchar		*uri = gtk_entry_get_text(GTK_ENTRY(entry));
+	struct tab		*t;
+
+	if (data == NULL)
+		errx(1, "activate_uri_entry_cb");
+	t = (struct tab *)data;
 
 	g_assert(uri);
-	webkit_web_view_load_uri(wv, uri);
+	webkit_web_view_load_uri(t->wv, uri);
 }
 
 void
 notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, gpointer data)
 {
 	WebKitWebFrame		*frame;
-	gchar			*uri;
+	const gchar		*uri;
+	struct tab		*t;
+
+	if (data == NULL)
+		errx(1, "notify_load_status_cb");
+	t = (struct tab *)data;
 
 	if (webkit_web_view_get_load_status(wview) == WEBKIT_LOAD_COMMITTED) {
 		frame = webkit_web_view_get_main_frame(wview);
 		uri = webkit_web_frame_get_uri(frame);
 		if (uri)
-			gtk_entry_set_text(GTK_ENTRY(uri_entry), uri);
+			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
 	}
 }
 
 void
-webview_keypress_cb(WebKitWebView *webview, GdkEventKey *e)
+webview_keypress_cb(WebKitWebView *webview, GdkEventKey *e, gpointer data)
 {
 	int			i;
+	struct tab		*t;
+
+	if (data == NULL)
+		errx(1, "webview_keypress_cb");
+	t = (struct tab *)data;
+
+	fprintf(stderr, "keyval: 0x%x mask: 0x%x t %p\n", e->keyval, e->state, t);
 
 	for (i = 0; i < LENGTH(keys); i++)
 		if (e->keyval == keys[i].key && CLEAN(e->state) == keys[i].mask)
@@ -99,19 +140,22 @@ webview_keypress_cb(WebKitWebView *webview, GdkEventKey *e)
 }
 
 GtkWidget *
-create_browser(void)
+create_browser(struct tab *t)
 {
 	GtkWidget		*w;
-	
+
+	if (t == NULL)
+		errx(1, "create_browser");
+
 	w = gtk_scrolled_window_new(NULL, NULL);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(w),
 	    GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
-	wv = WEBKIT_WEB_VIEW(webkit_web_view_new());
-	gtk_container_add(GTK_CONTAINER(w), GTK_WIDGET(wv));
+	t->wv = WEBKIT_WEB_VIEW(webkit_web_view_new());
+	gtk_container_add(GTK_CONTAINER(w), GTK_WIDGET(t->wv));
 
-	g_signal_connect(wv, "notify::load-status",
-	    G_CALLBACK(notify_load_status_cb), wv);
+	g_signal_connect(t->wv, "notify::load-status",
+	    G_CALLBACK(notify_load_status_cb), t);
 
 	return (w);
 }
@@ -129,7 +173,7 @@ create_window(void)
 }
 
 GtkWidget *
-create_toolbar(void)
+create_toolbar(struct tab *t)
 {
 	GtkWidget		*toolbar = gtk_toolbar_new();
 	GtkToolItem		*i;
@@ -145,47 +189,67 @@ create_toolbar(void)
 
 	i = gtk_tool_item_new();
 	gtk_tool_item_set_expand(i, TRUE);
-	uri_entry = gtk_entry_new();
-	gtk_container_add(GTK_CONTAINER(i), uri_entry);
-	g_signal_connect(G_OBJECT(uri_entry), "activate",
-	    G_CALLBACK(activate_uri_entry_cb), NULL);
+	t->uri_entry = gtk_entry_new();
+	gtk_container_add(GTK_CONTAINER(i), t->uri_entry);
+	g_signal_connect(G_OBJECT(t->uri_entry), "activate",
+	    G_CALLBACK(activate_uri_entry_cb), t);
 	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), i, -1);
-tb = toolbar;
+
 	return (toolbar);
 }
 
 void
-gui(void)
+create_new_tab(char *title)
+{
+	struct tab		*t;
+
+	t = g_malloc0(sizeof *t);
+	t->label = gtk_label_new(title);
+	t->vbox = gtk_vbox_new(FALSE, 0);
+	t->toolbar = create_toolbar(t);
+	t->browser_win = create_browser(t);
+	gtk_box_pack_start(GTK_BOX(t->vbox), t->toolbar, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(t->vbox), t->browser_win, TRUE, TRUE, 0);
+	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), t->vbox, t->label);
+
+	g_object_connect((GObject*)t->wv,
+	    "signal::key-press-event", (GCallback)webview_keypress_cb, t,
+	    NULL);
+
+	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+	webkit_web_view_load_uri(t->wv, title);
+}
+
+void
+create_canvas(void)
 {
 	GtkWidget		*vbox;
 	
 	vbox = gtk_vbox_new(FALSE, 0);
-	gtk_box_pack_end(GTK_BOX(vbox), create_toolbar(), FALSE, FALSE, 0);
-	gtk_box_pack_start(GTK_BOX(vbox), create_browser(), TRUE, TRUE, 0);
+	notebook = gtk_notebook_new();
 
-	mw = create_window();
-	gtk_container_add(GTK_CONTAINER(mw), vbox);
+	gtk_box_pack_start(GTK_BOX(vbox), notebook, TRUE, TRUE, 0);
 
-	g_object_connect((GObject*)wv,
-	    "signal::key-press-event", (GCallback)webview_keypress_cb, NULL,
-	    NULL);
+	main_window = create_window();
+	gtk_container_add(GTK_CONTAINER(main_window), vbox);
 
-	webkit_web_view_load_uri(wv, "http://www.peereboom.us/");
+	create_new_tab("http://www.dell.com");
+	create_new_tab("http://www.peereboom.us");
 
-	gtk_widget_grab_focus(GTK_WIDGET(wv));
-	gtk_widget_show_all(mw);
+	gtk_widget_show_all(main_window);
 }
 
 int
 main(int argc, char *argv[])
 {
+	TAILQ_INIT(&tabs);
+
 	/* prepare gtk */
 	gtk_init(&argc, &argv);
 	if (!g_thread_supported())
 		g_thread_init(NULL);
 
-	gui();
-	//gtk_widget_hide(tb);
+	create_canvas();
 
 	gtk_main();
 
