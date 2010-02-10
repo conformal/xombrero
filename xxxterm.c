@@ -42,15 +42,15 @@ activate_uri_entry_cb(GtkWidget* entry, gpointer data)
 }
 
 void
-notify_load_status_cb(WebKitWebView* web_view, GParamSpec* pspec, gpointer data)
+notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, gpointer data)
 {
 	WebKitWebFrame		*frame;
 	gchar			*uri;
 
-	if(webkit_web_view_get_load_status(web_view) == WEBKIT_LOAD_COMMITTED) {
-		frame = webkit_web_view_get_main_frame(web_view);
+	if (webkit_web_view_get_load_status(wview) == WEBKIT_LOAD_COMMITTED) {
+		frame = webkit_web_view_get_main_frame(wview);
 		uri = webkit_web_frame_get_uri(frame);
-		if(uri)
+		if (uri)
 			gtk_entry_set_text(GTK_ENTRY(uri_entry), uri);
 	}
 }
