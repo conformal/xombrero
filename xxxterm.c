@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <err.h>
+#include <string.h>
 
 #include <sys/queue.h>
 
@@ -42,10 +43,12 @@
 #define	XT_D_MOVE		0x0001
 #define	XT_D_KEY		0x0002
 #define	XT_D_TAB		0x0004
+#define	XT_D_URL		0x0008
 u_int32_t		swm_debug = 0
 			    | XT_D_MOVE
 			    | XT_D_KEY
 			    | XT_D_TAB
+			    | XT_D_URL
 			    ;
 #else
 #define DPRINTF(x...)
@@ -257,7 +260,7 @@ struct key {
 void
 focus_uri_entry_cb(GtkWidget* w, GtkDirectionType direction, struct tab *t)
 {
-	DNPRINTF(XT_D_TAB, "focus_uri_entry_cb:\n");
+	DNPRINTF(XT_D_URL, "focus_uri_entry_cb:\n");
 
 	/* focus on wv instead */
 	if (t->focus_wv)
@@ -268,13 +271,28 @@ void
 activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 {
 	const gchar		*uri = gtk_entry_get_text(GTK_ENTRY(entry));
+	char			*newuri = NULL;
+
+	DNPRINTF(XT_D_URL, "activate_uri_entry_cb:\n");
 
 	if (t == NULL)
 		errx(1, "activate_uri_entry_cb");
 
-	g_assert(uri);
+	if (uri == NULL)
+		errx(1, "uri");
+
+	if (strncasecmp("http://", uri, strlen("http://"))) {
+		if (asprintf(&newuri, "http://%s", uri) == -1)
+			err(1, "aprintf");
+		if (newuri == NULL)
+			err(1, "asprintf pointer");
+		uri = newuri;
+	}
 	webkit_web_view_load_uri(t->wv, uri);
 	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+
+	if (newuri)
+		free(newuri);
 }
 
 void
