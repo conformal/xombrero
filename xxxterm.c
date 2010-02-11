@@ -71,6 +71,10 @@ struct karg {
 #define XT_MOVE_TOP		(4)
 #define XT_MOVE_PAGEDOWN	(5)
 #define XT_MOVE_PAGEUP		(6)
+#define XT_MOVE_LEFT		(7)
+#define XT_MOVE_FARLEFT		(8)
+#define XT_MOVE_RIGHT		(9)
+#define XT_MOVE_FARRIGHT	(10)
 
 /* globals */
 GtkWidget		*main_window;
@@ -82,49 +86,75 @@ quit(struct tab *t, struct karg *args)
 {
 	gtk_main_quit();
 
-	return (0);
+	return (1);
 }
 
 int
 move(struct tab *t, struct karg *args)
 {
-	double			vpos = gtk_adjustment_get_value(t->adjust_v);
-	double			ps = gtk_adjustment_get_page_size(t->adjust_v);
-	double			upper = gtk_adjustment_get_upper(t->adjust_v);
-	double			lower = gtk_adjustment_get_lower(t->adjust_v);
-	double			max = upper - ps;
-
-	fprintf(stderr, "move %d vpos %f ps %f upper %f lower %f max %f\n",
-	    args->i, vpos, ps, upper, lower, max);
+	GtkAdjustment		*adjust;
+	double			pos;
+	double			ps;
+	double			upper;
+	double			lower;
+	double			max;
 
 	switch (args->i) {
 	case XT_MOVE_DOWN:
-		vpos += 24;
-		gtk_adjustment_set_value(t->adjust_v, MIN(vpos, max));
+	case XT_MOVE_UP:
+	case XT_MOVE_BOTTOM:
+	case XT_MOVE_TOP:
+	case XT_MOVE_PAGEDOWN:
+	case XT_MOVE_PAGEUP:
+		adjust = t->adjust_v;
+		break;
+	default:
+		adjust = t->adjust_h;
+		break;
+	}
+
+	pos = gtk_adjustment_get_value(adjust);
+	ps = gtk_adjustment_get_page_size(adjust);
+	upper = gtk_adjustment_get_upper(adjust);
+	lower = gtk_adjustment_get_lower(adjust);
+	max = upper - ps;
+
+	fprintf(stderr, "move opcode %d %s pos %f ps %f upper %f lower %f max %f\n",
+	    args->i, adjust == t->adjust_h ? "horizontal" : "vertical", 
+	    pos, ps, upper, lower, max);
+
+	switch (args->i) {
+	case XT_MOVE_DOWN:
+	case XT_MOVE_RIGHT:
+		pos += 24;
+		gtk_adjustment_set_value(adjust, MIN(pos, max));
 		break;
 	case XT_MOVE_UP:
-		vpos -= 24;
-		gtk_adjustment_set_value(t->adjust_v, MAX(vpos, lower));
+	case XT_MOVE_LEFT:
+		pos -= 24;
+		gtk_adjustment_set_value(adjust, MAX(pos, lower));
 		break;
 	case XT_MOVE_BOTTOM:
-		gtk_adjustment_set_value(t->adjust_v, max);
+	case XT_MOVE_FARRIGHT:
+		gtk_adjustment_set_value(adjust, max);
 		break;
 	case XT_MOVE_TOP:
-		gtk_adjustment_set_value(t->adjust_v, lower);
+	case XT_MOVE_FARLEFT:
+		gtk_adjustment_set_value(adjust, lower);
 		break;
 	case XT_MOVE_PAGEDOWN:
-		vpos += ps;
-		gtk_adjustment_set_value(t->adjust_v, MIN(vpos, max));
+		pos += ps;
+		gtk_adjustment_set_value(adjust, MIN(pos, max));
 		break;
 	case XT_MOVE_PAGEUP:
-		vpos -= ps;
-		gtk_adjustment_set_value(t->adjust_v, MAX(vpos, lower));
+		pos -= ps;
+		gtk_adjustment_set_value(adjust, MAX(pos, lower));
 		break;
 	default:
 		return (0); /* let webkit deal with it */
 	}
 
-	fprintf(stderr, "new vpos: %f  %f\n", vpos, MIN(vpos, max));
+	fprintf(stderr, "new pos: %f  %f\n", pos, MIN(pos, max));
 
 	return (1); /* handled */
 }
@@ -146,6 +176,8 @@ struct key {
 } keys[] = {
 	{ GDK_SHIFT_MASK,	0,	GDK_colon,	command,	{0} },
 	{ GDK_CONTROL_MASK,	0,	GDK_q,		quit,		{0} },
+
+	/* vertical movement */
 	{ 0,			0,	GDK_j,		move,		{.i = XT_MOVE_DOWN} },
 	{ 0,			0,	GDK_Down,	move,		{.i = XT_MOVE_DOWN} },
 	{ 0,			0,	GDK_Up,		move,		{.i = XT_MOVE_UP} },
@@ -153,9 +185,17 @@ struct key {
 	{ GDK_SHIFT_MASK,	0,	GDK_G,		move,		{.i = XT_MOVE_BOTTOM} },
 	{ 0,			0,	GDK_End,	move,		{.i = XT_MOVE_BOTTOM} },
 	{ 0,			0,	GDK_Home,	move,		{.i = XT_MOVE_TOP} },
+	{ 0,			GDK_g,	GDK_g,		move,		{.i = XT_MOVE_TOP} }, /* XXX make this work */
 	{ 0,			0,	GDK_space,	move,		{.i = XT_MOVE_PAGEDOWN} },
 	{ 0,			0,	GDK_Page_Down,	move,		{.i = XT_MOVE_PAGEDOWN} },
 	{ 0,			0,	GDK_Page_Up,	move,		{.i = XT_MOVE_PAGEUP} },
+	/* horizontal movement */
+	{ 0,			0,	GDK_l,		move,		{.i = XT_MOVE_RIGHT} },
+	{ 0,			0,	GDK_Right,	move,		{.i = XT_MOVE_RIGHT} },
+	{ 0,			0,	GDK_Left,	move,		{.i = XT_MOVE_LEFT} },
+	{ 0,			0,	GDK_h,		move,		{.i = XT_MOVE_LEFT} },
+	{ GDK_SHIFT_MASK,	0,	GDK_dollar,	move,		{.i = XT_MOVE_FARRIGHT} },
+	{ 0,			0,	GDK_0,		move,		{.i = XT_MOVE_FARLEFT} },
 };
 
 void
