@@ -67,12 +67,16 @@ struct tab {
 	GtkWidget		*uri_entry;
 	GtkWidget		*toolbar;
 	GtkWidget		*browser_win;
+	guint			tab_id;
 
 	/* adjustments for browser */
 	GtkScrollbar		*sb_h;
 	GtkScrollbar		*sb_v;
 	GtkAdjustment		*adjust_h;
 	GtkAdjustment		*adjust_v;
+
+	/* flags */
+	int			focus_wv;
 
 	WebKitWebView		*wv;
 };
@@ -251,47 +255,52 @@ struct key {
 };
 
 void
-activate_uri_entry_cb(GtkWidget* entry, gpointer data)
+focus_uri_entry_cb(GtkWidget* w, GtkDirectionType direction, struct tab *t)
+{
+	DNPRINTF(XT_D_TAB, "focus_uri_entry_cb:\n");
+
+	/* focus on wv instead */
+	if (t->focus_wv)
+		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+}
+
+void
+activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 {
 	const gchar		*uri = gtk_entry_get_text(GTK_ENTRY(entry));
-	struct tab		*t;
 
-	if (data == NULL)
+	if (t == NULL)
 		errx(1, "activate_uri_entry_cb");
-	t = (struct tab *)data;
 
 	g_assert(uri);
 	webkit_web_view_load_uri(t->wv, uri);
 }
 
 void
-notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, gpointer data)
+notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 {
 	WebKitWebFrame		*frame;
 	const gchar		*uri;
-	struct tab		*t;
 
-	if (data == NULL)
+	if (t == NULL)
 		errx(1, "notify_load_status_cb");
-	t = (struct tab *)data;
 
 	if (webkit_web_view_get_load_status(wview) == WEBKIT_LOAD_COMMITTED) {
 		frame = webkit_web_view_get_main_frame(wview);
 		uri = webkit_web_frame_get_uri(frame);
 		if (uri)
 			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
+		t->focus_wv = 1;
 	}
 }
 
 void
-webview_keypress_cb(WebKitWebView *webview, GdkEventKey *e, gpointer data)
+webview_keypress_cb(WebKitWebView *webview, GdkEventKey *e, struct tab *t)
 {
 	int			i;
-	struct tab		*t;
 
-	if (data == NULL)
+	if (t == NULL)
 		errx(1, "webview_keypress_cb");
-	t = (struct tab *)data;
 
 	DNPRINTF(XT_D_KEY, "keyval: 0x%x mask: 0x%x t %p\n",
 	    e->keyval, e->state, t);
@@ -382,7 +391,7 @@ void
 create_new_tab(char *title, int focus)
 {
 	struct tab		*t;
-	int			last, load = 1;
+	int			load = 1;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
@@ -399,17 +408,20 @@ create_new_tab(char *title, int focus)
 	t->browser_win = create_browser(t);
 	gtk_box_pack_start(GTK_BOX(t->vbox), t->toolbar, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(t->vbox), t->browser_win, TRUE, TRUE, 0);
-	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), t->vbox, t->label);
+	t->tab_id = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), t->vbox,
+	    t->label);
 
 	g_object_connect((GObject*)t->wv,
 	    "signal::key-press-event", (GCallback)webview_keypress_cb, t,
 	    NULL);
 
+	g_signal_connect(G_OBJECT(t->uri_entry), "focus",
+	    G_CALLBACK(focus_uri_entry_cb), t);
+
 	if (focus) {
 		gtk_widget_show_all(main_window);
-		last = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook)) - 1;
-		gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), last);
-		DNPRINTF(XT_D_TAB, "going to tab: %d\n", last);
+		gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), t->tab_id);
+		DNPRINTF(XT_D_TAB, "going to tab: %d\n", t->tab_id);
 		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 	}
 
