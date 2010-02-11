@@ -274,6 +274,7 @@ activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 
 	g_assert(uri);
 	webkit_web_view_load_uri(t->wv, uri);
+	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 }
 
 void
@@ -432,6 +433,7 @@ create_new_tab(char *title, int focus)
 }
 
 void
+
 create_canvas(void)
 {
 	GtkWidget		*vbox;
