@@ -286,12 +286,23 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	if (t == NULL)
 		errx(1, "notify_load_status_cb");
 
-	if (webkit_web_view_get_load_status(wview) == WEBKIT_LOAD_COMMITTED) {
+	switch (webkit_web_view_get_load_status(wview)) {
+	case WEBKIT_LOAD_COMMITTED:
 		frame = webkit_web_view_get_main_frame(wview);
 		uri = webkit_web_frame_get_uri(frame);
 		if (uri)
 			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
 		t->focus_wv = 1;
+		break;
+	case WEBKIT_LOAD_FIRST_VISUALLY_NON_EMPTY_LAYOUT:
+		gtk_label_set_text(GTK_LABEL(t->label),
+		    webkit_web_view_get_title(wview));
+		break;
+	case WEBKIT_LOAD_PROVISIONAL:
+	case WEBKIT_LOAD_FINISHED:
+	case WEBKIT_LOAD_FAILED:
+	default:
+		break;
 	}
 }
 
@@ -404,6 +415,7 @@ create_new_tab(char *title, int focus)
 		load = 0;
 	}
 	t->label = gtk_label_new(title);
+	gtk_widget_set_size_request(t->label, 100, -1);
 	t->vbox = gtk_vbox_new(FALSE, 0);
 	t->toolbar = create_toolbar(t);
 	t->browser_win = create_browser(t);
