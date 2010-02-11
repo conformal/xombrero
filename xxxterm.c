@@ -48,6 +48,13 @@ struct tab {
 	GtkWidget		*uri_entry;
 	GtkWidget		*toolbar;
 	GtkWidget		*browser_win;
+
+	/* adjustments for browser */
+	GtkScrollbar		*sb_h;
+	GtkScrollbar		*sb_v;
+	GtkAdjustment		*adjust_h;
+	GtkAdjustment		*adjust_v;
+
 	WebKitWebView		*wv;
 };
 TAILQ_HEAD(tab_list, tab);
@@ -57,13 +64,21 @@ struct karg {
 	char		*s;
 };
 
+#define XT_MOVE_INVALID		(0)
+#define XT_MOVE_DOWN		(1)
+#define XT_MOVE_UP		(2)
+#define XT_MOVE_BOTTOM		(3)
+#define XT_MOVE_TOP		(4)
+#define XT_MOVE_PAGEDOWN	(5)
+#define XT_MOVE_PAGEUP		(6)
+
 /* globals */
 GtkWidget		*main_window;
 GtkWidget		*notebook;
 struct tab_list		tabs;
 
 int
-quit(struct karg *args)
+quit(struct tab *t, struct karg *args)
 {
 	gtk_main_quit();
 
@@ -71,7 +86,51 @@ quit(struct karg *args)
 }
 
 int
-command(struct karg *args)
+move(struct tab *t, struct karg *args)
+{
+	double			vpos = gtk_adjustment_get_value(t->adjust_v);
+	double			ps = gtk_adjustment_get_page_size(t->adjust_v);
+	double			upper = gtk_adjustment_get_upper(t->adjust_v);
+	double			lower = gtk_adjustment_get_lower(t->adjust_v);
+	double			max = upper - ps;
+
+	fprintf(stderr, "move %d vpos %f ps %f upper %f lower %f max %f\n",
+	    args->i, vpos, ps, upper, lower, max);
+
+	switch (args->i) {
+	case XT_MOVE_DOWN:
+		vpos += 24;
+		gtk_adjustment_set_value(t->adjust_v, MIN(vpos, max));
+		break;
+	case XT_MOVE_UP:
+		vpos -= 24;
+		gtk_adjustment_set_value(t->adjust_v, MAX(vpos, lower));
+		break;
+	case XT_MOVE_BOTTOM:
+		gtk_adjustment_set_value(t->adjust_v, max);
+		break;
+	case XT_MOVE_TOP:
+		gtk_adjustment_set_value(t->adjust_v, lower);
+		break;
+	case XT_MOVE_PAGEDOWN:
+		vpos += ps;
+		gtk_adjustment_set_value(t->adjust_v, MIN(vpos, max));
+		break;
+	case XT_MOVE_PAGEUP:
+		vpos -= ps;
+		gtk_adjustment_set_value(t->adjust_v, MAX(vpos, lower));
+		break;
+	default:
+		return (0); /* let webkit deal with it */
+	}
+
+	fprintf(stderr, "new vpos: %f  %f\n", vpos, MIN(vpos, max));
+
+	return (1); /* handled */
+}
+
+int
+command(struct tab *t, struct karg *args)
 {
 	fprintf(stderr, "command\n");
 
@@ -82,11 +141,21 @@ struct key {
 	guint		mask;
 	guint		modkey;
 	guint		key;
-	int		(*func)(struct karg *);
+	int		(*func)(struct tab *, struct karg *);
 	struct karg	arg;
 } keys[] = {
 	{ GDK_SHIFT_MASK,	0,	GDK_colon,	command,	{0} },
 	{ GDK_CONTROL_MASK,	0,	GDK_q,		quit,		{0} },
+	{ 0,			0,	GDK_j,		move,		{.i = XT_MOVE_DOWN} },
+	{ 0,			0,	GDK_Down,	move,		{.i = XT_MOVE_DOWN} },
+	{ 0,			0,	GDK_Up,		move,		{.i = XT_MOVE_UP} },
+	{ 0,			0,	GDK_k,		move,		{.i = XT_MOVE_UP} },
+	{ GDK_SHIFT_MASK,	0,	GDK_G,		move,		{.i = XT_MOVE_BOTTOM} },
+	{ 0,			0,	GDK_End,	move,		{.i = XT_MOVE_BOTTOM} },
+	{ 0,			0,	GDK_Home,	move,		{.i = XT_MOVE_TOP} },
+	{ 0,			0,	GDK_space,	move,		{.i = XT_MOVE_PAGEDOWN} },
+	{ 0,			0,	GDK_Page_Down,	move,		{.i = XT_MOVE_PAGEDOWN} },
+	{ 0,			0,	GDK_Page_Up,	move,		{.i = XT_MOVE_PAGEUP} },
 };
 
 void
@@ -136,7 +205,7 @@ webview_keypress_cb(WebKitWebView *webview, GdkEventKey *e, gpointer data)
 
 	for (i = 0; i < LENGTH(keys); i++)
 		if (e->keyval == keys[i].key && CLEAN(e->state) == keys[i].mask)
-			keys[i].func(&keys[i].arg);
+			keys[i].func(t, &keys[i].arg);
 }
 
 GtkWidget *
@@ -147,7 +216,12 @@ create_browser(struct tab *t)
 	if (t == NULL)
 		errx(1, "create_browser");
 
-	w = gtk_scrolled_window_new(NULL, NULL);
+	t->sb_h = GTK_SCROLLBAR(gtk_hscrollbar_new(NULL));
+	t->sb_v = GTK_SCROLLBAR(gtk_vscrollbar_new(NULL));
+	t->adjust_h = gtk_range_get_adjustment(GTK_RANGE(t->sb_h));
+	t->adjust_v = gtk_range_get_adjustment(GTK_RANGE(t->sb_v));
+
+	w = gtk_scrolled_window_new(t->adjust_h, t->adjust_v);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(w),
 	    GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
@@ -168,6 +242,7 @@ create_window(void)
 	w = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_default_size(GTK_WINDOW(w), 800, 600);
 	gtk_widget_set_name(w, "xxxterm");
+	gtk_window_set_wmclass(GTK_WINDOW(w), "xxxterm", "xxxterm");
 
 	return (w);
 }
