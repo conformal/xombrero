@@ -41,9 +41,11 @@
 #define DNPRINTF(n,x...)	do { if (swm_debug & n) fprintf(stderr, x); } while (0)
 #define	XT_D_MOVE		0x0001
 #define	XT_D_KEY		0x0002
+#define	XT_D_TAB		0x0004
 u_int32_t		swm_debug = 0
 			    | XT_D_MOVE
 			    | XT_D_KEY
+			    | XT_D_TAB
 			    ;
 #else
 #define DPRINTF(x...)
@@ -81,6 +83,7 @@ struct karg {
 	char		*s;
 };
 
+/* actions */
 #define XT_MOVE_INVALID		(0)
 #define XT_MOVE_DOWN		(1)
 #define XT_MOVE_UP		(2)
@@ -93,10 +96,18 @@ struct karg {
 #define XT_MOVE_RIGHT		(9)
 #define XT_MOVE_FARRIGHT	(10)
 
+#define XT_TAB_INVALID		(0)
+#define XT_TAB_NEW		(1)
+#define XT_TAB_DELETE		(2)
+
 /* globals */
 GtkWidget		*main_window;
 GtkWidget		*notebook;
 struct tab_list		tabs;
+
+/* protos */
+void			create_new_tab(char *, int);
+void			delete_tab(struct tab *);
 
 int
 quit(struct tab *t, struct karg *args)
@@ -177,6 +188,28 @@ move(struct tab *t, struct karg *args)
 }
 
 int
+tabaction(struct tab *t, struct karg *args)
+{
+	DNPRINTF(XT_D_TAB, "tabaction: %p %d\n", t, args->i);
+
+	if (t == NULL)
+		return (0);
+
+	switch (args->i) {
+	case XT_TAB_NEW:
+		create_new_tab(NULL, 1);
+		break;
+	case XT_TAB_DELETE:
+		delete_tab(t);
+		break;
+	default:
+		return (0); /* let webkit deal with it */
+	}
+
+	return (1); /* handled */
+}
+
+int
 command(struct tab *t, struct karg *args)
 {
 	return (0);
@@ -211,6 +244,10 @@ struct key {
 	{ 0,			0,	GDK_h,		move,		{.i = XT_MOVE_LEFT} },
 	{ GDK_SHIFT_MASK,	0,	GDK_dollar,	move,		{.i = XT_MOVE_FARRIGHT} },
 	{ 0,			0,	GDK_0,		move,		{.i = XT_MOVE_FARLEFT} },
+
+	/* tabs */
+	{ GDK_CONTROL_MASK,	0,	GDK_t,		tabaction,	{.i = XT_TAB_NEW} },
+	{ GDK_CONTROL_MASK,	0,	GDK_w,		tabaction,	{.i = XT_TAB_DELETE} },
 };
 
 void
@@ -330,13 +367,32 @@ create_toolbar(struct tab *t)
 }
 
 void
-create_new_tab(char *title)
+delete_tab(struct tab *t)
+{
+	DNPRINTF(XT_D_TAB, "delete_tab: %p\n", t);
+
+	if (t == NULL)
+		return;
+
+	gtk_widget_destroy(t->vbox);
+	g_free(t);
+}
+
+void
+create_new_tab(char *title, int focus)
 {
 	struct tab		*t;
+	int			last, load = 1;
+
+	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
 	t = g_malloc0(sizeof *t);
 	TAILQ_INSERT_TAIL(&tabs, t, entry);
 
+	if (title == NULL) {
+		title = "(untitled)";
+		load = 0;
+	}
 	t->label = gtk_label_new(title);
 	t->vbox = gtk_vbox_new(FALSE, 0);
 	t->toolbar = create_toolbar(t);
@@ -349,8 +405,18 @@ create_new_tab(char *title)
 	    "signal::key-press-event", (GCallback)webview_keypress_cb, t,
 	    NULL);
 
-	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
-	webkit_web_view_load_uri(t->wv, title);
+	if (focus) {
+		gtk_widget_show_all(main_window);
+		last = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook)) - 1;
+		gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), last);
+		DNPRINTF(XT_D_TAB, "going to tab: %d\n", last);
+		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+	}
+
+	if (load)
+		webkit_web_view_load_uri(t->wv, title);
+	else
+		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
 }
 
 void
@@ -366,10 +432,7 @@ create_canvas(void)
 	main_window = create_window();
 	gtk_container_add(GTK_CONTAINER(main_window), vbox);
 
-	create_new_tab("http://www.dell.com");
-	create_new_tab("http://www.peereboom.us");
-
-	gtk_widget_show_all(main_window);
+	create_new_tab("http://www.peereboom.us", 1);
 }
 
 int
