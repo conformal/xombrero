@@ -414,7 +414,12 @@ delete_tab(struct tab *t)
 		return;
 
 	gtk_widget_destroy(t->vbox);
+	
+	TAILQ_REMOVE(&tabs, t, entry);
 	g_free(t);
+
+	if (TAILQ_EMPTY(&tabs))
+		create_new_tab(NULL, 1);
 }
 
 void
