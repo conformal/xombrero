@@ -20,6 +20,7 @@
  *	inverse color browsing
  *	tabs, alt-1..n to switch
  *	favs
+ *	download files
  */
 
 #include <stdio.h>
@@ -32,6 +33,22 @@
 #include <gdk/gdkkeysyms.h>
 #include <webkit/webkit.h>
 #include <libsoup/soup.h>
+
+#define XT_DEBUG
+/* #define XT_DEBUG */
+#ifdef XT_DEBUG
+#define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
+#define DNPRINTF(n,x...)	do { if (swm_debug & n) fprintf(stderr, x); } while (0)
+#define	XT_D_MOVE		0x0001
+#define	XT_D_KEY		0x0002
+u_int32_t		swm_debug = 0
+			    | XT_D_MOVE
+			    | XT_D_KEY
+			    ;
+#else
+#define DPRINTF(x...)
+#define DNPRINTF(n,x...)
+#endif
 
 #define LENGTH(x)		(sizeof x / sizeof x[0])
 #define CLEAN(mask)		(mask & ~(GDK_MOD2_MASK) &	\
@@ -119,7 +136,7 @@ move(struct tab *t, struct karg *args)
 	lower = gtk_adjustment_get_lower(adjust);
 	max = upper - ps;
 
-	fprintf(stderr, "move opcode %d %s pos %f ps %f upper %f lower %f max %f\n",
+	DNPRINTF(XT_D_MOVE, "move opcode %d %s pos %f ps %f upper %f lower %f max %f\n",
 	    args->i, adjust == t->adjust_h ? "horizontal" : "vertical", 
 	    pos, ps, upper, lower, max);
 
@@ -154,7 +171,7 @@ move(struct tab *t, struct karg *args)
 		return (0); /* let webkit deal with it */
 	}
 
-	fprintf(stderr, "new pos: %f  %f\n", pos, MIN(pos, max));
+	DNPRINTF(XT_D_MOVE, "new pos: %f  %f\n", pos, MIN(pos, max));
 
 	return (1); /* handled */
 }
@@ -162,8 +179,6 @@ move(struct tab *t, struct karg *args)
 int
 command(struct tab *t, struct karg *args)
 {
-	fprintf(stderr, "command\n");
-
 	return (0);
 }
 
@@ -241,7 +256,8 @@ webview_keypress_cb(WebKitWebView *webview, GdkEventKey *e, gpointer data)
 		errx(1, "webview_keypress_cb");
 	t = (struct tab *)data;
 
-	fprintf(stderr, "keyval: 0x%x mask: 0x%x t %p\n", e->keyval, e->state, t);
+	DNPRINTF(XT_D_KEY, "keyval: 0x%x mask: 0x%x t %p\n",
+	    e->keyval, e->state, t);
 
 	for (i = 0; i < LENGTH(keys); i++)
 		if (e->keyval == keys[i].key && CLEAN(e->state) == keys[i].mask)
