@@ -17,6 +17,7 @@
 
 /*
  * TODO:
+ *	config file
  *	inverse color browsing
  *	favs
  *	download files
@@ -36,7 +37,6 @@
 
 static char		*version = "$xxxterm$";
 
-#define XT_DEBUG
 /* #define XT_DEBUG */
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
@@ -158,7 +158,7 @@ move(struct tab *t, struct karg *args)
 	pi = gtk_adjustment_get_page_increment(adjust);
 	max = upper - ps;
 
-	DNPRINTF(XT_D_MOVE, "move opcode %d %s pos %f ps %f upper %f lower %f "
+	DNPRINTF(XT_D_MOVE, "move: opcode %d %s pos %f ps %f upper %f lower %f "
 	    "max %f si %f pi %f\n",
 	    args->i, adjust == t->adjust_h ? "horizontal" : "vertical", 
 	    pos, ps, upper, lower, max, si, pi);
@@ -194,7 +194,7 @@ move(struct tab *t, struct karg *args)
 		return (0); /* let webkit deal with it */
 	}
 
-	DNPRINTF(XT_D_MOVE, "new pos: %f  %f\n", pos, MIN(pos, max));
+	DNPRINTF(XT_D_MOVE, "move: new pos %f %f\n", pos, MIN(pos, max));
 
 	return (1); /* handled */
 }
@@ -382,11 +382,12 @@ webview_keypress_cb(WebKitWebView *webview, GdkEventKey *e, struct tab *t)
 	if (t == NULL)
 		errx(1, "webview_keypress_cb");
 
-	DNPRINTF(XT_D_KEY, "keyval: 0x%x mask: 0x%x t %p\n",
+	DNPRINTF(XT_D_KEY, "webview_keypress_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
 
 	for (i = 0; i < LENGTH(keys); i++)
-		if (e->keyval == keys[i].key && CLEAN(e->state) == keys[i].mask) {
+		if (e->keyval == keys[i].key && CLEAN(e->state) ==
+		    keys[i].mask) {
 			keys[i].func(t, &keys[i].arg);
 			return (1); /* handled */
 		}
@@ -526,8 +527,10 @@ create_new_tab(char *title, int focus)
 	gtk_widget_show_all(main_window);
 
 	if (focus) {
-		gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), t->tab_id);
-		DNPRINTF(XT_D_TAB, "going to tab: %d\n", t->tab_id);
+		gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook),
+		    t->tab_id);
+		DNPRINTF(XT_D_TAB, "create_new_tab: going to tab: %d\n",
+		    t->tab_id);
 		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 	}
 
