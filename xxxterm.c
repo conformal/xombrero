@@ -324,7 +324,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	}
 }
 
-void
+int
 webview_keypress_cb(WebKitWebView *webview, GdkEventKey *e, struct tab *t)
 {
 	int			i;
@@ -336,8 +336,12 @@ webview_keypress_cb(WebKitWebView *webview, GdkEventKey *e, struct tab *t)
 	    e->keyval, e->state, t);
 
 	for (i = 0; i < LENGTH(keys); i++)
-		if (e->keyval == keys[i].key && CLEAN(e->state) == keys[i].mask)
+		if (e->keyval == keys[i].key && CLEAN(e->state) == keys[i].mask) {
 			keys[i].func(t, &keys[i].arg);
+			return (1); /* handled */
+		}
+
+	return (0); /* pass on to webkit */
 }
 
 GtkWidget *
@@ -448,7 +452,7 @@ create_new_tab(char *title, int focus)
 	    t->label);
 
 	g_object_connect((GObject*)t->wv,
-	    "signal::key-press-event", (GCallback)webview_keypress_cb, t,
+	    "signal-after::key-press-event", (GCallback)webview_keypress_cb, t,
 	    NULL);
 
 	g_signal_connect(G_OBJECT(t->uri_entry), "focus",
