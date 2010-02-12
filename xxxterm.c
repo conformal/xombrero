@@ -219,6 +219,32 @@ tabaction(struct tab *t, struct karg *args)
 }
 
 int
+movetab(struct tab *t, struct karg *args)
+{
+	struct tab		*tt;
+	int			x;
+
+	DNPRINTF(XT_D_TAB, "movetab: %p %d\n", t, args->i);
+
+	x = args->i - 1;
+	if (t->tab_id == x) {
+		DNPRINTF(XT_D_TAB, "movetab: do nothing\n");
+		return (1); /* handled */
+	}
+
+	TAILQ_FOREACH(tt, &tabs, entry) {
+		if (tt->tab_id == x) {
+			gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), x);
+			DNPRINTF(XT_D_TAB, "movetab: going to %d\n", x);
+			if (tt->focus_wv)
+				gtk_widget_grab_focus(GTK_WIDGET(tt->wv));
+		}
+	}
+
+	return (1);
+}
+
+int
 command(struct tab *t, struct karg *args)
 {
 	return (0);
@@ -257,6 +283,16 @@ struct key {
 	/* tabs */
 	{ GDK_CONTROL_MASK,	0,	GDK_t,		tabaction,	{.i = XT_TAB_NEW} },
 	{ GDK_CONTROL_MASK,	0,	GDK_w,		tabaction,	{.i = XT_TAB_DELETE} },
+	{ GDK_CONTROL_MASK,	0,	GDK_1,		movetab,	{.i = 1} },
+	{ GDK_CONTROL_MASK,	0,	GDK_2,		movetab,	{.i = 2} },
+	{ GDK_CONTROL_MASK,	0,	GDK_3,		movetab,	{.i = 3} },
+	{ GDK_CONTROL_MASK,	0,	GDK_4,		movetab,	{.i = 4} },
+	{ GDK_CONTROL_MASK,	0,	GDK_5,		movetab,	{.i = 5} },
+	{ GDK_CONTROL_MASK,	0,	GDK_6,		movetab,	{.i = 6} },
+	{ GDK_CONTROL_MASK,	0,	GDK_7,		movetab,	{.i = 7} },
+	{ GDK_CONTROL_MASK,	0,	GDK_8,		movetab,	{.i = 8} },
+	{ GDK_CONTROL_MASK,	0,	GDK_9,		movetab,	{.i = 9} },
+	{ GDK_CONTROL_MASK,	0,	GDK_0,		movetab,	{.i = 10} },
 };
 
 void
