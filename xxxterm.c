@@ -36,7 +36,7 @@
 
 static char		*version = "$xxxterm$";
 
-//#define XT_DEBUG
+#define XT_DEBUG
 /* #define XT_DEBUG */
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
@@ -113,6 +113,10 @@ extern char		*__progname;
 GtkWidget		*main_window;
 GtkWidget		*notebook;
 struct tab_list		tabs;
+
+/* settings */
+int			showtabs = 1;	/* show tabs on notebook */
+int			tabless = 0;	/* allow only 1 tab */
 
 /* protos */
 void			create_new_tab(char *, int);
@@ -424,7 +428,7 @@ create_window(void)
 	w = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_default_size(GTK_WINDOW(w), 800, 600);
 	gtk_widget_set_name(w, "xxxterm");
-	gtk_window_set_wmclass(GTK_WINDOW(w), "xxxterm", "xxxterm");
+	gtk_window_set_wmclass(GTK_WINDOW(w), "xxxterm", "XXXTerm");
 
 	return (w);
 }
@@ -480,6 +484,11 @@ create_new_tab(char *title, int focus)
 	char			*newuri = NULL;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
+
+	if (tabless && !TAILQ_EMPTY(&tabs)) {
+		DNPRINTF(XT_D_TAB, "create_new_tab: new tab rejected\n");
+		return;
+	}
 
 	t = g_malloc0(sizeof *t);
 	TAILQ_INSERT_TAIL(&tabs, t, entry);
@@ -539,6 +548,8 @@ create_canvas(void)
 	
 	vbox = gtk_vbox_new(FALSE, 0);
 	notebook = gtk_notebook_new();
+	if (showtabs == 0)
+		gtk_notebook_set_show_tabs(notebook, FALSE);
 
 	gtk_box_pack_start(GTK_BOX(vbox), notebook, TRUE, TRUE, 0);
 
@@ -550,7 +561,7 @@ void
 usage(void)
 {
 	fprintf(stderr,
-	    "%s [-V] url ...\n", __progname);
+	    "%s [-TVt] url ...\n", __progname);
 	exit(0);
 }
 
@@ -559,10 +570,16 @@ main(int argc, char *argv[])
 {
 	int			c, focus = 1;
 
-	while ((c = getopt(argc, argv, "V")) != -1) {
+	while ((c = getopt(argc, argv, "TVt")) != -1) {
 		switch (c) {
+		case 'T':
+			showtabs = 0;
+			break;
 		case 'V':
 			errx(0 , "Version: %s", version);
+			break;
+		case 't':
+			tabless = 1;
 			break;
 		default:
 			usage();
