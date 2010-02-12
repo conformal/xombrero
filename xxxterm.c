@@ -35,6 +35,8 @@
 #include <webkit/webkit.h>
 #include <libsoup/soup.h>
 
+static char		*version = "$xxxterm$";
+
 #define XT_DEBUG
 /* #define XT_DEBUG */
 #ifdef XT_DEBUG
@@ -108,6 +110,7 @@ struct karg {
 #define XT_TAB_DELETE		(2)
 
 /* globals */
+extern char		*__progname;
 GtkWidget		*main_window;
 GtkWidget		*notebook;
 struct tab_list		tabs;
@@ -310,6 +313,13 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		if (uri)
 			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
 		t->focus_wv = 1;
+
+		/* take focus if we are visible */
+		if (gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook)) ==
+		    t->tab_id) {
+			gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+			fprintf(stderr, "got one\n");
+		}
 		break;
 	case WEBKIT_LOAD_FIRST_VISUALLY_NON_EMPTY_LAYOUT:
 		uri = webkit_web_view_get_title(wview);
@@ -434,6 +444,7 @@ create_new_tab(char *title, int focus)
 {
 	struct tab		*t;
 	int			load = 1;
+	char			*newuri = NULL;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
@@ -443,7 +454,16 @@ create_new_tab(char *title, int focus)
 	if (title == NULL) {
 		title = "(untitled)";
 		load = 0;
+	} else {
+		if (strncasecmp("http://", title, strlen("http://"))) {
+			if (asprintf(&newuri, "http://%s", title) == -1)
+				err(1, "aprintf");
+			if (newuri == NULL)
+				err(1, "asprintf pointer");
+			title = newuri;
+		}
 	}
+
 	t->label = gtk_label_new(title);
 	gtk_widget_set_size_request(t->label, 100, -1);
 	t->vbox = gtk_vbox_new(FALSE, 0);
@@ -461,8 +481,9 @@ create_new_tab(char *title, int focus)
 	g_signal_connect(G_OBJECT(t->uri_entry), "focus",
 	    G_CALLBACK(focus_uri_entry_cb), t);
 
+	gtk_widget_show_all(main_window);
+
 	if (focus) {
-		gtk_widget_show_all(main_window);
 		gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), t->tab_id);
 		DNPRINTF(XT_D_TAB, "going to tab: %d\n", t->tab_id);
 		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
@@ -472,6 +493,9 @@ create_new_tab(char *title, int focus)
 		webkit_web_view_load_uri(t->wv, title);
 	else
 		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
+
+	if (newuri)
+		free(newuri);
 }
 
 void
@@ -487,13 +511,34 @@ create_canvas(void)
 
 	main_window = create_window();
 	gtk_container_add(GTK_CONTAINER(main_window), vbox);
+}
 
-	create_new_tab("http://www.peereboom.us", 1);
+void
+usage(void)
+{
+	fprintf(stderr,
+	    "%s [-V] url ...\n", __progname);
+	exit(0);
 }
 
 int
 main(int argc, char *argv[])
 {
+	int			c, focus = 1;
+
+	while ((c = getopt(argc, argv, "V")) != -1) {
+		switch (c) {
+		case 'V':
+			errx(0 , "Version: %s", version);
+			break;
+		default:
+			usage();
+			/* NOTREACHED */
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
 	TAILQ_INIT(&tabs);
 
 	/* prepare gtk */
@@ -502,6 +547,16 @@ main(int argc, char *argv[])
 		g_thread_init(NULL);
 
 	create_canvas();
+
+	while (argc) {
+		create_new_tab(argv[0], focus);
+		focus = 0;
+
+		argc--;
+		argv++;
+	}
+	if (focus == 1)
+		create_new_tab("http://www.peereboom.us", 1);
 
 	gtk_main();
 
