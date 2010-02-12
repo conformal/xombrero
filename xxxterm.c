@@ -18,7 +18,6 @@
 /*
  * TODO:
  *	inverse color browsing
- *	tabs, alt-1..n to switch
  *	favs
  *	download files
  */
@@ -37,7 +36,7 @@
 
 static char		*version = "$xxxterm$";
 
-#define XT_DEBUG
+//#define XT_DEBUG
 /* #define XT_DEBUG */
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
@@ -352,10 +351,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 		/* take focus if we are visible */
 		if (gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook)) ==
-		    t->tab_id) {
+		    t->tab_id)
 			gtk_widget_grab_focus(GTK_WIDGET(t->wv));
-			fprintf(stderr, "got one\n");
-		}
 		break;
 	case WEBKIT_LOAD_FIRST_VISUALLY_NON_EMPTY_LAYOUT:
 		uri = webkit_web_view_get_title(wview);
