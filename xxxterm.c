@@ -313,8 +313,12 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		t->focus_wv = 1;
 		break;
 	case WEBKIT_LOAD_FIRST_VISUALLY_NON_EMPTY_LAYOUT:
-		gtk_label_set_text(GTK_LABEL(t->label),
-		    webkit_web_view_get_title(wview));
+		uri = webkit_web_view_get_title(wview);
+		if (uri == NULL) {
+			frame = webkit_web_view_get_main_frame(wview);
+			uri = webkit_web_frame_get_uri(frame);
+		}
+		gtk_label_set_text(GTK_LABEL(t->label), uri);
 		break;
 	case WEBKIT_LOAD_PROVISIONAL:
 	case WEBKIT_LOAD_FINISHED:
