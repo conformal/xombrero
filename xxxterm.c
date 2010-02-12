@@ -128,11 +128,7 @@ int
 move(struct tab *t, struct karg *args)
 {
 	GtkAdjustment		*adjust;
-	double			pos;
-	double			ps;
-	double			upper;
-	double			lower;
-	double			max;
+	double			pi, si, pos, ps, upper, lower, max;
 
 	switch (args->i) {
 	case XT_MOVE_DOWN:
@@ -152,21 +148,24 @@ move(struct tab *t, struct karg *args)
 	ps = gtk_adjustment_get_page_size(adjust);
 	upper = gtk_adjustment_get_upper(adjust);
 	lower = gtk_adjustment_get_lower(adjust);
+	si = gtk_adjustment_get_step_increment(adjust);
+	pi = gtk_adjustment_get_page_increment(adjust);
 	max = upper - ps;
 
-	DNPRINTF(XT_D_MOVE, "move opcode %d %s pos %f ps %f upper %f lower %f max %f\n",
+	DNPRINTF(XT_D_MOVE, "move opcode %d %s pos %f ps %f upper %f lower %f "
+	    "max %f si %f pi %f\n",
 	    args->i, adjust == t->adjust_h ? "horizontal" : "vertical", 
-	    pos, ps, upper, lower, max);
+	    pos, ps, upper, lower, max, si, pi);
 
 	switch (args->i) {
 	case XT_MOVE_DOWN:
 	case XT_MOVE_RIGHT:
-		pos += 24;
+		pos += si;
 		gtk_adjustment_set_value(adjust, MIN(pos, max));
 		break;
 	case XT_MOVE_UP:
 	case XT_MOVE_LEFT:
-		pos -= 24;
+		pos -= si;
 		gtk_adjustment_set_value(adjust, MAX(pos, lower));
 		break;
 	case XT_MOVE_BOTTOM:
@@ -178,11 +177,11 @@ move(struct tab *t, struct karg *args)
 		gtk_adjustment_set_value(adjust, lower);
 		break;
 	case XT_MOVE_PAGEDOWN:
-		pos += ps;
+		pos += pi;
 		gtk_adjustment_set_value(adjust, MIN(pos, max));
 		break;
 	case XT_MOVE_PAGEUP:
-		pos -= ps;
+		pos -= pi;
 		gtk_adjustment_set_value(adjust, MAX(pos, lower));
 		break;
 	default:
