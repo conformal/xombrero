@@ -29,6 +29,8 @@
 #include <string.h>
 
 #include <sys/queue.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
@@ -37,6 +39,7 @@
 
 static char		*version = "$xxxterm$";
 
+#define XT_DEBUG
 /* #define XT_DEBUG */
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
@@ -45,11 +48,13 @@ static char		*version = "$xxxterm$";
 #define	XT_D_KEY		0x0002
 #define	XT_D_TAB		0x0004
 #define	XT_D_URL		0x0008
+#define	XT_D_CMD		0x0010
 u_int32_t		swm_debug = 0
 			    | XT_D_MOVE
 			    | XT_D_KEY
 			    | XT_D_TAB
 			    | XT_D_URL
+			    | XT_D_CMD
 			    ;
 #else
 #define DPRINTF(x...)
@@ -71,6 +76,7 @@ struct tab {
 	GtkWidget		*uri_entry;
 	GtkWidget		*toolbar;
 	GtkWidget		*browser_win;
+	GtkWidget		*cmd;
 	guint			tab_id;
 
 	/* adjustments for browser */
@@ -90,6 +96,10 @@ struct karg {
 	int		i;
 	char		*s;
 };
+
+/* defines */
+#define XT_CB_HANDLED		(TRUE)
+#define XT_CB_PASSTHROUGH	(FALSE)
 
 /* actions */
 #define XT_MOVE_INVALID		(0)
@@ -116,11 +126,56 @@ struct tab_list		tabs;
 
 /* settings */
 int			showtabs = 1;	/* show tabs on notebook */
+int			showurl = 1;	/* show url toolbar on notebook */
 int			tabless = 0;	/* allow only 1 tab */
 
 /* protos */
 void			create_new_tab(char *, int);
 void			delete_tab(struct tab *);
+
+struct valid_url_types {
+	char		*type;
+} vut[] = {
+	{ "http://" },
+	{ "ftp://" },
+	{ "file://" },
+};
+
+int
+valid_url_type(char *url)
+{
+	int			i;
+
+	for (i = 0; i < LENGTH(vut); i++)
+		if (!strncasecmp(vut[i].type, url, strlen(vut[i].type)))
+			return (0);
+
+	return (1);
+}
+
+char *
+guess_url_type(char *url_in)
+{
+	struct stat		sb;
+	char			*url_out = NULL;
+
+	/* XXX not sure about this heuristic */
+	if (stat(url_in, &sb) == 0) {
+		if (asprintf(&url_out, "file://%s", url_in) == -1)
+			err(1, "aprintf file");
+	} else {
+		/* guess http */
+		if (asprintf(&url_out, "http://%s", url_in) == -1)
+			err(1, "aprintf http");
+	}
+
+	if (url_out == NULL)
+		err(1, "asprintf pointer");
+
+	DNPRINTF(XT_D_URL, "guess_url_type: guessed %s\n", url_out);
+
+	return (url_out);
+}
 
 int
 quit(struct tab *t, struct karg *args)
@@ -191,12 +246,12 @@ move(struct tab *t, struct karg *args)
 		gtk_adjustment_set_value(adjust, MAX(pos, lower));
 		break;
 	default:
-		return (0); /* let webkit deal with it */
+		return (XT_CB_PASSTHROUGH);
 	}
 
 	DNPRINTF(XT_D_MOVE, "move: new pos %f %f\n", pos, MIN(pos, max));
 
-	return (1); /* handled */
+	return (XT_CB_HANDLED);
 }
 
 int
@@ -215,10 +270,10 @@ tabaction(struct tab *t, struct karg *args)
 		delete_tab(t);
 		break;
 	default:
-		return (0); /* let webkit deal with it */
+		return (XT_CB_PASSTHROUGH);
 	}
 
-	return (1); /* handled */
+	return (XT_CB_HANDLED);
 }
 
 int
@@ -232,7 +287,7 @@ movetab(struct tab *t, struct karg *args)
 	x = args->i - 1;
 	if (t->tab_id == x) {
 		DNPRINTF(XT_D_TAB, "movetab: do nothing\n");
-		return (1); /* handled */
+		return (XT_CB_HANDLED);
 	}
 
 	TAILQ_FOREACH(tt, &tabs, entry) {
@@ -244,13 +299,19 @@ movetab(struct tab *t, struct karg *args)
 		}
 	}
 
-	return (1);
+	return (XT_CB_HANDLED);
 }
 
 int
 command(struct tab *t, struct karg *args)
 {
-	return (0);
+	DNPRINTF(XT_D_CMD, "command:\n");
+
+	gtk_entry_set_text(GTK_ENTRY(t->cmd), ":");
+	gtk_widget_show(t->cmd);
+	gtk_widget_grab_focus(GTK_WIDGET(t->cmd));
+
+	return (XT_CB_HANDLED);
 }
 
 struct key {
@@ -298,6 +359,14 @@ struct key {
 	{ GDK_CONTROL_MASK,	0,	GDK_0,		movetab,	{.i = 10} },
 };
 
+struct cmd {
+	char		*cmd;
+	int		(*func)(struct tab *, struct karg *);
+	struct karg	arg;
+} cmds[] = {
+	{ "quit",		quit,			{0} },
+};
+
 void
 focus_uri_entry_cb(GtkWidget* w, GtkDirectionType direction, struct tab *t)
 {
@@ -314,7 +383,7 @@ activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 	const gchar		*uri = gtk_entry_get_text(GTK_ENTRY(entry));
 	char			*newuri = NULL;
 
-	DNPRINTF(XT_D_URL, "activate_uri_entry_cb:\n");
+	DNPRINTF(XT_D_URL, "activate_uri_entry_cb: %s\n", uri);
 
 	if (t == NULL)
 		errx(1, "activate_uri_entry_cb");
@@ -322,13 +391,11 @@ activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 	if (uri == NULL)
 		errx(1, "uri");
 
-	if (strncasecmp("http://", uri, strlen("http://"))) {
-		if (asprintf(&newuri, "http://%s", uri) == -1)
-			err(1, "aprintf");
-		if (newuri == NULL)
-			err(1, "asprintf pointer");
+	if (valid_url_type((char *)uri)) {
+		newuri = guess_url_type((char *)uri);
 		uri = newuri;
 	}
+
 	webkit_web_view_load_uri(t->wv, uri);
 	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 
@@ -389,10 +456,33 @@ webview_keypress_cb(WebKitWebView *webview, GdkEventKey *e, struct tab *t)
 		if (e->keyval == keys[i].key && CLEAN(e->state) ==
 		    keys[i].mask) {
 			keys[i].func(t, &keys[i].arg);
-			return (1); /* handled */
+			return (XT_CB_HANDLED);
 		}
 
-	return (0); /* pass on to webkit */
+	return (XT_CB_PASSTHROUGH);
+}
+
+int
+cmd_keypress_cb(WebKitWebView *webview, GdkEventKey *e, struct tab *t)
+{
+	int			rv = XT_CB_HANDLED;
+
+	if (t == NULL)
+		errx(1, "cmd_keypress_cb");
+
+	DNPRINTF(XT_D_KEY, "cmd_keypress_cb: keyval 0x%x mask 0x%x t %p\n",
+	    e->keyval, e->state, t);
+
+	switch (e->keyval) {
+	case GDK_Escape:
+		gtk_widget_hide(t->cmd);
+		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+		goto done;
+	}
+
+	rv = XT_CB_PASSTHROUGH;
+done:
+	return (rv);
 }
 
 GtkWidget *
@@ -498,11 +588,8 @@ create_new_tab(char *title, int focus)
 		title = "(untitled)";
 		load = 0;
 	} else {
-		if (strncasecmp("http://", title, strlen("http://"))) {
-			if (asprintf(&newuri, "http://%s", title) == -1)
-				err(1, "aprintf");
-			if (newuri == NULL)
-				err(1, "asprintf pointer");
+		if (valid_url_type(title)) {
+			newuri = guess_url_type(title);
 			title = newuri;
 		}
 	}
@@ -511,11 +598,20 @@ create_new_tab(char *title, int focus)
 	gtk_widget_set_size_request(t->label, 100, -1);
 	t->vbox = gtk_vbox_new(FALSE, 0);
 	t->toolbar = create_toolbar(t);
-	t->browser_win = create_browser(t);
 	gtk_box_pack_start(GTK_BOX(t->vbox), t->toolbar, FALSE, FALSE, 0);
+	t->browser_win = create_browser(t);
 	gtk_box_pack_start(GTK_BOX(t->vbox), t->browser_win, TRUE, TRUE, 0);
 	t->tab_id = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), t->vbox,
 	    t->label);
+
+	/* command entry */
+	t->cmd = gtk_entry_new();
+	gtk_entry_set_inner_border(GTK_ENTRY(t->cmd), NULL);
+	gtk_entry_set_has_frame(GTK_ENTRY(t->cmd), FALSE);
+	gtk_box_pack_end(GTK_BOX(t->vbox), t->cmd, FALSE, FALSE, 0);
+	g_object_connect((GObject*)t->cmd,
+	    "signal::key-press-event", (GCallback)cmd_keypress_cb, t,
+	    NULL);
 
 	g_object_connect((GObject*)t->wv,
 	    "signal-after::key-press-event", (GCallback)webview_keypress_cb, t,
@@ -525,6 +621,11 @@ create_new_tab(char *title, int focus)
 	    G_CALLBACK(focus_uri_entry_cb), t);
 
 	gtk_widget_show_all(main_window);
+
+	/* hide stuff */
+	gtk_widget_hide(t->cmd);
+	if (showurl == 0)
+		gtk_widget_hide(t->toolbar);
 
 	if (focus) {
 		gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook),
@@ -552,7 +653,7 @@ create_canvas(void)
 	vbox = gtk_vbox_new(FALSE, 0);
 	notebook = gtk_notebook_new();
 	if (showtabs == 0)
-		gtk_notebook_set_show_tabs(notebook, FALSE);
+		gtk_notebook_set_show_tabs(GTK_NOTEBOOK(notebook), FALSE);
 
 	gtk_box_pack_start(GTK_BOX(vbox), notebook, TRUE, TRUE, 0);
 
@@ -564,7 +665,7 @@ void
 usage(void)
 {
 	fprintf(stderr,
-	    "%s [-TVt] url ...\n", __progname);
+	    "%s [-STVt] url ...\n", __progname);
 	exit(0);
 }
 
@@ -573,8 +674,11 @@ main(int argc, char *argv[])
 {
 	int			c, focus = 1;
 
-	while ((c = getopt(argc, argv, "TVt")) != -1) {
+	while ((c = getopt(argc, argv, "STVt")) != -1) {
 		switch (c) {
+		case 'S':
+			showurl = 0;
+			break;
 		case 'T':
 			showtabs = 0;
 			break;
