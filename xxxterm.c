@@ -310,6 +310,7 @@ command(struct tab *t, struct karg *args)
 	gtk_entry_set_text(GTK_ENTRY(t->cmd), ":");
 	gtk_widget_show(t->cmd);
 	gtk_widget_grab_focus(GTK_WIDGET(t->cmd));
+	gtk_editable_set_position(GTK_EDITABLE(t->cmd), -1);
 
 	return (XT_CB_HANDLED);
 }
@@ -463,17 +464,28 @@ webview_keypress_cb(WebKitWebView *webview, GdkEventKey *e, struct tab *t)
 }
 
 int
-cmd_keypress_cb(WebKitWebView *webview, GdkEventKey *e, struct tab *t)
+cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 {
 	int			rv = XT_CB_HANDLED;
+	const gchar		*c = gtk_entry_get_text(w);
 
 	if (t == NULL)
 		errx(1, "cmd_keypress_cb");
 
-	DNPRINTF(XT_D_KEY, "cmd_keypress_cb: keyval 0x%x mask 0x%x t %p\n",
+	DNPRINTF(XT_D_CMD, "cmd_keypress_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
 
+	/* sanity */
+	if (c == NULL)
+		e->keyval = GDK_Escape;
+	else if (c[0] != ':')
+		e->keyval = GDK_Escape;
+
 	switch (e->keyval) {
+	case GDK_BackSpace:
+		if (strcmp(c, ":"))
+			break;
+		/* FALLTHROUGH */
 	case GDK_Escape:
 		gtk_widget_hide(t->cmd);
 		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
@@ -483,6 +495,51 @@ cmd_keypress_cb(WebKitWebView *webview, GdkEventKey *e, struct tab *t)
 	rv = XT_CB_PASSTHROUGH;
 done:
 	return (rv);
+}
+
+int
+cmd_focusout_cb(GtkWidget *w, GdkEventFocus *e, struct tab *t)
+{
+	if (t == NULL)
+		errx(1, "cmd_focusout_cb");
+
+	DNPRINTF(XT_D_CMD, "cmd_focusout_cb\n");
+
+	/* abort command when losing focus */
+	gtk_widget_hide(t->cmd);
+	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+
+	return (XT_CB_PASSTHROUGH);
+}
+
+void
+cmd_activate_cb(GtkEntry *entry, struct tab *t)
+{
+	int			i;
+	char			*s;
+	const gchar		*c = gtk_entry_get_text(entry);
+
+	if (t == NULL)
+		errx(1, "cmd_activate_cb");
+
+	DNPRINTF(XT_D_CMD, "cmd_focusout_cb: %s\n", c);
+
+	/* sanity */
+	if (c == NULL)
+		goto done;
+	else if (c[0] != ':')
+		goto done;
+	if (strlen(c) < 2)
+		goto done;
+	s = (char *)&c[1];
+
+	for (i = 0; i < LENGTH(cmds); i++)
+		if (!strcmp(s, cmds[i].cmd))
+			cmds[i].func(t, &cmds[i].arg);
+
+done:
+	gtk_widget_hide(t->cmd);
+	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 }
 
 GtkWidget *
@@ -611,6 +668,8 @@ create_new_tab(char *title, int focus)
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->cmd, FALSE, FALSE, 0);
 	g_object_connect((GObject*)t->cmd,
 	    "signal::key-press-event", (GCallback)cmd_keypress_cb, t,
+	    "signal::focus-out-event", (GCallback)cmd_focusout_cb, t,
+	    "signal::activate", (GCallback)cmd_activate_cb, t,
 	    NULL);
 
 	g_object_connect((GObject*)t->wv,
