@@ -498,8 +498,11 @@ struct cmd {
 	{ "tabclose",		0,	tabaction,		{.i = XT_TAB_DELETE} },
 	{ "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT} },
 	{ "q",			0,	tabaction,		{.i = XT_TAB_DELQUIT} },
+	/* XXX add count to these commands and add tabl and friends */
 	{ "tabprevious",	0,	movetab,		{.i = XT_TAB_PREV} },
+	{ "tabp",		0,	movetab,		{.i = XT_TAB_PREV} },
 	{ "tabnext",		0,	movetab,		{.i = XT_TAB_NEXT} },
+	{ "tabn",		0,	movetab,		{.i = XT_TAB_NEXT} },
 };
 
 void
