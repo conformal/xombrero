@@ -119,6 +119,7 @@ struct karg {
 #define XT_TAB_INVALID		(0)
 #define XT_TAB_NEW		(1)
 #define XT_TAB_DELETE		(2)
+#define XT_TAB_DELQUIT		(3)
 
 /* globals */
 extern char		*__progname;
@@ -294,6 +295,12 @@ tabaction(struct tab *t, struct karg *args)
 	case XT_TAB_DELETE:
 		delete_tab(t);
 		break;
+	case XT_TAB_DELQUIT:
+		if (gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook)) > 1)
+			delete_tab(t);
+		else
+			quit(t, args);
+		break;
 	default:
 		rv = XT_CB_PASSTHROUGH;
 		goto done;
@@ -420,9 +427,15 @@ struct cmd {
 	int		(*func)(struct tab *, struct karg *);
 	struct karg	arg;
 } cmds[] = {
-	{ "quit",		0,	quit,			{0} },
+	{ "q!",			0,	quit,			{0} },
+	{ "qa",			0,	quit,			{0} },
+	{ "qa!",		0,	quit,			{0} },
+
+	/* tabs */
 	{ "tabnew",		1,	tabaction,		{.i = XT_TAB_NEW} },
 	{ "tabclose",		0,	tabaction,		{.i = XT_TAB_DELETE} },
+	{ "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT} },
+	{ "q",			0,	tabaction,		{.i = XT_TAB_DELQUIT} },
 	{ "tabprevious",	0,	movetab,		{.i = XT_TAB_PREV} },
 	{ "tabnext",		0,	movetab,		{.i = XT_TAB_NEXT} },
 };
