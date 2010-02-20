@@ -124,7 +124,7 @@ struct karg {
 /* globals */
 extern char		*__progname;
 GtkWidget		*main_window;
-GtkWidget		*notebook;
+GtkNotebook		*notebook;
 struct tab_list		tabs;
 
 /* settings */
@@ -296,7 +296,7 @@ tabaction(struct tab *t, struct karg *args)
 		delete_tab(t);
 		break;
 	case XT_TAB_DELQUIT:
-		if (gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook)) > 1)
+		if (gtk_notebook_get_n_pages(notebook) > 1)
 			delete_tab(t);
 		else
 			quit(t, args);
@@ -336,9 +336,9 @@ movetab(struct tab *t, struct karg *args)
 			return (XT_CB_PASSTHROUGH);
 
 		if (args->i == XT_TAB_NEXT)
-			gtk_notebook_next_page(GTK_NOTEBOOK(notebook));
+			gtk_notebook_next_page(notebook);
 		else
-			gtk_notebook_prev_page(GTK_NOTEBOOK(notebook));
+			gtk_notebook_prev_page(notebook);
 
 		return (XT_CB_HANDLED);
 	}
@@ -352,8 +352,7 @@ movetab(struct tab *t, struct karg *args)
 
 	TAILQ_FOREACH(tt, &tabs, entry) {
 		if (tt->tab_id == x) {
-			gtk_notebook_set_current_page(
-			    GTK_NOTEBOOK(notebook), x);
+			gtk_notebook_set_current_page( notebook, x);
 			DNPRINTF(XT_D_TAB, "movetab: going to %d\n", x);
 			if (tt->focus_wv)
 				gtk_widget_grab_focus(GTK_WIDGET(tt->wv));
@@ -498,8 +497,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		t->focus_wv = 1;
 
 		/* take focus if we are visible */
-		if (gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook)) ==
-		    t->tab_id)
+		if (gtk_notebook_get_current_page(notebook) == t->tab_id)
 			gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 		break;
 	case WEBKIT_LOAD_FIRST_VISUALLY_NON_EMPTY_LAYOUT:
@@ -745,7 +743,7 @@ create_new_tab(char *title, int focus)
 	gtk_box_pack_start(GTK_BOX(t->vbox), t->toolbar, FALSE, FALSE, 0);
 	t->browser_win = create_browser(t);
 	gtk_box_pack_start(GTK_BOX(t->vbox), t->browser_win, TRUE, TRUE, 0);
-	t->tab_id = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), t->vbox,
+	t->tab_id = gtk_notebook_append_page(notebook, t->vbox,
 	    t->label);
 
 	/* command entry */
@@ -779,8 +777,7 @@ create_new_tab(char *title, int focus)
 		gtk_widget_hide(t->toolbar);
 
 	if (focus) {
-		gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook),
-		    t->tab_id);
+		gtk_notebook_set_current_page(notebook, t->tab_id);
 		DNPRINTF(XT_D_TAB, "create_new_tab: going to tab: %d\n",
 		    t->tab_id);
 	}
@@ -801,11 +798,11 @@ create_canvas(void)
 	GtkWidget		*vbox;
 	
 	vbox = gtk_vbox_new(FALSE, 0);
-	notebook = gtk_notebook_new();
+	notebook = GTK_NOTEBOOK(gtk_notebook_new());
 	if (showtabs == 0)
 		gtk_notebook_set_show_tabs(GTK_NOTEBOOK(notebook), FALSE);
 
-	gtk_box_pack_start(GTK_BOX(vbox), notebook, TRUE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(notebook), TRUE, TRUE, 0);
 
 	main_window = create_window();
 	gtk_container_add(GTK_CONTAINER(main_window), vbox);
