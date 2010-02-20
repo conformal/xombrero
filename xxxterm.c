@@ -295,7 +295,7 @@ getparams(char *cmd, char *cmp)
 	char			*rv = NULL;
 
 	if (cmd && cmp) {
-		if (strcmp(cmd, cmp)) {
+		if (!strncmp(cmd, cmp, strlen(cmp))) {
 			rv = cmd + strlen(cmp);
 			while (*rv == ' ')
 				rv++;
@@ -320,8 +320,10 @@ tabaction(struct tab *t, struct karg *args)
 
 	switch (args->i) {
 	case XT_TAB_NEW:
-		url = getparams(args->s, "tabnew");
-		create_new_tab(url, 1);
+		if ((url = getparams(args->s, "tabnew")))
+			create_new_tab(url, 1);
+		else
+			create_new_tab(NULL, 1);
 		break;
 	case XT_TAB_DELETE:
 		delete_tab(t);
@@ -333,8 +335,11 @@ tabaction(struct tab *t, struct karg *args)
 			quit(t, args);
 		break;
 	case XT_TAB_OPEN:
-		url = getparams(args->s, "open");
-		if (url == NULL) {
+		if ((url = getparams(args->s, "open")) ||
+		    ((url = getparams(args->s, "op"))) ||
+		    ((url = getparams(args->s, "o"))))
+			;
+		else {
 			rv = XT_CB_PASSTHROUGH;
 			goto done;
 		}
@@ -484,8 +489,12 @@ struct cmd {
 	{ "qa!",		0,	quit,			{0} },
 
 	/* tabs */
+	{ "o",			1,	tabaction,		{.i = XT_TAB_OPEN} },
+	{ "op",			1,	tabaction,		{.i = XT_TAB_OPEN} },
 	{ "open",		1,	tabaction,		{.i = XT_TAB_OPEN} },
 	{ "tabnew",		1,	tabaction,		{.i = XT_TAB_NEW} },
+	{ "tabedit",		0,	tabaction,		{.i = XT_TAB_NEW} },
+	{ "tabe",		0,	tabaction,		{.i = XT_TAB_NEW} },
 	{ "tabclose",		0,	tabaction,		{.i = XT_TAB_DELETE} },
 	{ "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT} },
 	{ "q",			0,	tabaction,		{.i = XT_TAB_DELQUIT} },
