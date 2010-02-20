@@ -526,7 +526,11 @@ webview_event_cb(GtkWidget *w, GdkEvent *e, struct tab *t)
 	/* catch mouse buttons when hovering over a link */
 	if (e->type == GDK_BUTTON_RELEASE && t->ctrl && t->hover) {
 		DNPRINTF(XT_D_KEY, "webview_event_cb: %s\n", t->hover);
-		create_new_tab(t->hover, 1);
+		create_new_tab(t->hover, 0);
+
+		/* not sure why it reappears but hide it */
+		gtk_widget_hide(t->cmd);
+
 		return (XT_CB_HANDLED);
 	}
 
