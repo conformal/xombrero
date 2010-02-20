@@ -137,6 +137,7 @@ struct valid_url_types {
 	char		*type;
 } vut[] = {
 	{ "http://" },
+	{ "https://" },
 	{ "ftp://" },
 	{ "file://" },
 };
@@ -254,26 +255,55 @@ move(struct tab *t, struct karg *args)
 	return (XT_CB_HANDLED);
 }
 
+char *
+getparams(char *cmd, char *cmp)
+{
+	char			*rv = NULL;
+
+	if (cmd && cmp) {
+		if (strcmp(cmd, cmp)) {
+			rv = cmd + strlen(cmp);
+			while (*rv == ' ')
+				rv++;
+			if (strlen(rv) == 0)
+				rv = NULL;
+		}
+	}
+
+	return (rv);
+}
+
 int
 tabaction(struct tab *t, struct karg *args)
 {
-	DNPRINTF(XT_D_TAB, "tabaction: %p %d\n", t, args->i);
+	int			rv = XT_CB_HANDLED;
+	char			*url = NULL;
+
+	DNPRINTF(XT_D_TAB, "tabaction: %p %d %d\n", t, args->i, t->focus_wv);
 
 	if (t == NULL)
 		return (0);
 
 	switch (args->i) {
 	case XT_TAB_NEW:
-		create_new_tab(NULL, 1);
+		url = getparams(args->s, "tabnew");
+		create_new_tab(url, 1);
 		break;
 	case XT_TAB_DELETE:
 		delete_tab(t);
 		break;
 	default:
-		return (XT_CB_PASSTHROUGH);
+		rv = XT_CB_PASSTHROUGH;
+		goto done;
 	}
 
-	return (XT_CB_HANDLED);
+done:
+	if (args->s) {
+		free(args->s);
+		args->s = NULL;
+	}
+
+	return (rv);
 }
 
 int
@@ -362,16 +392,23 @@ struct key {
 
 struct cmd {
 	char		*cmd;
+	int		params;
 	int		(*func)(struct tab *, struct karg *);
 	struct karg	arg;
 } cmds[] = {
-	{ "quit",		quit,			{0} },
+	{ "quit",		0,	quit,			{0} },
+	{ "tabnew",		1,	tabaction,		{.i = XT_TAB_NEW} },
+	{ "tabclose",		0,	tabaction,		{.i = XT_TAB_DELETE} },
 };
 
 void
 focus_uri_entry_cb(GtkWidget* w, GtkDirectionType direction, struct tab *t)
 {
-	DNPRINTF(XT_D_URL, "focus_uri_entry_cb:\n");
+	DNPRINTF(XT_D_URL, "focus_uri_entry_cb: tab %d focus_wv %d\n",
+	    t->tab_id, t->focus_wv);
+
+	if (t == NULL)
+		errx(1, "focus_uri_entry_cb");
 
 	/* focus on wv instead */
 	if (t->focus_wv)
@@ -503,11 +540,15 @@ cmd_focusout_cb(GtkWidget *w, GdkEventFocus *e, struct tab *t)
 	if (t == NULL)
 		errx(1, "cmd_focusout_cb");
 
-	DNPRINTF(XT_D_CMD, "cmd_focusout_cb\n");
+	DNPRINTF(XT_D_CMD, "cmd_focusout_cb: tab %d focus_wv %d\n",
+	    t->tab_id, t->focus_wv);
 
 	/* abort command when losing focus */
 	gtk_widget_hide(t->cmd);
-	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+	if (t->focus_wv)
+		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+	else
+		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
 
 	return (XT_CB_PASSTHROUGH);
 }
@@ -522,7 +563,7 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 	if (t == NULL)
 		errx(1, "cmd_activate_cb");
 
-	DNPRINTF(XT_D_CMD, "cmd_focusout_cb: %s\n", c);
+	DNPRINTF(XT_D_CMD, "cmd_activate_cb: tab %d %s\n", t->tab_id, c);
 
 	/* sanity */
 	if (c == NULL)
@@ -534,12 +575,18 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 	s = (char *)&c[1];
 
 	for (i = 0; i < LENGTH(cmds); i++)
-		if (!strcmp(s, cmds[i].cmd))
-			cmds[i].func(t, &cmds[i].arg);
+		if (cmds[i].params) {
+			if (!strncmp(s, cmds[i].cmd, strlen(cmds[i].cmd))) {
+				cmds[i].arg.s = strdup(s);
+				cmds[i].func(t, &cmds[i].arg);
+			}
+		} else {
+			if (!strcmp(s, cmds[i].cmd))
+				cmds[i].func(t, &cmds[i].arg);
+		}
 
 done:
 	gtk_widget_hide(t->cmd);
-	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 }
 
 GtkWidget *
@@ -691,7 +738,6 @@ create_new_tab(char *title, int focus)
 		    t->tab_id);
 		DNPRINTF(XT_D_TAB, "create_new_tab: going to tab: %d\n",
 		    t->tab_id);
-		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 	}
 
 	if (load)
