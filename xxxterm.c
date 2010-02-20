@@ -661,14 +661,12 @@ delete_tab(struct tab *t)
 
 	if (t == NULL)
 		return;
-
-	gtk_widget_destroy(t->vbox);
-	
 	TAILQ_REMOVE(&tabs, t, entry);
-	g_free(t);
-
 	if (TAILQ_EMPTY(&tabs))
 		create_new_tab(NULL, 1);
+
+	gtk_widget_destroy(t->vbox);
+	g_free(t);
 }
 
 void
