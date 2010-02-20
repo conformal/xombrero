@@ -114,6 +114,8 @@ struct karg {
 #define XT_MOVE_RIGHT		(9)
 #define XT_MOVE_FARRIGHT	(10)
 
+#define XT_TAB_PREV		(-2)
+#define XT_TAB_NEXT		(-1)
 #define XT_TAB_INVALID		(0)
 #define XT_TAB_NEW		(1)
 #define XT_TAB_DELETE		(2)
@@ -282,7 +284,7 @@ tabaction(struct tab *t, struct karg *args)
 	DNPRINTF(XT_D_TAB, "tabaction: %p %d %d\n", t, args->i, t->focus_wv);
 
 	if (t == NULL)
-		return (0);
+		return (XT_CB_PASSTHROUGH);
 
 	switch (args->i) {
 	case XT_TAB_NEW:
@@ -314,6 +316,27 @@ movetab(struct tab *t, struct karg *args)
 
 	DNPRINTF(XT_D_TAB, "movetab: %p %d\n", t, args->i);
 
+	if (t == NULL)
+		return (XT_CB_PASSTHROUGH);
+
+	if (args->i == XT_TAB_INVALID)
+		return (XT_CB_PASSTHROUGH);
+
+
+	if (args->i < XT_TAB_INVALID) {
+		/* next or previous tab */
+		if (TAILQ_EMPTY(&tabs))
+			return (XT_CB_PASSTHROUGH);
+
+		if (args->i == XT_TAB_NEXT)
+			gtk_notebook_next_page(GTK_NOTEBOOK(notebook));
+		else
+			gtk_notebook_prev_page(GTK_NOTEBOOK(notebook));
+
+		return (XT_CB_HANDLED);
+	}
+
+	/* jump to tab */
 	x = args->i - 1;
 	if (t->tab_id == x) {
 		DNPRINTF(XT_D_TAB, "movetab: do nothing\n");
@@ -322,7 +345,8 @@ movetab(struct tab *t, struct karg *args)
 
 	TAILQ_FOREACH(tt, &tabs, entry) {
 		if (tt->tab_id == x) {
-			gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), x);
+			gtk_notebook_set_current_page(
+			    GTK_NOTEBOOK(notebook), x);
 			DNPRINTF(XT_D_TAB, "movetab: going to %d\n", x);
 			if (tt->focus_wv)
 				gtk_widget_grab_focus(GTK_WIDGET(tt->wv));
@@ -399,6 +423,8 @@ struct cmd {
 	{ "quit",		0,	quit,			{0} },
 	{ "tabnew",		1,	tabaction,		{.i = XT_TAB_NEW} },
 	{ "tabclose",		0,	tabaction,		{.i = XT_TAB_DELETE} },
+	{ "tabprevious",	0,	movetab,		{.i = XT_TAB_PREV} },
+	{ "tabnext",		0,	movetab,		{.i = XT_TAB_NEXT} },
 };
 
 void
