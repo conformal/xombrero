@@ -125,6 +125,7 @@ struct karg {
 #define XT_TAB_NEW		(1)
 #define XT_TAB_DELETE		(2)
 #define XT_TAB_DELQUIT		(3)
+#define XT_TAB_OPEN		(4)
 
 #define XT_NAV_INVALID		(0)
 #define XT_NAV_BACK		(1)
@@ -306,7 +307,7 @@ int
 tabaction(struct tab *t, struct karg *args)
 {
 	int			rv = XT_CB_HANDLED;
-	char			*url = NULL;
+	char			*url = NULL, *newuri = NULL;
 
 	DNPRINTF(XT_D_TAB, "tabaction: %p %d %d\n", t, args->i, t->focus_wv);
 
@@ -326,6 +327,21 @@ tabaction(struct tab *t, struct karg *args)
 			delete_tab(t);
 		else
 			quit(t, args);
+		break;
+	case XT_TAB_OPEN:
+		url = getparams(args->s, "open");
+		if (url == NULL) {
+			rv = XT_CB_PASSTHROUGH;
+			goto done;
+		}
+
+		if (valid_url_type(url)) {
+			newuri = guess_url_type(url);
+			url = newuri;
+		}
+		webkit_web_view_load_uri(t->wv, url);
+		if (newuri)
+			free(newuri);
 		break;
 	default:
 		rv = XT_CB_PASSTHROUGH;
@@ -464,6 +480,7 @@ struct cmd {
 	{ "qa!",		0,	quit,			{0} },
 
 	/* tabs */
+	{ "open",		1,	tabaction,		{.i = XT_TAB_OPEN} },
 	{ "tabnew",		1,	tabaction,		{.i = XT_TAB_NEW} },
 	{ "tabclose",		0,	tabaction,		{.i = XT_TAB_DELETE} },
 	{ "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT} },
