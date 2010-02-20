@@ -20,7 +20,7 @@
  *	config file
  *	inverse color browsing
  *	favs
- *	download files
+ *	download files status
  *	multi letter commands
  */
 
