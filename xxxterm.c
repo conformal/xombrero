@@ -661,6 +661,7 @@ delete_tab(struct tab *t)
 
 	if (t == NULL)
 		return;
+
 	TAILQ_REMOVE(&tabs, t, entry);
 	if (TAILQ_EMPTY(&tabs))
 		create_new_tab(NULL, 1);
@@ -718,6 +719,11 @@ create_new_tab(char *title, int focus)
 	    NULL);
 
 	g_object_connect((GObject*)t->wv,
+	    "signal-after::key-press-event", (GCallback)webview_keypress_cb, t,
+	    NULL);
+
+	/* hijack the unused keys as if we were the browser */
+	g_object_connect((GObject*)t->toolbar,
 	    "signal-after::key-press-event", (GCallback)webview_keypress_cb, t,
 	    NULL);
 
