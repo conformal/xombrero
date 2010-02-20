@@ -50,12 +50,14 @@ static char		*version = "$xxxterm$";
 #define	XT_D_TAB		0x0004
 #define	XT_D_URL		0x0008
 #define	XT_D_CMD		0x0010
+#define	XT_D_NAV		0x0020
 u_int32_t		swm_debug = 0
 			    | XT_D_MOVE
 			    | XT_D_KEY
 			    | XT_D_TAB
 			    | XT_D_URL
 			    | XT_D_CMD
+			    | XT_D_NAV
 			    ;
 #else
 #define DPRINTF(x...)
@@ -124,6 +126,10 @@ struct karg {
 #define XT_TAB_DELETE		(2)
 #define XT_TAB_DELQUIT		(3)
 
+#define XT_NAV_INVALID		(0)
+#define XT_NAV_BACK		(1)
+#define XT_NAV_FORWARD		(2)
+
 /* globals */
 extern char		*__progname;
 GtkWidget		*main_window;
@@ -190,6 +196,23 @@ quit(struct tab *t, struct karg *args)
 	gtk_main_quit();
 
 	return (1);
+}
+
+int
+navaction(struct tab *t, struct karg *args)
+{
+	DNPRINTF(XT_D_NAV, "navaction: tab %d opcode %d\n",
+	    t->tab_id, args->i);
+
+	switch (args->i) {
+	case XT_NAV_BACK:
+		webkit_web_view_go_back(t->wv);
+		break;
+	case XT_NAV_FORWARD:
+		webkit_web_view_go_forward(t->wv);
+		break;
+	}
+	return (XT_CB_PASSTHROUGH);
 }
 
 int
@@ -388,6 +411,10 @@ struct key {
 } keys[] = {
 	{ GDK_SHIFT_MASK,	0,	GDK_colon,	command,	{0} },
 	{ GDK_CONTROL_MASK,	0,	GDK_q,		quit,		{0} },
+
+	/* navigation */
+	{ 0,			0,	GDK_BackSpace,	navaction,	{.i = XT_NAV_BACK} },
+	{ GDK_SHIFT_MASK,	0,	GDK_BackSpace,	navaction,	{.i = XT_NAV_FORWARD} },
 
 	/* vertical movement */
 	{ 0,			0,	GDK_j,		move,		{.i = XT_MOVE_DOWN} },
