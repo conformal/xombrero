@@ -414,7 +414,9 @@ struct key {
 
 	/* navigation */
 	{ 0,			0,	GDK_BackSpace,	navaction,	{.i = XT_NAV_BACK} },
+	{ GDK_MOD1_MASK,	0,	GDK_Left,	navaction,	{.i = XT_NAV_BACK} },
 	{ GDK_SHIFT_MASK,	0,	GDK_BackSpace,	navaction,	{.i = XT_NAV_FORWARD} },
+	{ GDK_MOD1_MASK,	0,	GDK_Right,	navaction,	{.i = XT_NAV_FORWARD} },
 
 	/* vertical movement */
 	{ 0,			0,	GDK_j,		move,		{.i = XT_MOVE_DOWN} },
