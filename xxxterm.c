@@ -27,7 +27,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <err.h>
+#include <pwd.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -51,6 +53,7 @@ static char		*version = "$xxxterm$";
 #define	XT_D_URL		0x0008
 #define	XT_D_CMD		0x0010
 #define	XT_D_NAV		0x0020
+#define	XT_D_DOWNLOAD		0x0040
 u_int32_t		swm_debug = 0
 			    | XT_D_MOVE
 			    | XT_D_KEY
@@ -58,6 +61,7 @@ u_int32_t		swm_debug = 0
 			    | XT_D_URL
 			    | XT_D_CMD
 			    | XT_D_NAV
+			    | XT_D_DOWNLOAD
 			    ;
 #else
 #define DPRINTF(x...)
@@ -598,6 +602,60 @@ webview_keyrelease_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 	return (XT_CB_PASSTHROUGH);
 }
 
+int
+webview_mimetype_cb(WebKitWebView *wv, WebKitWebFrame *frame,
+    WebKitNetworkRequest *request, char *mime_type,
+    WebKitWebPolicyDecision *decision, struct tab *t)
+{
+	if (t == NULL)
+		errx(1, "webview_mimetype_cb");
+
+	DNPRINTF(XT_D_DOWNLOAD, "webview_mimetype_cb: tab %d mime %s\n",
+	    t->tab_id, mime_type);
+
+	if (webkit_web_view_can_show_mime_type(wv, mime_type) == FALSE) {
+		webkit_web_policy_decision_download(decision);
+		return (TRUE);
+	}
+
+	return (FALSE);
+}
+
+int
+webview_download_cb(WebKitWebView *wv, WebKitDownload *download, struct tab *t)
+{
+	const gchar		*filename;
+	char			*uri = NULL;
+	struct passwd		*pwd;
+
+	if (download == NULL || t == NULL)
+		errx(1, "webview_download_cb: invalid pointers");
+
+	filename = webkit_download_get_suggested_filename(download);
+	if (filename == NULL)
+		return (FALSE); /* abort download */
+
+	pwd = getpwuid(getuid());
+	if (pwd == NULL)
+		errx(1, "webview_download_cb: invalid user %d", getuid());
+
+	if (asprintf(&uri, "file://%s/%s", pwd->pw_dir, filename) == -1)
+		err(1, "aprintf uri");
+
+	DNPRINTF(XT_D_DOWNLOAD, "webview_download_cb: tab %d filename %s "
+	    "local %s\n",
+	    t->tab_id, filename, uri);
+
+	webkit_download_set_destination_uri(download, uri);
+
+	if (uri)
+		free(uri);
+
+	webkit_download_start(download);
+
+	return (TRUE); /* start download */
+}
+
 void
 webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 {
@@ -873,6 +931,8 @@ create_new_tab(char *title, int focus)
 	    "signal-after::key-press-event", (GCallback)webview_keypress_cb, t,
 	    "signal-after::key-release-event", (GCallback)webview_keyrelease_cb, t,
 	    "signal::hovering-over-link", (GCallback)webview_hover_cb, t,
+	    "signal::download-requested", (GCallback)webview_download_cb, t,
+	    "signal::mime-type-policy-decision-requested", (GCallback)webview_mimetype_cb, t,
 	    "signal::event", (GCallback)webview_event_cb, t,
 	    NULL);
 
