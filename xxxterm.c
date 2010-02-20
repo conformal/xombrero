@@ -480,9 +480,11 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 }
 
 int
-webview_keypress_cb(WebKitWebView *webview, GdkEventKey *e, struct tab *t)
+webview_keypress_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 {
 	int			i;
+
+	/* don't use w directly; use t->whatever instead */
 
 	if (t == NULL)
 		errx(1, "webview_keypress_cb");
