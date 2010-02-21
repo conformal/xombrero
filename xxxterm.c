@@ -156,6 +156,8 @@ int			showtabs = 1;	/* show tabs on notebook */
 int			showurl = 1;	/* show url toolbar on notebook */
 int			tabless = 0;	/* allow only 1 tab */
 int			ctrl_click_focus = 0; /* ctrl click gets focus */
+int			cookies_enabled = 1; /* enable cookies */
+int			read_only_cookies = 0; /* enable to not write cookies */
 char			*home = "http://www.peereboom.us";
 char			work_dir[PATH_MAX];
 char			cookie_file[PATH_MAX];
@@ -257,6 +259,10 @@ config_parse(char *filename)
 			home = strdup(val);
 		else if (!strcmp(var, "ctrl_click_focus"))
 			ctrl_click_focus = atoi(val);
+		else if (!strcmp(var, "read_only_cookies"))
+			read_only_cookies = atoi(val);
+		else if (!strcmp(var, "cookies_enabled"))
+			cookies_enabled = atoi(val);
 		else if (!strcmp(var, "download_dir")) {
 			if (val[0] == '~')
 				snprintf(download_dir, sizeof download_dir,
@@ -1110,6 +1116,23 @@ create_canvas(void)
 }
 
 void
+setup_cookies(void)
+{
+	if (cookiejar) {
+		soup_session_remove_feature(session,
+		    (SoupSessionFeature*)cookiejar);
+		g_object_unref(cookiejar);
+		cookiejar = NULL;
+	}
+
+	if (cookies_enabled == 0)
+		return;
+
+	cookiejar = soup_cookie_jar_text_new(cookie_file, read_only_cookies);
+	soup_session_add_feature(session, (SoupSessionFeature*)cookiejar);
+}
+
+void
 usage(void)
 {
 	fprintf(stderr,
@@ -1189,9 +1212,7 @@ main(int argc, char *argv[])
 	session = webkit_get_default_session();
 	snprintf(cookie_file, sizeof cookie_file, "%s/cookies.txt", work_dir);
 	fprintf(stderr, "cookies: %s\n", cookie_file);
-	cookiejar = soup_cookie_jar_text_new(cookie_file, FALSE);
-	soup_session_add_feature(session, (SoupSessionFeature*)cookiejar);
-
+	setup_cookies();
 
 	while (argc) {
 		create_new_tab(argv[0], focus);
