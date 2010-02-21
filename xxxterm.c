@@ -22,6 +22,9 @@
  *	favs
  *	download files status
  *	multi letter commands
+ *	pre and post counts for commands
+ *	cookies
+ *	proxy
  */
 
 #include <stdio.h>
