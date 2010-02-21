@@ -94,6 +94,7 @@ struct tab {
 
 	/* flags */
 	int			focus_wv;
+	int			ctrl_click;
 	gchar			*hover;
 
 	WebKitWebView		*wv;
@@ -379,7 +380,6 @@ movetab(struct tab *t, struct karg *args)
 	if (args->i == XT_TAB_INVALID)
 		return (XT_CB_PASSTHROUGH);
 
-
 	if (args->i < XT_TAB_INVALID) {
 		/* next or previous tab */
 		if (TAILQ_EMPTY(&tabs))
@@ -392,9 +392,6 @@ movetab(struct tab *t, struct karg *args)
 
 		return (XT_CB_HANDLED);
 	}
-
-	/* make sure we hide the command editor */
-	gtk_widget_hide(t->cmd);
 
 	/* jump to tab */
 	x = args->i - 1;
@@ -585,20 +582,36 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 }
 
 int
+webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
+    WebKitNetworkRequest *request, WebKitWebNavigationAction *na,
+    WebKitWebPolicyDecision *pd, struct tab *t)
+{
+	char			*uri;
+
+	DNPRINTF(XT_D_KEY, "webview_npd_cb:\n");
+
+	if (t->ctrl_click) {
+		uri = (char *)webkit_network_request_get_uri(request);
+		create_new_tab(uri, 0);
+		t->ctrl_click = 0;
+		webkit_web_policy_decision_ignore(pd);
+		return (TRUE); /* we made the decission */
+	}
+
+	return (FALSE);
+}
+
+int
 webview_event_cb(GtkWidget *w, GdkEventButton *e, struct tab *t)
 {
-	/* catch mouse buttons when hovering over a link */
+	/* we can not eat the event without throwing gtk off so defer it */
+
+	/* catch ctrl click */
 	if (e->type == GDK_BUTTON_RELEASE && 
-	    CLEAN(e->state) == GDK_CONTROL_MASK &&
-	    t->hover) {
-		DNPRINTF(XT_D_KEY, "webview_event_cb: %s\n", t->hover);
-		create_new_tab(t->hover, 0);
-
-		/* not sure why it reappears but hide it */
-		gtk_widget_hide(t->cmd);
-
-		return (XT_CB_HANDLED);
-	}
+	    CLEAN(e->state) == GDK_CONTROL_MASK)
+		t->ctrl_click = 1;
+	else
+		t->ctrl_click = 0;
 
 	return (XT_CB_PASSTHROUGH);
 }
@@ -897,21 +910,31 @@ create_new_tab(char *title, int focus)
 		}
 	}
 
+	t->vbox = gtk_vbox_new(FALSE, 0);
+
+	/* label for tab */
 	t->label = gtk_label_new(title);
 	gtk_widget_set_size_request(t->label, 100, -1);
-	t->vbox = gtk_vbox_new(FALSE, 0);
+
+	/* toolbar */
 	t->toolbar = create_toolbar(t);
 	gtk_box_pack_start(GTK_BOX(t->vbox), t->toolbar, FALSE, FALSE, 0);
+
+	/* browser */
 	t->browser_win = create_browser(t);
 	gtk_box_pack_start(GTK_BOX(t->vbox), t->browser_win, TRUE, TRUE, 0);
-	t->tab_id = gtk_notebook_append_page(notebook, t->vbox,
-	    t->label);
 
 	/* command entry */
 	t->cmd = gtk_entry_new();
 	gtk_entry_set_inner_border(GTK_ENTRY(t->cmd), NULL);
 	gtk_entry_set_has_frame(GTK_ENTRY(t->cmd), FALSE);
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->cmd, FALSE, FALSE, 0);
+
+	/* and show it all */
+	gtk_widget_show_all(t->vbox);
+	t->tab_id = gtk_notebook_append_page(notebook, t->vbox,
+	    t->label);
+
 	g_object_connect((GObject*)t->cmd,
 	    "signal::key-press-event", (GCallback)cmd_keypress_cb, t,
 	    "signal::focus-out-event", (GCallback)cmd_focusout_cb, t,
@@ -920,9 +943,10 @@ create_new_tab(char *title, int focus)
 
 	g_object_connect((GObject*)t->wv,
 	    "signal-after::key-press-event", (GCallback)webview_keypress_cb, t,
-	    "signal::hovering-over-link", (GCallback)webview_hover_cb, t,
+	    /* "signal::hovering-over-link", (GCallback)webview_hover_cb, t, */
 	    "signal::download-requested", (GCallback)webview_download_cb, t,
 	    "signal::mime-type-policy-decision-requested", (GCallback)webview_mimetype_cb, t,
+	    "signal::navigation-policy-decision-requested", (GCallback)webview_npd_cb, t,
 	    "signal::event", (GCallback)webview_event_cb, t,
 	    NULL);
 
@@ -933,8 +957,6 @@ create_new_tab(char *title, int focus)
 
 	g_signal_connect(G_OBJECT(t->uri_entry), "focus",
 	    G_CALLBACK(focus_uri_entry_cb), t);
-
-	gtk_widget_show_all(main_window);
 
 	/* hide stuff */
 	gtk_widget_hide(t->cmd);
@@ -957,7 +979,23 @@ create_new_tab(char *title, int focus)
 }
 
 void
+notebook_switchpage_cb(GtkNotebook *nb, GtkNotebookPage *nbp, guint pn,
+    gpointer *udata)
+{
+	struct tab		*t;
 
+	DNPRINTF(XT_D_TAB, "notebook_switchpage_cb: tab: %d\n", pn);
+
+	TAILQ_FOREACH(t, &tabs, entry) {
+		if (t->tab_id == pn) {
+			DNPRINTF(XT_D_TAB, "notebook_switchpage_cb: going to "
+			    "%d\n", pn);
+			gtk_widget_hide(t->cmd);
+		}
+	}
+}
+
+void
 create_canvas(void)
 {
 	GtkWidget		*vbox;
@@ -969,8 +1007,13 @@ create_canvas(void)
 
 	gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(notebook), TRUE, TRUE, 0);
 
+	g_object_connect((GObject*)notebook,
+	    "signal::switch-page", (GCallback)notebook_switchpage_cb, NULL,
+	    NULL);
+
 	main_window = create_window();
 	gtk_container_add(GTK_CONTAINER(main_window), vbox);
+	gtk_widget_show_all(main_window);
 }
 
 void
