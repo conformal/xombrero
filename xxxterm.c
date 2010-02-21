@@ -43,6 +43,7 @@
 #include <gdk/gdkkeysyms.h>
 #include <webkit/webkit.h>
 #include <libsoup/soup.h>
+#include <JavaScriptCore/JavaScript.h>
 
 static char		*version = "$xxxterm$";
 
@@ -113,6 +114,7 @@ struct karg {
 };
 
 /* defines */
+#define XT_DIR			(".xxxterm")
 #define XT_CONF_FILE		("xxxterm.conf")
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
@@ -155,7 +157,11 @@ int			showurl = 1;	/* show url toolbar on notebook */
 int			tabless = 0;	/* allow only 1 tab */
 int			ctrl_click_focus = 0; /* ctrl click gets focus */
 char			*home = "http://www.peereboom.us";
+char			work_dir[PATH_MAX];
+char			cookie_file[PATH_MAX];
 char			download_dir[PATH_MAX];
+SoupSession		*session;
+SoupCookieJar		*cookiejar;
 
 /* protos */
 void			create_new_tab(char *, int);
@@ -1159,14 +1165,33 @@ main(int argc, char *argv[])
 
 	/* read config file */
 	if (strlen(conf) == 0)
-		snprintf(conf, sizeof conf, "%s/.%s", pwd->pw_dir,
-		    XT_CONF_FILE);
+		snprintf(conf, sizeof conf, "%s/.%s",
+		    pwd->pw_dir, XT_CONF_FILE);
 	config_parse(conf);
 
 	if (stat(download_dir, &sb))
 		errx(1, "must specify a valid download_dir");
 
+	/* working directory */
+	snprintf(work_dir, sizeof work_dir, "%s/%s", pwd->pw_dir, XT_DIR);
+	if (stat(work_dir, &sb)) {
+		if (mkdir(work_dir, S_IRWXU) == -1)
+			err(1, "mkdir");
+	} else if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
+		warnx("fixing invalid permissions on %s", work_dir);
+		if (chmod(work_dir, S_IRWXU) == -1)
+			err(1, "chmod");
+	}
+
 	create_canvas();
+
+	/* cookies */
+	session = webkit_get_default_session();
+	snprintf(cookie_file, sizeof cookie_file, "%s/cookies.txt", work_dir);
+	fprintf(stderr, "cookies: %s\n", cookie_file);
+	cookiejar = soup_cookie_jar_text_new(cookie_file, FALSE);
+	soup_session_add_feature(session, (SoupSessionFeature*)cookiejar);
+
 
 	while (argc) {
 		create_new_tab(argv[0], focus);
