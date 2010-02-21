@@ -33,6 +33,7 @@
 #include <pwd.h>
 #include <string.h>
 #include <unistd.h>
+#include <util.h>
 
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -57,6 +58,7 @@ static char		*version = "$xxxterm$";
 #define	XT_D_CMD		0x0010
 #define	XT_D_NAV		0x0020
 #define	XT_D_DOWNLOAD		0x0040
+#define	XT_D_CONFIG		0x0080
 u_int32_t		swm_debug = 0
 			    | XT_D_MOVE
 			    | XT_D_KEY
@@ -65,6 +67,7 @@ u_int32_t		swm_debug = 0
 			    | XT_D_CMD
 			    | XT_D_NAV
 			    | XT_D_DOWNLOAD
+			    | XT_D_CONFIG
 			    ;
 #else
 #define DPRINTF(x...)
@@ -110,6 +113,7 @@ struct karg {
 };
 
 /* defines */
+#define XT_CONF_FILE		("xxxterm.conf")
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
 
@@ -140,6 +144,7 @@ struct karg {
 
 /* globals */
 extern char		*__progname;
+struct passwd		*pwd;
 GtkWidget		*main_window;
 GtkNotebook		*notebook;
 struct tab_list		tabs;
@@ -148,6 +153,8 @@ struct tab_list		tabs;
 int			showtabs = 1;	/* show tabs on notebook */
 int			showurl = 1;	/* show url toolbar on notebook */
 int			tabless = 0;	/* allow only 1 tab */
+
+char			*home = "http://www.peereboom.us";
 
 /* protos */
 void			create_new_tab(char *, int);
@@ -198,12 +205,78 @@ guess_url_type(char *url_in)
 	return (url_out);
 }
 
+#define	WS	"\n= \t"
+void
+config_parse(char *filename)
+{
+	FILE			*config;
+	char			*line, *cp, *var, *val;
+	size_t			 len, lineno = 0;
+
+	DNPRINTF(XT_D_CONFIG, "config_parse: filename %s\n", filename);
+
+	if (filename == NULL)
+		return;
+
+	if ((config = fopen(filename, "r")) == NULL) {
+		warn("config_parse: cannot open %s", filename);
+		return;
+	}
+
+	for (;;) {
+		if ((line = fparseln(config, &len, &lineno, NULL, 0)) == NULL)
+			if (feof(config))
+				break;
+
+		cp = line;
+		cp += (long)strspn(cp, WS);
+		if (cp[0] == '\0') {
+			/* empty line */
+			free(line);
+			continue;
+		}
+
+		if ((var = strsep(&cp, WS)) == NULL || cp == NULL)
+			break;
+
+		cp += (long)strspn(cp, WS);
+		if ((val = strsep(&cp, WS)) == NULL)
+			break;
+
+		DNPRINTF(XT_D_CONFIG, "config_parse: %s=%s\n",var ,val);
+
+		/* get settings */
+		if (!strcmp(var, "home"))
+			home = strdup(val);
+		else
+			errx(1, "invalid conf file entry: %s=%s", var, val);
+
+		free(line);
+	}
+
+	fclose(config);
+}
 int
 quit(struct tab *t, struct karg *args)
 {
 	gtk_main_quit();
 
 	return (1);
+}
+
+int
+help(struct tab *t, struct karg *args)
+{
+	if (t == NULL)
+		errx(1, "help");
+
+	webkit_web_view_load_string(t->wv,
+	    "<html><body><h1>XXXTerm</h1></body></html>",
+	    NULL,
+	    NULL,
+	    NULL);
+
+	return (0);
 }
 
 int
@@ -489,6 +562,7 @@ struct cmd {
 	{ "q!",			0,	quit,			{0} },
 	{ "qa",			0,	quit,			{0} },
 	{ "qa!",		0,	quit,			{0} },
+	{ "help",		0,	help,			{0} },
 
 	/* tabs */
 	{ "o",			1,	tabaction,		{.i = XT_TAB_OPEN} },
@@ -648,7 +722,6 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *download, struct tab *t)
 {
 	const gchar		*filename;
 	char			*uri = NULL;
-	struct passwd		*pwd;
 
 	if (download == NULL || t == NULL)
 		errx(1, "webview_download_cb: invalid pointers");
@@ -656,10 +729,6 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *download, struct tab *t)
 	filename = webkit_download_get_suggested_filename(download);
 	if (filename == NULL)
 		return (FALSE); /* abort download */
-
-	pwd = getpwuid(getuid());
-	if (pwd == NULL)
-		errx(1, "webview_download_cb: invalid user %d", getuid());
 
 	if (asprintf(&uri, "file://%s/%s", pwd->pw_dir, filename) == -1)
 		err(1, "aprintf uri");
@@ -1028,16 +1097,17 @@ void
 usage(void)
 {
 	fprintf(stderr,
-	    "%s [-STVt] url ...\n", __progname);
+	    "%s [-STVt][-f file] url ...\n", __progname);
 	exit(0);
 }
 
 int
 main(int argc, char *argv[])
 {
+	char			conf[PATH_MAX] = { '\0' };
 	int			c, focus = 1;
 
-	while ((c = getopt(argc, argv, "STVt")) != -1) {
+	while ((c = getopt(argc, argv, "STVf:t")) != -1) {
 		switch (c) {
 		case 'S':
 			showurl = 0;
@@ -1047,6 +1117,9 @@ main(int argc, char *argv[])
 			break;
 		case 'V':
 			errx(0 , "Version: %s", version);
+			break;
+		case 'f':
+			strlcpy(conf, optarg, sizeof(conf));
 			break;
 		case 't':
 			tabless = 1;
@@ -1066,6 +1139,16 @@ main(int argc, char *argv[])
 	if (!g_thread_supported())
 		g_thread_init(NULL);
 
+	pwd = getpwuid(getuid());
+	if (pwd == NULL)
+		errx(1, "invalid user %d", getuid());
+
+	/* read config file */
+	if (strlen(conf) == 0)
+		snprintf(conf, sizeof conf, "%s/.%s", pwd->pw_dir,
+		    XT_CONF_FILE);
+	config_parse(conf);
+
 	create_canvas();
 
 	while (argc) {
@@ -1076,7 +1159,7 @@ main(int argc, char *argv[])
 		argv++;
 	}
 	if (focus == 1)
-		create_new_tab("http://www.peereboom.us", 1);
+		create_new_tab(home, 1);
 
 	gtk_main();
 
