@@ -94,7 +94,6 @@ struct tab {
 
 	/* flags */
 	int			focus_wv;
-	int			ctrl;
 	gchar			*hover;
 
 	WebKitWebView		*wv;
@@ -394,6 +393,9 @@ movetab(struct tab *t, struct karg *args)
 		return (XT_CB_HANDLED);
 	}
 
+	/* make sure we hide the command editor */
+	gtk_widget_hide(t->cmd);
+
 	/* jump to tab */
 	x = args->i - 1;
 	if (t->tab_id == x) {
@@ -403,7 +405,7 @@ movetab(struct tab *t, struct karg *args)
 
 	TAILQ_FOREACH(tt, &tabs, entry) {
 		if (tt->tab_id == x) {
-			gtk_notebook_set_current_page( notebook, x);
+			gtk_notebook_set_current_page(notebook, x);
 			DNPRINTF(XT_D_TAB, "movetab: going to %d\n", x);
 			if (tt->focus_wv)
 				gtk_widget_grab_focus(GTK_WIDGET(tt->wv));
@@ -583,10 +585,12 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 }
 
 int
-webview_event_cb(GtkWidget *w, GdkEvent *e, struct tab *t)
+webview_event_cb(GtkWidget *w, GdkEventButton *e, struct tab *t)
 {
 	/* catch mouse buttons when hovering over a link */
-	if (e->type == GDK_BUTTON_RELEASE && t->ctrl && t->hover) {
+	if (e->type == GDK_BUTTON_RELEASE && 
+	    CLEAN(e->state) == GDK_CONTROL_MASK &&
+	    t->hover) {
 		DNPRINTF(XT_D_KEY, "webview_event_cb: %s\n", t->hover);
 		create_new_tab(t->hover, 0);
 
@@ -595,21 +599,6 @@ webview_event_cb(GtkWidget *w, GdkEvent *e, struct tab *t)
 
 		return (XT_CB_HANDLED);
 	}
-
-	return (XT_CB_PASSTHROUGH);
-}
-
-int
-webview_keyrelease_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
-{
-	DNPRINTF(XT_D_KEY, "webview_keyrelease_cb: keyval 0x%x mask 0x%x t %p\n",
-	    e->keyval, e->state, t);
-
-	if (t == NULL)
-		errx(1, "webview_keyrelease_cb");
-
-	if (e->keyval == GDK_Control_L || e->keyval == GDK_Control_R)
-		t->ctrl = 0;
 
 	return (XT_CB_PASSTHROUGH);
 }
@@ -708,10 +697,6 @@ webview_keypress_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 			return (XT_CB_HANDLED);
 		}
 
-	/* ctrl is an exception */
-	if (e->keyval == GDK_Control_L || e->keyval == GDK_Control_R)
-		t->ctrl = 1;
-
 	return (XT_CB_PASSTHROUGH);
 }
 
@@ -742,11 +727,6 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		gtk_widget_hide(t->cmd);
 		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 		goto done;
-	case GDK_Control_L:
-	case GDK_Control_R:
-		/* ctrl is an exception */
-		t->ctrl = 1;
-		break;
 	}
 
 	rv = XT_CB_PASSTHROUGH;
@@ -934,14 +914,12 @@ create_new_tab(char *title, int focus)
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->cmd, FALSE, FALSE, 0);
 	g_object_connect((GObject*)t->cmd,
 	    "signal::key-press-event", (GCallback)cmd_keypress_cb, t,
-	    "signal-after::key-release-event", (GCallback)webview_keyrelease_cb, t,
 	    "signal::focus-out-event", (GCallback)cmd_focusout_cb, t,
 	    "signal::activate", (GCallback)cmd_activate_cb, t,
 	    NULL);
 
 	g_object_connect((GObject*)t->wv,
 	    "signal-after::key-press-event", (GCallback)webview_keypress_cb, t,
-	    "signal-after::key-release-event", (GCallback)webview_keyrelease_cb, t,
 	    "signal::hovering-over-link", (GCallback)webview_hover_cb, t,
 	    "signal::download-requested", (GCallback)webview_download_cb, t,
 	    "signal::mime-type-policy-decision-requested", (GCallback)webview_mimetype_cb, t,
@@ -951,7 +929,6 @@ create_new_tab(char *title, int focus)
 	/* hijack the unused keys as if we were the browser */
 	g_object_connect((GObject*)t->toolbar,
 	    "signal-after::key-press-event", (GCallback)webview_keypress_cb, t,
-	    "signal-after::key-release-event", (GCallback)webview_keyrelease_cb, t,
 	    NULL);
 
 	g_signal_connect(G_OBJECT(t->uri_entry), "focus",
