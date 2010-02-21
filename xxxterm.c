@@ -153,8 +153,9 @@ struct tab_list		tabs;
 int			showtabs = 1;	/* show tabs on notebook */
 int			showurl = 1;	/* show url toolbar on notebook */
 int			tabless = 0;	/* allow only 1 tab */
-
+int			ctrl_click_focus = 0; /* ctrl click gets focus */
 char			*home = "http://www.peereboom.us";
+char			download_dir[PATH_MAX];
 
 /* protos */
 void			create_new_tab(char *, int);
@@ -248,7 +249,16 @@ config_parse(char *filename)
 		/* get settings */
 		if (!strcmp(var, "home"))
 			home = strdup(val);
-		else
+		else if (!strcmp(var, "ctrl_click_focus"))
+			ctrl_click_focus = atoi(val);
+		else if (!strcmp(var, "download_dir")) {
+			if (val[0] == '~')
+				snprintf(download_dir, sizeof download_dir,
+				    "%s/%s", pwd->pw_dir, &val[1]);
+			else
+				strlcpy(download_dir, val, sizeof download_dir);
+			fprintf(stderr, "download dir: %s\n", download_dir);
+		} else
 			errx(1, "invalid conf file entry: %s=%s", var, val);
 
 		free(line);
@@ -673,7 +683,7 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 
 	if (t->ctrl_click) {
 		uri = (char *)webkit_network_request_get_uri(request);
-		create_new_tab(uri, 0);
+		create_new_tab(uri, ctrl_click_focus);
 		t->ctrl_click = 0;
 		webkit_web_policy_decision_ignore(pd);
 
@@ -730,7 +740,7 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *download, struct tab *t)
 	if (filename == NULL)
 		return (FALSE); /* abort download */
 
-	if (asprintf(&uri, "file://%s/%s", pwd->pw_dir, filename) == -1)
+	if (asprintf(&uri, "file://%s/%s", download_dir, filename) == -1)
 		err(1, "aprintf uri");
 
 	DNPRINTF(XT_D_DOWNLOAD, "webview_download_cb: tab %d filename %s "
