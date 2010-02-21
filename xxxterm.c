@@ -102,6 +102,7 @@ struct tab {
 	gchar			*hover;
 
 	WebKitWebView		*wv;
+	WebKitWebSettings	*settings;
 };
 TAILQ_HEAD(tab_list, tab);
 
@@ -155,6 +156,10 @@ int			tabless = 0;	/* allow only 1 tab */
 int			ctrl_click_focus = 0; /* ctrl click gets focus */
 int			cookies_enabled = 1; /* enable cookies */
 int			read_only_cookies = 0; /* enable to not write cookies */
+int			enable_scripts = 1;
+int			enable_plugins = 1;
+int			default_font_size = 12;
+
 char			*home = "http://www.peereboom.us";
 char			*http_proxy = NULL;
 SoupURI			*proxy_uri = NULL;
@@ -262,6 +267,12 @@ config_parse(char *filename)
 			read_only_cookies = atoi(val);
 		else if (!strcmp(var, "cookies_enabled"))
 			cookies_enabled = atoi(val);
+		else if (!strcmp(var, "enable_scripts"))
+			enable_scripts = atoi(val);
+		else if (!strcmp(var, "enable_plugins"))
+			enable_plugins = atoi(val);
+		else if (!strcmp(var, "default_font_size"))
+			default_font_size = atoi(val);
 		else if (!strcmp(var, "http_proxy")) {
 			http_proxy = strdup(val);
 			if (http_proxy == NULL)
@@ -986,6 +997,37 @@ delete_tab(struct tab *t)
 }
 
 void
+setup_webkit(struct tab *t)
+{
+	gchar			*strval;
+	gchar			*ua;
+
+	t->settings = webkit_web_settings_new();
+	g_object_get((GObject *)t->settings, "user-agent", &strval, NULL);
+	if (strval == NULL) {
+		warnx("setup_webkit: can't get user-agent property");
+		return;
+	}
+
+	if (asprintf(&ua, "%s %s+", strval, version) == -1)
+		err(1, "aprintf user-agent");
+
+	g_object_set((GObject *)t->settings,
+	    "user-agent", ua, NULL);
+	g_object_set((GObject *)t->settings,
+	    "enable-scripts", enable_scripts, NULL);
+	g_object_set((GObject *)t->settings,
+	    "enable-plugins", enable_plugins, NULL);
+	g_object_set((GObject *)t->settings,
+	    "default-font-size", default_font_size, NULL);
+
+	webkit_web_view_set_settings(t->wv, t->settings);
+
+	g_free (strval);
+	free(ua);
+}
+
+void
 create_new_tab(char *title, int focus)
 {
 	struct tab		*t;
@@ -1025,6 +1067,7 @@ create_new_tab(char *title, int focus)
 	/* browser */
 	t->browser_win = create_browser(t);
 	gtk_box_pack_start(GTK_BOX(t->vbox), t->browser_win, TRUE, TRUE, 0);
+	setup_webkit(t);
 
 	/* command entry */
 	t->cmd = gtk_entry_new();
