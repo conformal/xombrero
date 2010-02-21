@@ -22,6 +22,11 @@
  *	download files status
  *	multi letter commands
  *	pre and post counts for commands
+ *	search on page
+ *	search on engines
+ *	fav icon
+ *	close tab X
+ *	autocompletion on various inputs
  */
 
 #include <stdio.h>
