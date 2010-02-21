@@ -17,7 +17,6 @@
 
 /*
  * TODO:
- *	config file
  *	inverse color browsing
  *	favs
  *	download files status
