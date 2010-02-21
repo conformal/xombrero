@@ -1114,6 +1114,7 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
+	struct stat		sb;
 	char			conf[PATH_MAX] = { '\0' };
 	int			c, focus = 1;
 
@@ -1153,11 +1154,17 @@ main(int argc, char *argv[])
 	if (pwd == NULL)
 		errx(1, "invalid user %d", getuid());
 
+	/* set download dir */
+	strlcpy(download_dir, pwd->pw_dir, sizeof download_dir);
+
 	/* read config file */
 	if (strlen(conf) == 0)
 		snprintf(conf, sizeof conf, "%s/.%s", pwd->pw_dir,
 		    XT_CONF_FILE);
 	config_parse(conf);
+
+	if (stat(download_dir, &sb))
+		errx(1, "must specify a valid download_dir");
 
 	create_canvas();
 
