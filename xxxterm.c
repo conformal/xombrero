@@ -23,8 +23,6 @@
  *	download files status
  *	multi letter commands
  *	pre and post counts for commands
- *	cookies
- *	proxy
  */
 
 #include <stdio.h>
@@ -159,6 +157,8 @@ int			ctrl_click_focus = 0; /* ctrl click gets focus */
 int			cookies_enabled = 1; /* enable cookies */
 int			read_only_cookies = 0; /* enable to not write cookies */
 char			*home = "http://www.peereboom.us";
+char			*http_proxy = NULL;
+SoupURI			*proxy_uri = NULL;
 char			work_dir[PATH_MAX];
 char			cookie_file[PATH_MAX];
 char			download_dir[PATH_MAX];
@@ -263,7 +263,11 @@ config_parse(char *filename)
 			read_only_cookies = atoi(val);
 		else if (!strcmp(var, "cookies_enabled"))
 			cookies_enabled = atoi(val);
-		else if (!strcmp(var, "download_dir")) {
+		else if (!strcmp(var, "http_proxy")) {
+			http_proxy = strdup(val);
+			if (http_proxy == NULL)
+				err(1, "http_proxy");
+		} else if (!strcmp(var, "download_dir")) {
 			if (val[0] == '~')
 				snprintf(download_dir, sizeof download_dir,
 				    "%s/%s", pwd->pw_dir, &val[1]);
@@ -1133,6 +1137,30 @@ setup_cookies(void)
 }
 
 void
+setup_proxy(char *uri)
+{
+	if (proxy_uri) {
+		g_object_set(session, "proxy_uri", NULL, NULL);
+		soup_uri_free(proxy_uri);
+		proxy_uri = NULL;
+	}
+	if (http_proxy) {
+		free(http_proxy);
+		http_proxy = strdup(uri);
+		if (http_proxy == NULL)
+			err(1, "http_proxy");
+	}
+
+	if (uri == NULL)
+		return;
+
+	DNPRINTF(XT_D_CONFIG, "setup_proxy: %s\n", uri);
+	proxy_uri = soup_uri_new(uri);
+	if (proxy_uri)
+		g_object_set(session, "proxy-uri", proxy_uri, NULL);
+}
+
+void
 usage(void)
 {
 	fprintf(stderr,
@@ -1144,8 +1172,9 @@ int
 main(int argc, char *argv[])
 {
 	struct stat		sb;
-	char			conf[PATH_MAX] = { '\0' };
 	int			c, focus = 1;
+	char			conf[PATH_MAX] = { '\0' };
+	char			*env_proxy = NULL;
 
 	while ((c = getopt(argc, argv, "STVf:t")) != -1) {
 		switch (c) {
@@ -1206,13 +1235,21 @@ main(int argc, char *argv[])
 			err(1, "chmod");
 	}
 
-	create_canvas();
-
 	/* cookies */
 	session = webkit_get_default_session();
 	snprintf(cookie_file, sizeof cookie_file, "%s/cookies.txt", work_dir);
-	fprintf(stderr, "cookies: %s\n", cookie_file);
 	setup_cookies();
+
+	/* proxy */
+	env_proxy = getenv("http_proxy");
+	if (env_proxy) {
+		http_proxy = strdup(env_proxy);
+		if (http_proxy == NULL)
+			err(1, "http_proxy");
+	}
+	setup_proxy(http_proxy);
+
+	create_canvas();
 
 	while (argc) {
 		create_new_tab(argv[0], focus);
