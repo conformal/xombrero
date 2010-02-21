@@ -588,13 +588,18 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 {
 	char			*uri;
 
-	DNPRINTF(XT_D_KEY, "webview_npd_cb:\n");
+	if (t == NULL)
+		errx(1, "webview_npd_cb");
+
+	DNPRINTF(XT_D_NAV, "webview_npd_cb: %s\n",
+	    webkit_network_request_get_uri(request));
 
 	if (t->ctrl_click) {
 		uri = (char *)webkit_network_request_get_uri(request);
 		create_new_tab(uri, 0);
 		t->ctrl_click = 0;
 		webkit_web_policy_decision_ignore(pd);
+
 		return (TRUE); /* we made the decission */
 	}
 
