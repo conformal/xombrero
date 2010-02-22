@@ -21,7 +21,7 @@
 .Nm xxxterm
 .Nd Lightweight web browser with vi key bindings
 .Sh SYNOPSIS
-.Nm xxxterm
+.Nm xxxterm [-STVft] [uri ...]
 .Sh DESCRIPTION
 .Nm
 is a minimalistic web browser that tries to stay out of the way so that
@@ -97,6 +97,8 @@ This directory must exist and
 validates that during startup.
 .El
 .Pp
+.Nm
+overrides http_proxy if it is specified as an environment variable.
 .Sh BINDINGS
 .Nm
 provides many functions (or actions) accessed via key or mouse bindings.
