@@ -1180,6 +1180,7 @@ create_canvas(void)
 	notebook = GTK_NOTEBOOK(gtk_notebook_new());
 	if (showtabs == 0)
 		gtk_notebook_set_show_tabs(GTK_NOTEBOOK(notebook), FALSE);
+	gtk_notebook_set_scrollable(notebook, TRUE);
 
 	gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(notebook), TRUE, TRUE, 0);
 
