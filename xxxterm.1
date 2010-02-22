@@ -1,0 +1,210 @@
+.\"	$xxxterm$
+.\"
+.\" Copyright (c) 2010 Marco Peereboom <marco@peereboom.us>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd $Mdocdate$
+.Dt XXXTERM 1
+.Os
+.Sh NAME
+.Nm xxxterm
+.Nd Lightweight web browser with vi key bindings
+.Sh SYNOPSIS
+.Nm xxxterm
+.Sh DESCRIPTION
+.Nm
+is a minimalistic web browser that tries to stay out of the way so that
+valuable screen real estate can be used for much more important stuff.
+It has sane defaults and does not require one to learn a language to do any
+configuration.
+It was written by hackers for hackers and it strives to be small, compact and
+fast.
+.Pp
+When
+.Nm
+starts up, it reads settings from its configuration file,
+.Pa xxxterm.conf .
+See the
+.Sx CONFIGURATION FILES
+section below.
+.Pp
+The following notation is used throughout this page:
+.Pp
+.Bl -tag -width Ds -offset indent -compact
+.It Cm M
+Meta
+.It Cm S
+Shift
+.It Cm C
+Control
+.It Cm M1
+Mouse button 1
+.El
+.Pp
+.Nm
+is very simple in its use.
+Most of the actions are initiated via key or mouse bindings.
+See the
+.Sx BINDINGS
+section below for defaults and customizations.
+.Sh CONFIGURATION FILES
+.Nm
+tries to open the user specific file,
+.Pa ~/.xxxterm.conf .
+If that file is unavailable,
+it then uses built-in defaults.
+.Pp
+The format of the file is \*(Ltkeyword\*(Gt = \*(Ltsetting\*(Gt.
+For example:
+.Pp
+.Dl http_proxy = http://127.0.0.1:8080
+.Pp
+Enabling or disabling an option is done by using 1 or 0 respectively.
+.Pp
+The file supports the following keywords:
+.Pp
+.Bl -tag -width "title_class_enabledXXX" -offset indent -compact
+.It Cm ctrl_click_focus
+Give focus in newly created tab instead of opening it in the background.
+.It Cm read_only_cookies
+Mark cookies file read-only and discard all cookies once the sessions is
+terminated.
+.It Cm cookies_enabled
+Enable cookies.
+.It Cm enable_scripts
+Enable scripts.
+.It Cm enable_plugins
+Enable plugins.
+.It Cm default_font_size
+Set the default browsing font size.
+.It Cm http_proxy
+Proxy server in URI format.
+.It Cm download_dir
+Locations where files are downloaded to.
+This directory must exist and
+.Nm
+validates that during startup.
+.El
+.Pp
+.Sh BINDINGS
+.Nm
+provides many functions (or actions) accessed via key or mouse bindings.
+.Pp
+The current mouse bindings are described below:
+.Pp
+.Bl -tag -width "M-j, M-<TAB>XXX" -offset indent -compact
+.It Cm C-M1
+Open new tab with the clicked link.
+.El
+.Pp
+The default key bindings are described below:
+.Pp
+.Bl -tag -width "M-j, M-<TAB>XXX" -offset indent -compact
+.It Cm C-Q
+quit
+.It Cm F6
+Focus on URI entry
+.It Cm F5
+Refresh page
+.It Cm Backspace
+Previous page
+.It Cm M-Left
+Previous page
+.It Cm S-BackSpace
+Forward page
+.It Cm M-Right
+Forward page
+.It Cm j
+Next line on page
+.It Cm Down
+Next line on page
+.It Cm k
+Previous line on page
+.It Cm Up
+Previous line on page
+.It Cm G
+Bottom of page
+.It Cm End
+Bottom of page
+.It Cm gg
+Top of page
+.It Cm Home
+Top of page
+.It Cm Space
+Page down
+.It Cm PageDown
+Page down
+.It Cm PageUp
+Page up
+.It Cm l
+Page right
+.It Cm Right
+Page right
+.It Cm h
+Page left
+.It Cm Left
+Page left
+.It Cm $
+Page far right
+.It Cm 0
+Page far left
+.It Cm C-T
+Create new tab with focus in URI entry
+.It Cm C-W
+Destroy current tab
+.It Cm C-[1..0]
+Jump to page N
+.El
+.Pp
+Command mode is entered by typing a colon and exited by typing Esc.
+The commands and descriptions are listed below:
+.Pp
+.Bl -tag -width "M-j, M-<TAB>XXX" -offset indent -compact
+.It Cm qa, qa!, q!
+Quit
+.Nm
+.It Cm open, op, o <URI>
+Open URI
+.It Cm tabnew, tabedit, tabe [URI]
+Create new tab and optionally open provided URI
+.It Cm tabclose, tabc
+Close current tab
+.It Cm quit, q
+Close current tab and quit
+.Nm
+if it is the last tab
+.It Cm tabprevious, tabp
+Go to the previous tab
+.It Cm tabnext, tabn
+Go to the next tab
+.El
+.Pp
+.Sh FILES
+.Bl -tag -width "/etc/xxxterm.confXXX" -compact
+.It Pa ~/.xxxterm.conf
+.Nm
+user specific settings.
+.It Pa ~/.xxxterm
+.Nm
+scratch directory.
+.El
+.Sh HISTORY
+.Nm
+was inspired by vimprobable2 and the bloat in other UNIX web browsers.
+.Sh AUTHORS
+.An -nosplit
+.Pp
+.Nm
+was written by
+.An Marco Peereboom Aq marco@peereboom.us
