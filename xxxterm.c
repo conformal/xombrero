@@ -90,6 +90,7 @@ struct tab {
 	GtkWidget		*vbox;
 	GtkWidget		*label;
 	GtkWidget		*uri_entry;
+	GtkWidget		*search_entry;
 	GtkWidget		*toolbar;
 	GtkWidget		*browser_win;
 	GtkWidget		*cmd;
@@ -633,9 +634,10 @@ struct cmd {
 	{ "op",			1,	tabaction,		{.i = XT_TAB_OPEN} },
 	{ "open",		1,	tabaction,		{.i = XT_TAB_OPEN} },
 	{ "tabnew",		1,	tabaction,		{.i = XT_TAB_NEW} },
-	{ "tabedit",		0,	tabaction,		{.i = XT_TAB_NEW} },
-	{ "tabe",		0,	tabaction,		{.i = XT_TAB_NEW} },
+	{ "tabedit",		1,	tabaction,		{.i = XT_TAB_NEW} },
+	{ "tabe",		1,	tabaction,		{.i = XT_TAB_NEW} },
 	{ "tabclose",		0,	tabaction,		{.i = XT_TAB_DELETE} },
+	{ "tabc",		0,	tabaction,		{.i = XT_TAB_DELETE} },
 	{ "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT} },
 	{ "q",			0,	tabaction,		{.i = XT_TAB_DELQUIT} },
 	/* XXX add count to these commands and add tabl and friends */
@@ -1030,6 +1032,7 @@ setup_webkit(struct tab *t)
 	gchar			*strval;
 	gchar			*ua;
 
+	/* XXX this can't be called over and over; fix it */
 	t->settings = webkit_web_settings_new();
 	g_object_get((GObject *)t->settings, "user-agent", &strval, NULL);
 	if (strval == NULL) {
