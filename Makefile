@@ -1,8 +1,7 @@
 # $xxxterm
 
 PROG=xxxterm
-#MAN=xxxterm.8
-NOMAN=
+MAN=xxxterm.1
 
 SRCS= xxxterm.c
 COPT+= -O2
