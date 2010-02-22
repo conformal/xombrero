@@ -146,6 +146,10 @@ struct karg {
 #define XT_NAV_INVALID		(0)
 #define XT_NAV_BACK		(1)
 #define XT_NAV_FORWARD		(2)
+#define XT_NAV_RELOAD		(3)
+
+#define XT_FOCUS_INVALID	(0)
+#define XT_FOCUS_URI		(1)
 
 /* globals */
 extern char		*__progname;
@@ -306,6 +310,18 @@ quit(struct tab *t, struct karg *args)
 }
 
 int
+focus(struct tab *t, struct karg *args)
+{
+	if (t == NULL)
+		errx(1, "focus");
+
+	if (args->i == XT_FOCUS_URI)
+		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
+
+	return (0);
+}
+
+int
 help(struct tab *t, struct karg *args)
 {
 	if (t == NULL)
@@ -332,6 +348,9 @@ navaction(struct tab *t, struct karg *args)
 		break;
 	case XT_NAV_FORWARD:
 		webkit_web_view_go_forward(t->wv);
+		break;
+	case XT_NAV_RELOAD:
+		webkit_web_view_reload(t->wv);
 		break;
 	}
 	return (XT_CB_PASSTHROUGH);
@@ -553,11 +572,15 @@ struct key {
 	{ GDK_SHIFT_MASK,	0,	GDK_colon,	command,	{0} },
 	{ GDK_CONTROL_MASK,	0,	GDK_q,		quit,		{0} },
 
+	/* focus */
+	{ 0,			0,	GDK_F6,		focus,		{.i = XT_FOCUS_URI} },
+
 	/* navigation */
 	{ 0,			0,	GDK_BackSpace,	navaction,	{.i = XT_NAV_BACK} },
 	{ GDK_MOD1_MASK,	0,	GDK_Left,	navaction,	{.i = XT_NAV_BACK} },
 	{ GDK_SHIFT_MASK,	0,	GDK_BackSpace,	navaction,	{.i = XT_NAV_FORWARD} },
 	{ GDK_MOD1_MASK,	0,	GDK_Right,	navaction,	{.i = XT_NAV_FORWARD} },
+	{ 0,			0,	GDK_F5,		navaction,	{.i = XT_NAV_RELOAD} },
 
 	/* vertical movement */
 	{ 0,			0,	GDK_j,		move,		{.i = XT_MOVE_DOWN} },
