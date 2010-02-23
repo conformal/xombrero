@@ -719,6 +719,7 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 		err(1, "activate_search_entry_cb");
 
 	webkit_web_view_load_uri(t->wv, newuri);
+	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 
 	if (newuri)
 		free(newuri);
