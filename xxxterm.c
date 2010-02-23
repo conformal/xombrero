@@ -764,11 +764,11 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		break;
 	}
 
-	if (webkit_web_view_can_go_back(wview))
-		gtk_widget_set_sensitive(GTK_WIDGET(t->backward), TRUE);
+	gtk_widget_set_sensitive(GTK_WIDGET(t->backward),
+	    webkit_web_view_can_go_back(wview));
 
-	if (webkit_web_view_can_go_forward(wview))
-		gtk_widget_set_sensitive(GTK_WIDGET(t->forward), TRUE);
+	gtk_widget_set_sensitive(GTK_WIDGET(t->forward),
+	    webkit_web_view_can_go_forward(wview));
 }
 
 int
