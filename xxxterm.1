@@ -21,7 +21,12 @@
 .Nm xxxterm
 .Nd Lightweight web browser with vi key bindings
 .Sh SYNOPSIS
-.Nm xxxterm [-STVft] [uri ...]
+.Nm xxxterm
+.Bk -words
+.Op Fl STVt
+.Op Fl f Ar file
+.Ar [uri] ...
+.Ek
 .Sh DESCRIPTION
 .Nm
 is a minimalistic web browser that tries to stay out of the way so that
@@ -58,6 +63,22 @@ Most of the actions are initiated via key or mouse bindings.
 See the
 .Sx BINDINGS
 section below for defaults and customizations.
+.Pp
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl S
+Disable the toolbar.
+.It Fl T
+Disable visualization of tabs.
+.It Fl V
+Display version and exit.
+.It Fl f Ar file
+Use alternate config file.
+.It Fl t
+Disable tabs.
+.El
+.Pp
+
 .Sh CONFIGURATION FILES
 .Nm
 tries to open the user specific file,
