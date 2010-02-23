@@ -12,7 +12,7 @@
 &nbsp;&nbsp;&nbsp;&nbsp; xxxterm - Lightweight web browser with vi key bindings<br>
 <br>
 <font color="#ffff00">SYNOPSIS</font><br>
-&nbsp;&nbsp;&nbsp;&nbsp; xxxterm<br>
+&nbsp;&nbsp;&nbsp;&nbsp; xxxterm [-STVt] [-f file] [uri] ...<br>
 <br>
 <font color="#ffff00">DESCRIPTION</font><br>
 &nbsp;&nbsp;&nbsp;&nbsp; xxxterm is a minimalistic web browser that tries to stay out of the way<br>
@@ -34,6 +34,19 @@
 &nbsp;&nbsp;&nbsp;&nbsp; xxxterm is very simple in its use.&nbsp;&nbsp;Most of the actions are initiated via<br>
 &nbsp;&nbsp;&nbsp;&nbsp; key or mouse bindings.&nbsp;&nbsp;See the BINDINGS section below for defaults and<br>
 &nbsp;&nbsp;&nbsp;&nbsp; customizations.<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp; The options are as follows:<br>
+<br>
+<font color="#ff6060">&nbsp;&nbsp;&nbsp;&nbsp; -S</font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Disable the toolbar.<br>
+<br>
+<font color="#ff6060">&nbsp;&nbsp;&nbsp;&nbsp; -T</font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Disable visualization of tabs.<br>
+<br>
+<font color="#ff6060">&nbsp;&nbsp;&nbsp;&nbsp; -V</font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Display version and exit.<br>
+<br>
+<font color="#ff6060">&nbsp;&nbsp;&nbsp;&nbsp; -f</font>&nbsp;file<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Use alternate config file.<br>
+<br>
+<font color="#ff6060">&nbsp;&nbsp;&nbsp;&nbsp; -t</font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Disable tabs.<br>
 <br>
 <font color="#ffff00">CONFIGURATION FILES</font><br>
 &nbsp;&nbsp;&nbsp;&nbsp; xxxterm tries to open the user specific file, ~/.xxxterm.conf.&nbsp;&nbsp;If that<br>
@@ -59,6 +72,15 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; download_dir&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Locations where files are downloaded to.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; This directory must exist and xxxterm vali-<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; dates that during startup.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fancy_bar&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enables a backward, forward and stop button<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; to the toolbar.&nbsp;&nbsp;Additionally if<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; search_string is set it'll enable an entry<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; box for searches.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; search_string&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Default search engine string.&nbsp;&nbsp;See<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; xxxterm.conf file for details.<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp; xxxterm overrides http_proxy if it is specified as an environment vari-<br>
+&nbsp;&nbsp;&nbsp;&nbsp; able.<br>
 <br>
 <font color="#ffff00">BINDINGS</font><br>
 &nbsp;&nbsp;&nbsp;&nbsp; xxxterm provides many functions (or actions) accessed via key or mouse<br>
@@ -127,6 +149,6 @@
 <font color="#ffff00">AUTHORS</font><br>
 &nbsp;&nbsp;&nbsp;&nbsp; xxxterm was written by Marco Peereboom &lt;marco@peereboom.us&gt;<br>
 <br>
-OpenBSD 4.7&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;February 22, 2010&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2<br>
+OpenBSD 4.7&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;February 23, 2010&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3<br>
 </font></body>
 </html>
