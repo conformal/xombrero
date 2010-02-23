@@ -94,6 +94,9 @@ struct tab {
 	GtkWidget		*toolbar;
 	GtkWidget		*browser_win;
 	GtkWidget		*cmd;
+	GtkToolItem		*backward;
+	GtkToolItem		*forward;
+	GtkToolItem		*stop;
 	guint			tab_id;
 
 	/* adjustments for browser */
@@ -169,8 +172,10 @@ int			read_only_cookies = 0; /* enable to not write cookies */
 int			enable_scripts = 1;
 int			enable_plugins = 1;
 int			default_font_size = 12;
+int			fancy_bar = 1;	/* fancy toolbar */
 
 char			*home = "http://www.peereboom.us";
+char			*search_string = NULL;
 char			*http_proxy = NULL;
 SoupURI			*proxy_uri = NULL;
 char			work_dir[PATH_MAX];
@@ -263,7 +268,8 @@ config_parse(char *filename)
 			break;
 
 		cp += (long)strspn(cp, WS);
-		if ((val = strsep(&cp, WS)) == NULL)
+
+		if ((val = strsep(&cp, "\0")) == NULL)
 			break;
 
 		DNPRINTF(XT_D_CONFIG, "config_parse: %s=%s\n",var ,val);
@@ -283,10 +289,16 @@ config_parse(char *filename)
 			enable_plugins = atoi(val);
 		else if (!strcmp(var, "default_font_size"))
 			default_font_size = atoi(val);
+		else if (!strcmp(var, "fancy_bar"))
+			fancy_bar = atoi(val);
 		else if (!strcmp(var, "http_proxy")) {
 			http_proxy = strdup(val);
 			if (http_proxy == NULL)
 				err(1, "http_proxy");
+		} else if (!strcmp(var, "search_string")) {
+			search_string = strdup(val);
+			if (search_string == NULL)
+				err(1, "search_string");
 		} else if (!strcmp(var, "download_dir")) {
 			if (val[0] == '~')
 				snprintf(download_dir, sizeof download_dir,
@@ -688,6 +700,31 @@ activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 }
 
 void
+activate_search_entry_cb(GtkWidget* entry, struct tab *t)
+{
+	const gchar		*search = gtk_entry_get_text(GTK_ENTRY(entry));
+	char			*newuri = NULL;
+
+	DNPRINTF(XT_D_URL, "activate_search_entry_cb: %s\n", search);
+
+	if (t == NULL)
+		errx(1, "activate_search_entry_cb");
+
+	if (search_string == NULL) {
+		warnx("no search_string");
+		return;
+	}
+
+	if (asprintf(&newuri, search_string, search) == -1)
+		err(1, "activate_search_entry_cb");
+
+	webkit_web_view_load_uri(t->wv, newuri);
+
+	if (newuri)
+		free(newuri);
+}
+
+void
 notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 {
 	WebKitWebFrame		*frame;
@@ -702,6 +739,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		uri = webkit_web_frame_get_uri(frame);
 		if (uri)
 			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
+
+		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), TRUE);
 		t->focus_wv = 1;
 
 		/* take focus if we are visible */
@@ -719,9 +758,16 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	case WEBKIT_LOAD_PROVISIONAL:
 	case WEBKIT_LOAD_FINISHED:
 	case WEBKIT_LOAD_FAILED:
+		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 	default:
 		break;
 	}
+
+	if (webkit_web_view_can_go_back(wview))
+		gtk_widget_set_sensitive(GTK_WIDGET(t->backward), TRUE);
+
+	if (webkit_web_view_can_go_forward(wview))
+		gtk_widget_set_sensitive(GTK_WIDGET(t->forward), TRUE);
 }
 
 int
@@ -945,6 +991,47 @@ done:
 	gtk_widget_hide(t->cmd);
 }
 
+void
+backward_cb(GtkWidget *w, struct tab *t)
+{
+	if (t == NULL)
+		errx(1, "backward_cb");
+
+	DNPRINTF(XT_D_NAV, "backward_cb: tab %d\n", t->tab_id);
+
+	webkit_web_view_go_back(t->wv);
+}
+
+void
+forward_cb(GtkWidget *w, struct tab *t)
+{
+	if (t == NULL)
+		errx(1, "forward_cb");
+
+	DNPRINTF(XT_D_NAV, "forward_cb: tab %d\n", t->tab_id);
+
+	webkit_web_view_go_forward(t->wv);
+}
+
+void
+stop_cb(GtkWidget *w, struct tab *t)
+{
+	WebKitWebFrame		*frame;
+
+	if (t == NULL)
+		errx(1, "stop_cb");
+
+	DNPRINTF(XT_D_NAV, "stop_cb: tab %d\n", t->tab_id);
+
+	frame = webkit_web_view_get_main_frame(t->wv);
+	if (frame == NULL) {
+		warnx("stop_cb: no frame");
+		return;
+	}
+
+	webkit_web_frame_stop_loading(frame);
+}
+
 GtkWidget *
 create_browser(struct tab *t)
 {
@@ -999,6 +1086,31 @@ create_toolbar(struct tab *t)
 #endif
 	gtk_toolbar_set_style(GTK_TOOLBAR(toolbar), GTK_TOOLBAR_BOTH_HORIZ);
 
+	if (fancy_bar) {
+		/* backward button */
+		t->backward = gtk_tool_button_new_from_stock(GTK_STOCK_GO_BACK);
+		gtk_widget_set_sensitive(GTK_WIDGET(t->backward), FALSE);
+		g_signal_connect(G_OBJECT(t->backward), "clicked",
+		    G_CALLBACK(backward_cb), t); 
+		gtk_toolbar_insert(GTK_TOOLBAR(toolbar), t->backward, -1); 
+
+		/* forward button */
+		t->forward =
+		    gtk_tool_button_new_from_stock(GTK_STOCK_GO_FORWARD);
+		gtk_widget_set_sensitive(GTK_WIDGET(t->forward), FALSE);
+		g_signal_connect(G_OBJECT(t->forward), "clicked",
+		    G_CALLBACK(forward_cb), t); 
+		gtk_toolbar_insert(GTK_TOOLBAR(toolbar), t->forward, -1); 
+
+		/* stop button */
+		t->stop = gtk_tool_button_new_from_stock(GTK_STOCK_STOP); 
+		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
+		g_signal_connect(G_OBJECT(t->stop), "clicked",
+		    G_CALLBACK(stop_cb), t); 
+		gtk_toolbar_insert(GTK_TOOLBAR(toolbar), t->stop, -1); 
+	}
+
+	/* uri entry */
 	i = gtk_tool_item_new();
 	gtk_tool_item_set_expand(i, TRUE);
 	t->uri_entry = gtk_entry_new();
@@ -1006,6 +1118,17 @@ create_toolbar(struct tab *t)
 	g_signal_connect(G_OBJECT(t->uri_entry), "activate",
 	    G_CALLBACK(activate_uri_entry_cb), t);
 	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), i, -1);
+
+	/* search entry */
+	if (fancy_bar && search_string) {
+		i = gtk_tool_item_new();
+		t->search_entry = gtk_entry_new();
+		gtk_entry_set_width_chars(GTK_ENTRY(t->search_entry), 30);
+		gtk_container_add(GTK_CONTAINER(i), t->search_entry);
+		g_signal_connect(G_OBJECT(t->search_entry), "activate",
+		    G_CALLBACK(activate_search_entry_cb), t);
+		gtk_toolbar_insert(GTK_TOOLBAR(toolbar), i, -1);
+	}
 
 	return (toolbar);
 }
