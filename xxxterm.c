@@ -818,7 +818,9 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		break;
 	case WEBKIT_LOAD_PROVISIONAL:
 	case WEBKIT_LOAD_FINISHED:
+#if WEBKIT_CHECK_VERSION(1, 1, 18)
 	case WEBKIT_LOAD_FAILED:
+#endif
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 	default:
 		break;
