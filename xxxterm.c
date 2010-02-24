@@ -663,8 +663,10 @@ struct key {
 	{ 0,			0,	GDK_Home,	move,		{.i = XT_MOVE_TOP} },
 	{ 0,			GDK_g,	GDK_g,		move,		{.i = XT_MOVE_TOP} }, /* XXX make this work */
 	{ 0,			0,	GDK_space,	move,		{.i = XT_MOVE_PAGEDOWN} },
+	{ GDK_CONTROL_MASK,	0,	GDK_f,		move,		{.i = XT_MOVE_PAGEDOWN} },
 	{ 0,			0,	GDK_Page_Down,	move,		{.i = XT_MOVE_PAGEDOWN} },
 	{ 0,			0,	GDK_Page_Up,	move,		{.i = XT_MOVE_PAGEUP} },
+	{ GDK_CONTROL_MASK,	0,	GDK_b,		move,		{.i = XT_MOVE_PAGEUP} },
 	/* horizontal movement */
 	{ 0,			0,	GDK_l,		move,		{.i = XT_MOVE_RIGHT} },
 	{ 0,			0,	GDK_Right,	move,		{.i = XT_MOVE_RIGHT} },
