@@ -110,6 +110,9 @@ struct tab {
 	int			ctrl_click;
 	gchar			*hover;
 
+	/* search */
+	char			*search_text;
+
 	WebKitWebView		*wv;
 	WebKitWebSettings	*settings;
 };
@@ -154,6 +157,10 @@ struct karg {
 
 #define XT_FOCUS_INVALID	(0)
 #define XT_FOCUS_URI		(1)
+
+#define XT_SEARCH_INVALID	(0)
+#define XT_SEARCH_NEXT		(1)
+#define XT_SEARCH_PREV		(2)
 
 /* globals */
 extern char		*__progname;
@@ -564,12 +571,58 @@ movetab(struct tab *t, struct karg *args)
 int
 command(struct tab *t, struct karg *args)
 {
-	DNPRINTF(XT_D_CMD, "command:\n");
+	char			*s = NULL;
+	GdkColor		color;
 
-	gtk_entry_set_text(GTK_ENTRY(t->cmd), ":");
+	if (t == NULL || args == NULL)
+		errx(1, "command");
+
+	if (args->i == '/')
+		s = "/";
+	else if (args->i == ':')
+		s = ":";
+	else {
+		warnx("invalid command %c\n", args->i);
+		return (XT_CB_PASSTHROUGH);
+	}
+
+	DNPRINTF(XT_D_CMD, "command: type %s\n", s);
+
+	gtk_entry_set_text(GTK_ENTRY(t->cmd), s);
+	gdk_color_parse("white", &color);
+	gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL, &color);
 	gtk_widget_show(t->cmd);
 	gtk_widget_grab_focus(GTK_WIDGET(t->cmd));
 	gtk_editable_set_position(GTK_EDITABLE(t->cmd), -1);
+
+	return (XT_CB_HANDLED);
+}
+
+int
+search(struct tab *t, struct karg *args)
+{
+	gboolean		d;
+
+	if (t == NULL || args == NULL)
+		errx(1, "search");
+	if (t->search_text == NULL)
+		return (XT_CB_PASSTHROUGH);
+
+	DNPRINTF(XT_D_CMD, "search: tab %d opc %d text %s\n",
+	    t->tab_id, args->i, t->search_text);
+
+	switch (args->i) {
+	case  XT_SEARCH_NEXT:
+		d = TRUE;
+		break;
+	case  XT_SEARCH_PREV:
+		d = FALSE;
+		break;
+	default:
+		return (XT_CB_PASSTHROUGH);
+	}
+
+	webkit_web_view_search_text(t->wv, t->search_text, FALSE, d, TRUE);
 
 	return (XT_CB_HANDLED);
 }
@@ -582,8 +635,13 @@ struct key {
 	int		(*func)(struct tab *, struct karg *);
 	struct karg	arg;
 } keys[] = {
-	{ GDK_SHIFT_MASK,	0,	GDK_colon,	command,	{0} },
+	{ 0,			0,	GDK_slash,	command,	{.i = '/'} },
+	{ GDK_SHIFT_MASK,	0,	GDK_colon,	command,	{.i = ':'} },
 	{ GDK_CONTROL_MASK,	0,	GDK_q,		quit,		{0} },
+
+	/* search */
+	{ 0,			0,	GDK_n,		search,		{.i = XT_SEARCH_NEXT} },
+	{ GDK_SHIFT_MASK,	0,	GDK_N,		search,		{.i = XT_SEARCH_PREV} },
 
 	/* focus */
 	{ 0,			0,	GDK_F6,		focus,		{.i = XT_FOCUS_URI} },
@@ -860,6 +918,7 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *download, struct tab *t)
 	return (TRUE); /* start download */
 }
 
+/* XXX currently unused */
 void
 webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 {
@@ -904,6 +963,46 @@ webview_keypress_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 }
 
 int
+cmd_keyrelease_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
+{
+	const gchar		*c = gtk_entry_get_text(w);
+	GdkColor		color;
+
+	DNPRINTF(XT_D_CMD, "cmd_keyrelease_cb: keyval 0x%x mask 0x%x t %p\n",
+	    e->keyval, e->state, t);
+
+	if (t == NULL)
+		errx(1, "cmd_keyrelease_cb");
+
+	DNPRINTF(XT_D_CMD, "cmd_keyrelease_cb: keyval 0x%x mask 0x%x t %p\n",
+	    e->keyval, e->state, t);
+
+	if (c[0] == ':')
+		goto done;
+	if (!strcmp(c, "/"))
+		goto done;
+
+	/* search */
+	if (webkit_web_view_search_text(t->wv, &c[1], FALSE, TRUE, TRUE) == FALSE) {
+		/* not found, mark red */
+		gdk_color_parse("red", &color);
+		gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL, &color);
+		/* unmark and remove selection */
+		webkit_web_view_unmark_text_matches(t->wv);
+		/* my kingdom for a way to unselect text in webview */
+	} else {
+		/* found, highlight all */
+		webkit_web_view_unmark_text_matches(t->wv);
+		webkit_web_view_mark_text_matches(t->wv, &c[1], FALSE, 0);
+		webkit_web_view_set_highlight_text_matches(t->wv, TRUE);
+		gdk_color_parse("white", &color);
+		gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL, &color);
+	}
+done:
+	return (XT_CB_PASSTHROUGH);
+}
+
+int
 cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 {
 	int			rv = XT_CB_HANDLED;
@@ -918,12 +1017,12 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	/* sanity */
 	if (c == NULL)
 		e->keyval = GDK_Escape;
-	else if (c[0] != ':')
+	else if (!(c[0] == ':' || c[0] == '/'))
 		e->keyval = GDK_Escape;
 
 	switch (e->keyval) {
 	case GDK_BackSpace:
-		if (strcmp(c, ":"))
+		if (!(!strcmp(c, ":") || !strcmp(c, "/")))
 			break;
 		/* FALLTHROUGH */
 	case GDK_Escape:
@@ -971,11 +1070,24 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 	/* sanity */
 	if (c == NULL)
 		goto done;
-	else if (c[0] != ':')
+	else if (!(c[0] == ':' || c[0] == '/'))
 		goto done;
 	if (strlen(c) < 2)
 		goto done;
 	s = (char *)&c[1];
+
+	if (c[0] == '/') {
+		if (t->search_text) {
+			free(t->search_text);
+			t->search_text = NULL;
+		}
+
+		t->search_text = strdup(s);
+		if (t->search_text == NULL)
+			err(1, "search_text");
+
+		goto done;
+	}
 
 	for (i = 0; i < LENGTH(cmds); i++)
 		if (cmds[i].params) {
@@ -1237,6 +1349,7 @@ create_new_tab(char *title, int focus)
 
 	g_object_connect((GObject*)t->cmd,
 	    "signal::key-press-event", (GCallback)cmd_keypress_cb, t,
+	    "signal::key-release-event", (GCallback)cmd_keyrelease_cb, t,
 	    "signal::focus-out-event", (GCallback)cmd_focusout_cb, t,
 	    "signal::activate", (GCallback)cmd_activate_cb, t,
 	    NULL);
