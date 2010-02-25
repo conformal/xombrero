@@ -388,7 +388,7 @@ favorites(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	fprintf(h, "<html><body>Favorites:<p>\n");
+	fprintf(h, "<html><body>Favorites:<p>\n<ol>\n");
 
 	for (i = 1;;) {
 		if ((title = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
@@ -403,7 +403,7 @@ favorites(struct tab *t, struct karg *args)
 				break;
 			}
 
-		fprintf(h, "<a href=\"%s\">%d) %s</a><br>\n", uri, i, title);
+		fprintf(h, "<li><a href=\"%s\">%s</a><br>\n", uri, title);
 
 		free(uri);
 		uri = NULL;
@@ -417,7 +417,7 @@ favorites(struct tab *t, struct karg *args)
 	if (title)
 		free(title);
 
-	fprintf(h, "</body></html>");
+	fprintf(h, "</ol></body></html>");
 	fclose(f);
 	fclose(h);
 
