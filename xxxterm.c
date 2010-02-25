@@ -194,6 +194,7 @@ SoupCookieJar		*cookiejar;
 /* protos */
 void			create_new_tab(char *, int);
 void			delete_tab(struct tab *);
+void			adjustfont_webkit(struct tab *, int);
 
 struct valid_url_types {
 	char		*type;
@@ -523,6 +524,16 @@ done:
 }
 
 int
+resizetab(struct tab *t, struct karg *args)
+{
+	DNPRINTF(XT_D_TAB, "resizetab: %p %d\n", t, args->i);
+
+	adjustfont_webkit(t, args->i);
+
+	return (XT_CB_HANDLED);
+}
+
+int
 movetab(struct tab *t, struct karg *args)
 {
 	struct tab		*tt;
@@ -690,6 +701,8 @@ struct key {
 	{ GDK_CONTROL_MASK,	0,	GDK_8,		movetab,	{.i = 8} },
 	{ GDK_CONTROL_MASK,	0,	GDK_9,		movetab,	{.i = 9} },
 	{ GDK_CONTROL_MASK,	0,	GDK_0,		movetab,	{.i = 10} },
+	{ GDK_CONTROL_MASK,	0,	GDK_minus,	resizetab,	{.i = -1} },
+	{ GDK_CONTROL_MASK|GDK_SHIFT_MASK, 0, GDK_plus,	resizetab,	{.i = 1} },
 };
 
 struct cmd {
@@ -1291,13 +1304,21 @@ setup_webkit(struct tab *t)
 	    "enable-scripts", enable_scripts, NULL);
 	g_object_set((GObject *)t->settings,
 	    "enable-plugins", enable_plugins, NULL);
-	g_object_set((GObject *)t->settings,
-	    "default-font-size", default_font_size, NULL);
+	adjustfont_webkit(t, 0);
 
 	webkit_web_view_set_settings(t->wv, t->settings);
 
 	g_free (strval);
 	free(ua);
+}
+
+void
+adjustfont_webkit(struct tab *t, int adjust)
+{
+	default_font_size += adjust;
+	g_object_set((GObject *)t->settings, "default-font-size", default_font_size, NULL);
+	g_object_get((GObject *)t->settings, "default-font-size", &default_font_size, NULL);
+	return;
 }
 
 void
