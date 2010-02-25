@@ -528,6 +528,9 @@ resizetab(struct tab *t, struct karg *args)
 {
 	DNPRINTF(XT_D_TAB, "resizetab: %p %d\n", t, args->i);
 
+	if (t == NULL)
+		return (XT_CB_PASSTHROUGH);
+
 	adjustfont_webkit(t, args->i);
 
 	return (XT_CB_HANDLED);
