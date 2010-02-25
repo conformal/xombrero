@@ -126,6 +126,7 @@ struct karg {
 /* defines */
 #define XT_DIR			(".xxxterm")
 #define XT_CONF_FILE		("xxxterm.conf")
+#define XT_FAVS_FILE		("favorites")
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
 
@@ -358,6 +359,84 @@ help(struct tab *t, struct karg *args)
 }
 
 int
+favorites(struct tab *t, struct karg *args)
+{
+	char			file[PATH_MAX];
+	FILE			*f, *h;
+	char			*uri = NULL, *title = NULL;
+	size_t			len, lineno = 0;
+	int			i, failed = 0;
+
+	if (t == NULL)
+		errx(1, "help");
+
+	/* XXX run a digest over the favorites file instead of always generating it */
+
+	/* open favorites */
+	snprintf(file, sizeof file, "%s/%s/%s",
+	    pwd->pw_dir, XT_DIR, XT_FAVS_FILE);
+	if ((f = fopen(file, "r")) == NULL) {
+		warn("favorites");
+		return (1);
+	}
+
+	/* open favorites html */
+	snprintf(file, sizeof file, "%s/%s/%s.html",
+	    pwd->pw_dir, XT_DIR, XT_FAVS_FILE);
+	if ((h = fopen(file, "w+")) == NULL) {
+		warn("favorites.html");
+		return (1);
+	}
+
+	fprintf(h, "<html><body>Favorites:<p>\n");
+
+	for (i = 1;;) {
+		if ((title = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
+			if (feof(f))
+				break;
+		if (strlen(title) == 0)
+			continue;
+
+		if ((uri = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
+			if (feof(f)) {
+				failed = 1;
+				break;
+			}
+
+		fprintf(h, "<a href=\"%s\">%d) %s</a><br>\n", uri, i, title);
+
+		free(uri);
+		uri = NULL;
+		free(title);
+		title = NULL;
+		i++;
+	}
+
+	if (uri)
+		free(uri);
+	if (title)
+		free(title);
+
+	fprintf(h, "</body></html>");
+	fclose(f);
+	fclose(h);
+
+	if (failed) {
+		webkit_web_view_load_string(t->wv,
+		    "<html><body>Invalid favorites file</body></html>",
+		    NULL,
+		    NULL,
+		    NULL);
+	} else {
+		snprintf(file, sizeof file, "file://%s/%s/%s.html",
+		    pwd->pw_dir, XT_DIR, XT_FAVS_FILE);
+		webkit_web_view_load_uri(t->wv, file);
+	}
+
+	return (0);
+}
+
+int
 navaction(struct tab *t, struct karg *args)
 {
 	DNPRINTF(XT_D_NAV, "navaction: tab %d opcode %d\n",
@@ -526,7 +605,11 @@ done:
 int
 resizetab(struct tab *t, struct karg *args)
 {
-	DNPRINTF(XT_D_TAB, "resizetab: %p %d\n", t, args->i);
+	if (t == NULL || args == NULL)
+		errx(1, "resizetab");
+
+	DNPRINTF(XT_D_TAB, "resizetab: tab %d %d\n",
+	    t->tab_id, args->i);
 
 	if (t == NULL)
 		return (XT_CB_PASSTHROUGH);
@@ -542,10 +625,11 @@ movetab(struct tab *t, struct karg *args)
 	struct tab		*tt;
 	int			x;
 
-	DNPRINTF(XT_D_TAB, "movetab: %p %d\n", t, args->i);
-
-	if (t == NULL)
+	if (t == NULL || args == NULL)
 		return (XT_CB_PASSTHROUGH);
+
+	DNPRINTF(XT_D_TAB, "movetab: tab %d opcode %d\n",
+	    t->tab_id, args->i);
 
 	if (args->i == XT_TAB_INVALID)
 		return (XT_CB_PASSTHROUGH);
@@ -706,6 +790,7 @@ struct key {
 	{ GDK_CONTROL_MASK,	0,	GDK_0,		movetab,	{.i = 10} },
 	{ GDK_CONTROL_MASK,	0,	GDK_minus,	resizetab,	{.i = -1} },
 	{ GDK_CONTROL_MASK|GDK_SHIFT_MASK, 0, GDK_plus,	resizetab,	{.i = 1} },
+	{ GDK_CONTROL_MASK, 	0, 	GDK_equal,	resizetab,	{.i = 1} },
 };
 
 struct cmd {
@@ -718,6 +803,7 @@ struct cmd {
 	{ "qa",			0,	quit,			{0} },
 	{ "qa!",		0,	quit,			{0} },
 	{ "help",		0,	help,			{0} },
+	{ "fav",		0,	favorites,		{0} },
 
 	/* tabs */
 	{ "o",			1,	tabaction,		{.i = XT_TAB_OPEN} },
@@ -1318,10 +1404,14 @@ setup_webkit(struct tab *t)
 void
 adjustfont_webkit(struct tab *t, int adjust)
 {
+	if (t == NULL)
+		errx(1, "adjustfont_webkit");
+
 	default_font_size += adjust;
-	g_object_set((GObject *)t->settings, "default-font-size", default_font_size, NULL);
-	g_object_get((GObject *)t->settings, "default-font-size", &default_font_size, NULL);
-	return;
+	g_object_set((GObject *)t->settings, "default-font-size",
+	    default_font_size, NULL);
+	g_object_get((GObject *)t->settings, "default-font-size",
+	    &default_font_size, NULL);
 }
 
 void
@@ -1516,6 +1606,7 @@ main(int argc, char *argv[])
 	int			c, focus = 1;
 	char			conf[PATH_MAX] = { '\0' };
 	char			*env_proxy = NULL;
+	FILE			*f = NULL;
 
 	while ((c = getopt(argc, argv, "STVf:t")) != -1) {
 		switch (c) {
@@ -1562,18 +1653,39 @@ main(int argc, char *argv[])
 		    pwd->pw_dir, XT_CONF_FILE);
 	config_parse(conf);
 
+	/* download dir */
 	if (stat(download_dir, &sb))
 		errx(1, "must specify a valid download_dir");
+	if (S_ISDIR(sb.st_mode) == 0)
+		errx(1, "%s not a dir", download_dir);
+	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
+		warnx("fixing invalid permissions on %s", download_dir);
+		if (chmod(download_dir, S_IRWXU) == -1)
+			err(1, "chmod");
+	}
 
 	/* working directory */
 	snprintf(work_dir, sizeof work_dir, "%s/%s", pwd->pw_dir, XT_DIR);
 	if (stat(work_dir, &sb)) {
 		if (mkdir(work_dir, S_IRWXU) == -1)
 			err(1, "mkdir");
-	} else if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
+	}
+	if (S_ISDIR(sb.st_mode) == 0)
+		errx(1, "%s not a dir", work_dir);
+	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
 		warnx("fixing invalid permissions on %s", work_dir);
 		if (chmod(work_dir, S_IRWXU) == -1)
 			err(1, "chmod");
+	}
+
+	/* favorites file */
+	snprintf(work_dir, sizeof work_dir, "%s/%s/%s",
+	    pwd->pw_dir, XT_DIR, XT_FAVS_FILE);
+	if (stat(work_dir, &sb)) {
+		warnx("favorites file doesn't exist, creating it");
+		if ((f = fopen(work_dir, "w")) == NULL)
+			err(1, "favorites");
+		fclose(f);
 	}
 
 	/* cookies */
