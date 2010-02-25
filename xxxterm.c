@@ -112,7 +112,7 @@ struct tab {
 
 	/* search */
 	char			*search_text;
-
+	int			search_forward;
 	WebKitWebView		*wv;
 	WebKitWebSettings	*settings;
 };
@@ -314,7 +314,6 @@ config_parse(char *filename)
 				    "%s/%s", pwd->pw_dir, &val[1]);
 			else
 				strlcpy(download_dir, val, sizeof download_dir);
-			fprintf(stderr, "download dir: %s\n", download_dir);
 		} else
 			errx(1, "invalid conf file entry: %s=%s", var, val);
 
@@ -677,6 +676,8 @@ command(struct tab *t, struct karg *args)
 
 	if (args->i == '/')
 		s = "/";
+	else if (args->i == '?')
+		s = "?";
 	else if (args->i == ':')
 		s = ":";
 	else {
@@ -706,15 +707,15 @@ search(struct tab *t, struct karg *args)
 	if (t->search_text == NULL)
 		return (XT_CB_PASSTHROUGH);
 
-	DNPRINTF(XT_D_CMD, "search: tab %d opc %d text %s\n",
-	    t->tab_id, args->i, t->search_text);
+	DNPRINTF(XT_D_CMD, "search: tab %d opc %d forw %d text %s\n",
+	    t->tab_id, args->i, t->search_forward, t->search_text);
 
 	switch (args->i) {
 	case  XT_SEARCH_NEXT:
-		d = TRUE;
+		d = t->search_forward;
 		break;
 	case  XT_SEARCH_PREV:
-		d = FALSE;
+		d = !t->search_forward;
 		break;
 	default:
 		return (XT_CB_PASSTHROUGH);
@@ -734,6 +735,7 @@ struct key {
 	struct karg	arg;
 } keys[] = {
 	{ 0,			0,	GDK_slash,	command,	{.i = '/'} },
+	{ GDK_SHIFT_MASK,	0,	GDK_question,	command,	{.i = '?'} },
 	{ GDK_SHIFT_MASK,	0,	GDK_colon,	command,	{.i = ':'} },
 	{ GDK_CONTROL_MASK,	0,	GDK_q,		quit,		{0} },
 
@@ -1075,6 +1077,7 @@ cmd_keyrelease_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 {
 	const gchar		*c = gtk_entry_get_text(w);
 	GdkColor		color;
+	int			forward = TRUE;
 
 	DNPRINTF(XT_D_CMD, "cmd_keyrelease_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
@@ -1087,11 +1090,19 @@ cmd_keyrelease_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 
 	if (c[0] == ':')
 		goto done;
-	if (!strcmp(c, "/"))
+	if (strlen(c) == 1)
+		goto done;
+
+	if (c[0] == '/')
+		forward = TRUE;
+	else if (c[0] == '?')
+		forward = FALSE;
+	else
 		goto done;
 
 	/* search */
-	if (webkit_web_view_search_text(t->wv, &c[1], FALSE, TRUE, TRUE) == FALSE) {
+	if (webkit_web_view_search_text(t->wv, &c[1], FALSE, forward, TRUE) ==
+	    FALSE) {
 		/* not found, mark red */
 		gdk_color_parse("red", &color);
 		gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL, &color);
@@ -1125,12 +1136,12 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	/* sanity */
 	if (c == NULL)
 		e->keyval = GDK_Escape;
-	else if (!(c[0] == ':' || c[0] == '/'))
+	else if (!(c[0] == ':' || c[0] == '/' || c[0] == '?'))
 		e->keyval = GDK_Escape;
 
 	switch (e->keyval) {
 	case GDK_BackSpace:
-		if (!(!strcmp(c, ":") || !strcmp(c, "/")))
+		if (!(!strcmp(c, ":") || !strcmp(c, "/") || !strcmp(c, "?")))
 			break;
 		/* FALLTHROUGH */
 	case GDK_Escape:
@@ -1178,13 +1189,13 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 	/* sanity */
 	if (c == NULL)
 		goto done;
-	else if (!(c[0] == ':' || c[0] == '/'))
+	else if (!(c[0] == ':' || c[0] == '/' || c[0] == '?'))
 		goto done;
 	if (strlen(c) < 2)
 		goto done;
 	s = (char *)&c[1];
 
-	if (c[0] == '/') {
+	if (c[0] == '/' || c[0] == '?') {
 		if (t->search_text) {
 			free(t->search_text);
 			t->search_text = NULL;
@@ -1193,6 +1204,8 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 		t->search_text = strdup(s);
 		if (t->search_text == NULL)
 			err(1, "search_text");
+
+		t->search_forward = c[0] == '/';
 
 		goto done;
 	}
