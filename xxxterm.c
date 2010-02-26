@@ -176,8 +176,8 @@ int			tabless = 0;	/* allow only 1 tab */
 int			ctrl_click_focus = 0; /* ctrl click gets focus */
 int			cookies_enabled = 1; /* enable cookies */
 int			read_only_cookies = 0; /* enable to not write cookies */
-int			enable_scripts = 1;
-int			enable_plugins = 1;
+int			enable_scripts = 0;
+int			enable_plugins = 0;
 int			default_font_size = 12;
 int			fancy_bar = 1;	/* fancy toolbar */
 
