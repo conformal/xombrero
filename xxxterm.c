@@ -20,7 +20,6 @@
  *	inverse color browsing
  *	favs
  *		- add favicon
- *		- add bookmark
  *	download files status
  *	multi letter commands
  *	pre and post counts for commands
