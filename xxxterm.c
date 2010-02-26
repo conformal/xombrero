@@ -367,7 +367,7 @@ favorites(struct tab *t, struct karg *args)
 	int			i, failed = 0;
 
 	if (t == NULL)
-		errx(1, "help");
+		errx(1, "favorites");
 
 	/* XXX run a digest over the favorites file instead of always generating it */
 
@@ -431,6 +431,48 @@ favorites(struct tab *t, struct karg *args)
 		    pwd->pw_dir, XT_DIR, XT_FAVS_FILE);
 		webkit_web_view_load_uri(t->wv, file);
 	}
+
+	return (0);
+}
+
+int
+favadd(struct tab *t, struct karg *args)
+{
+	char			file[PATH_MAX];
+	FILE			*f;
+	WebKitWebFrame		*frame;
+	const gchar		*uri, *title;
+
+	if (t == NULL)
+		errx(1, "favadd");
+
+	snprintf(file, sizeof file, "%s/%s/%s",
+	    pwd->pw_dir, XT_DIR, XT_FAVS_FILE);
+	if ((f = fopen(file, "r+")) == NULL) {
+		warn("favorites");
+		return (1);
+	}
+	if (fseeko(f, 0, SEEK_END) == -1)
+		err(1, "fseeko");
+
+	title = webkit_web_view_get_title(t->wv);
+	frame = webkit_web_view_get_main_frame(t->wv);
+	uri = webkit_web_frame_get_uri(frame);
+	if (title == NULL)
+		title = uri;
+
+	if (title == NULL || uri == NULL) {
+		webkit_web_view_load_string(t->wv,
+		    "<html><body>can't add page to favorites</body></html>",
+		    NULL,
+		    NULL,
+		    NULL);
+		goto done;
+	}
+
+	fprintf(f, "\n%s\n%s", title, uri);
+done:
+	fclose(f);
 
 	return (0);
 }
@@ -805,7 +847,10 @@ struct cmd {
 	{ "qa",			0,	quit,			{0} },
 	{ "qa!",		0,	quit,			{0} },
 	{ "help",		0,	help,			{0} },
+
+	/* favorites */
 	{ "fav",		0,	favorites,		{0} },
+	{ "favadd",		0,	favadd,			{0} },
 
 	/* tabs */
 	{ "o",			1,	tabaction,		{.i = XT_TAB_OPEN} },
