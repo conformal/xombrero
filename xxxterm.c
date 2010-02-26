@@ -940,6 +940,20 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 }
 
 int
+webview_nw_cb(WebKitWebView *wv, WebKitWebFrame *wf,
+    WebKitNetworkRequest *request, WebKitWebNavigationAction *na,
+    WebKitWebPolicyDecision *pd, struct tab *t)
+{
+	if (t == NULL)
+		errx(1, "webview_nw_cb");
+
+	DNPRINTF(XT_D_NAV, "webview_nw_cb: %s\n",
+	    webkit_network_request_get_uri(request));
+
+	return (FALSE); /* open in current tab */
+}
+
+int
 webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
     WebKitNetworkRequest *request, WebKitWebNavigationAction *na,
     WebKitWebPolicyDecision *pd, struct tab *t)
@@ -1493,6 +1507,7 @@ create_new_tab(char *title, int focus)
 	    "signal::download-requested", (GCallback)webview_download_cb, t,
 	    "signal::mime-type-policy-decision-requested", (GCallback)webview_mimetype_cb, t,
 	    "signal::navigation-policy-decision-requested", (GCallback)webview_npd_cb, t,
+	    "signal::new-window-policy-decision-requested", (GCallback)webview_nw_cb, t,
 	    "signal::event", (GCallback)webview_event_cb, t,
 	    NULL);
 
