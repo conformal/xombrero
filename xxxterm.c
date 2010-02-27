@@ -281,6 +281,9 @@ add_mime_type(char *line)
 	} else
 		m->mt_default = 0;
 
+	if (strlen(mime_type) == 0 || strlen(l) == 0)
+		errx(1, "add_mime_type: invalid mime_type");
+
 	m->mt_type = strdup(mime_type);
 	if (m->mt_type == NULL)
 		err(1, "add_mime_type: malloc type");
