@@ -1029,6 +1029,18 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 	return (TRUE); /* we made the decission */
 }
 
+WebKitWebView *
+webview_cwv_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
+{
+	if (t == NULL)
+		errx(1, "webview_cwv_cb");
+
+	DNPRINTF(XT_D_NAV, "webview_cwv_cb: %s\n",
+	    webkit_web_view_get_uri(wv));
+
+	return (wv);
+}
+
 int
 webview_event_cb(GtkWidget *w, GdkEventButton *e, struct tab *t)
 {
@@ -1559,6 +1571,7 @@ create_new_tab(char *title, int focus)
 	    "signal::mime-type-policy-decision-requested", (GCallback)webview_mimetype_cb, t,
 	    "signal::navigation-policy-decision-requested", (GCallback)webview_npd_cb, t,
 	    "signal::new-window-policy-decision-requested", (GCallback)webview_nw_cb, t,
+	    "signal::create-web-view", (GCallback)webview_cwv_cb, t,
 	    "signal::event", (GCallback)webview_event_cb, t,
 	    NULL);
 
