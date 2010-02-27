@@ -123,6 +123,7 @@ struct karg {
 };
 
 /* defines */
+#define XT_NAME			("XXXTerm")
 #define XT_DIR			(".xxxterm")
 #define XT_CONF_FILE		("xxxterm.conf")
 #define XT_FAVS_FILE		("favorites")
@@ -965,6 +966,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 			uri = webkit_web_frame_get_uri(frame);
 		}
 		gtk_label_set_text(GTK_LABEL(t->label), uri);
+		gtk_window_set_title(GTK_WINDOW(main_window), uri);
 		break;
 	case WEBKIT_LOAD_PROVISIONAL:
 	case WEBKIT_LOAD_FINISHED:
@@ -1608,6 +1610,7 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkNotebookPage *nbp, guint pn,
     gpointer *udata)
 {
 	struct tab		*t;
+	const gchar		*uri;
 
 	DNPRINTF(XT_D_TAB, "notebook_switchpage_cb: tab: %d\n", pn);
 
@@ -1615,6 +1618,12 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkNotebookPage *nbp, guint pn,
 		if (t->tab_id == pn) {
 			DNPRINTF(XT_D_TAB, "notebook_switchpage_cb: going to "
 			    "%d\n", pn);
+
+			uri = webkit_web_view_get_title(t->wv);
+			if (uri == NULL)
+				uri = XT_NAME;
+			gtk_window_set_title(GTK_WINDOW(main_window), uri);
+
 			gtk_widget_hide(t->cmd);
 		}
 	}
@@ -1639,6 +1648,7 @@ create_canvas(void)
 
 	main_window = create_window();
 	gtk_container_add(GTK_CONTAINER(main_window), vbox);
+	gtk_window_set_title(GTK_WINDOW(main_window), XT_NAME);
 	gtk_widget_show_all(main_window);
 }
 
