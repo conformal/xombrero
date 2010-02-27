@@ -26,6 +26,8 @@
  *	fav icon
  *	close tab X
  *	autocompletion on various inputs
+ *	create privacy browsing
+ *		- encrypted local data
  */
 
 #include <stdio.h>
@@ -170,6 +172,15 @@ GtkWidget		*main_window;
 GtkNotebook		*notebook;
 struct tab_list		tabs;
 
+/* mime types */
+struct mime_type {
+	char			*mt_type;
+	char			*mt_action;
+	int			mt_default;
+	TAILQ_ENTRY(mime_type)	entry;
+};
+TAILQ_HEAD(mime_type_list, mime_type);
+
 /* settings */
 int			showtabs = 1;	/* show tabs on notebook */
 int			showurl = 1;	/* show url toolbar on notebook */
@@ -191,6 +202,8 @@ char			cookie_file[PATH_MAX];
 char			download_dir[PATH_MAX];
 SoupSession		*session;
 SoupCookieJar		*cookiejar;
+
+struct mime_type_list	mtl;
 
 /* protos */
 void			create_new_tab(char *, int);
@@ -242,6 +255,68 @@ guess_url_type(char *url_in)
 	return (url_out);
 }
 
+void
+add_mime_type(char *line)
+{
+	char			*mime_type;
+	char			*l = NULL;
+	struct mime_type	*m;
+
+	/* XXX this could be smarter */
+
+	if (line == NULL)
+		errx(1, "add_mime_type");
+	l = line;
+
+	m = malloc(sizeof(*m));
+	if (m == NULL)
+		err(1, "add_mime_type: malloc");
+
+	if ((mime_type = strsep(&l, " \t,")) == NULL || l == NULL)
+		errx(1, "add_mime_type: invalid mime_type");
+
+	if (mime_type[strlen(mime_type) - 1] == '*') {
+		mime_type[strlen(mime_type) - 1] = '\0';
+		m->mt_default = 1;
+	} else
+		m->mt_default = 0;
+
+	m->mt_type = strdup(mime_type);
+	if (m->mt_type == NULL)
+		err(1, "add_mime_type: malloc type");
+
+	m->mt_action = strdup(l);
+	if (m->mt_action == NULL)
+		err(1, "add_mime_type: malloc action");
+
+	DNPRINTF(XT_D_CONFIG, "add_mime_type: type %s action %s default %d\n",
+	    m->mt_type, m->mt_action, m->mt_default);
+
+	TAILQ_INSERT_TAIL(&mtl, m, entry);
+}
+
+struct mime_type *
+find_mime_type(char *mime_type)
+{
+	struct mime_type	*m, *def = NULL, *rv = NULL;
+
+	TAILQ_FOREACH(m, &mtl, entry) {
+		if (m->mt_default &&
+		    !strncmp(mime_type, m->mt_type, strlen(m->mt_type)))
+			def = m;
+
+		if (m->mt_default == 0 && !strcmp(mime_type, m->mt_type)) {
+			rv = m;
+			break;
+		}
+	}
+
+	if (rv == NULL)
+		rv = def;
+
+	return (rv);
+}
+
 #define	WS	"\n= \t"
 void
 config_parse(char *filename)
@@ -251,6 +326,8 @@ config_parse(char *filename)
 	size_t			 len, lineno = 0;
 
 	DNPRINTF(XT_D_CONFIG, "config_parse: filename %s\n", filename);
+
+	TAILQ_INIT(&mtl);
 
 	if (filename == NULL)
 		return;
@@ -300,6 +377,8 @@ config_parse(char *filename)
 			default_font_size = atoi(val);
 		else if (!strcmp(var, "fancy_bar"))
 			fancy_bar = atoi(val);
+		else if (!strcmp(var, "mime_type"))
+			add_mime_type(val);
 		else if (!strcmp(var, "http_proxy")) {
 			http_proxy = strdup(val);
 			if (http_proxy == NULL)
@@ -1059,6 +1138,35 @@ webview_event_cb(GtkWidget *w, GdkEventButton *e, struct tab *t)
 }
 
 int
+run_mimehandler(struct tab *t, char *mime_type, WebKitNetworkRequest *request)
+{
+	struct mime_type	*m;
+
+	m = find_mime_type(mime_type);
+	if (m == NULL)
+		return (1);
+
+	switch (fork()) {
+	case -1:
+		err(1, "fork");
+		/* NOTREACHED */
+	case 0:
+		break;
+	default:
+		return (0);
+	}
+
+	/* child */
+	execlp(m->mt_action, m->mt_action,
+	    webkit_network_request_get_uri(request), (void *)NULL);
+
+	_exit(0);
+
+	/* NOTREACHED */
+	return (0);
+}
+
+int
 webview_mimetype_cb(WebKitWebView *wv, WebKitWebFrame *frame,
     WebKitNetworkRequest *request, char *mime_type,
     WebKitWebPolicyDecision *decision, struct tab *t)
@@ -1068,6 +1176,12 @@ webview_mimetype_cb(WebKitWebView *wv, WebKitWebFrame *frame,
 
 	DNPRINTF(XT_D_DOWNLOAD, "webview_mimetype_cb: tab %d mime %s\n",
 	    t->tab_id, mime_type);
+
+	if (run_mimehandler(t, mime_type, request) == 0) {
+		webkit_web_policy_decision_ignore(decision);
+		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+		return (TRUE);
+	}
 
 	if (webkit_web_view_can_show_mime_type(wv, mime_type) == FALSE) {
 		webkit_web_policy_decision_download(decision);
@@ -1380,6 +1494,8 @@ create_window(void)
 	gtk_window_set_default_size(GTK_WINDOW(w), 800, 600);
 	gtk_widget_set_name(w, "xxxterm");
 	gtk_window_set_wmclass(GTK_WINDOW(w), "xxxterm", "XXXTerm");
+	g_signal_connect(G_OBJECT(w), "delete_event",
+	    G_CALLBACK (gtk_main_quit), NULL);
 
 	return (w);
 }
