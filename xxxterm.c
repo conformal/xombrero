@@ -867,6 +867,74 @@ search(struct tab *t, struct karg *args)
 	return (XT_CB_HANDLED);
 }
 
+int
+mnprintf(char **buf, int *len, char *fmt, ...)
+{
+	int			x, old_len;
+	va_list			ap;
+
+	va_start(ap, fmt);
+
+	old_len = *len;
+	x = vsnprintf(*buf, *len, fmt, ap);
+	if (x == -1)
+		err(1, "mnprintf");
+	if (old_len < x)
+		errx(1, "mnprintf: buffer overflow");
+
+	*buf += x;
+	*len -= x;
+
+	va_end(ap);
+
+	return (0);
+}
+
+int
+set(struct tab *t, struct karg *args)
+{
+	struct mime_type	*m;
+	char			b[16 * 1024], *s;
+	int			l;
+
+	if (t == NULL || args == NULL)
+		errx(1, "set");
+
+	DNPRINTF(XT_D_CMD, "set: tab %d\n",
+	    t->tab_id);
+
+	s = b;
+	l = sizeof b;
+	mnprintf(&s, &l, "<html><body><pre>");
+	mnprintf(&s, &l, "ctrl_click_focus\t= %d<br>", ctrl_click_focus);
+	mnprintf(&s, &l, "cookies_enabled\t\t= %d<br>", cookies_enabled);
+	mnprintf(&s, &l, "default_font_size\t= %d<br>", default_font_size);
+	mnprintf(&s, &l, "enable_plugins\t\t= %d<br>", enable_plugins);
+	mnprintf(&s, &l, "enable_scripts\t\t= %d<br>", enable_scripts);
+	mnprintf(&s, &l, "fancy_bar\t\t= %d<br>", fancy_bar);
+	mnprintf(&s, &l, "home\t\t\t= %s<br>", home);
+	TAILQ_FOREACH(m, &mtl, entry) {
+		mnprintf(&s, &l, "mime_type\t\t= %s%s,%s<br>",
+		    m->mt_type, m->mt_default ? "*" : "", m->mt_action);
+	}
+	mnprintf(&s, &l, "proxy_uri\t\t= %s<br>", proxy_uri);
+	mnprintf(&s, &l, "read_only_cookies\t= %d<br>", read_only_cookies);
+	mnprintf(&s, &l, "search_string\t\t= %s<br>", search_string);
+	mnprintf(&s, &l, "showurl\t\t\t= %d<br>", showurl);
+	mnprintf(&s, &l, "showtabs\t\t= %d<br>", showtabs);
+	mnprintf(&s, &l, "tabless\t\t\t= %d<br>", tabless);
+	mnprintf(&s, &l, "download_dir\t\t= %s<br>", download_dir);
+	mnprintf(&s, &l, "</pre></body></html>");
+
+	webkit_web_view_load_string(t->wv,
+	    b,
+	    NULL,
+	    NULL,
+	    NULL);
+
+	return (XT_CB_PASSTHROUGH);
+}
+
 /* inherent to GTK not all keys will be caught at all times */
 struct key {
 	guint		mask;
@@ -976,6 +1044,9 @@ struct cmd {
 	{ "tabp",		0,	movetab,		{.i = XT_TAB_PREV} },
 	{ "tabnext",		0,	movetab,		{.i = XT_TAB_NEXT} },
 	{ "tabn",		0,	movetab,		{.i = XT_TAB_NEXT} },
+
+	/* settings */
+	{ "set",		1,	set,			{0} },
 };
 
 void
