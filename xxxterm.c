@@ -145,6 +145,8 @@ struct karg {
 #define XT_MOVE_RIGHT		(9)
 #define XT_MOVE_FARRIGHT	(10)
 
+#define XT_TAB_LAST		(-4)
+#define XT_TAB_FIRST		(-3)
 #define XT_TAB_PREV		(-2)
 #define XT_TAB_NEXT		(-1)
 #define XT_TAB_INVALID		(0)
@@ -765,10 +767,22 @@ movetab(struct tab *t, struct karg *args)
 		if (TAILQ_EMPTY(&tabs))
 			return (XT_CB_PASSTHROUGH);
 
-		if (args->i == XT_TAB_NEXT)
+		switch (args->i) {
+		case XT_TAB_NEXT:
 			gtk_notebook_next_page(notebook);
-		else
+			break;
+		case XT_TAB_PREV:
 			gtk_notebook_prev_page(notebook);
+			break;
+		case XT_TAB_FIRST:
+			gtk_notebook_set_current_page(notebook, 0);
+			break;
+		case XT_TAB_LAST:
+			gtk_notebook_set_current_page(notebook, -1);
+			break;
+		default:
+			return (XT_CB_PASSTHROUGH);
+		}
 
 		return (XT_CB_HANDLED);
 	}
@@ -918,6 +932,8 @@ struct key {
 	{ GDK_CONTROL_MASK,	0,	GDK_8,		movetab,	{.i = 8} },
 	{ GDK_CONTROL_MASK,	0,	GDK_9,		movetab,	{.i = 9} },
 	{ GDK_CONTROL_MASK,	0,	GDK_0,		movetab,	{.i = 10} },
+	{ GDK_CONTROL_MASK|GDK_SHIFT_MASK, 0, GDK_less, movetab,	{.i = XT_TAB_FIRST} },
+	{ GDK_CONTROL_MASK|GDK_SHIFT_MASK, 0, GDK_greater, movetab,	{.i = XT_TAB_LAST} },
 	{ GDK_CONTROL_MASK,	0,	GDK_minus,	resizetab,	{.i = -1} },
 	{ GDK_CONTROL_MASK|GDK_SHIFT_MASK, 0, GDK_plus,	resizetab,	{.i = 1} },
 	{ GDK_CONTROL_MASK, 	0, 	GDK_equal,	resizetab,	{.i = 1} },
@@ -950,6 +966,12 @@ struct cmd {
 	{ "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT} },
 	{ "q",			0,	tabaction,		{.i = XT_TAB_DELQUIT} },
 	/* XXX add count to these commands and add tabl and friends */
+	{ "tabfirst",		0,	movetab,		{.i = XT_TAB_FIRST} },
+	{ "tabfir",		0,	movetab,		{.i = XT_TAB_FIRST} },
+	{ "tabrewind",		0,	movetab,		{.i = XT_TAB_FIRST} },
+	{ "tabr",		0,	movetab,		{.i = XT_TAB_FIRST} },
+	{ "tablast",		0,	movetab,		{.i = XT_TAB_LAST} },
+	{ "tabl",		0,	movetab,		{.i = XT_TAB_LAST} },
 	{ "tabprevious",	0,	movetab,		{.i = XT_TAB_PREV} },
 	{ "tabp",		0,	movetab,		{.i = XT_TAB_PREV} },
 	{ "tabnext",		0,	movetab,		{.i = XT_TAB_NEXT} },
