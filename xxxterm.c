@@ -930,7 +930,7 @@ set(struct tab *t, struct karg *args)
 	    b,
 	    NULL,
 	    NULL,
-	    NULL);
+	    "about:config");
 
 	return (XT_CB_PASSTHROUGH);
 }
