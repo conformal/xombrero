@@ -99,6 +99,7 @@ struct tab {
 	GtkToolItem		*forward;
 	GtkToolItem		*stop;
 	guint			tab_id;
+	WebKitWebView		*wv;
 
 	/* adjustments for browser */
 	GtkScrollbar		*sb_h;
@@ -114,8 +115,11 @@ struct tab {
 	/* search */
 	char			*search_text;
 	int			search_forward;
-	WebKitWebView		*wv;
+
+	/* settings */
 	WebKitWebSettings	*settings;
+	int			font_size;
+	gchar			*user_agent;
 };
 TAILQ_HEAD(tab_list, tab);
 
@@ -167,6 +171,8 @@ struct karg {
 #define XT_SEARCH_INVALID	(0)
 #define XT_SEARCH_NEXT		(1)
 #define XT_SEARCH_PREV		(2)
+
+#define XT_FONT_SET		(0)
 
 /* globals */
 extern char		*__progname;
@@ -739,9 +745,6 @@ resizetab(struct tab *t, struct karg *args)
 	DNPRINTF(XT_D_TAB, "resizetab: tab %d %d\n",
 	    t->tab_id, args->i);
 
-	if (t == NULL)
-		return (XT_CB_PASSTHROUGH);
-
 	adjustfont_webkit(t, args->i);
 
 	return (XT_CB_HANDLED);
@@ -754,7 +757,7 @@ movetab(struct tab *t, struct karg *args)
 	int			x;
 
 	if (t == NULL || args == NULL)
-		return (XT_CB_PASSTHROUGH);
+		errx(1, "movetab");
 
 	DNPRINTF(XT_D_TAB, "movetab: tab %d opcode %d\n",
 	    t->tab_id, args->i);
@@ -1588,10 +1591,25 @@ stop_cb(GtkWidget *w, struct tab *t)
 	webkit_web_frame_stop_loading(frame);
 }
 
+void
+setup_webkit(struct tab *t)
+{
+	g_object_set((GObject *)t->settings,
+	    "user-agent", t->user_agent, NULL);
+	g_object_set((GObject *)t->settings,
+	    "enable-scripts", enable_scripts, NULL);
+	g_object_set((GObject *)t->settings,
+	    "enable-plugins", enable_plugins, NULL);
+	adjustfont_webkit(t, XT_FONT_SET);
+
+	webkit_web_view_set_settings(t->wv, t->settings);
+}
+
 GtkWidget *
 create_browser(struct tab *t)
 {
 	GtkWidget		*w;
+	gchar			*strval;
 
 	if (t == NULL)
 		errx(1, "create_browser");
@@ -1610,6 +1628,19 @@ create_browser(struct tab *t)
 
 	g_signal_connect(t->wv, "notify::load-status",
 	    G_CALLBACK(notify_load_status_cb), t);
+
+	/* set defaults */
+	t->settings = webkit_web_settings_new();
+
+	g_object_get((GObject *)t->settings, "user-agent", &strval, NULL);
+	if (strval == NULL)
+		errx(1, "setup_webkit: can't get user-agent property");
+
+	if (asprintf(&t->user_agent, "%s %s+", strval, version) == -1)
+		err(1, "aprintf user-agent");
+	g_free (strval);
+
+	setup_webkit(t);
 
 	return (w);
 }
@@ -1704,38 +1735,9 @@ delete_tab(struct tab *t)
 		create_new_tab(NULL, 1);
 
 	gtk_widget_destroy(t->vbox);
+
+	free(t->user_agent);
 	g_free(t);
-}
-
-void
-setup_webkit(struct tab *t)
-{
-	gchar			*strval;
-	gchar			*ua;
-
-	/* XXX this can't be called over and over; fix it */
-	t->settings = webkit_web_settings_new();
-	g_object_get((GObject *)t->settings, "user-agent", &strval, NULL);
-	if (strval == NULL) {
-		warnx("setup_webkit: can't get user-agent property");
-		return;
-	}
-
-	if (asprintf(&ua, "%s %s+", strval, version) == -1)
-		err(1, "aprintf user-agent");
-
-	g_object_set((GObject *)t->settings,
-	    "user-agent", ua, NULL);
-	g_object_set((GObject *)t->settings,
-	    "enable-scripts", enable_scripts, NULL);
-	g_object_set((GObject *)t->settings,
-	    "enable-plugins", enable_plugins, NULL);
-	adjustfont_webkit(t, 0);
-
-	webkit_web_view_set_settings(t->wv, t->settings);
-
-	g_free (strval);
-	free(ua);
 }
 
 void
@@ -1744,11 +1746,16 @@ adjustfont_webkit(struct tab *t, int adjust)
 	if (t == NULL)
 		errx(1, "adjustfont_webkit");
 
-	default_font_size += adjust;
+	if (adjust == XT_FONT_SET) {
+		t->font_size = default_font_size;
+		return;
+	}
+
+	t->font_size += adjust;
 	g_object_set((GObject *)t->settings, "default-font-size",
-	    default_font_size, NULL);
+	    t->font_size, NULL);
 	g_object_get((GObject *)t->settings, "default-font-size",
-	    &default_font_size, NULL);
+	    &t->font_size, NULL);
 }
 
 void
@@ -1791,7 +1798,6 @@ create_new_tab(char *title, int focus)
 	/* browser */
 	t->browser_win = create_browser(t);
 	gtk_box_pack_start(GTK_BOX(t->vbox), t->browser_win, TRUE, TRUE, 0);
-	setup_webkit(t);
 
 	/* command entry */
 	t->cmd = gtk_entry_new();
