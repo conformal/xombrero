@@ -120,6 +120,14 @@ Additionally if search_string is set it'll enable an entry box for searches.
 .It Cm search_string
 Default search engine string.
 See xxxterm.conf file for details.
+.It Cm mime_type
+Sets an action for a specific or default MIME type.
+For example, to download and view a pdf using kpdf set mime_type =
+application/pdf,kpdf.
+To set a default value use *, for example mime_type = video/*,mplayer.
+Note that the action is only passed the URI and not all applications are
+capable of downloading content and therefore one might have to create a wrapper
+script to download the content first.
 .El
 .Pp
 .Nm
@@ -142,11 +150,11 @@ Search:
 .Bl -tag -width "tabnew, tabedit, tabe [URI]" -offset indent -compact
 .It Cm /
 Start a search
+.It Cm ?
+Start a backwards search
 .It Cm n
 Next item matching search
 .It Cm N
-Previous item matching search
-.It Cm ?
 Previous item matching search
 .El
 .Pp
@@ -160,53 +168,29 @@ Focus on URI entry
 Navigation:
 .Pp
 .Bl -tag -width "tabnew, tabedit, tabe [URI]" -offset indent -compact
-.It Cm F5
-Refresh page
-.It Cm C-r
-Refresh page
-.It Cm C-l
+.It Cm F5, C-r, C-l
 Refresh page
 .It Cm Backspace
 Previous page
 .It Cm M-Left
 Previous page
-.It Cm S-BackSpace
+.It Cm S-BackSpace, M-Right
 Forward page
-.It Cm M-Right
-Forward page
-.It Cm j
+.It Cm j, Down
 Next line on page
-.It Cm Down
-Next line on page
-.It Cm k
+.It Cm k, Up
 Previous line on page
-.It Cm Up
-Previous line on page
-.It Cm G
+.It Cm G, End
 Bottom of page
-.It Cm End
-Bottom of page
-.It Cm gg
+.It Cm gg, Home
 Top of page
-.It Cm Home
-Top of page
-.It Cm Space
+.It Cm Space, C-f, PageDown
 Page down
-.It Cm PageDown
-Page down
-.It Cm C-f
-Page down
-.It Cm C-b
+.It Cm C-b, PageUp
 Page up
-.It Cm PageUp
-Page up
-.It Cm l
+.It Cm l, Right
 Page right
-.It Cm Right
-Page right
-.It Cm h
-Page left
-.It Cm Left
+.It Cm h, Left
 Page left
 .It Cm $
 Page far right
@@ -225,7 +209,7 @@ Destroy current tab
 Jump to page N
 .It Cm C-minus
 Shrink font size by one point.
-.It Cm C-plus
+.It Cm C-plus, C-equal
 Grow font size by one point.
 .El
 .Pp
@@ -248,6 +232,8 @@ Quit
 .Nm
 .It Cm fav
 Show favorites
+.It Cm favadd
+Add current page to favorites
 .It Cm help
 Show help file.
 .It Cm open, op, o <URI>
