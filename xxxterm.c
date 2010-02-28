@@ -160,6 +160,7 @@ struct karg {
 
 #define XT_FOCUS_INVALID	(0)
 #define XT_FOCUS_URI		(1)
+#define XT_FOCUS_SEARCH		(2)
 
 #define XT_SEARCH_INVALID	(0)
 #define XT_SEARCH_NEXT		(1)
@@ -415,11 +416,13 @@ quit(struct tab *t, struct karg *args)
 int
 focus(struct tab *t, struct karg *args)
 {
-	if (t == NULL)
+	if (t == NULL || args == NULL)
 		errx(1, "focus");
 
 	if (args->i == XT_FOCUS_URI)
 		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
+	if (args->i == XT_FOCUS_SEARCH)
+		gtk_widget_grab_focus(GTK_WIDGET(t->search_entry));
 
 	return (0);
 }
@@ -869,6 +872,7 @@ struct key {
 
 	/* focus */
 	{ 0,			0,	GDK_F6,		focus,		{.i = XT_FOCUS_URI} },
+	{ 0,			0,	GDK_F7,		focus,		{.i = XT_FOCUS_SEARCH} },
 
 	/* navigation */
 	{ 0,			0,	GDK_BackSpace,	navaction,	{.i = XT_NAV_BACK} },
