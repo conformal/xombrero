@@ -894,7 +894,7 @@ int
 set(struct tab *t, struct karg *args)
 {
 	struct mime_type	*m;
-	char			b[16 * 1024], *s;
+	char			b[16 * 1024], *s, *pars;
 	int			l;
 
 	if (t == NULL || args == NULL)
@@ -905,32 +905,61 @@ set(struct tab *t, struct karg *args)
 
 	s = b;
 	l = sizeof b;
-	mnprintf(&s, &l, "<html><body><pre>");
-	mnprintf(&s, &l, "ctrl_click_focus\t= %d<br>", ctrl_click_focus);
-	mnprintf(&s, &l, "cookies_enabled\t\t= %d<br>", cookies_enabled);
-	mnprintf(&s, &l, "default_font_size\t= %d<br>", default_font_size);
-	mnprintf(&s, &l, "enable_plugins\t\t= %d<br>", enable_plugins);
-	mnprintf(&s, &l, "enable_scripts\t\t= %d<br>", enable_scripts);
-	mnprintf(&s, &l, "fancy_bar\t\t= %d<br>", fancy_bar);
-	mnprintf(&s, &l, "home\t\t\t= %s<br>", home);
-	TAILQ_FOREACH(m, &mtl, entry) {
-		mnprintf(&s, &l, "mime_type\t\t= %s%s,%s<br>",
-		    m->mt_type, m->mt_default ? "*" : "", m->mt_action);
-	}
-	mnprintf(&s, &l, "proxy_uri\t\t= %s<br>", proxy_uri);
-	mnprintf(&s, &l, "read_only_cookies\t= %d<br>", read_only_cookies);
-	mnprintf(&s, &l, "search_string\t\t= %s<br>", search_string);
-	mnprintf(&s, &l, "showurl\t\t\t= %d<br>", showurl);
-	mnprintf(&s, &l, "showtabs\t\t= %d<br>", showtabs);
-	mnprintf(&s, &l, "tabless\t\t\t= %d<br>", tabless);
-	mnprintf(&s, &l, "download_dir\t\t= %s<br>", download_dir);
-	mnprintf(&s, &l, "</pre></body></html>");
 
-	webkit_web_view_load_string(t->wv,
-	    b,
-	    NULL,
-	    NULL,
-	    "about:config");
+	if ((pars = getparams(args->s, "set")) == NULL) {
+		mnprintf(&s, &l, "<html><body><pre>");
+		mnprintf(&s, &l, "ctrl_click_focus\t= %d<br>", ctrl_click_focus);
+		mnprintf(&s, &l, "cookies_enabled\t\t= %d<br>", cookies_enabled);
+		mnprintf(&s, &l, "default_font_size\t= %d<br>", default_font_size);
+		mnprintf(&s, &l, "enable_plugins\t\t= %d<br>", enable_plugins);
+		mnprintf(&s, &l, "enable_scripts\t\t= %d<br>", enable_scripts);
+		mnprintf(&s, &l, "fancy_bar\t\t= %d<br>", fancy_bar);
+		mnprintf(&s, &l, "home\t\t\t= %s<br>", home);
+		TAILQ_FOREACH(m, &mtl, entry) {
+			mnprintf(&s, &l, "mime_type\t\t= %s%s,%s<br>",
+			    m->mt_type, m->mt_default ? "*" : "", m->mt_action);
+		}
+		mnprintf(&s, &l, "proxy_uri\t\t= %s<br>", proxy_uri);
+		mnprintf(&s, &l, "read_only_cookies\t= %d<br>", read_only_cookies);
+		mnprintf(&s, &l, "search_string\t\t= %s<br>", search_string);
+		mnprintf(&s, &l, "showurl\t\t\t= %d<br>", showurl);
+		mnprintf(&s, &l, "showtabs\t\t= %d<br>", showtabs);
+		mnprintf(&s, &l, "tabless\t\t\t= %d<br>", tabless);
+		mnprintf(&s, &l, "download_dir\t\t= %s<br>", download_dir);
+		mnprintf(&s, &l, "</pre></body></html>");
+
+		webkit_web_view_load_string(t->wv,
+		    b,
+		    NULL,
+		    NULL,
+		    "about:config");
+		goto done;
+	}
+
+	/* XXX this sucks donkey balls and is a POC only */
+	int			x;
+	char			*e;
+	if (!strncmp(pars, "enable_scripts ", strlen("enable_scripts"))) {
+		s = pars + strlen("enable_scripts");
+		x = strtol(s, &e, 10);
+		if (s[0] == '\0' || *e != '\0')
+			webkit_web_view_load_string(t->wv,
+			    "<html><body>invalid value</body></html>",
+			    NULL,
+			    NULL,
+			    "about:error");
+
+		enable_scripts = x;
+		g_object_set((GObject *)t->settings,
+		    "enable-scripts", enable_scripts, NULL);
+		webkit_web_view_set_settings(t->wv, t->settings);
+	}
+
+done:
+	if (args->s) {
+		free(args->s);
+		args->s = NULL;
+	}
 
 	return (XT_CB_PASSTHROUGH);
 }
