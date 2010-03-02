@@ -1150,6 +1150,7 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 void
 notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 {
+	GdkColor		color;
 	WebKitWebFrame		*frame;
 	const gchar		*uri;
 
@@ -1169,7 +1170,16 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		/* take focus if we are visible */
 		if (gtk_notebook_get_current_page(notebook) == t->tab_id)
 			gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+
+		/* color uri_entry */
+		if (uri && !strncmp(uri, "https://", strlen("https://")))
+			gdk_color_parse("green", &color);
+		else
+			gdk_color_parse("white", &color);
+		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
+
 		break;
+
 	case WEBKIT_LOAD_FIRST_VISUALLY_NON_EMPTY_LAYOUT:
 		uri = webkit_web_view_get_title(wview);
 		if (uri == NULL) {
@@ -1178,7 +1188,9 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		}
 		gtk_label_set_text(GTK_LABEL(t->label), uri);
 		gtk_window_set_title(GTK_WINDOW(main_window), uri);
+
 		break;
+
 	case WEBKIT_LOAD_PROVISIONAL:
 	case WEBKIT_LOAD_FINISHED:
 #if WEBKIT_CHECK_VERSION(1, 1, 18)
