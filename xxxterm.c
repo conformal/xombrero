@@ -392,10 +392,14 @@ config_parse(char *filename)
 		else if (!strcmp(var, "mime_type"))
 			add_mime_type(val);
 		else if (!strcmp(var, "http_proxy")) {
+			if (http_proxy)
+				free(http_proxy);
 			http_proxy = strdup(val);
 			if (http_proxy == NULL)
 				err(1, "http_proxy");
 		} else if (!strcmp(var, "search_string")) {
+			if (search_string)
+				free(search_string);
 			search_string = strdup(val);
 			if (search_string == NULL)
 				err(1, "search_string");
@@ -429,7 +433,7 @@ focus(struct tab *t, struct karg *args)
 
 	if (args->i == XT_FOCUS_URI)
 		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
-	if (args->i == XT_FOCUS_SEARCH)
+	else if (args->i == XT_FOCUS_SEARCH)
 		gtk_widget_grab_focus(GTK_WIDGET(t->search_entry));
 
 	return (0);
@@ -1065,7 +1069,7 @@ struct cmd {
 	{ "tabc",		0,	tabaction,		{.i = XT_TAB_DELETE} },
 	{ "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT} },
 	{ "q",			0,	tabaction,		{.i = XT_TAB_DELQUIT} },
-	/* XXX add count to these commands and add tabl and friends */
+	/* XXX add count to these commands */
 	{ "tabfirst",		0,	movetab,		{.i = XT_TAB_FIRST} },
 	{ "tabfir",		0,	movetab,		{.i = XT_TAB_FIRST} },
 	{ "tabrewind",		0,	movetab,		{.i = XT_TAB_FIRST} },
@@ -1196,8 +1200,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 #if WEBKIT_CHECK_VERSION(1, 1, 18)
 	case WEBKIT_LOAD_FAILED:
 #endif
-		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 	default:
+		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 		break;
 	}
 
@@ -1458,6 +1462,30 @@ done:
 	return (XT_CB_PASSTHROUGH);
 }
 
+#if 0
+int
+cmd_complete(struct tab *t, char *s)
+{
+	int			i;
+	GtkEntry		*w = GTK_ENTRY(t->cmd);
+
+	DNPRINTF(XT_D_CMD, "cmd_keypress_cb: complete %s\n", s);
+
+	for (i = 0; i < LENGTH(cmds); i++) {
+		if (!strncasecmp(cmds[i].cmd, s, strlen(s))) {
+			fprintf(stderr, "match %s %d\n", cmds[i].cmd, strcasecmp(cmds[i].cmd, s));
+#if 0
+			gtk_entry_set_text(w, ":");
+			gtk_entry_append_text(w, cmds[i].cmd);
+			gtk_editable_set_position(GTK_EDITABLE(w), -1);
+#endif
+		}
+	}
+
+	return (0);
+}
+#endif
+
 int
 cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 {
@@ -1477,6 +1505,21 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		e->keyval = GDK_Escape;
 
 	switch (e->keyval) {
+#if 0
+	case GDK_Tab:
+		if (c[0] != ':')
+			goto done;
+
+		if (strchr (c, ' ')) {
+			/* par completion */
+			fprintf(stderr, "completeme par\n");
+			goto done;
+		}
+
+		cmd_complete(t, (char *)&c[1]);
+
+		goto done;
+#endif
 	case GDK_BackSpace:
 		if (!(!strcmp(c, ":") || !strcmp(c, "/") || !strcmp(c, "?")))
 			break;
@@ -1663,7 +1706,7 @@ create_window(void)
 	GtkWidget		*w;
 
 	w = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_window_set_default_size(GTK_WINDOW(w), 800, 600);
+	gtk_window_set_default_size(GTK_WINDOW(w), 1024, 768);
 	gtk_widget_set_name(w, "xxxterm");
 	gtk_window_set_wmclass(GTK_WINDOW(w), "xxxterm", "XXXTerm");
 	g_signal_connect(G_OBJECT(w), "delete_event",
@@ -1758,10 +1801,8 @@ adjustfont_webkit(struct tab *t, int adjust)
 	if (t == NULL)
 		errx(1, "adjustfont_webkit");
 
-	if (adjust == XT_FONT_SET) {
+	if (adjust == XT_FONT_SET)
 		t->font_size = default_font_size;
-		return;
-	}
 
 	t->font_size += adjust;
 	g_object_set((GObject *)t->settings, "default-font-size",
@@ -1941,19 +1982,21 @@ setup_proxy(char *uri)
 		proxy_uri = NULL;
 	}
 	if (http_proxy) {
-		free(http_proxy);
-		http_proxy = strdup(uri);
-		if (http_proxy == NULL)
-			err(1, "http_proxy");
+		if (http_proxy != uri) {
+			free(http_proxy);
+			http_proxy = NULL;
+		}
 	}
 
-	if (uri == NULL)
-		return;
+	if (uri) {
+		http_proxy = strdup(uri);
+		if (http_proxy == NULL)
+			err(1, "setup_proxy: strdup");
 
-	DNPRINTF(XT_D_CONFIG, "setup_proxy: %s\n", uri);
-	proxy_uri = soup_uri_new(uri);
-	if (proxy_uri)
+		DNPRINTF(XT_D_CONFIG, "setup_proxy: %s\n", uri);
+		proxy_uri = soup_uri_new(http_proxy);
 		g_object_set(session, "proxy-uri", proxy_uri, NULL);
+	}
 }
 
 void
@@ -2060,12 +2103,10 @@ main(int argc, char *argv[])
 
 	/* proxy */
 	env_proxy = getenv("http_proxy");
-	if (env_proxy) {
-		http_proxy = strdup(env_proxy);
-		if (http_proxy == NULL)
-			err(1, "http_proxy");
-	}
-	setup_proxy(http_proxy);
+	if (env_proxy)
+		setup_proxy(env_proxy);
+	else
+		setup_proxy(http_proxy);
 
 	create_canvas();
 
