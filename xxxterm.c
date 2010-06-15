@@ -1960,7 +1960,7 @@ create_canvas(void)
 }
 
 void
-setup_cookies(void)
+setup_cookies(char *file)
 {
 	if (cookiejar) {
 		soup_session_remove_feature(session,
@@ -1972,7 +1972,7 @@ setup_cookies(void)
 	if (cookies_enabled == 0)
 		return;
 
-	cookiejar = soup_cookie_jar_text_new(cookie_file, read_only_cookies);
+	cookiejar = soup_cookie_jar_text_new(file, read_only_cookies);
 	soup_session_add_feature(session, (SoupSessionFeature*)cookiejar);
 }
 
@@ -2016,6 +2016,7 @@ main(int argc, char *argv[])
 	struct stat		sb;
 	int			c, focus = 1;
 	char			conf[PATH_MAX] = { '\0' };
+	char			file[PATH_MAX];
 	char			*env_proxy = NULL;
 	FILE			*f = NULL;
 
@@ -2090,19 +2091,18 @@ main(int argc, char *argv[])
 	}
 
 	/* favorites file */
-	snprintf(work_dir, sizeof work_dir, "%s/%s/%s",
-	    pwd->pw_dir, XT_DIR, XT_FAVS_FILE);
-	if (stat(work_dir, &sb)) {
+	snprintf(file, sizeof file, "%s/%s", work_dir, XT_FAVS_FILE);
+	if (stat(file, &sb)) {
 		warnx("favorites file doesn't exist, creating it");
-		if ((f = fopen(work_dir, "w")) == NULL)
+		if ((f = fopen(file, "w")) == NULL)
 			err(1, "favorites");
 		fclose(f);
 	}
 
 	/* cookies */
 	session = webkit_get_default_session();
-	snprintf(cookie_file, sizeof cookie_file, "%s/cookies.txt", work_dir);
-	setup_cookies();
+	snprintf(file, sizeof file, "%s/cookies.txt", work_dir);
+	setup_cookies(file);
 
 	/* proxy */
 	env_proxy = getenv("http_proxy");
