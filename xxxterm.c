@@ -958,7 +958,7 @@ set(struct tab *t, struct karg *args)
 
 		enable_scripts = x;
 		g_object_set((GObject *)t->settings,
-		    "enable-scripts", enable_scripts, NULL);
+		    "enable-scripts", enable_scripts, (char *)NULL);
 		webkit_web_view_set_settings(t->wv, t->settings);
 	}
 
@@ -1652,11 +1652,11 @@ void
 setup_webkit(struct tab *t)
 {
 	g_object_set((GObject *)t->settings,
-	    "user-agent", t->user_agent, NULL);
+	    "user-agent", t->user_agent, (char *)NULL);
 	g_object_set((GObject *)t->settings,
-	    "enable-scripts", enable_scripts, NULL);
+	    "enable-scripts", enable_scripts, (char *)NULL);
 	g_object_set((GObject *)t->settings,
-	    "enable-plugins", enable_plugins, NULL);
+	    "enable-plugins", enable_plugins, (char *)NULL);
 	adjustfont_webkit(t, XT_FONT_SET);
 
 	webkit_web_view_set_settings(t->wv, t->settings);
@@ -1689,7 +1689,7 @@ create_browser(struct tab *t)
 	/* set defaults */
 	t->settings = webkit_web_settings_new();
 
-	g_object_get((GObject *)t->settings, "user-agent", &strval, NULL);
+	g_object_get((GObject *)t->settings, "user-agent", &strval, (char *)NULL);
 	if (strval == NULL)
 		errx(1, "setup_webkit: can't get user-agent property");
 
@@ -1811,9 +1811,9 @@ adjustfont_webkit(struct tab *t, int adjust)
 
 	t->font_size += adjust;
 	g_object_set((GObject *)t->settings, "default-font-size",
-	    t->font_size, NULL);
+	    t->font_size, (char *)NULL);
 	g_object_get((GObject *)t->settings, "default-font-size",
-	    &t->font_size, NULL);
+	    &t->font_size, (char *)NULL);
 }
 
 void
@@ -1873,7 +1873,7 @@ create_new_tab(char *title, int focus)
 	    "signal::key-release-event", (GCallback)cmd_keyrelease_cb, t,
 	    "signal::focus-out-event", (GCallback)cmd_focusout_cb, t,
 	    "signal::activate", (GCallback)cmd_activate_cb, t,
-	    NULL);
+	    (char *)NULL);
 
 	g_object_connect((GObject*)t->wv,
 	    "signal-after::key-press-event", (GCallback)webview_keypress_cb, t,
@@ -1884,12 +1884,12 @@ create_new_tab(char *title, int focus)
 	    "signal::new-window-policy-decision-requested", (GCallback)webview_nw_cb, t,
 	    "signal::create-web-view", (GCallback)webview_cwv_cb, t,
 	    "signal::event", (GCallback)webview_event_cb, t,
-	    NULL);
+	    (char *)NULL);
 
 	/* hijack the unused keys as if we were the browser */
 	g_object_connect((GObject*)t->toolbar,
 	    "signal-after::key-press-event", (GCallback)webview_keypress_cb, t,
-	    NULL);
+	    (char *)NULL);
 
 	g_signal_connect(G_OBJECT(t->uri_entry), "focus",
 	    G_CALLBACK(focus_uri_entry_cb), t);
@@ -1953,7 +1953,7 @@ create_canvas(void)
 
 	g_object_connect((GObject*)notebook,
 	    "signal::switch-page", (GCallback)notebook_switchpage_cb, NULL,
-	    NULL);
+	    (char *)NULL);
 
 	main_window = create_window();
 	gtk_container_add(GTK_CONTAINER(main_window), vbox);
@@ -1982,7 +1982,7 @@ void
 setup_proxy(char *uri)
 {
 	if (proxy_uri) {
-		g_object_set(session, "proxy_uri", NULL, NULL);
+		g_object_set(session, "proxy_uri", NULL, (char *)NULL);
 		soup_uri_free(proxy_uri);
 		proxy_uri = NULL;
 	}
@@ -2000,7 +2000,7 @@ setup_proxy(char *uri)
 
 		DNPRINTF(XT_D_CONFIG, "setup_proxy: %s\n", uri);
 		proxy_uri = soup_uri_new(http_proxy);
-		g_object_set(session, "proxy-uri", proxy_uri, NULL);
+		g_object_set(session, "proxy-uri", proxy_uri, (char *)NULL);
 	}
 }
 
