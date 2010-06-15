@@ -1113,6 +1113,8 @@ activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 	if (uri == NULL)
 		errx(1, "uri");
 
+	uri += strspn(uri, "\t ");
+
 	if (valid_url_type((char *)uri)) {
 		newuri = guess_url_type((char *)uri);
 		uri = newuri;
