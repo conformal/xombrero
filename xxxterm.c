@@ -1793,6 +1793,9 @@ delete_tab(struct tab *t)
 
 	free(t->user_agent);
 	g_free(t);
+
+	TAILQ_FOREACH(t, &tabs, entry)
+		t->tab_id = gtk_notebook_page_num(notebook, t->vbox);
 }
 
 void
