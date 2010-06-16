@@ -144,10 +144,12 @@ struct karg {
 #define XT_MOVE_TOP		(4)
 #define XT_MOVE_PAGEDOWN	(5)
 #define XT_MOVE_PAGEUP		(6)
-#define XT_MOVE_LEFT		(7)
-#define XT_MOVE_FARLEFT		(8)
-#define XT_MOVE_RIGHT		(9)
-#define XT_MOVE_FARRIGHT	(10)
+#define XT_MOVE_HALFDOWN	(7)
+#define XT_MOVE_HALFUP		(8)
+#define XT_MOVE_LEFT		(9)
+#define XT_MOVE_FARLEFT		(10)
+#define XT_MOVE_RIGHT		(11)
+#define XT_MOVE_FARRIGHT	(12)
 
 #define XT_TAB_LAST		(-4)
 #define XT_TAB_FIRST		(-3)
@@ -607,6 +609,8 @@ move(struct tab *t, struct karg *args)
 	case XT_MOVE_TOP:
 	case XT_MOVE_PAGEDOWN:
 	case XT_MOVE_PAGEUP:
+	case XT_MOVE_HALFDOWN:
+	case XT_MOVE_HALFUP:
 		adjust = t->adjust_v;
 		break;
 	default:
@@ -652,6 +656,14 @@ move(struct tab *t, struct karg *args)
 		break;
 	case XT_MOVE_PAGEUP:
 		pos -= pi;
+		gtk_adjustment_set_value(adjust, MAX(pos, lower));
+		break;
+	case XT_MOVE_HALFDOWN:
+		pos += pi / 2;
+		gtk_adjustment_set_value(adjust, MIN(pos, max));
+		break;
+	case XT_MOVE_HALFUP:
+		pos -= pi / 2;
 		gtk_adjustment_set_value(adjust, MAX(pos, lower));
 		break;
 	default:
@@ -1012,9 +1024,11 @@ struct key {
 	{ 0,			GDK_g,	GDK_g,		move,		{.i = XT_MOVE_TOP} }, /* XXX make this work */
 	{ 0,			0,	GDK_space,	move,		{.i = XT_MOVE_PAGEDOWN} },
 	{ GDK_CONTROL_MASK,	0,	GDK_f,		move,		{.i = XT_MOVE_PAGEDOWN} },
+	{ GDK_CONTROL_MASK,	0,	GDK_d,		move,		{.i = XT_MOVE_HALFDOWN} },
 	{ 0,			0,	GDK_Page_Down,	move,		{.i = XT_MOVE_PAGEDOWN} },
 	{ 0,			0,	GDK_Page_Up,	move,		{.i = XT_MOVE_PAGEUP} },
 	{ GDK_CONTROL_MASK,	0,	GDK_b,		move,		{.i = XT_MOVE_PAGEUP} },
+	{ GDK_CONTROL_MASK,	0,	GDK_u,		move,		{.i = XT_MOVE_HALFUP} },
 	/* horizontal movement */
 	{ 0,			0,	GDK_l,		move,		{.i = XT_MOVE_RIGHT} },
 	{ 0,			0,	GDK_Right,	move,		{.i = XT_MOVE_RIGHT} },
