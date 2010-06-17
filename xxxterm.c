@@ -1072,6 +1072,8 @@ struct cmd {
 	{ "fav",		0,	favorites,		{0} },
 	{ "favadd",		0,	favadd,			{0} },
 
+	{ "1",			0,	move,			{.i = XT_MOVE_TOP} },
+
 	/* tabs */
 	{ "o",			1,	tabaction,		{.i = XT_TAB_OPEN} },
 	{ "op",			1,	tabaction,		{.i = XT_TAB_OPEN} },
