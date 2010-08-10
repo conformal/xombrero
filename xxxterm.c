@@ -50,7 +50,6 @@
 
 static char		*version = "$xxxterm$";
 
-#define XT_DEBUG
 /* #define XT_DEBUG */
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
@@ -2179,6 +2178,9 @@ main(int argc, char *argv[])
 	config_parse(conf);
 
 	/* download dir */
+	if (!strcmp(download_dir, pwd->pw_dir))
+		strlcat(download_dir, "/downloads", sizeof download_dir);
+
 	if (stat(download_dir, &sb))
 		errx(1, "must specify a valid download_dir");
 	if (S_ISDIR(sb.st_mode) == 0)
