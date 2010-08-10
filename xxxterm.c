@@ -50,6 +50,7 @@
 
 static char		*version = "$xxxterm$";
 
+#define XT_DEBUG
 /* #define XT_DEBUG */
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
@@ -719,7 +720,7 @@ move(struct tab *t, struct karg *args)
 
 	DNPRINTF(XT_D_MOVE, "move: opcode %d %s pos %f ps %f upper %f lower %f "
 	    "max %f si %f pi %f\n",
-	    args->i, adjust == t->adjust_h ? "horizontal" : "vertical", 
+	    args->i, adjust == t->adjust_h ? "horizontal" : "vertical",
 	    pos, ps, upper, lower, max, si, pi);
 
 	switch (args->i) {
@@ -1145,7 +1146,7 @@ struct key {
 	{ GDK_CONTROL_MASK|GDK_SHIFT_MASK, 0, GDK_greater, movetab,	{.i = XT_TAB_LAST} },
 	{ GDK_CONTROL_MASK,	0,	GDK_minus,	resizetab,	{.i = -1} },
 	{ GDK_CONTROL_MASK|GDK_SHIFT_MASK, 0, GDK_plus,	resizetab,	{.i = 1} },
-	{ GDK_CONTROL_MASK, 	0, 	GDK_equal,	resizetab,	{.i = 1} },
+	{ GDK_CONTROL_MASK,	0,	GDK_equal,	resizetab,	{.i = 1} },
 };
 
 struct cmd {
@@ -1385,13 +1386,19 @@ webview_event_cb(GtkWidget *w, GdkEventButton *e, struct tab *t)
 {
 	/* we can not eat the event without throwing gtk off so defer it */
 
+	/* catch middle click */
+	if (e->type == GDK_BUTTON_RELEASE && e->button == 2) {
+		t->ctrl_click = 1;
+		goto done;
+	}
+
 	/* catch ctrl click */
-	if (e->type == GDK_BUTTON_RELEASE && 
+	if (e->type == GDK_BUTTON_RELEASE &&
 	    CLEAN(e->state) == GDK_CONTROL_MASK)
 		t->ctrl_click = 1;
 	else
 		t->ctrl_click = 0;
-
+done:
 	return (XT_CB_PASSTHROUGH);
 }
 
@@ -1844,23 +1851,23 @@ create_toolbar(struct tab *t)
 		t->backward = gtk_tool_button_new_from_stock(GTK_STOCK_GO_BACK);
 		gtk_widget_set_sensitive(GTK_WIDGET(t->backward), FALSE);
 		g_signal_connect(G_OBJECT(t->backward), "clicked",
-		    G_CALLBACK(backward_cb), t); 
-		gtk_toolbar_insert(GTK_TOOLBAR(toolbar), t->backward, -1); 
+		    G_CALLBACK(backward_cb), t);
+		gtk_toolbar_insert(GTK_TOOLBAR(toolbar), t->backward, -1);
 
 		/* forward button */
 		t->forward =
 		    gtk_tool_button_new_from_stock(GTK_STOCK_GO_FORWARD);
 		gtk_widget_set_sensitive(GTK_WIDGET(t->forward), FALSE);
 		g_signal_connect(G_OBJECT(t->forward), "clicked",
-		    G_CALLBACK(forward_cb), t); 
-		gtk_toolbar_insert(GTK_TOOLBAR(toolbar), t->forward, -1); 
+		    G_CALLBACK(forward_cb), t);
+		gtk_toolbar_insert(GTK_TOOLBAR(toolbar), t->forward, -1);
 
 		/* stop button */
-		t->stop = gtk_tool_button_new_from_stock(GTK_STOCK_STOP); 
+		t->stop = gtk_tool_button_new_from_stock(GTK_STOCK_STOP);
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 		g_signal_connect(G_OBJECT(t->stop), "clicked",
-		    G_CALLBACK(stop_cb), t); 
-		gtk_toolbar_insert(GTK_TOOLBAR(toolbar), t->stop, -1); 
+		    G_CALLBACK(stop_cb), t);
+		gtk_toolbar_insert(GTK_TOOLBAR(toolbar), t->stop, -1);
 	}
 
 	/* uri entry */
@@ -2052,7 +2059,7 @@ void
 create_canvas(void)
 {
 	GtkWidget		*vbox;
-	
+
 	vbox = gtk_vbox_new(FALSE, 0);
 	notebook = GTK_NOTEBOOK(gtk_notebook_new());
 	if (showtabs == 0)
