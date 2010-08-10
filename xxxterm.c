@@ -2181,8 +2181,10 @@ main(int argc, char *argv[])
 	if (!strcmp(download_dir, pwd->pw_dir))
 		strlcat(download_dir, "/downloads", sizeof download_dir);
 
-	if (stat(download_dir, &sb))
-		errx(1, "must specify a valid download_dir");
+	if (stat(download_dir, &sb)) {
+		if (mkdir(download_dir, S_IRWXU) == -1)
+			err(1, "mkdir download_dir");
+	}
 	if (S_ISDIR(sb.st_mode) == 0)
 		errx(1, "%s not a dir", download_dir);
 	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
@@ -2195,7 +2197,7 @@ main(int argc, char *argv[])
 	snprintf(work_dir, sizeof work_dir, "%s/%s", pwd->pw_dir, XT_DIR);
 	if (stat(work_dir, &sb)) {
 		if (mkdir(work_dir, S_IRWXU) == -1)
-			err(1, "mkdir");
+			err(1, "mkdir work_dir");
 	}
 	if (S_ISDIR(sb.st_mode) == 0)
 		errx(1, "%s not a dir", work_dir);
