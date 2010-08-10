@@ -542,6 +542,8 @@ favadd(struct tab *t, struct karg *args)
 {
 	char			file[PATH_MAX];
 	FILE			*f;
+	char			*line = NULL;
+	size_t			urilen, linelen;
 	WebKitWebFrame		*frame;
 	const gchar		*uri, *title;
 
@@ -554,8 +556,6 @@ favadd(struct tab *t, struct karg *args)
 		warn("favorites");
 		return (1);
 	}
-	if (fseeko(f, 0, SEEK_END) == -1)
-		err(1, "fseeko");
 
 	title = webkit_web_view_get_title(t->wv);
 	frame = webkit_web_view_get_main_frame(t->wv);
@@ -572,8 +572,20 @@ favadd(struct tab *t, struct karg *args)
 		goto done;
 	}
 
+	urilen = strlen(uri);
+
+	while (!feof(f)) {
+		line = fparseln(f, &linelen, NULL, NULL, 0);
+		if (linelen == urilen && !strcmp(line, uri))
+			goto done;
+		free(line);
+		line = NULL;
+	}
+
 	fprintf(f, "\n%s\n%s", title, uri);
 done:
+	if (line)
+		free(line);
 	fclose(f);
 
 	return (0);
