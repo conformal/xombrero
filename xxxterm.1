@@ -128,6 +128,14 @@ To set a default value use *, for example mime_type = video/*,mplayer.
 Note that the action is only passed the URI and not all applications are
 capable of downloading content and therefore one might have to create a wrapper
 script to download the content first.
+.It Cm alias
+Defines an alias for a given URL, so that the URL is loaded when the alias is
+entered in the address bar.
+If the aliased URL includes a %s format specifier, then any argument given after
+the alias on the address bar is substituted.
+For example, if g,http://www.google.com/search?q=%s is defined as an alias,
+then the URL http://www.google.com/search?q=foo is loaded when navigating to
+"g foo".
 .El
 .Pp
 .Nm
