@@ -1261,7 +1261,8 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 	if (t == NULL)
 		errx(1, "webview_npd_cb");
 
-	DNPRINTF(XT_D_NAV, "webview_npd_cb: %s\n",
+	DNPRINTF(XT_D_NAV, "webview_npd_cb: ctrl_click %d %s\n",
+	    t->ctrl_click,
 	    webkit_network_request_get_uri(request));
 
 	uri = (char *)webkit_network_request_get_uri(request);
@@ -1378,11 +1379,10 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *download, struct tab *t)
 	    t->tab_id, filename, uri);
 
 	webkit_download_set_destination_uri(download, uri);
+	webkit_download_start(download);
 
 	if (uri)
 		free(uri);
-
-	webkit_download_start(download);
 
 	return (TRUE); /* start download */
 }
@@ -1883,6 +1883,9 @@ create_new_tab(char *title, int focus)
 	gtk_widget_show_all(t->vbox);
 	t->tab_id = gtk_notebook_append_page(notebook, t->vbox,
 	    t->label);
+
+	/* make notebook tabs reorderable */
+	gtk_notebook_set_tab_reorderable(notebook, t->vbox, TRUE);
 
 	g_object_connect((GObject*)t->cmd,
 	    "signal::key-press-event", (GCallback)cmd_keypress_cb, t,
