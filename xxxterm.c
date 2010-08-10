@@ -192,6 +192,14 @@ struct mime_type {
 };
 TAILQ_HEAD(mime_type_list, mime_type);
 
+/* uri aliases */
+struct alias {
+	char			*a_name;;
+	char			*a_uri;
+	TAILQ_ENTRY(alias)	 entry;
+};
+TAILQ_HEAD(alias_list, alias);
+
 /* settings */
 int			showtabs = 1;	/* show tabs on notebook */
 int			showurl = 1;	/* show url toolbar on notebook */
@@ -215,6 +223,7 @@ SoupSession		*session;
 SoupCookieJar		*cookiejar;
 
 struct mime_type_list	mtl;
+struct alias_list	aliases;
 
 /* protos */
 void			create_new_tab(char *, int);
@@ -243,10 +252,42 @@ valid_url_type(char *url)
 }
 
 char *
+match_alias(char *url_in)
+{
+	struct alias		*a;
+	char			*arg;
+	char			*url_out = NULL;
+
+	arg = url_in;
+	if (strsep(&arg, " \t") == NULL)
+		errx(1, "match_alias: NULL URL");
+
+	TAILQ_FOREACH(a, &aliases, entry) {
+		if (!strcmp(url_in, a->a_name))
+			break;
+	}
+
+	if (a != NULL) {
+		DNPRINTF(XT_D_URL, "match_alias: matched alias %s\n",
+			a->a_name);
+		if (arg != NULL)
+			asprintf(&url_out, a->a_uri, arg);
+		else
+			url_out = strdup(a->a_uri);
+	}
+
+	return (url_out);
+}
+
+char *
 guess_url_type(char *url_in)
 {
 	struct stat		sb;
 	char			*url_out = NULL;
+
+	url_out = match_alias(url_in);
+	if (url_out != NULL)
+		return (url_out);
 
 	/* XXX not sure about this heuristic */
 	if (stat(url_in, &sb) == 0) {
@@ -264,6 +305,39 @@ guess_url_type(char *url_in)
 	DNPRINTF(XT_D_URL, "guess_url_type: guessed %s\n", url_out);
 
 	return (url_out);
+}
+
+void
+add_alias(char *line)
+{
+	char			*l, *alias;
+	struct alias		*a;
+
+	if (line == NULL)
+		errx(1, "add_alias");
+	l = line;
+
+	a = malloc(sizeof(*a));
+	if (a == NULL)
+		err(1, "add_alias: malloc");
+
+	if ((alias = strsep(&l, " \t,")) == NULL || l == NULL)
+		errx(1, "add_alias: incomplete alias definition");
+
+	if (strlen(alias) == 0 || strlen(l) == 0)
+		errx(1, "add_alias: invalid alias definition");
+
+	a->a_name = strdup(alias);
+	if (a->a_name == NULL)
+		err(1, "add_alias: malloc alias");
+
+	a->a_uri = strdup(l);
+	if (a->a_uri == NULL)
+		err(1, "add_alias: malloc uri");
+
+	DNPRINTF(XT_D_CONFIG, "add_alias: %s for %s\n", a->a_name, a->a_uri);
+
+	TAILQ_INSERT_TAIL(&aliases, a, entry);
 }
 
 void
@@ -342,6 +416,7 @@ config_parse(char *filename)
 	DNPRINTF(XT_D_CONFIG, "config_parse: filename %s\n", filename);
 
 	TAILQ_INIT(&mtl);
+	TAILQ_INIT(&aliases);
 
 	if (filename == NULL)
 		return;
@@ -393,6 +468,8 @@ config_parse(char *filename)
 			fancy_bar = atoi(val);
 		else if (!strcmp(var, "mime_type"))
 			add_mime_type(val);
+		else if (!strcmp(var, "alias"))
+			add_alias(val);
 		else if (!strcmp(var, "http_proxy")) {
 			if (http_proxy)
 				free(http_proxy);
