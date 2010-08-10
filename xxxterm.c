@@ -337,7 +337,7 @@ config_parse(char *filename)
 {
 	FILE			*config;
 	char			*line, *cp, *var, *val;
-	size_t			 len, lineno = 0;
+	size_t			len, lineno = 0;
 
 	DNPRINTF(XT_D_CONFIG, "config_parse: filename %s\n", filename);
 
@@ -353,7 +353,7 @@ config_parse(char *filename)
 
 	for (;;) {
 		if ((line = fparseln(config, &len, &lineno, NULL, 0)) == NULL)
-			if (feof(config))
+			if (feof(config) || ferror(config))
 				break;
 
 		cp = line;
@@ -490,13 +490,16 @@ favorites(struct tab *t, struct karg *args)
 
 	for (i = 1;;) {
 		if ((title = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
-			if (feof(f))
+			if (feof(f) || ferror(f))
 				break;
-		if (strlen(title) == 0)
+		if (len == 0) {
+			free(title);
+			title = NULL;
 			continue;
+		}
 
 		if ((uri = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
-			if (feof(f)) {
+			if (feof(f) || ferror(f)) {
 				failed = 1;
 				break;
 			}
