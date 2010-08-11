@@ -1,8 +1,10 @@
 # $xxxterm$
 
+PREFIX?=/usr/local
+BINDIR=${PREFIX}/bin
+
 PROG=xxxterm
 MAN=xxxterm.1
-BINDIR=/usr/local/bin
 
 SRCS= xxxterm.c
 COPT+= -O2
@@ -15,5 +17,7 @@ GTK_CFLAGS!= pkg-config --cflags $(LIBS)
 GTK_LDFLAGS!= pkg-config --libs $(LIBS)
 CFLAGS+= $(GTK_CFLAGS) -Wall -pthread
 LDFLAGS+= $(GTK_LDFLAGS) -pthread
+
+MANDIR= ${PREFIX}/man/cat
 
 .include <bsd.prog.mk>
