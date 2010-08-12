@@ -138,13 +138,18 @@ struct tab {
 	GtkAdjustment		*adjust_v;
 
 	/* flags */
-	int			hints_on;
 	int			focus_wv;
 	int			ctrl_click;
 	gchar			*hover;
 
 	/* hints */
+	int			hints_on;
+	int			hint_mode;
+#define XT_HINT_NONE		(0)
+#define XT_HINT_NUMERICAL	(1)
+#define XT_HINT_ALPHANUM	(2)
 	char			hint_buf[128];
+	char			hint_num[128];
 
 	/* search */
 	char			*search_text;
@@ -556,8 +561,10 @@ void
 disable_hints(struct tab *t)
 {
 	bzero(t->hint_buf, sizeof t->hint_buf);
+	bzero(t->hint_num, sizeof t->hint_num);
 	run_script(t, "vimprobable_clear()");
 	t->hints_on = 0;
+	t->hint_mode = XT_HINT_NONE;
 }
 
 void
@@ -566,12 +573,15 @@ enable_hints(struct tab *t)
 	bzero(t->hint_buf, sizeof t->hint_buf);
 	run_script(t, "vimprobable_show_hints()");
 	t->hints_on = 1;
+	t->hint_mode = XT_HINT_NONE;
 }
 
 #define XT_JS_OPEN	("open;")
 #define XT_JS_OPEN_LEN	(strlen(XT_JS_OPEN))
 #define XT_JS_FIRE	("fire;")
 #define XT_JS_FIRE_LEN	(strlen(XT_JS_FIRE))
+#define XT_JS_FOUND	("found;")
+#define XT_JS_FOUND_LEN	(strlen(XT_JS_FOUND))
 
 int
 run_script(struct tab *t, char *s)
@@ -614,6 +624,11 @@ run_script(struct tab *t, char *s)
 			    &es[XT_JS_FIRE_LEN]);
 			run_script(t, buf);
 			disable_hints(t);
+		}
+
+		if (!strncmp(es, XT_JS_FOUND, XT_JS_FOUND_LEN)) {
+			if (atoi(&es[XT_JS_FOUND_LEN]) == 0)
+				disable_hints(t);
 		}
 
 		free(es);
@@ -1687,41 +1702,103 @@ webview_keypress_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 
 		/* RETURN */
 		if (CLEAN(e->state) == 0 && e->keyval == GDK_Return) {
-			link = strtonum(t->hint_buf, 1, 1000, &errstr);
+			link = strtonum(t->hint_num, 1, 1000, &errstr);
 			if (errstr) {
 				/* we have a string */
 			} else {
 				/* we have a number */
 				snprintf(buf, sizeof buf, "vimprobable_fire(%s)",
-				    t->hint_buf);
+				    t->hint_num);
 				run_script(t, buf);
 			}
-			/* FALLTHROUGH */
+			disable_hints(t);
+		}
+
+		/* BACKSPACE */
+		/* XXX unfuck this */
+		if (CLEAN(e->state) == 0 && e->keyval == GDK_BackSpace) {
+			if (t->hint_mode == XT_HINT_NUMERICAL) {
+				/* last input was numerical */
+				int		l;
+				l = strlen(t->hint_num);
+				if (l > 0) {
+					l--;
+					if (l == 0) {
+						disable_hints(t);
+						enable_hints(t);
+					} else {
+						t->hint_num[l] = '\0';
+						goto num;
+					}
+				}
+			} else if (t->hint_mode == XT_HINT_ALPHANUM) {
+				/* last input was alphanumerical */
+				int		l;
+				l = strlen(t->hint_buf);
+				if (l > 0) {
+					l--;
+					if (l == 0) {
+						disable_hints(t);
+						enable_hints(t);
+					} else {
+						t->hint_buf[l] = '\0';
+						goto anum;
+					}
+				}
+			} else {
+				/* bogus */
+				disable_hints(t);
+			}
 		}
 
 		/* numerical input */
 		if (CLEAN(e->state) == 0 &&
-		    (e->keyval >= GDK_0 && e->keyval <= GDK_9)) {
+		    ((e->keyval >= GDK_0 && e->keyval <= GDK_9) || (e->keyval >= GDK_KP_0 && e->keyval <= GDK_KP_9))) {
 			snprintf(s, sizeof s, "%c", e->keyval);
-			strlcat(t->hint_buf, s, sizeof t->hint_buf);
+			strlcat(t->hint_num, s, sizeof t->hint_num);
 			DNPRINTF(XT_D_JS, "webview_keypress_cb: numerical %s\n",
-			    t->hint_buf);
-
-			link = strtonum(t->hint_buf, 1, 1000, &errstr);
+			    t->hint_num);
+num:
+			link = strtonum(t->hint_num, 1, 1000, &errstr);
 			if (errstr) {
 				DNPRINTF(XT_D_JS, "webview_keypress_cb: invalid link number\n");
 				disable_hints(t);
 			} else {
 				snprintf(buf, sizeof buf, "vimprobable_update_hints(%s)",
-				    t->hint_buf);
+				    t->hint_num);
+				t->hint_mode = XT_HINT_NUMERICAL;
 				run_script(t, buf);
 			}
 
+			/* empty the counter buffer */
+			bzero(t->hint_buf, sizeof t->hint_buf);
 			return (XT_CB_HANDLED);
 		}
 
-		/* unhandled so invalid hint handling */
-		disable_hints(t);
+		/* alphanumerical input */
+		if (
+		    (CLEAN(e->state) == 0 && e->keyval >= GDK_a && e->keyval <= GDK_z) ||
+		    (CLEAN(e->state) == GDK_SHIFT_MASK && e->keyval >= GDK_A && e->keyval <= GDK_Z) ||
+		    (CLEAN(e->state) == 0 && ((e->keyval >= GDK_0 && e->keyval <= GDK_9) ||
+		    ((e->keyval >= GDK_KP_0 && e->keyval <= GDK_KP_9) && (t->hint_mode != XT_HINT_NUMERICAL))))) {
+			snprintf(s, sizeof s, "%c", e->keyval);
+			strlcat(t->hint_buf, s, sizeof t->hint_buf);
+			DNPRINTF(XT_D_JS, "webview_keypress_cb: alphanumerical %s\n",
+			    t->hint_buf);
+anum:
+			snprintf(buf, sizeof buf, "vimprobable_cleanup()");
+			run_script(t, buf);
+
+			snprintf(buf, sizeof buf, "vimprobable_show_hints('%s')",
+			    t->hint_buf);
+			t->hint_mode = XT_HINT_ALPHANUM;
+			run_script(t, buf);
+
+			/* empty the counter buffer */
+			bzero(t->hint_num, sizeof t->hint_num);
+			return (XT_CB_HANDLED);
+		}
+
 		return (XT_CB_HANDLED);
 	}
 

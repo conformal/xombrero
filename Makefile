@@ -20,4 +20,16 @@ LDFLAGS+= $(GTK_LDFLAGS) -pthread
 
 MANDIR= ${PREFIX}/man/cat
 
+CLEANFILES += javascript.h
+
+javascript.h: hinting.js input-focus.js
+	perl js-merge-helper.pl
+
+
+#tables.h: ${.CURDIR}/../tables ${.CURDIR}/../parsedb.pl
+#        perl ${.CURDIR}/../parsedb.pl < ${.CURDIR}/../tables
+
+
+${PROG} ${OBJS} beforedepend: javascript.h
+
 .include <bsd.prog.mk>
