@@ -13,21 +13,32 @@ sub escape_c_string {
 	return $_
 }
 
-open(JSFILE, "hinting.js") or die "Failed to open file: $!";
-$_ = do { local $/; <JSFILE> };
-close(JSFILE);
-my $js_hints = escape_c_string($_);
+if (scalar @ARGV < 1) {
+	print "usage: js-merge-helper.pl jsfile ... \n";
+	exit 1;
+}
 
-open(JSFILE, "input-focus.js") or die "Failed to open file: $!";
-$_ = do { local $/; <JSFILE> };
-close(JSFILE);
-my $js_input = escape_c_string($_);
+my ($jsfile, $define, $js);
 
-open(HFILE, ">javascript.h") or die "Failed to open javascript.h: $!";
-print HFILE "#define JS_SETUP_HINTS ";
-printf  HFILE "\"%s\"\n", $js_hints;
-print HFILE "#define JS_SETUP_INPUT_FOCUS ";
-printf  HFILE "\"%s\"\n", $js_input;
-close(HFILE);
+while (@ARGV) {
+
+	$jsfile = shift @ARGV;
+	my @fn = split /\//, $jsfile;
+	my $fn = pop @fn;
+	$fn =~ /^(.*)\.js$/;
+	
+	$define = "JS_".uc($1);
+	$define =~ s/\-/_/;
+
+	open(JSFILE, $jsfile) or die "Failed to open file: $!";
+	$_ = do { local $/; <JSFILE> };
+	close(JSFILE);
+
+	$js = escape_c_string($_);
+
+	print "#define $define ";
+	printf "\"%s\"\n", $js;
+
+}
 
 exit;

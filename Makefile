@@ -23,7 +23,8 @@ MANDIR= ${PREFIX}/man/cat
 CLEANFILES += javascript.h
 
 javascript.h: hinting.js input-focus.js
-	perl js-merge-helper.pl
+	perl ${.CURDIR}/js-merge-helper.pl ${.CURDIR}/hinting.js \
+	    ${.CURDIR}/input-focus.js >  ${.CURDIR}/javascript.h
 
 
 #tables.h: ${.CURDIR}/../tables ${.CURDIR}/../parsedb.pl
