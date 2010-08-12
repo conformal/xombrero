@@ -593,7 +593,7 @@ run_script(struct tab *t, char *s)
 	char			*es, buf[128];
 
 	DNPRINTF(XT_D_JS, "run_script: tab %d %s\n",
-	    t->tab_id, s == (char *)JS_SETUP_HINTS ? "JS_SETUP_HINTS" : s);
+	    t->tab_id, s == (char *)JS_HINTING ? "JS_HINTING" : s);
 
 	frame = webkit_web_view_get_main_frame(t->wv);
 	ctx = webkit_web_frame_get_global_context(frame);
@@ -1483,7 +1483,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 void
 webview_load_finished_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 {
-	run_script(t, JS_SETUP_HINTS);
+	run_script(t, JS_HINTING);
 }
 
 void
