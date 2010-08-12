@@ -14,6 +14,12 @@ CC?= gcc
 
 all: xxxterm
 
+javascript.h: ../js-merge-helper.pl ../hinting.js
+	perl ../js-merge-helper.pl ../hinting.js \
+		../input-focus.js > javascript.h
+
+xxxterm.o: javascript.h
+
 xxxterm: ../xxxterm.o linux.o
 	$(CC) $(LDFLAGS) -o $@ $+ $(LDADD)
 
@@ -26,5 +32,6 @@ install: all
 
 clean:
 	rm -f xxxterm *.o
+	rm -f javascript.h
 
 .PHONY: all install clean
