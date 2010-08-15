@@ -1397,8 +1397,6 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 
 	newuri = g_strdup_printf(search_string, search);
 
-		gtk_widget_show(t->spinner);
-		gtk_spinner_start(t->spinner);
 	webkit_web_view_load_uri(t->wv, newuri);
 	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 
@@ -2255,6 +2253,10 @@ create_new_tab(char *title, int focus)
 	gtk_widget_show_all(b);
 	gtk_widget_show_all(t->vbox);
 	t->tab_id = gtk_notebook_append_page(notebook, t->vbox, b);
+
+	/* hide spinner for now */
+	gtk_spinner_stop(t->spinner);
+	gtk_widget_hide(t->spinner);
 
 	/* make notebook tabs reorderable */
 	gtk_notebook_set_tab_reorderable(notebook, t->vbox, TRUE);
