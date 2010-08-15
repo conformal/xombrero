@@ -120,6 +120,7 @@ struct tab {
 	TAILQ_ENTRY(tab)	entry;
 	GtkWidget		*vbox;
 	GtkWidget		*label;
+	GtkWidget		*spinner;
 	GtkWidget		*uri_entry;
 	GtkWidget		*search_entry;
 	GtkWidget		*toolbar;
@@ -1396,6 +1397,8 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 
 	newuri = g_strdup_printf(search_string, search);
 
+		gtk_widget_show(t->spinner);
+		gtk_spinner_start(t->spinner);
 	webkit_web_view_load_uri(t->wv, newuri);
 	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 
@@ -1415,6 +1418,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 	switch (webkit_web_view_get_load_status(wview)) {
 	case WEBKIT_LOAD_COMMITTED:
+		gtk_widget_show(t->spinner);
+		gtk_spinner_start(t->spinner);
 		frame = webkit_web_view_get_main_frame(wview);
 		uri = webkit_web_frame_get_uri(frame);
 		if (uri)
@@ -1452,6 +1457,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 #if WEBKIT_CHECK_VERSION(1, 1, 18)
 	case WEBKIT_LOAD_FAILED:
 #endif
+		gtk_spinner_stop(t->spinner);
+		gtk_widget_hide(t->spinner);
 	default:
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 		break;
@@ -2218,6 +2225,7 @@ create_new_tab(char *title, int focus)
 
 	/* label + button for tab */
 	b = gtk_hbox_new(FALSE, 0);
+	t->spinner = gtk_spinner_new ();
 	t->label = gtk_label_new(title);
 	image = gtk_image_new_from_stock(GTK_STOCK_CLOSE, GTK_ICON_SIZE_MENU);
 	button = gtk_button_new();
@@ -2225,6 +2233,7 @@ create_new_tab(char *title, int focus)
 	gtk_button_set_relief(GTK_BUTTON(button), GTK_RELIEF_NONE);
 	gtk_button_set_focus_on_click(GTK_BUTTON(button), FALSE);
 	gtk_widget_set_size_request(t->label, 100, -1);
+	gtk_box_pack_start(GTK_BOX(b), t->spinner, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(b), t->label, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(b), button, FALSE, FALSE, 0);
 
