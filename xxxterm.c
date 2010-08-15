@@ -311,9 +311,9 @@ match_alias(char *url_in)
 		DNPRINTF(XT_D_URL, "match_alias: matched alias %s\n",
 			a->a_name);
 		if (arg != NULL)
-			asprintf(&url_out, a->a_uri, arg);
+			url_out = g_strdup_printf(a->a_uri, arg);
 		else
-			url_out = strdup(a->a_uri);
+			url_out = g_strdup(a->a_uri);
 	}
 
 	return (url_out);
@@ -330,17 +330,10 @@ guess_url_type(char *url_in)
 		return (url_out);
 
 	/* XXX not sure about this heuristic */
-	if (stat(url_in, &sb) == 0) {
-		if (asprintf(&url_out, "file://%s", url_in) == -1)
-			err(1, "aprintf file");
-	} else {
-		/* guess http */
-		if (asprintf(&url_out, "http://%s", url_in) == -1)
-			err(1, "aprintf http");
-	}
-
-	if (url_out == NULL)
-		err(1, "asprintf pointer");
+	if (stat(url_in, &sb) == 0)
+		url_out = g_strdup_printf("file://%s", url_in);
+	else
+		url_out = g_strdup_printf("http://%s", url_in); /* guess http */
 
 	DNPRINTF(XT_D_URL, "guess_url_type: guessed %s\n", url_out);
 
@@ -357,9 +350,7 @@ add_alias(char *line)
 		errx(1, "add_alias");
 	l = line;
 
-	a = malloc(sizeof(*a));
-	if (a == NULL)
-		err(1, "add_alias: malloc");
+	a = g_malloc(sizeof(*a));
 
 	if ((alias = strsep(&l, " \t,")) == NULL || l == NULL)
 		errx(1, "add_alias: incomplete alias definition");
@@ -367,13 +358,8 @@ add_alias(char *line)
 	if (strlen(alias) == 0 || strlen(l) == 0)
 		errx(1, "add_alias: invalid alias definition");
 
-	a->a_name = strdup(alias);
-	if (a->a_name == NULL)
-		err(1, "add_alias: malloc alias");
-
-	a->a_uri = strdup(l);
-	if (a->a_uri == NULL)
-		err(1, "add_alias: malloc uri");
+	a->a_name = g_strdup(alias);
+	a->a_uri = g_strdup(l);
 
 	DNPRINTF(XT_D_CONFIG, "add_alias: %s for %s\n", a->a_name, a->a_uri);
 
@@ -393,9 +379,7 @@ add_mime_type(char *line)
 		errx(1, "add_mime_type");
 	l = line;
 
-	m = malloc(sizeof(*m));
-	if (m == NULL)
-		err(1, "add_mime_type: malloc");
+	m = g_malloc(sizeof(*m));
 
 	if ((mime_type = strsep(&l, " \t,")) == NULL || l == NULL)
 		errx(1, "add_mime_type: invalid mime_type");
@@ -409,13 +393,8 @@ add_mime_type(char *line)
 	if (strlen(mime_type) == 0 || strlen(l) == 0)
 		errx(1, "add_mime_type: invalid mime_type");
 
-	m->mt_type = strdup(mime_type);
-	if (m->mt_type == NULL)
-		err(1, "add_mime_type: malloc type");
-
-	m->mt_action = strdup(l);
-	if (m->mt_action == NULL)
-		err(1, "add_mime_type: malloc action");
+	m->mt_type = g_strdup(mime_type);
+	m->mt_action = g_strdup(l);
 
 	DNPRINTF(XT_D_CONFIG, "add_mime_type: type %s action %s default %d\n",
 	    m->mt_type, m->mt_action, m->mt_default);
@@ -491,7 +470,7 @@ config_parse(char *filename)
 
 		/* get settings */
 		if (!strcmp(var, "home"))
-			home = strdup(val);
+			home = g_strdup(val);
 		else if (!strcmp(var, "ctrl_click_focus"))
 			ctrl_click_focus = atoi(val);
 		else if (!strcmp(var, "read_only_cookies"))
@@ -512,16 +491,12 @@ config_parse(char *filename)
 			add_alias(val);
 		else if (!strcmp(var, "http_proxy")) {
 			if (http_proxy)
-				free(http_proxy);
-			http_proxy = strdup(val);
-			if (http_proxy == NULL)
-				err(1, "http_proxy");
+				g_free(http_proxy);
+			http_proxy = g_strdup(val);
 		} else if (!strcmp(var, "search_string")) {
 			if (search_string)
-				free(search_string);
-			search_string = strdup(val);
-			if (search_string == NULL)
-				err(1, "search_string");
+				g_free(search_string);
+			search_string = g_strdup(val);
 		} else if (!strcmp(var, "download_dir")) {
 			if (val[0] == '~')
 				snprintf(download_dir, sizeof download_dir,
@@ -549,7 +524,7 @@ js_ref_to_string(JSContextRef context, JSValueRef ref)
 		return (NULL);
 
 	l = JSStringGetMaximumUTF8CStringSize(jsref);
-	s = malloc(l);
+	s = g_malloc(l);
 	if (s)
 		JSStringGetUTF8CString(jsref, s, l);
 	JSStringRelease(jsref);
@@ -607,7 +582,7 @@ run_script(struct tab *t, char *s)
 	if (val == NULL) {
 		es = js_ref_to_string(ctx, exception);
 		DNPRINTF(XT_D_JS, "run_script: exception %s\n", es);
-		free(es);
+		g_free(es);
 		return (1);
 	} else {
 		es = js_ref_to_string(ctx, val);
@@ -631,7 +606,7 @@ run_script(struct tab *t, char *s)
 				disable_hints(t);
 		}
 
-		free(es);
+		g_free(es);
 	}
 
 	return (0);
@@ -983,7 +958,7 @@ tabaction(struct tab *t, struct karg *args)
 		}
 		webkit_web_view_load_uri(t->wv, url);
 		if (newuri)
-			free(newuri);
+			g_free(newuri);
 		break;
 	default:
 		rv = XT_CB_PASSTHROUGH;
@@ -992,7 +967,7 @@ tabaction(struct tab *t, struct karg *args)
 
 done:
 	if (args->s) {
-		free(args->s);
+		g_free(args->s);
 		args->s = NULL;
 	}
 
@@ -1223,7 +1198,7 @@ set(struct tab *t, struct karg *args)
 
 done:
 	if (args->s) {
-		free(args->s);
+		g_free(args->s);
 		args->s = NULL;
 	}
 
@@ -1351,6 +1326,16 @@ struct cmd {
 	{ "set",		1,	set,			{0} },
 };
 
+gboolean
+tab_close_cb(GtkWidget *button, struct tab *t)
+{
+	DNPRINTF(XT_D_TAB, "tab_close_cb: tab %d\n", t->tab_id);
+
+	delete_tab(t);
+
+	return (FALSE);
+}
+
 void
 focus_uri_entry_cb(GtkWidget* w, GtkDirectionType direction, struct tab *t)
 {
@@ -1390,7 +1375,7 @@ activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 
 	if (newuri)
-		free(newuri);
+		g_free(newuri);
 }
 
 void
@@ -1409,14 +1394,13 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 		return;
 	}
 
-	if (asprintf(&newuri, search_string, search) == -1)
-		err(1, "activate_search_entry_cb");
+	newuri = g_strdup_printf(search_string, search);
 
 	webkit_web_view_load_uri(t->wv, newuri);
 	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 
 	if (newuri)
-		free(newuri);
+		g_free(newuri);
 }
 
 void
@@ -1640,8 +1624,7 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *download, struct tab *t)
 	if (filename == NULL)
 		return (FALSE); /* abort download */
 
-	if (asprintf(&uri, "file://%s/%s", download_dir, filename) == -1)
-		err(1, "aprintf uri");
+	uri = g_strdup_printf("file://%s/%s", download_dir, filename);
 
 	DNPRINTF(XT_D_DOWNLOAD, "webview_download_cb: tab %d filename %s "
 	    "local %s\n",
@@ -1651,7 +1634,7 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *download, struct tab *t)
 	webkit_download_start(download);
 
 	if (uri)
-		free(uri);
+		g_free(uri);
 
 	return (TRUE); /* start download */
 }
@@ -1667,12 +1650,12 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 
 	if (uri) {
 		if (t->hover) {
-			free(t->hover);
+			g_free(t->hover);
 			t->hover = NULL;
 		}
-		t->hover = strdup(uri);
+		t->hover = g_strdup(uri);
 	} else if (t->hover) {
-		free(t->hover);
+		g_free(t->hover);
 		t->hover = NULL;
 	}
 }
@@ -1976,14 +1959,11 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 
 	if (c[0] == '/' || c[0] == '?') {
 		if (t->search_text) {
-			free(t->search_text);
+			g_free(t->search_text);
 			t->search_text = NULL;
 		}
 
-		t->search_text = strdup(s);
-		if (t->search_text == NULL)
-			err(1, "search_text");
-
+		t->search_text = g_strdup(s);
 		t->search_forward = c[0] == '/';
 
 		goto done;
@@ -1992,7 +1972,7 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 	for (i = 0; i < LENGTH(cmds); i++)
 		if (cmds[i].params) {
 			if (!strncmp(s, cmds[i].cmd, strlen(cmds[i].cmd))) {
-				cmds[i].arg.s = strdup(s);
+				cmds[i].arg.s = g_strdup(s);
 				cmds[i].func(t, &cmds[i].arg);
 			}
 		} else {
@@ -2084,12 +2064,8 @@ create_browser(struct tab *t)
 	t->settings = webkit_web_settings_new();
 
 	g_object_get((GObject *)t->settings, "user-agent", &strval, (char *)NULL);
-	if (strval == NULL)
-		errx(1, "setup_webkit: can't get user-agent property");
-
-	if (asprintf(&t->user_agent, "%s %s+", strval, version) == -1)
-		err(1, "aprintf user-agent");
-	g_free (strval);
+	t->user_agent = g_strdup_printf("%s %s+", strval, version);
+	g_free(strval);
 
 	setup_webkit(t);
 
@@ -2187,7 +2163,7 @@ delete_tab(struct tab *t)
 
 	gtk_widget_destroy(t->vbox);
 
-	free(t->user_agent);
+	g_free(t->user_agent);
 	g_free(t);
 
 	TAILQ_FOREACH(t, &tabs, entry)
@@ -2216,6 +2192,7 @@ create_new_tab(char *title, int focus)
 	struct tab		*t;
 	int			load = 1;
 	char			*newuri = NULL;
+	GtkWidget		*image, *b, *button;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
@@ -2239,9 +2216,17 @@ create_new_tab(char *title, int focus)
 
 	t->vbox = gtk_vbox_new(FALSE, 0);
 
-	/* label for tab */
+	/* label + button for tab */
+	b = gtk_hbox_new(FALSE, 0);
 	t->label = gtk_label_new(title);
+	image = gtk_image_new_from_stock(GTK_STOCK_CLOSE, GTK_ICON_SIZE_MENU);
+	button = gtk_button_new();
+	gtk_button_set_image(GTK_BUTTON(button), image);
+	gtk_button_set_relief(GTK_BUTTON(button), GTK_RELIEF_NONE);
+	gtk_button_set_focus_on_click(GTK_BUTTON(button), FALSE);
 	gtk_widget_set_size_request(t->label, 100, -1);
+	gtk_box_pack_start(GTK_BOX(b), t->label, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(b), button, FALSE, FALSE, 0);
 
 	/* toolbar */
 	t->toolbar = create_toolbar(t);
@@ -2258,9 +2243,9 @@ create_new_tab(char *title, int focus)
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->cmd, FALSE, FALSE, 0);
 
 	/* and show it all */
+	gtk_widget_show_all(b);
 	gtk_widget_show_all(t->vbox);
-	t->tab_id = gtk_notebook_append_page(notebook, t->vbox,
-	    t->label);
+	t->tab_id = gtk_notebook_append_page(notebook, t->vbox, b);
 
 	/* make notebook tabs reorderable */
 	gtk_notebook_set_tab_reorderable(notebook, t->vbox, TRUE);
@@ -2295,6 +2280,8 @@ create_new_tab(char *title, int focus)
 	g_signal_connect(G_OBJECT(t->uri_entry), "focus",
 	    G_CALLBACK(focus_uri_entry_cb), t);
 
+	g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(tab_close_cb), t);
+
 	/* hide stuff */
 	gtk_widget_hide(t->cmd);
 	if (showurl == 0)
@@ -2312,7 +2299,7 @@ create_new_tab(char *title, int focus)
 		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
 
 	if (newuri)
-		free(newuri);
+		g_free(newuri);
 }
 
 void
@@ -2389,16 +2376,13 @@ setup_proxy(char *uri)
 	}
 	if (http_proxy) {
 		if (http_proxy != uri) {
-			free(http_proxy);
+			g_free(http_proxy);
 			http_proxy = NULL;
 		}
 	}
 
 	if (uri) {
-		http_proxy = strdup(uri);
-		if (http_proxy == NULL)
-			err(1, "setup_proxy: strdup");
-
+		http_proxy = g_strdup(uri);
 		DNPRINTF(XT_D_CONFIG, "setup_proxy: %s\n", uri);
 		proxy_uri = soup_uri_new(http_proxy);
 		g_object_set(session, "proxy-uri", proxy_uri, (char *)NULL);
