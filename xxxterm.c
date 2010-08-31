@@ -1415,9 +1415,14 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		errx(1, "notify_load_status_cb");
 
 	switch (webkit_web_view_get_load_status(wview)) {
-	case WEBKIT_LOAD_COMMITTED:
+	case WEBKIT_LOAD_PROVISIONAL:
 		gtk_widget_show(t->spinner);
-		gtk_spinner_start(t->spinner);
+		gtk_spinner_start(GTK_SPINNER(t->spinner));
+		gtk_label_set_text(GTK_LABEL(t->label), "Loading");
+
+		break;
+
+	case WEBKIT_LOAD_COMMITTED:
 		frame = webkit_web_view_get_main_frame(wview);
 		uri = webkit_web_frame_get_uri(frame);
 		if (uri)
@@ -1447,15 +1452,13 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		}
 		gtk_label_set_text(GTK_LABEL(t->label), uri);
 		gtk_window_set_title(GTK_WINDOW(main_window), uri);
-
 		break;
 
-	case WEBKIT_LOAD_PROVISIONAL:
 	case WEBKIT_LOAD_FINISHED:
 #if WEBKIT_CHECK_VERSION(1, 1, 18)
 	case WEBKIT_LOAD_FAILED:
 #endif
-		gtk_spinner_stop(t->spinner);
+		gtk_spinner_stop(GTK_SPINNER(t->spinner));
 		gtk_widget_hide(t->spinner);
 	default:
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
@@ -2254,9 +2257,11 @@ create_new_tab(char *title, int focus)
 	gtk_widget_show_all(t->vbox);
 	t->tab_id = gtk_notebook_append_page(notebook, t->vbox, b);
 
-	/* hide spinner for now */
-	gtk_spinner_stop(t->spinner);
-	gtk_widget_hide(t->spinner);
+	/* turn spinner off if we are a new tab without uri */
+	if (!load) {
+		gtk_spinner_stop(GTK_SPINNER(t->spinner));
+		gtk_widget_hide(t->spinner);
+	}
 
 	/* make notebook tabs reorderable */
 	gtk_notebook_set_tab_reorderable(notebook, t->vbox, TRUE);
