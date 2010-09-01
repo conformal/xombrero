@@ -1420,6 +1420,13 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		gtk_spinner_start(GTK_SPINNER(t->spinner));
 		gtk_label_set_text(GTK_LABEL(t->label), "Loading");
 
+		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), TRUE);
+		t->focus_wv = 1;
+
+		/* take focus if we are visible */
+		if (gtk_notebook_get_current_page(notebook) == t->tab_id)
+			gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+
 		break;
 
 	case WEBKIT_LOAD_COMMITTED:
@@ -1427,13 +1434,6 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		uri = webkit_web_frame_get_uri(frame);
 		if (uri)
 			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
-
-		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), TRUE);
-		t->focus_wv = 1;
-
-		/* take focus if we are visible */
-		if (gtk_notebook_get_current_page(notebook) == t->tab_id)
-			gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 
 		/* color uri_entry */
 		if (uri && !strncmp(uri, "https://", strlen("https://")))
