@@ -12,7 +12,7 @@ MANDIR?= $(PREFIX)/share/man
 
 CC?= gcc
 
-all: xxxterm
+all: javascript.h xxxterm
 
 javascript.h: ../js-merge-helper.pl ../hinting.js
 	perl ../js-merge-helper.pl ../hinting.js \
