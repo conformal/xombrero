@@ -24,7 +24,6 @@
  *	multi letter commands
  *	pre and post counts for commands
  *	fav icon
- *	close tab X
  *	autocompletion on various inputs
  *	create privacy browsing
  *		- encrypted local data
@@ -78,7 +77,6 @@ THE SOFTWARE.
 
 static char		*version = "$xxxterm$";
 
-#define XT_DEBUG
 /* #define XT_DEBUG */
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
@@ -1238,7 +1236,7 @@ struct key {
 	{ 0,			0,	GDK_F5,		navaction,	{.i = XT_NAV_RELOAD} },
 	{ GDK_CONTROL_MASK,	0,	GDK_r,		navaction,	{.i = XT_NAV_RELOAD} },
 	{ GDK_CONTROL_MASK,	0,	GDK_l,		navaction,	{.i = XT_NAV_RELOAD} },
-	{ GDK_SHIFT_MASK,	0,	GDK_F,		favorites,	{0} },
+	{ GDK_CONTROL_MASK,	0,	GDK_f,		favorites,	{0} }, /* XXX make it work in edit boxes */
 
 	/* vertical movement */
 	{ 0,			0,	GDK_j,		move,		{.i = XT_MOVE_DOWN} },
