@@ -20,13 +20,13 @@
  *	inverse color browsing
  *	favs
  *		- add favicon
- *	download files status
  *	multi letter commands
  *	pre and post counts for commands
  *	fav icon
  *	autocompletion on various inputs
  *	create privacy browsing
  *		- encrypted local data
+ *	printing support
  */
 
 #include <stdio.h>
@@ -36,8 +36,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <util.h>
+#include <pthread.h>
 
 #include <sys/queue.h>
+#include <sys/tree.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -77,7 +79,7 @@ THE SOFTWARE.
 
 static char		*version = "$xxxterm$";
 
-/* #define XT_DEBUG */
+#define XT_DEBUG 
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
 #define DNPRINTF(n,x...)	do { if (swm_debug & n) fprintf(stderr, x); } while (0)
@@ -161,6 +163,16 @@ struct tab {
 };
 TAILQ_HEAD(tab_list, tab);
 
+struct download {
+	int			id;
+	RB_ENTRY(download)	entry;
+	WebKitDownload		*download;
+	struct tab		*tab;
+};
+
+RB_HEAD(download_list, download);
+int 				next_download_id = 0;
+
 struct karg {
 	int		i;
 	char		*s;
@@ -171,8 +183,36 @@ struct karg {
 #define XT_DIR			(".xxxterm")
 #define XT_CONF_FILE		("xxxterm.conf")
 #define XT_FAVS_FILE		("favorites")
+#define XT_DOWNLOADS_FILE	("downloads")
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
+#define XT_DOCTYPE		"<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>"
+#define XT_HTML_TAG		"<html xmlns='http://www.w3.org/1999/xhtml'>"
+#define XT_DLMAN_REFRESH	"10"
+
+/* file sizes */
+#define SZ_KB		((uint64_t) 1024)
+#define SZ_MB		(SZ_KB * SZ_KB)
+#define SZ_GB		(SZ_KB * SZ_KB * SZ_KB)
+#define SZ_TB		(SZ_KB * SZ_KB * SZ_KB * SZ_KB)
+
+/*
+ * xxxterm "protocol"
+ */
+
+#define XT_XTP_STR		"xxxt://"
+
+/* XTP classes (xxxt://<class>) */
+#define XT_XTP_DL_STR		"dl"
+
+/* XTP download commands */
+#define XT_XTP_DL_CANCEL	0
+#define XT_XTP_DL_REMOVE	1
+#define XT_XTP_DL_LIST		2
+
+#define XT_XTP_DL_CANCEL_STR	"cancel"
+#define XT_XTP_DL_REMOVE_STR	"remove"
+#define XT_XTP_DL_LIST_STR	"list"
 
 /* actions */
 #define XT_MOVE_INVALID		(0)
@@ -220,6 +260,8 @@ struct passwd		*pwd;
 GtkWidget		*main_window;
 GtkNotebook		*notebook;
 struct tab_list		tabs;
+struct download_list	downloads;
+pthread_mutex_t		dlman_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 /* mime types */
 struct mime_type {
@@ -268,6 +310,14 @@ void			create_new_tab(char *, int);
 void			delete_tab(struct tab *);
 void			adjustfont_webkit(struct tab *, int);
 int			run_script(struct tab *, char *);
+int			download_rb_cmp(struct download *e1, struct download *e2);
+
+int
+download_rb_cmp(struct download *e1, struct download *e2)
+{
+	return (e1->id < e2->id ? -1 : e1->id > e2->id);
+}
+RB_GENERATE(download_list, download, entry, download_rb_cmp);
 
 struct valid_url_types {
 	char		*type;
@@ -276,6 +326,7 @@ struct valid_url_types {
 	{ "https://" },
 	{ "ftp://" },
 	{ "file://" },
+	{ XT_XTP_STR },
 };
 
 int
@@ -1078,6 +1129,141 @@ command(struct tab *t, struct karg *args)
 	return (XT_CB_HANDLED);
 }
 
+/*
+ * write single row for download manager table.
+ * XXX try to do this in memory instead of to a file.
+ */
+void
+dlman_table_row(FILE *f, struct download *dl)
+{
+	WebKitDownloadStatus	stat;
+	char			*status_html = NULL, *cmd_html = NULL;
+	gdouble			progress;
+	char			cur_sz[FMT_SCALED_STRSIZE];
+	char			tot_sz[FMT_SCALED_STRSIZE];
+
+	DNPRINTF(XT_D_DOWNLOAD, "%s: dl->id %d\n", __func__, dl->id);
+
+	stat = webkit_download_get_status(dl->download);
+
+	switch (stat) {
+	case WEBKIT_DOWNLOAD_STATUS_FINISHED:
+		status_html = g_strdup_printf("Finished");
+		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR XT_XTP_DL_STR
+		    "/" XT_XTP_DL_REMOVE_STR "/%d'>Remove</a>", dl->id);
+		break;
+	case WEBKIT_DOWNLOAD_STATUS_STARTED:
+		/* gather size info */
+		progress = 100 * webkit_download_get_progress(dl->download);
+
+		fmt_scaled(webkit_download_get_current_size(dl->download), cur_sz);
+		fmt_scaled(webkit_download_get_total_size(dl->download), tot_sz);
+
+		status_html = g_strdup_printf("%s of %s (%.2f%%)", cur_sz,
+		    tot_sz, progress);
+		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR XT_XTP_DL_STR
+		    "/" XT_XTP_DL_CANCEL_STR "/%d'>Cancel</a>", dl->id);
+
+		break;
+	case WEBKIT_DOWNLOAD_STATUS_CANCELLED:
+		status_html = g_strdup_printf("Cancelled");
+		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR XT_XTP_DL_STR
+		    "/" XT_XTP_DL_REMOVE_STR "/%d'>Remove</a>", dl->id);
+		break;
+	case WEBKIT_DOWNLOAD_STATUS_ERROR:
+		status_html = g_strdup_printf("Error!");
+		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR XT_XTP_DL_STR "/" 
+		    XT_XTP_DL_REMOVE_STR "/%d'>Remove</a>", dl->id);
+		break;
+	case WEBKIT_DOWNLOAD_STATUS_CREATED:
+		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR XT_XTP_DL_STR
+		    "/" XT_XTP_DL_CANCEL_STR "/%d'>Cancel</a>", dl->id);
+		status_html = g_strdup_printf("Starting");
+		break;
+	default:
+		warn("%s: unknown download status", __func__);
+	};
+
+	fprintf(f, "<tr><td>%s</td><td>%s</td><td>%s</td></tr>\n",
+	    webkit_download_get_uri(dl->download), status_html, cmd_html);
+
+	if (status_html)
+		g_free(status_html);
+
+	if (cmd_html)
+		g_free(cmd_html);
+}
+
+/*
+ * write away a page which describes download status' and go there
+ */
+int
+dlman(struct tab *t, struct karg *args)
+{
+	struct download		*dl;
+	char			file[PATH_MAX];
+	FILE			*f;
+	int			n_dl = 0;
+
+	DNPRINTF(XT_D_DOWNLOAD, "%s", __func__);
+
+	if (t == NULL)
+		errx(1, "%s: null tab", __func__);
+
+	/* no two tabs should come here at the same time */
+	pthread_mutex_lock(&dlman_mtx);
+
+	/* open downloads html */
+	snprintf(file, sizeof file, "%s/%s/%s.html", pwd->pw_dir,
+	    XT_DIR, XT_DOWNLOADS_FILE);
+	if ((f = fopen(file, "w+")) == NULL)
+		errx(1, "dlman: writing download file");
+
+	/* header */
+	fprintf(f, XT_DOCTYPE XT_HTML_TAG "\n");
+	fprintf(f, "<head><title>Downloads</title>\n");
+
+	/* ensure the page refreshes every so often */
+	fprintf(f, "<meta http-equiv='refresh' content='" XT_DLMAN_REFRESH
+	    ";url=" XT_XTP_STR XT_XTP_DL_STR "/" XT_XTP_DL_LIST_STR "' />\n");
+
+	/* style (XXX move to separate func so favs can use this too) */
+	fprintf(f, "<style type='text/css'>\n");
+	fprintf(f, "td {text-align: center} th {background-color: #cccccc}\n");
+	fprintf(f, "table {width: 90%%; border: 1px black solid}\n");
+	fprintf(f, "</style>\n");
+
+	/* actual content of page */
+	fprintf(f, "</head><body><h1>Downloads</h1><div align='center'><p>\n");
+	fprintf(f, "<a href='" XT_XTP_STR XT_XTP_DL_STR "/"
+	    XT_XTP_DL_LIST_STR "'>\n");
+	fprintf(f, "[ Refresh Downloads ]</a>\n");
+	fprintf(f, "</p><table><tr><th style='width: 60%%'>File</th>\n");
+	fprintf(f, "<th>Progress</th><th>Command</th></tr>\n");
+
+	RB_FOREACH_REVERSE(dl, download_list, &downloads) {
+		dlman_table_row(f, dl);
+		n_dl ++;
+	}
+
+	/* message if no downloads in list */
+	if (n_dl == 0)
+		fprintf(f, "<tr><td colspan='3'>No downloads</td></tr>\n");
+
+	/* footer */
+	fprintf(f, "</table></div></body></html>");
+	fclose(f);
+
+	snprintf(file, sizeof file, "file://%s/%s/%s.html",
+	    pwd->pw_dir, XT_DIR, XT_DOWNLOADS_FILE);
+	webkit_web_view_load_uri(t->wv, file);
+
+	/* let other tabs in here */
+	pthread_mutex_unlock(&dlman_mtx);
+
+	return (0);
+}
+
 int
 search(struct tab *t, struct karg *args)
 {
@@ -1212,6 +1398,7 @@ struct key {
 	int		(*func)(struct tab *, struct karg *);
 	struct karg	arg;
 } keys[] = {
+	{ GDK_MOD1_MASK, 	0,	GDK_d,		dlman,	{0} },
 	{ 0,			0,	GDK_slash,	command,	{.i = '/'} },
 	{ GDK_SHIFT_MASK,	0,	GDK_question,	command,	{.i = '?'} },
 	{ GDK_SHIFT_MASK,	0,	GDK_colon,	command,	{.i = ':'} },
@@ -1296,6 +1483,7 @@ struct cmd {
 	/* favorites */
 	{ "fav",		0,	favorites,		{0} },
 	{ "favadd",		0,	favadd,			{0} },
+	{ XT_XTP_DL_STR,	0,	dlman,			{0} },
 
 	{ "1",			0,	move,			{.i = XT_MOVE_TOP} },
 
@@ -1350,6 +1538,94 @@ focus_uri_entry_cb(GtkWidget* w, GtkDirectionType direction, struct tab *t)
 		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 }
 
+/*
+ * cancel, remove, etc. downloads
+ */
+void
+dlman_ctrl(struct tab *t, uint8_t cmd, int id)
+{
+	struct download		find, *d;
+
+	DNPRINTF(XT_D_DOWNLOAD, "download control: cmd %d, id %d\n", cmd, id);
+	
+	/* lookup download in question */
+	find.id = id;
+	d = RB_FIND(download_list, &downloads, &find);
+
+	if (d == NULL) {
+		warn("%s: no such download", __func__);
+		return;
+	}
+
+	/* decide what to do */
+	switch (cmd) {
+	case XT_XTP_DL_CANCEL:
+		webkit_download_cancel(d->download);
+		break;
+	case XT_XTP_DL_REMOVE:
+		webkit_download_cancel(d->download); /* just incase */
+		g_object_unref(d->download);
+		RB_REMOVE(download_list, &downloads, d);
+		break;
+	default:
+		warn("%s: unknown command", __func__);
+		break;
+	};
+	dlman(t, NULL);
+	return;
+}
+
+/* 
+ * is the url xxxt:// protocol? 
+ * if so, parse and despatch correct bahvior
+ */
+int
+parse_xtp_url(struct tab *t, const char *url)
+{
+	char		*dup = NULL, *p, *tokens[3], *last;
+	uint8_t		n_tokens = 0;
+
+	DNPRINTF(XT_D_URL, "%s: url %s\n", __func__, url);
+	
+	if (strncmp(url, XT_XTP_STR, strlen(XT_XTP_STR)))
+		return 0;
+
+	dup = g_strdup(url + strlen(XT_XTP_STR));
+
+	/* split out the url */
+	for ((p = strtok_r(dup, "/", &last)); p;
+	    (p = strtok_r(NULL, "/", &last))) {
+		if (n_tokens < 3)
+			tokens[n_tokens++] = p;
+	}
+
+	/* should be exactly three fields 'class/command/arg' */
+	if (n_tokens < 2)
+		return 0;
+
+	/* if a download XTP url */
+	if (!strcmp(XT_XTP_DL_STR, tokens[0])) {
+		if (!strcmp(tokens[1], XT_XTP_DL_CANCEL_STR))
+			dlman_ctrl(t, XT_XTP_DL_CANCEL, atoi(tokens[2]));
+		else if (!strcmp(tokens[1], XT_XTP_DL_REMOVE_STR))
+			dlman_ctrl(t, XT_XTP_DL_REMOVE, atoi(tokens[2]));
+		else if (!strcmp(tokens[1], XT_XTP_DL_LIST_STR))
+			dlman(t, NULL);
+		else /* unsupported download command */
+			warn("%s: unsupported dl command: %s",
+			    __func__, tokens[1]);
+	/* XXX add favorites handling here eventually */
+	} else /* unsupported class */
+		warn("%s: unsupported class: %s", __func__, tokens[0]);
+
+	if (dup)
+		g_free(dup);
+
+	return 1;
+}
+
+
+
 void
 activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 {
@@ -1366,13 +1642,16 @@ activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 
 	uri += strspn(uri, "\t ");
 
-	if (valid_url_type((char *)uri)) {
-		newuri = guess_url_type((char *)uri);
-		uri = newuri;
-	}
+	/* if xxxt:// treat specially */
+	if (!parse_xtp_url(t, uri)) { 
+		if (valid_url_type((char *)uri)) {
+			newuri = guess_url_type((char *)uri);
+			uri = newuri;
+		}
 
-	webkit_web_view_load_uri(t->wv, uri);
-	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+		webkit_web_view_load_uri(t->wv, uri);
+		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+	}
 
 	if (newuri)
 		g_free(newuri);
@@ -1520,7 +1799,8 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 	    webkit_network_request_get_uri(request));
 
 	uri = (char *)webkit_network_request_get_uri(request);
-	if (t->ctrl_click) {
+
+	if ((!parse_xtp_url(t, uri) && (t->ctrl_click))) {
 		t->ctrl_click = 0;
 		create_new_tab(uri, ctrl_click_focus);
 		webkit_web_policy_decision_ignore(pd);
@@ -1619,31 +1899,47 @@ webview_mimetype_cb(WebKitWebView *wv, WebKitWebFrame *frame,
 }
 
 int
-webview_download_cb(WebKitWebView *wv, WebKitDownload *download, struct tab *t)
+webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download, struct tab *t)
 {
 	const gchar		*filename;
 	char			*uri = NULL;
+	struct download		*download_entry;
+	int			ret = TRUE;
 
-	if (download == NULL || t == NULL)
-		errx(1, "webview_download_cb: invalid pointers");
+	if (wk_download == NULL || t == NULL)
+		errx(1, "%s: invalid pointers", __func__);
 
-	filename = webkit_download_get_suggested_filename(download);
+	filename = webkit_download_get_suggested_filename(wk_download);
 	if (filename == NULL)
 		return (FALSE); /* abort download */
 
 	uri = g_strdup_printf("file://%s/%s", download_dir, filename);
 
-	DNPRINTF(XT_D_DOWNLOAD, "webview_download_cb: tab %d filename %s "
-	    "local %s\n",
-	    t->tab_id, filename, uri);
+	DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d filename %s "
+	    "local %s\n", __func__, t->tab_id, filename, uri);
 
-	webkit_download_set_destination_uri(download, uri);
-	webkit_download_start(download);
+	webkit_download_set_destination_uri(wk_download, uri);
+
+	if (webkit_download_get_status(wk_download) ==
+	    WEBKIT_DOWNLOAD_STATUS_ERROR) {
+		warn("%s: download failed to start", __func__);
+		ret = FALSE;
+		gtk_label_set_text(GTK_LABEL(t->label), "Download Failed");
+	} else {
+		download_entry = g_malloc(sizeof(struct download));
+		download_entry->download = wk_download;
+		download_entry->tab = t;
+		download_entry->id = next_download_id ++;
+		RB_INSERT(download_list, &downloads, download_entry);
+		/* get from history */
+		g_object_ref(wk_download);
+		gtk_label_set_text(GTK_LABEL(t->label), "Downloading");
+	}
 
 	if (uri)
 		g_free(uri);
 
-	return (TRUE); /* start download */
+	return (ret); /* start download */
 }
 
 /* XXX currently unused */
@@ -2448,6 +2744,7 @@ main(int argc, char *argv[])
 	argv += optind;
 
 	TAILQ_INIT(&tabs);
+	RB_INIT(&downloads);
 
 	/* prepare gtk */
 	gtk_init(&argc, &argv);
