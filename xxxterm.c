@@ -1515,7 +1515,7 @@ struct cmd {
 };
 
 gboolean
-tab_close_cb(GtkWidget *button, struct tab *t)
+tab_close_cb(GtkWidget *event_box, GdkEventButton *event, struct tab *t)
 {
 	DNPRINTF(XT_D_TAB, "tab_close_cb: tab %d\n", t->tab_id);
 
@@ -2495,7 +2495,7 @@ create_new_tab(char *title, int focus)
 	struct tab		*t;
 	int			load = 1;
 	char			*newuri = NULL;
-	GtkWidget		*image, *b, *button;
+	GtkWidget		*image, *b, *event_box;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
@@ -2524,14 +2524,12 @@ create_new_tab(char *title, int focus)
 	t->spinner = gtk_spinner_new ();
 	t->label = gtk_label_new(title);
 	image = gtk_image_new_from_stock(GTK_STOCK_CLOSE, GTK_ICON_SIZE_MENU);
-	button = gtk_button_new();
-	gtk_button_set_image(GTK_BUTTON(button), image);
-	gtk_button_set_relief(GTK_BUTTON(button), GTK_RELIEF_NONE);
-	gtk_button_set_focus_on_click(GTK_BUTTON(button), FALSE);
+	event_box = gtk_event_box_new();
+	gtk_container_add(GTK_CONTAINER(event_box), image);
 	gtk_widget_set_size_request(t->label, 100, -1);
 	gtk_box_pack_start(GTK_BOX(b), t->spinner, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(b), t->label, FALSE, FALSE, 0);
-	gtk_box_pack_start(GTK_BOX(b), button, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(b), event_box, FALSE, FALSE, 0);
 
 	/* toolbar */
 	t->toolbar = create_toolbar(t);
@@ -2591,7 +2589,7 @@ create_new_tab(char *title, int focus)
 	g_signal_connect(G_OBJECT(t->uri_entry), "focus",
 	    G_CALLBACK(focus_uri_entry_cb), t);
 
-	g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(tab_close_cb), t);
+	g_signal_connect(G_OBJECT(event_box), "button_press_event", G_CALLBACK(tab_close_cb), t);
 
 	/* hide stuff */
 	gtk_widget_hide(t->cmd);
