@@ -183,12 +183,16 @@ struct karg {
 #define XT_DIR			(".xxxterm")
 #define XT_CONF_FILE		("xxxterm.conf")
 #define XT_FAVS_FILE		("favorites")
-#define XT_DOWNLOADS_FILE	("downloads")
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
 #define XT_DOCTYPE		"<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>"
 #define XT_HTML_TAG		"<html xmlns='http://www.w3.org/1999/xhtml'>"
 #define XT_DLMAN_REFRESH	"10"
+#define XT_PAGE_STYLE		"<style type='text/css'>\ntd {text-align:" \
+				"center}\nth {background-color: #cccccc}"  \
+				"table {width: 90%%; border: 1px black"    \
+				" solid}\n</style>\n\n"
+
 
 /* file sizes */
 #define SZ_KB		((uint64_t) 1024)
@@ -261,7 +265,6 @@ GtkWidget		*main_window;
 GtkNotebook		*notebook;
 struct tab_list		tabs;
 struct download_list	downloads;
-pthread_mutex_t		dlman_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 /* mime types */
 struct mime_type {
@@ -713,6 +716,7 @@ help(struct tab *t, struct karg *args)
 	return (0);
 }
 
+/* XXX stylise the same as the download manager */
 int
 favorites(struct tab *t, struct karg *args)
 {
@@ -1130,14 +1134,15 @@ command(struct tab *t, struct karg *args)
 }
 
 /*
- * write single row for download manager table.
- * XXX try to do this in memory instead of to a file.
+ * Return a new string with a download row (in html)
+ * appended. Old string is freed.
  */
-void
-dlman_table_row(FILE *f, struct download *dl)
+char *
+dlman_table_row(char *html, struct download *dl)
 {
+
 	WebKitDownloadStatus	stat;
-	char			*status_html = NULL, *cmd_html = NULL;
+	char			*status_html = NULL, *cmd_html = NULL, *new_html;
 	gdouble			progress;
 	char			cur_sz[FMT_SCALED_STRSIZE];
 	char			tot_sz[FMT_SCALED_STRSIZE];
@@ -1184,25 +1189,29 @@ dlman_table_row(FILE *f, struct download *dl)
 		warn("%s: unknown download status", __func__);
 	};
 
-	fprintf(f, "<tr><td>%s</td><td>%s</td><td>%s</td></tr>\n",
-	    webkit_download_get_uri(dl->download), status_html, cmd_html);
+	new_html = g_strdup_printf(
+	    "%s\n<tr><td>%s</td><td>%s</td><td>%s</td></tr>\n",
+	    html, webkit_download_get_uri(dl->download),
+	    status_html, cmd_html);
+	g_free(html);
 
 	if (status_html)
 		g_free(status_html);
 
 	if (cmd_html)
 		g_free(cmd_html);
+
+	return new_html;
 }
 
 /*
- * write away a page which describes download status' and go there
+ * Generate a web page detailing the status of any downloads
  */
 int
 dlman(struct tab *t, struct karg *args)
 {
 	struct download		*dl;
-	char			file[PATH_MAX];
-	FILE			*f;
+	char			*header, *body, *footer, *page, *tmp;
 	int			n_dl = 0;
 
 	DNPRINTF(XT_D_DOWNLOAD, "%s", __func__);
@@ -1210,56 +1219,41 @@ dlman(struct tab *t, struct karg *args)
 	if (t == NULL)
 		errx(1, "%s: null tab", __func__);
 
-	/* no two tabs should come here at the same time */
-	pthread_mutex_lock(&dlman_mtx);
+	/* header - with refresh so as to update */
+	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG "\n<head>"
+	    "<title>Downloads</title>\n<meta http-equiv='refresh' content='"
+	    XT_DLMAN_REFRESH ";url=" XT_XTP_STR XT_XTP_DL_STR "/"
+	    XT_XTP_DL_LIST_STR "' />\n" XT_PAGE_STYLE "</head>\n");
 
-	/* open downloads html */
-	snprintf(file, sizeof file, "%s/%s/%s.html", pwd->pw_dir,
-	    XT_DIR, XT_DOWNLOADS_FILE);
-	if ((f = fopen(file, "w+")) == NULL)
-		errx(1, "dlman: writing download file");
-
-	/* header */
-	fprintf(f, XT_DOCTYPE XT_HTML_TAG "\n");
-	fprintf(f, "<head><title>Downloads</title>\n");
-
-	/* ensure the page refreshes every so often */
-	fprintf(f, "<meta http-equiv='refresh' content='" XT_DLMAN_REFRESH
-	    ";url=" XT_XTP_STR XT_XTP_DL_STR "/" XT_XTP_DL_LIST_STR "' />\n");
-
-	/* style (XXX move to separate func so favs can use this too) */
-	fprintf(f, "<style type='text/css'>\n");
-	fprintf(f, "td {text-align: center} th {background-color: #cccccc}\n");
-	fprintf(f, "table {width: 90%%; border: 1px black solid}\n");
-	fprintf(f, "</style>\n");
-
-	/* actual content of page */
-	fprintf(f, "</head><body><h1>Downloads</h1><div align='center'><p>\n");
-	fprintf(f, "<a href='" XT_XTP_STR XT_XTP_DL_STR "/"
-	    XT_XTP_DL_LIST_STR "'>\n");
-	fprintf(f, "[ Refresh Downloads ]</a>\n");
-	fprintf(f, "</p><table><tr><th style='width: 60%%'>File</th>\n");
-	fprintf(f, "<th>Progress</th><th>Command</th></tr>\n");
+	body = g_strdup_printf("<body><h1>Downloads</h1><div align='center'>"
+	    "<p>\n<a href='" XT_XTP_STR XT_XTP_DL_STR "/" XT_XTP_DL_LIST_STR "'>"
+	    "\n[ Refresh Downloads ]</a>\n</p><table><tr><th style='width: 60%%'>"
+	    "File</th>\n<th>Progress</th><th>Command</th></tr>\n");
 
 	RB_FOREACH_REVERSE(dl, download_list, &downloads) {
-		dlman_table_row(f, dl);
+		body = dlman_table_row(body, dl);
 		n_dl ++;
 	}
 
 	/* message if no downloads in list */
-	if (n_dl == 0)
-		fprintf(f, "<tr><td colspan='3'>No downloads</td></tr>\n");
+	if (n_dl == 0) {
+		tmp = body;
+		body = g_strdup_printf("%s\n<tr><td colspan='3'>"
+		    "No downloads</td></tr>\n", body);
+		g_free(tmp);
+	}
 
 	/* footer */
-	fprintf(f, "</table></div></body></html>");
-	fclose(f);
+	footer = g_strdup_printf("</table></div></body></html>");
 
-	snprintf(file, sizeof file, "file://%s/%s/%s.html",
-	    pwd->pw_dir, XT_DIR, XT_DOWNLOADS_FILE);
-	webkit_web_view_load_uri(t->wv, file);
+	page = g_strdup_printf("%s%s%s", header, body, footer);
 
-	/* let other tabs in here */
-	pthread_mutex_unlock(&dlman_mtx);
+	g_free(header);
+	g_free(body);
+	g_free(footer);
+
+	webkit_web_view_load_string(t->wv, page, "text/html", "UTF-8", "");
+	g_free(page);
 
 	return (0);
 }
