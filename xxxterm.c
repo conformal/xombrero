@@ -38,8 +38,12 @@
 #include <util.h>
 #include <pthread.h>
 
-#include <sys/queue.h>
+#ifdef __linux__
+#include "linux/tree.h"
+#else
 #include <sys/tree.h>
+#endif
+#include <sys/queue.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 

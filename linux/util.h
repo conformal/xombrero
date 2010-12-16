@@ -14,6 +14,8 @@ char   *fparseln(FILE *, size_t *, size_t *, const char [3], int);
 
 long long strtonum(const char *, long long, long long, const char **);
 
+int	fmt_scaled(long long number, char *result);
+
 #ifndef WAIT_ANY
 #define WAIT_ANY		(-1)
 #endif
@@ -22,3 +24,8 @@ long long strtonum(const char *, long long, long long, const char **);
 #ifndef TAILQ_END
 #define	TAILQ_END(head)			NULL
 #endif
+
+/*
+ * fmt_scaled(3) specific flags. (from OpenBSD util.h)
+ */
+#define FMT_SCALED_STRSIZE	7	/* minus sign, 4 digits, suffix, null byte */
