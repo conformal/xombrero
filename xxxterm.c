@@ -97,6 +97,7 @@ static char		*version = "$xxxterm$";
 #define	XT_D_CONFIG		0x0080
 #define	XT_D_JS			0x0100
 #define	XT_D_FAVORITE		0x0200
+#define	XT_D_PRINTING		0x1024
 u_int32_t		swm_debug = 0
 			    | XT_D_MOVE
 			    | XT_D_KEY
@@ -1393,6 +1394,26 @@ done:
 	return (XT_CB_PASSTHROUGH);
 }
 
+/*
+ * Make a hardcopy of the page
+ */
+int
+print_page(struct tab *t, struct karg *args)
+{
+	WebKitWebFrame			*frame;
+
+	DNPRINTF(XT_D_PRINTING, "%s:", __func__);
+
+	/*
+	 * for now we just call the GTK print box,
+	 * but later we might decide to hook in a command.
+	 */
+	frame = webkit_web_view_get_main_frame(t->wv);
+	webkit_web_frame_print(frame);
+
+	return (0);
+}
+
 /* inherent to GTK not all keys will be caught at all times */
 /* XXX sort key bindings */
 struct key {
@@ -1403,6 +1424,7 @@ struct key {
 	struct karg	arg;
 } keys[] = {
 	{ GDK_MOD1_MASK, 	0,	GDK_d,		dlman,	{0} },
+	{ GDK_CONTROL_MASK,	0,	GDK_p,		print_page,	{0}},
 	{ 0,			0,	GDK_slash,	command,	{.i = '/'} },
 	{ GDK_SHIFT_MASK,	0,	GDK_question,	command,	{.i = '?'} },
 	{ GDK_SHIFT_MASK,	0,	GDK_colon,	command,	{.i = ':'} },
@@ -1490,6 +1512,7 @@ struct cmd {
 	{ XT_XTP_DL_STR,	0,	dlman,			{0} },
 
 	{ "1",			0,	move,			{.i = XT_MOVE_TOP} },
+	{ "print",		0,	print_page,		{0} },
 
 	/* tabs */
 	{ "o",			1,	tabaction,		{.i = XT_TAB_OPEN} },
