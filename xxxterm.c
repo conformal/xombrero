@@ -96,6 +96,7 @@ static char		*version = "$xxxterm$";
 #define	XT_D_DOWNLOAD		0x0040
 #define	XT_D_CONFIG		0x0080
 #define	XT_D_JS			0x0100
+#define	XT_D_FAVORITE		0x0200
 u_int32_t		swm_debug = 0
 			    | XT_D_MOVE
 			    | XT_D_KEY
@@ -720,20 +721,21 @@ help(struct tab *t, struct karg *args)
 	return (0);
 }
 
-/* XXX stylise the same as the download manager */
+/* show a list of favorites (bookmarks) */
 int
 favorites(struct tab *t, struct karg *args)
 {
 	char			file[PATH_MAX];
-	FILE			*f, *h;
+	FILE			*f;
 	char			*uri = NULL, *title = NULL;
 	size_t			len, lineno = 0;
 	int			i, failed = 0;
+	char			*header, *body, *tmp, *html = NULL;
+
+	DNPRINTF(XT_D_FAVORITE, "%s:", __func__);
 
 	if (t == NULL)
 		errx(1, "favorites");
-
-	/* XXX run a digest over the favorites file instead of always generating it */
 
 	/* open favorites */
 	snprintf(file, sizeof file, "%s/%s/%s",
@@ -743,15 +745,14 @@ favorites(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	/* open favorites html */
-	snprintf(file, sizeof file, "%s/%s/%s.html",
-	    pwd->pw_dir, XT_DIR, XT_FAVS_FILE);
-	if ((h = fopen(file, "w+")) == NULL) {
-		warn("favorites.html");
-		return (1);
-	}
+	/* header */
+	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG "\n<head>"
+	    "<title>Favorites</title>\n" XT_PAGE_STYLE "</head>"
+	    "<h1>Favorites</h1>\n");
 
-	fprintf(h, "<html><body>Favorites:<p>\n<ol>\n");
+	/* body */
+	body = g_strdup_printf("<div align='center'><table><tr>"
+	    "<th>Link</th></tr>\n");
 
 	for (i = 1;;) {
 		if ((title = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
@@ -765,11 +766,17 @@ favorites(struct tab *t, struct karg *args)
 
 		if ((uri = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
 			if (feof(f) || ferror(f)) {
+				errx(0, "%s: can't parse favorites\n",
+				    __func__);
 				failed = 1;
 				break;
 			}
 
-		fprintf(h, "<li><a href=\"%s\">%s</a><br>\n", uri, title);
+		tmp = body;
+		body = g_strdup_printf("%s<tr><td><a href='%s'>"
+		    "%s</a></td></tr>\n", body, uri, title);
+		
+		g_free(tmp);
 
 		free(uri);
 		uri = NULL;
@@ -777,29 +784,27 @@ favorites(struct tab *t, struct karg *args)
 		title = NULL;
 		i++;
 	}
+	fclose(f);
 
 	if (uri)
 		free(uri);
 	if (title)
 		free(title);
 
-	fprintf(h, "</ol></body></html>");
-	fclose(f);
-	fclose(h);
-
-	if (failed) {
-		webkit_web_view_load_string(t->wv,
-		    "<html><body>Invalid favorites file</body></html>",
-		    NULL,
-		    NULL,
-		    NULL);
-	} else {
-		snprintf(file, sizeof file, "file://%s/%s/%s.html",
-		    pwd->pw_dir, XT_DIR, XT_FAVS_FILE);
-		webkit_web_view_load_uri(t->wv, file);
+	/* render */
+	if (!failed) {
+		html = g_strdup_printf("%s%s</table></div></html>", header, body);
+		webkit_web_view_load_string(t->wv, html, NULL, NULL, NULL);
 	}
 
-	return (0);
+	if (header)
+		g_free(header);
+	if (body)
+		g_free(body);
+	if (html)
+		g_free(html);
+
+	return (failed);
 }
 
 int
@@ -1389,6 +1394,7 @@ done:
 }
 
 /* inherent to GTK not all keys will be caught at all times */
+/* XXX sort key bindings */
 struct key {
 	guint		mask;
 	guint		modkey;
