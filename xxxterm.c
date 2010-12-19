@@ -753,7 +753,7 @@ favorites(struct tab *t, struct karg *args)
 
 	/* body */
 	body = g_strdup_printf("<div align='center'><table><tr>"
-	    "<th>Link</th></tr>\n");
+	    "<th>&#35;</th><th>Link</th></tr>\n");
 
 	for (i = 1;;) {
 		if ((title = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
@@ -774,8 +774,9 @@ favorites(struct tab *t, struct karg *args)
 			}
 
 		tmp = body;
-		body = g_strdup_printf("%s<tr><td><a href='%s'>"
-		    "%s</a></td></tr>\n", body, uri, title);
+		body = g_strdup_printf("%s<tr><td>%d</td>"
+		    "<td style='text-align:left'><a href='%s'>"
+		    "%s</a></td></tr>\n", body, i, uri, title);
 		
 		g_free(tmp);
 
