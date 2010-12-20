@@ -1231,9 +1231,6 @@ dlman_table_row(char *html, struct download *dl)
 	return new_html;
 }
 
-/*
- * Generate a web page detailing the status of any downloads
- */
 int
 show_hist(struct tab *t, struct karg *args)
 {
@@ -1276,6 +1273,10 @@ show_hist(struct tab *t, struct karg *args)
 
 	return (0);
 }
+
+/*
+ * Generate a web page detailing the status of any downloads
+ */
 int
 dlman(struct tab *t, struct karg *args)
 {
