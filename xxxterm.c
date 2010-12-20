@@ -83,7 +83,7 @@ THE SOFTWARE.
 
 static char		*version = "$xxxterm$";
 
-#define XT_DEBUG 
+//#define XT_DEBUG
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
 #define DNPRINTF(n,x...)	do { if (swm_debug & n) fprintf(stderr, x); } while (0)
@@ -177,7 +177,7 @@ struct download {
 };
 
 RB_HEAD(download_list, download);
-int 				next_download_id = 0;
+int				next_download_id = 0;
 
 struct karg {
 	int		i;
@@ -777,7 +777,7 @@ favorites(struct tab *t, struct karg *args)
 		body = g_strdup_printf("%s<tr><td>%d</td>"
 		    "<td style='text-align:left'><a href='%s'>"
 		    "%s</a></td></tr>\n", body, i, uri, title);
-		
+
 		g_free(tmp);
 
 		free(uri);
@@ -1188,7 +1188,7 @@ dlman_table_row(char *html, struct download *dl)
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_ERROR:
 		status_html = g_strdup_printf("Error!");
-		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR XT_XTP_DL_STR "/" 
+		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR XT_XTP_DL_STR "/"
 		    XT_XTP_DL_REMOVE_STR "/%d'>Remove</a>", dl->id);
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_CREATED:
@@ -1424,7 +1424,7 @@ struct key {
 	int		(*func)(struct tab *, struct karg *);
 	struct karg	arg;
 } keys[] = {
-	{ GDK_MOD1_MASK, 	0,	GDK_d,		dlman,	{0} },
+	{ GDK_MOD1_MASK,	0,	GDK_d,		dlman,		{0} },
 	{ GDK_CONTROL_MASK,	0,	GDK_p,		print_page,	{0}},
 	{ 0,			0,	GDK_slash,	command,	{.i = '/'} },
 	{ GDK_SHIFT_MASK,	0,	GDK_question,	command,	{.i = '?'} },
@@ -1575,7 +1575,7 @@ dlman_ctrl(struct tab *t, uint8_t cmd, int id)
 	struct download		find, *d;
 
 	DNPRINTF(XT_D_DOWNLOAD, "download control: cmd %d, id %d\n", cmd, id);
-	
+
 	/* lookup download in question */
 	find.id = id;
 	d = RB_FIND(download_list, &downloads, &find);
@@ -1603,8 +1603,8 @@ dlman_ctrl(struct tab *t, uint8_t cmd, int id)
 	return;
 }
 
-/* 
- * is the url xxxt:// protocol? 
+/*
+ * is the url xxxt:// protocol?
  * if so, parse and despatch correct bahvior
  */
 int
@@ -1614,7 +1614,7 @@ parse_xtp_url(struct tab *t, const char *url)
 	uint8_t		n_tokens = 0;
 
 	DNPRINTF(XT_D_URL, "%s: url %s\n", __func__, url);
-	
+
 	if (strncmp(url, XT_XTP_STR, strlen(XT_XTP_STR)))
 		return 0;
 
