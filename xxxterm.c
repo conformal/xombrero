@@ -319,7 +319,7 @@ void			create_new_tab(char *, int);
 void			delete_tab(struct tab *);
 void			adjustfont_webkit(struct tab *, int);
 int			run_script(struct tab *, char *);
-int			download_rb_cmp(struct download *e1, struct download *e2);
+int			download_rb_cmp(struct download *, struct download *);
 
 int
 download_rb_cmp(struct download *e1, struct download *e2)
@@ -795,7 +795,8 @@ favorites(struct tab *t, struct karg *args)
 
 	/* render */
 	if (!failed) {
-		html = g_strdup_printf("%s%s</table></div></html>", header, body);
+		html = g_strdup_printf("%s%s</table></div></html>",
+		    header, body);
 		webkit_web_view_load_string(t->wv, html, NULL, NULL, NULL);
 	}
 
