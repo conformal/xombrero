@@ -1572,6 +1572,7 @@ struct cmd {
 	{ "favadd",		0,	favadd,			{0} },
 	{ XT_XTP_DL_STR,	0,	dlman,			{0} },
 	{ "h"		,	0,	show_hist,		{0} },
+	{ "hist"	,	0,	show_hist,		{0} },
 	{ "history"	,	0,	show_hist,		{0} },
 
 	{ "1",			0,	move,			{.i = XT_MOVE_TOP} },
