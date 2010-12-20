@@ -83,7 +83,7 @@ THE SOFTWARE.
 
 static char		*version = "$xxxterm$";
 
-//#define XT_DEBUG
+/*#define XT_DEBUG*/
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
 #define DNPRINTF(n,x...)	do { if (swm_debug & n) fprintf(stderr, x); } while (0)
@@ -169,14 +169,21 @@ struct tab {
 };
 TAILQ_HEAD(tab_list, tab);
 
+struct history {
+	RB_ENTRY(history)	entry;
+	const gchar		*uri;
+	const gchar		*title;
+};
+RB_HEAD(history_list, history);
+
 struct download {
-	int			id;
 	RB_ENTRY(download)	entry;
+	int			id;
 	WebKitDownload		*download;
 	struct tab		*tab;
 };
-
 RB_HEAD(download_list, download);
+
 int				next_download_id = 0;
 
 struct karg {
@@ -270,6 +277,7 @@ struct passwd		*pwd;
 GtkWidget		*main_window;
 GtkNotebook		*notebook;
 struct tab_list		tabs;
+struct history_list	hl;
 struct download_list	downloads;
 
 /* mime types */
@@ -320,6 +328,13 @@ void			delete_tab(struct tab *);
 void			adjustfont_webkit(struct tab *, int);
 int			run_script(struct tab *, char *);
 int			download_rb_cmp(struct download *, struct download *);
+
+int
+history_rb_cmp(struct history *h1, struct history *h2)
+{
+	return (strcmp(h1->uri, h2->uri));
+}
+RB_GENERATE(history_list, history, entry, history_rb_cmp);
 
 int
 download_rb_cmp(struct download *e1, struct download *e2)
@@ -1220,6 +1235,48 @@ dlman_table_row(char *html, struct download *dl)
  * Generate a web page detailing the status of any downloads
  */
 int
+show_hist(struct tab *t, struct karg *args)
+{
+	char			*header, *body, *footer, *page, *tmp;
+	struct history		*h;
+
+	DNPRINTF(XT_D_CMD, "%s", __func__);
+
+	if (t == NULL)
+		errx(1, "%s: null tab", __func__);
+
+	/* header */
+	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG "\n<head>"
+	    "<title>Favorites</title>\n" XT_PAGE_STYLE "</head>"
+	    "<h1>History</h1>\n");
+
+	/* body */
+	body = g_strdup_printf("<div align='center'><table><tr>"
+	    "<th>URI</th><th>Title</th></tr>\n");
+
+	RB_FOREACH_REVERSE(h, history_list, &hl) {
+		tmp = body;
+		body = g_strdup_printf(
+		    "%s\n<tr><td><a href=\"%s\">%s</a></td><td>%s</td></tr>\n",
+		    body, h->uri, h->uri, h->title);
+		g_free(tmp);
+	}
+
+	/* footer */
+	footer = g_strdup_printf("</table></div></body></html>");
+
+	page = g_strdup_printf("%s%s%s", header, body, footer);
+
+	g_free(header);
+	g_free(body);
+	g_free(footer);
+
+	webkit_web_view_load_string(t->wv, page, "text/html", "UTF-8", "");
+	g_free(page);
+
+	return (0);
+}
+int
 dlman(struct tab *t, struct karg *args)
 {
 	struct download		*dl;
@@ -1426,6 +1483,7 @@ struct key {
 	struct karg	arg;
 } keys[] = {
 	{ GDK_MOD1_MASK,	0,	GDK_d,		dlman,		{0} },
+	{ GDK_CONTROL_MASK,	0,	GDK_h,		show_hist,	{0} },
 	{ GDK_CONTROL_MASK,	0,	GDK_p,		print_page,	{0}},
 	{ 0,			0,	GDK_slash,	command,	{.i = '/'} },
 	{ GDK_SHIFT_MASK,	0,	GDK_question,	command,	{.i = '?'} },
@@ -1716,7 +1774,12 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 {
 	GdkColor		color;
 	WebKitWebFrame		*frame;
-	const gchar		*uri;
+	const gchar		*set = NULL, *uri = NULL, *title = NULL;
+	struct history		*h, find;
+	int			add = 0;
+
+	DNPRINTF(XT_D_URL, "notify_load_status_cb: %d\n",
+	    webkit_web_view_get_load_status(wview));
 
 	if (t == NULL)
 		errx(1, "notify_load_status_cb");
@@ -1752,13 +1815,40 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		break;
 
 	case WEBKIT_LOAD_FIRST_VISUALLY_NON_EMPTY_LAYOUT:
-		uri = webkit_web_view_get_title(wview);
-		if (uri == NULL) {
-			frame = webkit_web_view_get_main_frame(wview);
-			uri = webkit_web_frame_get_uri(frame);
+		title = webkit_web_view_get_title(wview);
+		frame = webkit_web_view_get_main_frame(wview);
+		uri = webkit_web_frame_get_uri(frame);
+		if (title)
+			set = title;
+		else if (uri)
+			set = uri;
+		else
+			break;
+
+		gtk_label_set_text(GTK_LABEL(t->label), set);
+		gtk_window_set_title(GTK_WINDOW(main_window), set);
+
+		if (uri) {
+			if (!strncmp(uri, "http://", strlen("http://")) ||
+			    !strncmp(uri, "https://", strlen("https://")) ||
+			    !strncmp(uri, "file://", strlen("file://")))
+				add = 1;
+			if (add == 0)
+				break;
+			find.uri = uri;
+			h = RB_FIND(history_list, &hl, &find);
+			if (h)
+				break;
+
+			h = g_malloc(sizeof *h);
+			h->uri = g_strdup(uri);
+			if (title)
+				h->title = g_strdup(title);
+			else
+				h->title = g_strdup(uri);
+			RB_INSERT(history_list, &hl, h);
 		}
-		gtk_label_set_text(GTK_LABEL(t->label), uri);
-		gtk_window_set_title(GTK_WINDOW(main_window), uri);
+
 		break;
 
 	case WEBKIT_LOAD_FINISHED:
@@ -2771,6 +2861,7 @@ main(int argc, char *argv[])
 	argv += optind;
 
 	TAILQ_INIT(&tabs);
+	RB_INIT(&hl);
 	RB_INIT(&downloads);
 
 	/* prepare gtk */
