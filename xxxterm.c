@@ -316,7 +316,7 @@ int			enable_scripts = 0;
 int			enable_plugins = 0;
 int			default_font_size = 12;
 int			fancy_bar = 1;	/* fancy toolbar */
-unsigned		refresh_update = 10; /* download refresh interval */
+unsigned		refresh_interval = 10; /* download refresh interval */
 
 /*
  * Session IDs.
@@ -614,6 +614,8 @@ config_parse(char *filename)
 			enable_plugins = atoi(val);
 		else if (!strcmp(var, "default_font_size"))
 			default_font_size = atoi(val);
+		else if (!strcmp(var, "refresh_interval"))
+			refresh_interval = atoi(val);
 		else if (!strcmp(var, "fancy_bar"))
 			fancy_bar = atoi(val);
 		else if (!strcmp(var, "mime_type"))
@@ -1371,11 +1373,11 @@ dlman(struct tab *t, struct karg *args)
 		generate_xtp_session_key(&dl_session_key);
 
 	/* header - with refresh so as to update */
-	if (refresh_update >= 1)
+	if (refresh_interval >= 1)
 		ref = g_strdup_printf(
 		    "<meta http-equiv='refresh' content='%u"
 		    ";url=%s%s/%s/%s' />\n",
-		    refresh_update,
+		    refresh_interval,
 		    XT_XTP_STR,
 		    XT_XTP_DL_STR,
 		    dl_session_key,
