@@ -204,9 +204,8 @@ struct karg {
 #define XT_DLMAN_REFRESH	"10"
 #define XT_PAGE_STYLE		"<style type='text/css'>\ntd {text-align:" \
 				"center}\nth {background-color: #cccccc}"  \
-				"table {width: 90%%; border: 1px black"    \
+				"table {width: 90%; border: 1px black"    \
 				" solid}\n</style>\n\n"
-
 
 /* file sizes */
 #define SZ_KB		((uint64_t) 1024)
@@ -316,6 +315,7 @@ int			enable_scripts = 0;
 int			enable_plugins = 0;
 int			default_font_size = 12;
 int			fancy_bar = 1;	/* fancy toolbar */
+unsigned		refresh_update = 10; /* download refresh interval */
 
 /*
  * Session IDs.
@@ -819,8 +819,11 @@ favorites(struct tab *t, struct karg *args)
 
 	/* header */
 	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG "\n<head>"
-	    "<title>Favorites</title>\n" XT_PAGE_STYLE "</head>"
-	    "<h1>Favorites</h1>\n");
+	    "<title>Favorites</title>\n"
+	    "%s"
+	    "</head>"
+	    "<h1>Favorites</h1>\n",
+	    XT_PAGE_STYLE);
 
 	/* body */
 	body = g_strdup_printf("<div align='center'><table><tr>"
@@ -1305,8 +1308,11 @@ show_hist(struct tab *t, struct karg *args)
 
 	/* header */
 	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG "\n<head>"
-	    "<title>Favorites</title>\n" XT_PAGE_STYLE "</head>"
-	    "<h1>History</h1>\n");
+	    "<title>Favorites</title>\n"
+	    "%s"
+	    "</head>"
+	    "<h1>History</h1>\n",
+	    XT_PAGE_STYLE);
 
 	/* body */
 	body = g_strdup_printf("<div align='center'><table><tr>"
@@ -1343,6 +1349,7 @@ dlman(struct tab *t, struct karg *args)
 {
 	struct download		*dl;
 	char			*header, *body, *footer, *page, *tmp;
+	char			*ref;
 	int			n_dl = 0;
 	struct tab		*tt;
 
@@ -1363,11 +1370,25 @@ dlman(struct tab *t, struct karg *args)
 		generate_xtp_session_key(&dl_session_key);
 
 	/* header - with refresh so as to update */
-	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG "\n<head>"
-	    "<title>Downloads</title>\n<meta http-equiv='refresh' content='"
-	    XT_DLMAN_REFRESH ";url=" XT_XTP_STR XT_XTP_DL_STR "/%s/"
-	    XT_XTP_DL_LIST_STR "' />\n" XT_PAGE_STYLE "</head>\n",
-	    dl_session_key);
+	if (refresh_update >= 1)
+		ref = g_strdup_printf(
+		    "<meta http-equiv='refresh' content='%u"
+		    ";url=%s%s/%s/%s' />\n",
+		    refresh_update,
+		    XT_XTP_STR,
+		    XT_XTP_DL_STR,
+		    dl_session_key,
+		    XT_XTP_DL_LIST_STR);
+		else
+			ref = g_strdup("");
+
+
+	header = g_strdup_printf(
+	    "%s\n<head>"
+	    "<title>Downloads</title>\n%s%s</head>\n",
+	    XT_DOCTYPE XT_HTML_TAG,
+	    ref,
+	    XT_PAGE_STYLE);
 
 	body = g_strdup_printf("<body><h1>Downloads</h1><div align='center'>"
 	    "<p>\n<a href='" XT_XTP_STR XT_XTP_DL_STR "/%s/"
@@ -1409,6 +1430,7 @@ dlman(struct tab *t, struct karg *args)
 		updating_dl_tabs = 0;
 	}
 
+	g_free(ref);
 	g_free(header);
 	g_free(body);
 	g_free(footer);
