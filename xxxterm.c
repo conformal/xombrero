@@ -279,6 +279,7 @@ GtkNotebook		*notebook;
 struct tab_list		tabs;
 struct history_list	hl;
 struct download_list	downloads;
+char			*global_search;
 
 /* mime types */
 struct mime_type {
@@ -1335,8 +1336,12 @@ search(struct tab *t, struct karg *args)
 
 	if (t == NULL || args == NULL)
 		errx(1, "search");
-	if (t->search_text == NULL)
-		return (XT_CB_PASSTHROUGH);
+	if (t->search_text == NULL) {
+		if (global_search == NULL)
+			return (XT_CB_PASSTHROUGH);
+		else
+			t->search_text = g_strdup(global_search);
+	}
 
 	DNPRINTF(XT_D_CMD, "search: tab %d opc %d forw %d text %s\n",
 	    t->tab_id, args->i, t->search_forward, t->search_text);
@@ -2390,6 +2395,9 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 		}
 
 		t->search_text = g_strdup(s);
+		if (global_search)
+			g_free(global_search);
+		global_search = g_strdup(s);
 		t->search_forward = c[0] == '/';
 
 		goto done;
