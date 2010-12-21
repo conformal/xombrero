@@ -203,8 +203,8 @@ struct karg {
 #define XT_DOCTYPE		"<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>"
 #define XT_HTML_TAG		"<html xmlns='http://www.w3.org/1999/xhtml'>"
 #define XT_DLMAN_REFRESH	"10"
-#define XT_PAGE_STYLE		"<style type='text/css'>\ntd {text-align:" \
-				"center}\nth {background-color: #cccccc}"  \
+#define XT_PAGE_STYLE		"<style type='text/css'>\n" \
+				"th {background-color: #cccccc}"  \
 				"table {width: 90%; border: 1px black"    \
 				" solid}\n</style>\n\n"
 
@@ -851,9 +851,8 @@ favorites(struct tab *t, struct karg *args)
 			}
 
 		tmp = body;
-		body = g_strdup_printf("%s<tr><td>%d</td>"
-		    "<td style='text-align:left'><a href='%s'>"
-		    "%s</a></td></tr>\n", body, i, uri, title);
+		body = g_strdup_printf("%s<tr><td>%d</td><td><a href='%s'>%s"
+		    "</a></td></tr>\n", body, i, uri, title);
 
 		g_free(tmp);
 
@@ -1408,7 +1407,8 @@ dlman(struct tab *t, struct karg *args)
 	/* message if no downloads in list */
 	if (n_dl == 0) {
 		tmp = body;
-		body = g_strdup_printf("%s\n<tr><td colspan='3'>"
+		body = g_strdup_printf("%s\n<tr><td colspan='3'"
+		    " style='text-align: center'>"
 		    "No downloads</td></tr>\n", body);
 		g_free(tmp);
 	}
