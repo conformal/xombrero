@@ -20,13 +20,13 @@
  *	inverse color browsing
  *	favs
  *		- add favicon
+ *		- store in sqlite
  *	multi letter commands
  *	pre and post counts for commands
  *	fav icon
  *	autocompletion on various inputs
  *	create privacy browsing
  *		- encrypted local data
- *	printing support
  */
 
 #include <stdio.h>
@@ -148,6 +148,7 @@ struct tab {
 	int			focus_wv;
 	int			ctrl_click;
 	gchar			*hover;
+	int			xtp_meaning; /* identifies dls/favorites */
 
 	/* hints */
 	int			hints_on;
@@ -231,6 +232,11 @@ struct karg {
 #define XT_XTP_DL_REMOVE_STR	"remove"
 #define XT_XTP_DL_LIST_STR	"list"
 
+/* xtp tab meanings */
+#define XT_XTP_TAB_MEANING_NORMAL	0 /* normal url */
+#define XT_XTP_TAB_MEANING_DOWNLOAD	1 /* download manager in this tab */
+#define XT_XTP_TAB_MEANING_FAVORITE	2 /* favorite manager in this tab */
+
 /* actions */
 #define XT_MOVE_INVALID		(0)
 #define XT_MOVE_DOWN		(1)
@@ -279,6 +285,7 @@ GtkNotebook		*notebook;
 struct tab_list		tabs;
 struct history_list	hl;
 struct download_list	downloads;
+int			updating_dl_tabs = 0;
 char			*global_search;
 
 /* mime types */
@@ -310,6 +317,16 @@ int			enable_plugins = 0;
 int			default_font_size = 12;
 int			fancy_bar = 1;	/* fancy toolbar */
 
+/*
+ * Session IDs.
+ * We use these to prevent people putting xxxt:// URLs on
+ * websites in the wild. We generate 8 bytes and represent in hex (16 chars)
+ */
+#define XT_XTP_SES_KEY_SZ	8
+#define XT_XTP_SES_KEY_HEX_FMT  \
+	"%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
+char			*dl_session_key;
+
 char			*home = "http://www.peereboom.us";
 char			*search_string = NULL;
 char			*http_proxy = NULL;
@@ -336,6 +353,44 @@ history_rb_cmp(struct history *h1, struct history *h2)
 	return (strcmp(h1->uri, h2->uri));
 }
 RB_GENERATE(history_list, history, entry, history_rb_cmp);
+
+/*
+ * generate a session key to secure xtp commands.
+ * pass in a ptr to the key in question and it will
+ * be modified in place.
+ */
+void
+generate_xtp_session_key(char **key)
+{
+	uint8_t			rand_bytes[XT_XTP_SES_KEY_SZ];
+
+	/* free old key */
+	if (*key)
+		g_free(*key);
+
+	/* make a new one */
+	arc4random_buf(rand_bytes, XT_XTP_SES_KEY_SZ);
+	*key = g_strdup_printf(XT_XTP_SES_KEY_HEX_FMT,
+	    rand_bytes[0], rand_bytes[1], rand_bytes[2], rand_bytes[3],
+	    rand_bytes[4], rand_bytes[5], rand_bytes[6], rand_bytes[7]);
+
+	DNPRINTF(XT_D_DOWNLOAD, "%s: new session key '%s'\n", __func__, *key);
+}
+
+/*
+ * validate a xtp session key.
+ * return 1 if OK
+ */
+int
+validate_xtp_session_key(char *trusted, char *untrusted)
+{
+	if (strcmp(trusted, untrusted) != 0) {
+		warn("%s: xtp session key mismatch possible spoof", __func__);
+		return (0);
+	}
+
+	return (1);
+}
 
 int
 download_rb_cmp(struct download *e1, struct download *e2)
@@ -1183,7 +1238,8 @@ dlman_table_row(char *html, struct download *dl)
 	case WEBKIT_DOWNLOAD_STATUS_FINISHED:
 		status_html = g_strdup_printf("Finished");
 		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR XT_XTP_DL_STR
-		    "/" XT_XTP_DL_REMOVE_STR "/%d'>Remove</a>", dl->id);
+		    "/%s/" XT_XTP_DL_REMOVE_STR "/%d'>Remove</a>",
+		    dl_session_key, dl->id);
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_STARTED:
 		/* gather size info */
@@ -1195,22 +1251,26 @@ dlman_table_row(char *html, struct download *dl)
 		status_html = g_strdup_printf("%s of %s (%.2f%%)", cur_sz,
 		    tot_sz, progress);
 		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR XT_XTP_DL_STR
-		    "/" XT_XTP_DL_CANCEL_STR "/%d'>Cancel</a>", dl->id);
+		    "/%s/" XT_XTP_DL_CANCEL_STR "/%d'>Cancel</a>",
+		    dl_session_key, dl->id);
 
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_CANCELLED:
 		status_html = g_strdup_printf("Cancelled");
 		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR XT_XTP_DL_STR
-		    "/" XT_XTP_DL_REMOVE_STR "/%d'>Remove</a>", dl->id);
+		    "/%s/" XT_XTP_DL_REMOVE_STR "/%d'>Remove</a>",
+		    dl_session_key, dl->id);
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_ERROR:
 		status_html = g_strdup_printf("Error!");
-		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR XT_XTP_DL_STR "/"
-		    XT_XTP_DL_REMOVE_STR "/%d'>Remove</a>", dl->id);
+		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR
+		    XT_XTP_DL_STR "/%s/" XT_XTP_DL_REMOVE_STR
+		    "/%d'>Remove</a>", dl_session_key, dl->id);
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_CREATED:
 		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR XT_XTP_DL_STR
-		    "/" XT_XTP_DL_CANCEL_STR "/%d'>Cancel</a>", dl->id);
+		    "/%s/" XT_XTP_DL_CANCEL_STR "/%d'>Cancel</a>",
+		    dl_session_key, dl->id);
 		status_html = g_strdup_printf("Starting");
 		break;
 	default:
@@ -1284,22 +1344,37 @@ dlman(struct tab *t, struct karg *args)
 	struct download		*dl;
 	char			*header, *body, *footer, *page, *tmp;
 	int			n_dl = 0;
+	struct tab		*tt;
 
 	DNPRINTF(XT_D_DOWNLOAD, "%s", __func__);
 
 	if (t == NULL)
 		errx(1, "%s: null tab", __func__);
 
+	/* mark as a download manager tab */
+	t->xtp_meaning = XT_XTP_TAB_MEANING_DOWNLOAD;
+
+	/*
+	 * Generate a new session key for next dlman instance.
+	 * This only happens for the top level call to dlman(),
+	 * in which case updating_dl_tabs is 0.
+	 */
+	if (!updating_dl_tabs)
+		generate_xtp_session_key(&dl_session_key);
+
 	/* header - with refresh so as to update */
 	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG "\n<head>"
 	    "<title>Downloads</title>\n<meta http-equiv='refresh' content='"
-	    XT_DLMAN_REFRESH ";url=" XT_XTP_STR XT_XTP_DL_STR "/"
-	    XT_XTP_DL_LIST_STR "' />\n" XT_PAGE_STYLE "</head>\n");
+	    XT_DLMAN_REFRESH ";url=" XT_XTP_STR XT_XTP_DL_STR "/%s/"
+	    XT_XTP_DL_LIST_STR "' />\n" XT_PAGE_STYLE "</head>\n",
+	    dl_session_key);
 
 	body = g_strdup_printf("<body><h1>Downloads</h1><div align='center'>"
-	    "<p>\n<a href='" XT_XTP_STR XT_XTP_DL_STR "/" XT_XTP_DL_LIST_STR "'>"
-	    "\n[ Refresh Downloads ]</a>\n</p><table><tr><th style='width: 60%%'>"
-	    "File</th>\n<th>Progress</th><th>Command</th></tr>\n");
+	    "<p>\n<a href='" XT_XTP_STR XT_XTP_DL_STR "/%s/"
+	    XT_XTP_DL_LIST_STR "'>\n[ Refresh Downloads ]</a>\n"
+	    "</p><table><tr><th style='width: 60%%'>"
+	    "File</th>\n<th>Progress</th><th>Command</th></tr>\n",
+	    dl_session_key);
 
 	RB_FOREACH_REVERSE(dl, download_list, &downloads) {
 		body = dlman_table_row(body, dl);
@@ -1318,6 +1393,21 @@ dlman(struct tab *t, struct karg *args)
 	footer = g_strdup_printf("</table></div></body></html>");
 
 	page = g_strdup_printf("%s%s%s", header, body, footer);
+
+
+	/*
+	 * update all download manager tabs as the xtp session
+	 * key has now changed. No need to update the current tab.
+	 * Already did that above.
+	 */
+	if (!updating_dl_tabs) {
+		updating_dl_tabs = 1; /* stop infinite recursion */
+		TAILQ_FOREACH(tt, &tabs, entry)
+			if ((tt->xtp_meaning == XT_XTP_TAB_MEANING_DOWNLOAD)
+			    && (tt != t))
+				dlman(tt, NULL);
+		updating_dl_tabs = 0;
+	}
 
 	g_free(header);
 	g_free(body);
@@ -1674,17 +1764,20 @@ dlman_ctrl(struct tab *t, uint8_t cmd, int id)
 	return;
 }
 
-/*
- * is the url xxxt:// protocol?
+/* 
+ * is the url xtp protocol? (xxxt://)
  * if so, parse and despatch correct bahvior
  */
 int
 parse_xtp_url(struct tab *t, const char *url)
 {
-	char		*dup = NULL, *p, *tokens[3], *last;
+	char		*dup = NULL, *p, *tokens[4], *last;
 	uint8_t		n_tokens = 0;
 
 	DNPRINTF(XT_D_URL, "%s: url %s\n", __func__, url);
+
+	/* xtp tab meaning is normal unless proven special */
+	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
 
 	if (strncmp(url, XT_XTP_STR, strlen(XT_XTP_STR)))
 		return 0;
@@ -1694,26 +1787,37 @@ parse_xtp_url(struct tab *t, const char *url)
 	/* split out the url */
 	for ((p = strtok_r(dup, "/", &last)); p;
 	    (p = strtok_r(NULL, "/", &last))) {
-		if (n_tokens < 3)
+		if (n_tokens < 4)
 			tokens[n_tokens++] = p;
 	}
 
-	/* should be exactly three fields 'class/command/arg' */
-	if (n_tokens < 2)
+	/* should be atleast three fields 'class/seskey/command/arg' */
+	if (n_tokens < 3)
 		return 0;
 
 	/* if a download XTP url */
 	if (!strcmp(XT_XTP_DL_STR, tokens[0])) {
-		if (!strcmp(tokens[1], XT_XTP_DL_CANCEL_STR))
-			dlman_ctrl(t, XT_XTP_DL_CANCEL, atoi(tokens[2]));
-		else if (!strcmp(tokens[1], XT_XTP_DL_REMOVE_STR))
-			dlman_ctrl(t, XT_XTP_DL_REMOVE, atoi(tokens[2]));
-		else if (!strcmp(tokens[1], XT_XTP_DL_LIST_STR))
+
+		/* validate session key */
+		if (!validate_xtp_session_key(dl_session_key, tokens[1])) {
+			warn("%s: invalid download session key", __func__);
+			return (1);
+		}
+
+		if (!strcmp(tokens[2], XT_XTP_DL_CANCEL_STR)) {
+			dlman_ctrl(t, XT_XTP_DL_CANCEL, atoi(tokens[3]));
+		} else if (!strcmp(tokens[2], XT_XTP_DL_REMOVE_STR)) {
+			dlman_ctrl(t, XT_XTP_DL_REMOVE, atoi(tokens[3]));
+		} else if (!strcmp(tokens[2], XT_XTP_DL_LIST_STR))
 			dlman(t, NULL);
 		else /* unsupported download command */
 			warn("%s: unsupported dl command: %s",
-			    __func__, tokens[1]);
-	/* XXX add favorites handling here eventually */
+			    __func__, tokens[2]);
+	/*
+	 * XXX add favorites handling here eventually
+	 * As this function is getting long, split out into separate func for
+	 * each class.
+	 */
 	} else /* unsupported class */
 		warn("%s: unsupported class: %s", __func__, tokens[0]);
 
@@ -2679,6 +2783,9 @@ create_new_tab(char *title, int focus)
 	gtk_entry_set_has_frame(GTK_ENTRY(t->cmd), FALSE);
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->cmd, FALSE, FALSE, 0);
 
+	/* xtp meaning is normal by default */
+	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
+
 	/* and show it all */
 	gtk_widget_show_all(b);
 	gtk_widget_show_all(t->vbox);
@@ -2878,6 +2985,9 @@ main(int argc, char *argv[])
 	TAILQ_INIT(&tabs);
 	RB_INIT(&hl);
 	RB_INIT(&downloads);
+
+	/* generate session keys for xtp pages */
+	generate_xtp_session_key(&dl_session_key);
 
 	/* prepare gtk */
 	gtk_init(&argc, &argv);
