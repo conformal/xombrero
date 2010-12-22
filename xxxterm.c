@@ -28,6 +28,7 @@
  *	autocompletion on various inputs
  *	create privacy browsing
  *		- encrypted local data
+ *	add js whitelist
  */
 
 #include <stdio.h>
@@ -2044,8 +2045,10 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 	switch (webkit_web_view_get_load_status(wview)) {
 	case WEBKIT_LOAD_PROVISIONAL:
+#if GTK_CHECK_VERSION(2, 20, 0)
 		gtk_widget_show(t->spinner);
 		gtk_spinner_start(GTK_SPINNER(t->spinner));
+#endif
 		gtk_label_set_text(GTK_LABEL(t->label), "Loading");
 
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), TRUE);
@@ -2113,8 +2116,10 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 #if WEBKIT_CHECK_VERSION(1, 1, 18)
 	case WEBKIT_LOAD_FAILED:
 #endif
+#if GTK_CHECK_VERSION(2, 20, 0)
 		gtk_spinner_stop(GTK_SPINNER(t->spinner));
 		gtk_widget_hide(t->spinner);
+#endif
 	default:
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 		break;
@@ -2746,7 +2751,8 @@ create_browser(struct tab *t)
 	/* set defaults */
 	t->settings = webkit_web_settings_new();
 
-	g_object_get((GObject *)t->settings, "user-agent", &strval, (char *)NULL);
+	g_object_get((GObject *)t->settings, "user-agent", &strval,
+	    (char *)NULL);
 	t->user_agent = g_strdup_printf("%s %s+", strval, version);
 	g_free(strval);
 
@@ -2901,13 +2907,17 @@ create_new_tab(char *title, int focus)
 
 	/* label + button for tab */
 	b = gtk_hbox_new(FALSE, 0);
+#if GTK_CHECK_VERSION(2, 20, 0)
 	t->spinner = gtk_spinner_new ();
+#endif
 	t->label = gtk_label_new(title);
 	image = gtk_image_new_from_stock(GTK_STOCK_CLOSE, GTK_ICON_SIZE_MENU);
 	event_box = gtk_event_box_new();
 	gtk_container_add(GTK_CONTAINER(event_box), image);
 	gtk_widget_set_size_request(t->label, 100, -1);
+#if GTK_CHECK_VERSION(2, 20, 0)
 	gtk_box_pack_start(GTK_BOX(b), t->spinner, FALSE, FALSE, 0);
+#endif
 	gtk_box_pack_start(GTK_BOX(b), t->label, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(b), event_box, FALSE, FALSE, 0);
 
@@ -2933,12 +2943,13 @@ create_new_tab(char *title, int focus)
 	gtk_widget_show_all(t->vbox);
 	t->tab_id = gtk_notebook_append_page(notebook, t->vbox, b);
 
+#if GTK_CHECK_VERSION(2, 20, 0)
 	/* turn spinner off if we are a new tab without uri */
 	if (!load) {
 		gtk_spinner_stop(GTK_SPINNER(t->spinner));
 		gtk_widget_hide(t->spinner);
 	}
-
+#endif
 	/* make notebook tabs reorderable */
 	gtk_notebook_set_tab_reorderable(notebook, t->vbox, TRUE);
 
