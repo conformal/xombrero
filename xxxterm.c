@@ -994,7 +994,7 @@ favorites(struct tab *t, struct karg *args)
 
 	/* body */
 	body = g_strdup_printf("<div align='center'><table><tr>"
-	    "<th style='width:15%%'>&#35;</th><th>Link</th></tr>\n");
+	    "<th style='width: 4%%'>&#35;</th><th>Link</th></tr>\n");
 
 	for (i = 1;;) {
 		if ((title = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
