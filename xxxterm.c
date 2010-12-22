@@ -197,7 +197,8 @@ struct domain {
 };
 RB_HEAD(domain_list, domain);
 
-int				next_download_id = 0;
+/* starts from 1 to catch atoi() failures when calling dlman_ctrl() */
+int				next_download_id = 1;
 
 struct karg {
 	int		i;
@@ -227,32 +228,36 @@ struct karg {
 #define SZ_TB		(SZ_KB * SZ_KB * SZ_KB * SZ_KB)
 
 /*
- * xxxterm "protocol"
+ * xxxterm "protocol" (xtp)
+ * We use this for managing stuff like downloads and favorites. They
+ * make magical HTML pages in memory which have xxxt:// links in order
+ * to communicate with xxxterm's internals. These links take the format:
+ * xxxt://class/session_key/action/arg
+ *
+ * Don't begin xtp class/actions as 0. atoi returns that on error.
+ *
+ * Typically we have not put addition of items in this framework, as
+ * adding items is either done via an ex-command or via a keybinding instead.
  */
 
 #define XT_XTP_STR		"xxxt://"
 
 /* XTP classes (xxxt://<class>) */
-#define XT_XTP_DL_STR		"dl"	/* downloads */
-#define XT_XTP_HL_STR		"hl"	/* history */
+#define XT_XTP_DL		1	/* downloads */
+#define XT_XTP_HL		2	/* history */
 
-/* XTP download commands */
-#define XT_XTP_DL_CANCEL	0
-#define XT_XTP_DL_REMOVE	1
-#define XT_XTP_DL_LIST		2
+/* XTP download actions */
+#define XT_XTP_DL_LIST		1
+#define XT_XTP_DL_CANCEL	2
+#define XT_XTP_DL_REMOVE	3
 
-#define XT_XTP_DL_CANCEL_STR	"cancel"
-#define XT_XTP_DL_REMOVE_STR	"remove"
-#define XT_XTP_DL_LIST_STR	"list"
-
-/* XTP history commands */
-#define XT_XTP_HL_REMOVE	0
+/* XTP history actions */
 #define XT_XTP_HL_LIST		1
+#define XT_XTP_HL_REMOVE	2
 
-#define XT_XTP_HL_REMOVE_STR	"remove"
-#define XT_XTP_HL_LIST_STR	"list"
+/* XXX add favorites to xtp */
 
-/* xtp tab meanings */
+/* xtp tab meanings  - identifies which tabs have xtp pages in */
 #define XT_XTP_TAB_MEANING_NORMAL	0 /* normal url */
 #define XT_XTP_TAB_MEANING_DOWNLOAD	1 /* download manager in this tab */
 #define XT_XTP_TAB_MEANING_FAVORITE	2 /* favorite manager in this tab */
@@ -1446,48 +1451,54 @@ dlman_table_row(char *html, struct download *dl)
 	gdouble			progress;
 	char			cur_sz[FMT_SCALED_STRSIZE];
 	char			tot_sz[FMT_SCALED_STRSIZE];
+	char			*xtp_prefix; 
 
 	DNPRINTF(XT_D_DOWNLOAD, "%s: dl->id %d\n", __func__, dl->id);
+
+	/* All actions wil take this form:
+	 * xxxt://class/seskey
+	 */ 
+	xtp_prefix = g_strdup_printf("%s%d/%s/",
+	    XT_XTP_STR, XT_XTP_DL, dl_session_key);
 
 	stat = webkit_download_get_status(dl->download);
 
 	switch (stat) {
 	case WEBKIT_DOWNLOAD_STATUS_FINISHED:
 		status_html = g_strdup_printf("Finished");
-		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR XT_XTP_DL_STR
-		    "/%s/" XT_XTP_DL_REMOVE_STR "/%d'>Remove</a>",
-		    dl_session_key, dl->id);
+		cmd_html = g_strdup_printf(
+		    "<a href='%s%d/%d'>Remove</a>",
+		    xtp_prefix, XT_XTP_DL_REMOVE, dl->id);
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_STARTED:
 		/* gather size info */
 		progress = 100 * webkit_download_get_progress(dl->download);
 
-		fmt_scaled(webkit_download_get_current_size(dl->download), cur_sz);
-		fmt_scaled(webkit_download_get_total_size(dl->download), tot_sz);
+		fmt_scaled(
+		    webkit_download_get_current_size(dl->download), cur_sz);
+		fmt_scaled(
+		    webkit_download_get_total_size(dl->download), tot_sz);
 
 		status_html = g_strdup_printf("%s of %s (%.2f%%)", cur_sz,
 		    tot_sz, progress);
-		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR XT_XTP_DL_STR
-		    "/%s/" XT_XTP_DL_CANCEL_STR "/%d'>Cancel</a>",
-		    dl_session_key, dl->id);
+		cmd_html = g_strdup_printf("<a href='%s%d/%d'>Cancel</a>",
+		    xtp_prefix, XT_XTP_DL_CANCEL, dl->id);
 
 		break;
+		/* LLL */
 	case WEBKIT_DOWNLOAD_STATUS_CANCELLED:
 		status_html = g_strdup_printf("Cancelled");
-		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR XT_XTP_DL_STR
-		    "/%s/" XT_XTP_DL_REMOVE_STR "/%d'>Remove</a>",
-		    dl_session_key, dl->id);
+		cmd_html = g_strdup_printf("<a href='%s%d/%d'>Remove</a>",
+		    xtp_prefix, XT_XTP_DL_REMOVE, dl->id);
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_ERROR:
 		status_html = g_strdup_printf("Error!");
-		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR
-		    XT_XTP_DL_STR "/%s/" XT_XTP_DL_REMOVE_STR
-		    "/%d'>Remove</a>", dl_session_key, dl->id);
+		cmd_html = g_strdup_printf("<a href='%s%d/%d'>Remove</a>",
+		    xtp_prefix, XT_XTP_DL_REMOVE, dl->id);
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_CREATED:
-		cmd_html = g_strdup_printf("<a href='" XT_XTP_STR XT_XTP_DL_STR
-		    "/%s/" XT_XTP_DL_CANCEL_STR "/%d'>Cancel</a>",
-		    dl_session_key, dl->id);
+		cmd_html = g_strdup_printf("<a href='%s%d/%d'>Cancel</a>",
+		    xtp_prefix, XT_XTP_DL_CANCEL, dl->id);
 		status_html = g_strdup_printf("Starting");
 		break;
 	default:
@@ -1506,6 +1517,8 @@ dlman_table_row(char *html, struct download *dl)
 
 	if (cmd_html)
 		g_free(cmd_html);
+
+	g_free(xtp_prefix);
 
 	return new_html;
 }
@@ -1552,7 +1565,7 @@ show_hist(struct tab *t, struct karg *args)
 {
 	char			*header, *body, *footer, *page, *tmp;
 	struct history		*h;
-	int			i = 0;
+	int			i = 1; /* all ids start 1 */
 
 	DNPRINTF(XT_D_CMD, "%s", __func__);
 
@@ -1585,14 +1598,17 @@ show_hist(struct tab *t, struct karg *args)
 		    "<td><a href='%s'>%s</a></td>"
 		    "<td>%s</td>"
 		    "<td style='text-align: center'>"
-		    "<a href='" XT_XTP_STR XT_XTP_HL_STR "/%s/"
-		    XT_XTP_HL_REMOVE_STR "/%d'>X</a></td></tr>\n",
-		    body, h->uri, h->uri, h->title, hl_session_key, i ++);
+		    "<a href='%s%d/%s/%d/%d'>X</a></td></tr>\n",
+		    body, h->uri, h->uri, h->title,
+		    XT_XTP_STR, XT_XTP_HL, hl_session_key,
+		    XT_XTP_HL_REMOVE, i ++);
+
 		g_free(tmp);
 		i ++;
 	}
 
-	if (i == 0) {
+	/* small message if there are none */
+	if (i == 1) {
 		tmp = body;
 		body = g_strdup_printf("%s\n<tr><td style='text-align:center'"
 		    "colspan='3'>No History</td></tr>\n", body);
@@ -1630,7 +1646,7 @@ dlman(struct tab *t, struct karg *args)
 	struct download		*dl;
 	char			*header, *body, *footer, *page, *tmp;
 	char			*ref;
-	int			n_dl = 0;
+	int			n_dl = 1;
 
 	DNPRINTF(XT_D_DOWNLOAD, "%s", __func__);
 
@@ -1652,12 +1668,12 @@ dlman(struct tab *t, struct karg *args)
 	if (refresh_interval >= 1)
 		ref = g_strdup_printf(
 		    "<meta http-equiv='refresh' content='%u"
-		    ";url=%s%s/%s/%s' />\n",
+		    ";url=%s%d/%s/%d' />\n",
 		    refresh_interval,
 		    XT_XTP_STR,
-		    XT_XTP_DL_STR,
+		    XT_XTP_DL,
 		    dl_session_key,
-		    XT_XTP_DL_LIST_STR);
+		    XT_XTP_DL_LIST);
 		else
 			ref = g_strdup("");
 
@@ -1670,11 +1686,10 @@ dlman(struct tab *t, struct karg *args)
 	    XT_PAGE_STYLE);
 
 	body = g_strdup_printf("<body><h1>Downloads</h1><div align='center'>"
-	    "<p>\n<a href='" XT_XTP_STR XT_XTP_DL_STR "/%s/"
-	    XT_XTP_DL_LIST_STR "'>\n[ Refresh Downloads ]</a>\n"
+	    "<p>\n<a href='%s%d/%s/%d'>\n[ Refresh Downloads ]</a>\n"
 	    "</p><table><tr><th style='width: 60%%'>"
 	    "File</th>\n<th>Progress</th><th>Command</th></tr>\n",
-	    dl_session_key);
+	    XT_XTP_STR, XT_XTP_DL, dl_session_key, XT_XTP_DL_LIST);
 
 	RB_FOREACH_REVERSE(dl, download_list, &downloads) {
 		body = dlman_table_row(body, dl);
@@ -1682,7 +1697,7 @@ dlman(struct tab *t, struct karg *args)
 	}
 
 	/* message if no downloads in list */
-	if (n_dl == 0) {
+	if (n_dl == 1) {
 		tmp = body;
 		body = g_strdup_printf("%s\n<tr><td colspan='3'"
 		    " style='text-align: center'>"
@@ -1966,7 +1981,7 @@ struct cmd {
 	/* favorites */
 	{ "fav",		0,	favorites,		{0} },
 	{ "favadd",		0,	favadd,			{0} },
-	{ XT_XTP_DL_STR,	0,	dlman,			{0} },
+	{ "dl"		,	0,	dlman,			{0} },
 	{ "h"		,	0,	show_hist,		{0} },
 	{ "hist"	,	0,	show_hist,		{0} },
 	{ "history"	,	0,	show_hist,		{0} },
@@ -2075,12 +2090,7 @@ void
 hl_ctrl(struct tab *t, uint8_t cmd, int id)
 {
 	struct history		*h, *next;
-	int			i = 0;
-
-	/*
-	 * XXX make history/download/favorute IDs start from 1 so that
-	 * a 0 implies a atoi() error.
-	 */
+	int			i = 1;
 
 	switch (cmd) {
 	case XT_XTP_HL_REMOVE:
@@ -2112,21 +2122,24 @@ hl_ctrl(struct tab *t, uint8_t cmd, int id)
 /*
  * is the url xtp protocol? (xxxt://)
  * if so, parse and despatch correct bahvior
- *
- * XXX use command numbers instead of strings and we can parse the atoi
- * of them right on. This will mean far less macros. But remember to start
- * command numbers from 1, so that atoi() error case is not valid.
  */
 int
 parse_xtp_url(struct tab *t, const char *url)
 {
 	char		*dup = NULL, *p, *last;
 	uint8_t		n_tokens = 0;
-	char		*tokens[4];
+	char		*tokens[4] = {NULL, NULL, NULL, ""};
+
+	/* tokens array meaning:
+	 *   tokens[0] = class
+	 *   tokens[1] = session key
+	 *   tokens[2] = action
+	 *   tokens[3] = optional argument
+	 */
 
 	DNPRINTF(XT_D_URL, "%s: url %s\n", __func__, url);
 
-	/* xtp tab meaning is normal unless proven special */
+	/*xtp tab meaning is normal unless proven special */
 	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
 
 	if (strncmp(url, XT_XTP_STR, strlen(XT_XTP_STR)))
@@ -2145,8 +2158,9 @@ parse_xtp_url(struct tab *t, const char *url)
 	if (n_tokens < 3)
 		return 0;
 
+	switch (atoi(tokens[0])) {
 	/* if a download XTP url */
-	if (!strcmp(XT_XTP_DL_STR, tokens[0])) {
+	case XT_XTP_DL:
 
 		/* validate session key */
 		if (!validate_xtp_session_key(dl_session_key, tokens[1])) {
@@ -2154,18 +2168,11 @@ parse_xtp_url(struct tab *t, const char *url)
 			return (1);
 		}
 
-		if (!strcmp(tokens[2], XT_XTP_DL_CANCEL_STR)) {
-			dlman_ctrl(t, XT_XTP_DL_CANCEL, atoi(tokens[3]));
-		} else if (!strcmp(tokens[2], XT_XTP_DL_REMOVE_STR)) {
-			dlman_ctrl(t, XT_XTP_DL_REMOVE, atoi(tokens[3]));
-		} else if (!strcmp(tokens[2], XT_XTP_DL_LIST_STR))
-			dlman_ctrl(t, XT_XTP_DL_LIST, NULL);
-		else /* unsupported download command */
-			warn("%s: unsupported dl command: %s",
-			    __func__, tokens[2]);
+		dlman_ctrl(t, atoi(tokens[2]), atoi(tokens[3]));
 
 	/* if a history XTP url */
-	} else if (!strcmp(XT_XTP_HL_STR, tokens[0])) {
+		break;
+	case XT_XTP_HL:
 
 		/* validate session key */
 		if (!validate_xtp_session_key(hl_session_key, tokens[1])) {
@@ -2173,15 +2180,14 @@ parse_xtp_url(struct tab *t, const char *url)
 			return (1);
 		}
 
-		if (!strcmp(tokens[2], XT_XTP_HL_LIST_STR))
-			hl_ctrl(t, XT_XTP_HL_LIST, NULL);
-		else if (!strcmp(tokens[2], XT_XTP_HL_REMOVE_STR))
-			hl_ctrl(t, XT_XTP_HL_REMOVE, atoi(tokens[3]));
-		else
-			warn("%s: unsupported hl command: %s", __func__, tokens[2]);
+		hl_ctrl(t, atoi(tokens[2]), atoi(tokens[3]));
 
-	} else /* unsupported class */
+		break;
+
+	default:/* unsupported class */
 		warn("%s: unsupported class: %s", __func__, tokens[0]);
+		break;
+	}
 
 	if (dup)
 		g_free(dup);
@@ -2569,6 +2575,13 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download, struct tab *
 	if (uri)
 		g_free(uri);
 
+	/* sync other download manager tabs */
+	update_download_tabs(NULL);
+
+	/*
+	 * NOTE: never redirect/render the current tab before this
+	 * function returns. This will cause the download to never start.
+	 */
 	return (ret); /* start download */
 }
 
