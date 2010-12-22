@@ -120,6 +120,22 @@ Additionally if search_string is set it'll enable an entry box for searches.
 .It Cm refresh_interval
 Refresh interval while in the download manager.
 Default is 10.
+.It Cm session_timeout
+If this value is greater than 3600 then it is the time added in seconds to a
+session cookie.  If the value is smaller than 3600 then there is no change
+to the expiration of a session cookie.
+.It Cm enable_cookie_white list
+When enabled all cookies must be in the white list or they are rejected.
+.It Cm cookie_wl
+This is a cookie white list item.
+Use multiple times to add multiple entries.
+Valid entries are for example *.moo.com and the equivalent .moo.com.
+A fully qualified host is also valid and is for example www.moo.com.
+.It Cm cookie_policy
+This field delineates the cookie policy.
+Possible values are: no3rdparty, reject 3rd party cookies.
+accept, accept all cookies.
+reject, reject all cookies.
 .It Cm search_string
 Default search engine string.
 See xxxterm.conf file for details.

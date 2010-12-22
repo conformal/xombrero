@@ -98,7 +98,8 @@ static char		*version = "$xxxterm$";
 #define	XT_D_CONFIG		0x0080
 #define	XT_D_JS			0x0100
 #define	XT_D_FAVORITE		0x0200
-#define	XT_D_PRINTING		0x1024
+#define	XT_D_PRINTING		0x0400
+#define	XT_D_COOKIE		0x0800
 u_int32_t		swm_debug = 0
 			    | XT_D_MOVE
 			    | XT_D_KEY
@@ -109,6 +110,9 @@ u_int32_t		swm_debug = 0
 			    | XT_D_DOWNLOAD
 			    | XT_D_CONFIG
 			    | XT_D_JS
+			    | XT_D_FAVORITE
+			    | XT_D_PRINTING
+			    | XT_D_COOKIE
 			    ;
 #else
 #define DPRINTF(x...)
@@ -185,6 +189,12 @@ struct download {
 	struct tab		*tab;
 };
 RB_HEAD(download_list, download);
+
+struct domain {
+	RB_ENTRY(domain)	entry;
+	gchar			*d;
+};
+RB_HEAD(domain_list, domain);
 
 int				next_download_id = 0;
 
@@ -285,6 +295,7 @@ GtkNotebook		*notebook;
 struct tab_list		tabs;
 struct history_list	hl;
 struct download_list	downloads;
+struct domain_list	wl;
 int			updating_dl_tabs = 0;
 char			*global_search;
 
@@ -317,7 +328,9 @@ int			enable_plugins = 0;
 int			default_font_size = 12;
 int			fancy_bar = 1;	/* fancy toolbar */
 unsigned		refresh_interval = 10; /* download refresh interval */
-
+int			enable_cookie_whitelist = 1;
+time_t			session_timeout = 3600; /* cookie session timeout */
+int			cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
 /*
  * Session IDs.
  * We use these to prevent people putting xxxt:// URLs on
@@ -336,7 +349,7 @@ char			work_dir[PATH_MAX];
 char			cookie_file[PATH_MAX];
 char			download_dir[PATH_MAX];
 SoupSession		*session;
-SoupCookieJar		*cookiejar;
+SoupCookieJar		*p_cookiejar;
 
 struct mime_type_list	mtl;
 struct alias_list	aliases;
@@ -354,6 +367,13 @@ history_rb_cmp(struct history *h1, struct history *h2)
 	return (strcmp(h1->uri, h2->uri));
 }
 RB_GENERATE(history_list, history, entry, history_rb_cmp);
+
+int
+domain_rb_cmp(struct domain *d1, struct domain *d2)
+{
+	return (strcmp(d1->d, d2->d));
+}
+RB_GENERATE(domain_list, domain, entry, domain_rb_cmp);
 
 /*
  * generate a session key to secure xtp commands.
@@ -555,6 +575,79 @@ find_mime_type(char *mime_type)
 	return (rv);
 }
 
+void
+wl_add(char *str)
+{
+	struct domain		*d;
+	int			add_dot = 0;
+
+	if (str == NULL)
+		return;
+	if (strlen(str) < 2)
+		return;
+
+	DNPRINTF(XT_D_COOKIE, "wl_add in: %s\n", str);
+
+	/* treat *.moo.com the same as .moo.com */
+	if (str[0] == '*' && str[1] == '.')
+		str = &str[1];
+	else if (str[0] == '.')
+		str = &str[0];
+	else
+		add_dot = 1;
+
+	d = g_malloc(sizeof *d);
+	if (add_dot)
+		d->d = g_strdup_printf(".%s", str);
+	else
+		d->d = g_strdup(str);
+
+	if (RB_INSERT(domain_list, &wl, d))
+		goto unwind;
+
+	DNPRINTF(XT_D_COOKIE, "wl_add: %s\n", d->d);
+	return;
+unwind:
+	if (d) {
+		if (d->d)
+			g_free(d->d);
+		g_free(d);
+	}
+}
+
+struct domain *
+wl_find(gchar *search)
+{
+	int			i;
+	struct domain		*d = NULL, dfind;
+	gchar			*s = NULL;
+
+	if (search == NULL)
+		return (NULL);
+	if (strlen(search) < 2)
+		return (NULL);
+
+	if (search[0] != '.')
+		s = g_strdup_printf(".%s", search);
+	else
+		s = g_strdup(search);
+
+	for (i = strlen(s) - 1; i >= 0; i--) {
+		if (s[i] == '.') {
+			dfind.d = &s[i];
+			d = RB_FIND(domain_list, &wl, &dfind);
+			if (d)
+				goto done;
+		}
+	}
+
+done:
+	if (s)
+		g_free(s);
+
+	return (d);
+}
+
 #define	WS	"\n= \t"
 void
 config_parse(char *filename)
@@ -616,7 +709,31 @@ config_parse(char *filename)
 			default_font_size = atoi(val);
 		else if (!strcmp(var, "refresh_interval"))
 			refresh_interval = atoi(val);
-		else if (!strcmp(var, "fancy_bar"))
+		else if (!strcmp(var, "enable_cookie_whitelist"))
+			enable_cookie_whitelist = atoi(val);
+		else if (!strcmp(var, "cookie_policy")) {
+			if (!strcmp(val, "no3rdparty"))
+				cookie_policy =
+				    SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
+			else if (!strcmp(val, "accept"))
+				cookie_policy =
+				    SOUP_COOKIE_JAR_ACCEPT_ALWAYS;
+			else if (!strcmp(val, "reject"))
+				cookie_policy =
+				    SOUP_COOKIE_JAR_ACCEPT_NEVER;
+			else {
+				/* reject when set wrong */
+				warnx("invalid cookie_policy %s", val);
+				cookie_policy =
+				    SOUP_COOKIE_JAR_ACCEPT_NEVER;
+			}
+		} else if (!strcmp(var, "cookie_wl"))
+			wl_add(val);
+		else if (!strcmp(var, "session_timeout")) {
+			session_timeout = atoi(val);
+			if (session_timeout < 3600)
+				session_timeout = 0; /* use default timeout */
+		} else if (!strcmp(var, "fancy_bar"))
 			fancy_bar = atoi(val);
 		else if (!strcmp(var, "mime_type"))
 			add_mime_type(val);
@@ -1871,7 +1988,7 @@ activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 	uri += strspn(uri, "\t ");
 
 	/* if xxxt:// treat specially */
-	if (!parse_xtp_url(t, uri)) { 
+	if (!parse_xtp_url(t, uri)) {
 		if (valid_url_type((char *)uri)) {
 			newuri = guess_url_type((char *)uri);
 			uri = newuri;
@@ -2925,20 +3042,88 @@ create_canvas(void)
 }
 
 void
-setup_cookies(char *file)
+print_cookie(char *msg, SoupCookie *c)
 {
-	if (cookiejar) {
-		soup_session_remove_feature(session,
-		    (SoupSessionFeature*)cookiejar);
-		g_object_unref(cookiejar);
-		cookiejar = NULL;
-	}
-
-	if (cookies_enabled == 0)
+	if (c == NULL)
 		return;
 
-	cookiejar = soup_cookie_jar_text_new(file, read_only_cookies);
-	soup_session_add_feature(session, (SoupSessionFeature*)cookiejar);
+	if (msg)
+		DNPRINTF(XT_D_COOKIE, "%s\n", msg);
+	DNPRINTF(XT_D_COOKIE, "name     : %s\n", c->name);
+	DNPRINTF(XT_D_COOKIE, "value    : %s\n", c->value);
+	DNPRINTF(XT_D_COOKIE, "domain   : %s\n", c->domain);
+	DNPRINTF(XT_D_COOKIE, "path     : %s\n", c->path);
+	DNPRINTF(XT_D_COOKIE, "expires  : %s\n",
+	    c->expires ? soup_date_to_string(c->expires, SOUP_DATE_HTTP) : "");
+	DNPRINTF(XT_D_COOKIE, "secure   : %d\n", c->secure);
+	DNPRINTF(XT_D_COOKIE, "http_only: %d\n", c->http_only);
+	DNPRINTF(XT_D_COOKIE, "====================================\n");
+}
+
+void
+cookiejar_changed_cb(SoupCookieJar *jar, SoupCookie *old_cookie,
+    SoupCookie *new_cookie, gpointer user_data)
+{
+	SoupCookieJarClass	*p;
+	struct domain		*d = NULL;
+	void			(*hook)(SoupCookieJar *, SoupCookie *,
+				    SoupCookie *, gpointer);
+
+	if (new_cookie) {
+		if ((d = wl_find(new_cookie->domain)) == NULL) {
+			DNPRINTF(XT_D_COOKIE,
+			    "cookiejar_changed_cb: reject %s\n",
+			    new_cookie->domain);
+			return;
+		}
+
+		print_cookie("old_cookie", old_cookie);
+		print_cookie("new_cookie", new_cookie);
+		if (new_cookie->expires == NULL && session_timeout) {
+			soup_cookie_set_expires(new_cookie,
+			    soup_date_new_from_now(session_timeout));
+			print_cookie("modified new_cookie", new_cookie);
+		}
+	}
+
+	/* call original function to do it's magic */
+	p = SOUP_COOKIE_JAR_GET_CLASS(p_cookiejar);
+	hook = (void *)(p->_libsoup_reserved3);
+	hook(jar, old_cookie, new_cookie, NULL);
+}
+
+void
+setup_cookies(char *file)
+{
+	SoupCookieJarClass	*p;
+
+	/*
+	 * First I'd like to apologize for what you are about to see.
+	 * The issue really is a flaw in libsoup which doesn't let us
+	 * hook the "changed" callback properly.  It lets us hook it
+	 * but there is no way to halt execution because of the void
+	 * return type.
+	 *
+	 * To work around this we mess with the class pointers themselves
+	 * and do our thing.  In our new function we'll determine if we
+	 * want to continue execution.
+	 *
+	 * Evil, check.  Ugly, check.  Prone to failure, check.
+	 * Probably a better way of doing this, check!
+	 *
+	 * I'll take a diff if someone knows how to do this within the gtk
+	 * framework.
+	 */
+
+	p_cookiejar = soup_cookie_jar_text_new(file, read_only_cookies);
+	if (enable_cookie_whitelist) {
+		p = SOUP_COOKIE_JAR_GET_CLASS(p_cookiejar);
+		p->_libsoup_reserved3 = (void *)(p->changed);
+		p->changed = (void *)(cookiejar_changed_cb);
+	}
+	g_object_set(G_OBJECT(p_cookiejar), SOUP_COOKIE_JAR_ACCEPT_POLICY,
+	    cookie_policy, (void *)NULL);
+	soup_session_add_feature(session, (SoupSessionFeature*)p_cookiejar);
 }
 
 void
