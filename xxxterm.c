@@ -681,9 +681,9 @@ wl_find_uri(gchar *s, struct domain_list *wl)
 	if (strlen(s) < 2)
 		return (NULL);
 
-	for (i = 0; i < strlen(s); i++)
+	for (i = 0; i < strlen(s) + 1 /* yes er need this */; i++)
 		/* chop string at first slash */
-		if (s[i] == '/') {
+		if (s[i] == '/' || s[i] == '\0') {
 			s[i] = '\0';
 			return (wl_find(s, wl));
 		}
@@ -929,6 +929,54 @@ quit(struct tab *t, struct karg *args)
 	gtk_main_quit();
 
 	return (1);
+}
+
+int
+toggle_js(struct tab *t, struct karg *args)
+{
+	int			es, i;
+	WebKitWebFrame		*frame;
+	gchar			*s;
+	struct domain		*d;
+
+	g_object_get((GObject *)t->settings,
+	    "enable-scripts", &es, (char *)NULL);
+	es = !es;
+	g_object_set((GObject *)t->settings,
+	    "enable-scripts", es, (char *)NULL);
+	webkit_web_view_set_settings(t->wv, t->settings);
+
+	frame = webkit_web_view_get_main_frame(t->wv);
+	s = (gchar *)webkit_web_frame_get_uri(frame);
+
+	/* this code is shared with wl_find_uri, refactor */
+	if (s == NULL)
+		return (NULL);
+
+	if (!strncmp(s, "http://", strlen("http://")))
+		s = &s[strlen("http://")];
+	else if (!strncmp(s, "https://", strlen("https://")))
+		s = &s[strlen("https://")];
+
+	if (strlen(s) < 2)
+		return (NULL);
+
+	for (i = 0; i < strlen(s) + 1; i++)
+		/* chop string at first slash */
+		if (s[i] == '/' || s[i] == '\0') {
+			s[i] = '\0';
+			if (es)
+				wl_add(s, &js_wl);
+			else {
+				d = wl_find(s, &js_wl);
+				if (d)
+					RB_REMOVE(domain_list, &js_wl, d);
+			}
+			webkit_web_view_reload(t->wv);
+			return (0);
+		}
+
+	return (0);
 }
 
 int
@@ -1837,6 +1885,7 @@ struct key {
 	{ GDK_SHIFT_MASK,	0,	GDK_question,	command,	{.i = '?'} },
 	{ GDK_SHIFT_MASK,	0,	GDK_colon,	command,	{.i = ':'} },
 	{ GDK_CONTROL_MASK,	0,	GDK_q,		quit,		{0} },
+	{ GDK_CONTROL_MASK,	0,	GDK_j,		toggle_js,	{0} },
 
 	/* search */
 	{ 0,			0,	GDK_n,		search,		{.i = XT_SEARCH_NEXT} },
@@ -2245,7 +2294,6 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), TRUE);
 		t->focus_wv = 1;
-
 		/* check if js white listing is enabled */
 		if (enable_js_whitelist) {
 			frame = webkit_web_view_get_main_frame(wview);
