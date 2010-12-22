@@ -296,7 +296,8 @@ GtkNotebook		*notebook;
 struct tab_list		tabs;
 struct history_list	hl;
 struct download_list	downloads;
-struct domain_list	wl;
+struct domain_list	c_wl;
+struct domain_list	js_wl;
 int			updating_dl_tabs = 0;
 char			*global_search;
 
@@ -330,6 +331,7 @@ int			default_font_size = 12;
 int			fancy_bar = 1;	/* fancy toolbar */
 unsigned		refresh_interval = 10; /* download refresh interval */
 int			enable_cookie_whitelist = 1;
+int			enable_js_whitelist = 1;
 time_t			session_timeout = 3600; /* cookie session timeout */
 int			cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
 /*
@@ -577,12 +579,12 @@ find_mime_type(char *mime_type)
 }
 
 void
-wl_add(char *str)
+wl_add(char *str, struct domain_list *wl)
 {
 	struct domain		*d;
 	int			add_dot = 0;
 
-	if (str == NULL)
+	if (str == NULL || wl == NULL)
 		return;
 	if (strlen(str) < 2)
 		return;
@@ -603,7 +605,7 @@ wl_add(char *str)
 	else
 		d->d = g_strdup(str);
 
-	if (RB_INSERT(domain_list, &wl, d))
+	if (RB_INSERT(domain_list, wl, d))
 		goto unwind;
 
 	DNPRINTF(XT_D_COOKIE, "wl_add: %s\n", d->d);
@@ -617,13 +619,13 @@ unwind:
 }
 
 struct domain *
-wl_find(gchar *search)
+wl_find(gchar *search, struct domain_list *wl)
 {
 	int			i;
 	struct domain		*d = NULL, dfind;
 	gchar			*s = NULL;
 
-	if (search == NULL)
+	if (search == NULL || wl == NULL)
 		return (NULL);
 	if (strlen(search) < 2)
 		return (NULL);
@@ -636,7 +638,7 @@ wl_find(gchar *search)
 	for (i = strlen(s) - 1; i >= 0; i--) {
 		if (s[i] == '.') {
 			dfind.d = &s[i];
-			d = RB_FIND(domain_list, &wl, &dfind);
+			d = RB_FIND(domain_list, wl, &dfind);
 			if (d)
 				goto done;
 		}
@@ -647,6 +649,32 @@ done:
 		g_free(s);
 
 	return (d);
+}
+
+struct domain *
+wl_find_uri(gchar *s, struct domain_list *wl)
+{
+	int			i;
+
+	if (s == NULL || wl == NULL)
+		return (NULL);
+
+	if (!strncmp(s, "http://", strlen("http://")))
+		s = &s[strlen("http://")];
+	else if (!strncmp(s, "https://", strlen("https://")))
+		s = &s[strlen("https://")];
+
+	if (strlen(s) < 2)
+		return (NULL);
+
+	for (i = 0; i < strlen(s); i++)
+		/* chop string at first slash */
+		if (s[i] == '/') {
+			s[i] = '\0';
+			return (wl_find(s, wl));
+		}
+
+	return (NULL);
 }
 
 #define	WS	"\n= \t"
@@ -712,6 +740,8 @@ config_parse(char *filename)
 			refresh_interval = atoi(val);
 		else if (!strcmp(var, "enable_cookie_whitelist"))
 			enable_cookie_whitelist = atoi(val);
+		else if (!strcmp(var, "enable_js_whitelist"))
+			enable_js_whitelist = atoi(val);
 		else if (!strcmp(var, "cookie_policy")) {
 			if (!strcmp(val, "no3rdparty"))
 				cookie_policy =
@@ -729,7 +759,9 @@ config_parse(char *filename)
 				    SOUP_COOKIE_JAR_ACCEPT_NEVER;
 			}
 		} else if (!strcmp(var, "cookie_wl"))
-			wl_add(val);
+			wl_add(val, &c_wl);
+		else if (!strcmp(var, "js_wl"))
+			wl_add(val, &js_wl);
 		else if (!strcmp(var, "session_timeout")) {
 			session_timeout = atoi(val);
 			if (session_timeout < 3600)
@@ -2029,6 +2061,28 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 }
 
 void
+check_and_set_js(gchar *uri, struct tab *t)
+{
+	struct domain		*d = NULL;
+	int			es = 0;
+
+	if (uri == NULL || t == NULL)
+		return;
+
+	if ((d = wl_find_uri(uri, &js_wl)) == NULL)
+		es = 0;
+	else
+		es = 1;
+
+	DNPRINTF(XT_D_JS, "check_and_set_js: %s %s\n",
+	    es ? "enable" : "disable", uri);
+
+	g_object_set((GObject *)t->settings,
+	    "enable-scripts", es, (char *)NULL);
+	webkit_web_view_set_settings(t->wv, t->settings);
+}
+
+void
 notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 {
 	GdkColor		color;
@@ -2053,6 +2107,13 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), TRUE);
 		t->focus_wv = 1;
+
+		/* check if js white listing is enabled */
+		if (enable_js_whitelist) {
+			frame = webkit_web_view_get_main_frame(wview);
+			uri = webkit_web_frame_get_uri(frame);
+			check_and_set_js((gchar *)uri, t);
+		}
 
 		/* take focus if we are visible */
 		if (gtk_notebook_get_current_page(notebook) == t->tab_id)
@@ -3081,7 +3142,7 @@ cookiejar_changed_cb(SoupCookieJar *jar, SoupCookie *old_cookie,
 				    SoupCookie *, gpointer);
 
 	if (new_cookie) {
-		if ((d = wl_find(new_cookie->domain)) == NULL) {
+		if ((d = wl_find(new_cookie->domain, &c_wl)) == NULL) {
 			DNPRINTF(XT_D_COOKIE,
 			    "cookiejar_changed_cb: reject %s\n",
 			    new_cookie->domain);
@@ -3205,6 +3266,7 @@ main(int argc, char *argv[])
 
 	TAILQ_INIT(&tabs);
 	RB_INIT(&hl);
+	RB_INIT(&js_wl);
 	RB_INIT(&downloads);
 
 	/* generate session keys for xtp pages */
