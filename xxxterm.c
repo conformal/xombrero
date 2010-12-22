@@ -1037,7 +1037,7 @@ favorites(struct tab *t, struct karg *args)
 	if (!failed) {
 		html = g_strdup_printf("%s%s</table></div></html>",
 		    header, body);
-		webkit_web_view_load_string(t->wv, html, NULL, NULL, NULL);
+		webkit_web_view_load_string(t->wv, html, NULL, NULL, "");
 	}
 
 	if (header)
