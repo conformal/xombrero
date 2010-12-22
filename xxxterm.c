@@ -215,9 +215,10 @@ struct karg {
 #define XT_HTML_TAG		"<html xmlns='http://www.w3.org/1999/xhtml'>"
 #define XT_DLMAN_REFRESH	"10"
 #define XT_PAGE_STYLE		"<style type='text/css'>\n" \
+				"td {overflow: hidden;}\n"  \
 				"th {background-color: #cccccc}"  \
 				"table {width: 90%; border: 1px black"    \
-				" solid}\n</style>\n\n"
+				" solid; table-layout: fixed}\n</style>\n\n"
 
 /* file sizes */
 #define SZ_KB		((uint64_t) 1024)
@@ -232,7 +233,8 @@ struct karg {
 #define XT_XTP_STR		"xxxt://"
 
 /* XTP classes (xxxt://<class>) */
-#define XT_XTP_DL_STR		"dl"
+#define XT_XTP_DL_STR		"dl"	/* downloads */
+#define XT_XTP_HL_STR		"hl"	/* history */
 
 /* XTP download commands */
 #define XT_XTP_DL_CANCEL	0
@@ -243,10 +245,18 @@ struct karg {
 #define XT_XTP_DL_REMOVE_STR	"remove"
 #define XT_XTP_DL_LIST_STR	"list"
 
+/* XTP history commands */
+#define XT_XTP_HL_REMOVE	0
+#define XT_XTP_HL_LIST		1
+
+#define XT_XTP_HL_REMOVE_STR	"remove"
+#define XT_XTP_HL_LIST_STR	"list"
+
 /* xtp tab meanings */
 #define XT_XTP_TAB_MEANING_NORMAL	0 /* normal url */
 #define XT_XTP_TAB_MEANING_DOWNLOAD	1 /* download manager in this tab */
 #define XT_XTP_TAB_MEANING_FAVORITE	2 /* favorite manager in this tab */
+#define XT_XTP_TAB_MEANING_HISTORY	3 /* history manager in this tab */
 
 /* actions */
 #define XT_MOVE_INVALID		(0)
@@ -299,6 +309,7 @@ struct download_list	downloads;
 struct domain_list	c_wl;
 struct domain_list	js_wl;
 int			updating_dl_tabs = 0;
+int			updating_hl_tabs = 0;
 char			*global_search;
 
 /* mime types */
@@ -342,7 +353,8 @@ int			cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
 #define XT_XTP_SES_KEY_SZ	8
 #define XT_XTP_SES_KEY_HEX_FMT  \
 	"%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
-char			*dl_session_key;
+char			*dl_session_key;	/* downloads */
+char			*hl_session_key;	/* history list */
 
 char			*home = "http://www.peereboom.us";
 char			*search_string = NULL;
@@ -363,6 +375,8 @@ void			delete_tab(struct tab *);
 void			adjustfont_webkit(struct tab *, int);
 int			run_script(struct tab *, char *);
 int			download_rb_cmp(struct download *, struct download *);
+int			show_hist(struct tab *t, struct karg *args);
+int			dlman(struct tab *t, struct karg *args);
 
 int
 history_rb_cmp(struct history *h1, struct history *h2)
@@ -980,7 +994,7 @@ favorites(struct tab *t, struct karg *args)
 
 	/* body */
 	body = g_strdup_printf("<div align='center'><table><tr>"
-	    "<th>&#35;</th><th>Link</th></tr>\n");
+	    "<th style='width:15%%'>&#35;</th><th>Link</th></tr>\n");
 
 	for (i = 1;;) {
 		if ((title = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
@@ -1433,7 +1447,8 @@ dlman_table_row(char *html, struct download *dl)
 	};
 
 	new_html = g_strdup_printf(
-	    "%s\n<tr><td>%s</td><td>%s</td><td>%s</td></tr>\n",
+	    "%s\n<tr><td>%s</td><td>%s</td>"
+	    "<td style='text-align:center'>%s</td></tr>\n",
 	    html, webkit_download_get_uri(dl->download),
 	    status_html, cmd_html);
 	g_free(html);
@@ -1447,20 +1462,65 @@ dlman_table_row(char *html, struct download *dl)
 	return new_html;
 }
 
+/*
+ * update all download tabs apart from one. Pass NULL if
+ * you want to update all.
+ */
+void
+update_download_tabs(struct tab *apart_from)
+{
+	struct tab			*t;
+	if (!updating_dl_tabs) {
+		updating_dl_tabs = 1; /* stop infinite recursion */
+		TAILQ_FOREACH(t, &tabs, entry)
+			if ((t->xtp_meaning == XT_XTP_TAB_MEANING_DOWNLOAD)
+			    && (t != apart_from))
+				dlman(t, NULL);
+		updating_dl_tabs = 0;
+	}
+}
+
+/*
+ * update all history tabs apart from one. Pass NULL if
+ * you want to update all.
+ */
+void
+update_history_tabs(struct tab *apart_from)
+{
+	struct tab			*t;
+
+	if (!updating_hl_tabs) {
+		updating_hl_tabs = 1; /* stop infinite recursion */
+		TAILQ_FOREACH(t, &tabs, entry)
+			if ((t->xtp_meaning == XT_XTP_TAB_MEANING_HISTORY)
+			    && (t != apart_from))
+				show_hist(t, NULL);
+		updating_hl_tabs = 0;
+	}
+}
+
 int
 show_hist(struct tab *t, struct karg *args)
 {
 	char			*header, *body, *footer, *page, *tmp;
 	struct history		*h;
+	int			i = 0;
 
 	DNPRINTF(XT_D_CMD, "%s", __func__);
 
 	if (t == NULL)
 		errx(1, "%s: null tab", __func__);
 
+	/* mark this tab as history manager */
+	t->xtp_meaning = XT_XTP_TAB_MEANING_HISTORY;
+
+	/* Generate a new session key */
+	if (!updating_hl_tabs)
+		generate_xtp_session_key(&hl_session_key);
+
 	/* header */
 	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG "\n<head>"
-	    "<title>Favorites</title>\n"
+	    "<title>History</title>\n"
 	    "%s"
 	    "</head>"
 	    "<h1>History</h1>\n",
@@ -1468,13 +1528,26 @@ show_hist(struct tab *t, struct karg *args)
 
 	/* body */
 	body = g_strdup_printf("<div align='center'><table><tr>"
-	    "<th>URI</th><th>Title</th></tr>\n");
+	    "<th>URI</th><th>Title</th><th style='width: 15%%'>Remove</th></tr>\n");
 
 	RB_FOREACH_REVERSE(h, history_list, &hl) {
 		tmp = body;
 		body = g_strdup_printf(
-		    "%s\n<tr><td><a href=\"%s\">%s</a></td><td>%s</td></tr>\n",
-		    body, h->uri, h->uri, h->title);
+		    "%s\n<tr>"
+		    "<td><a href='%s'>%s</a></td>"
+		    "<td>%s</td>"
+		    "<td style='text-align: center'>"
+		    "<a href='" XT_XTP_STR XT_XTP_HL_STR "/%s/"
+		    XT_XTP_HL_REMOVE_STR "/%d'>X</a></td></tr>\n",
+		    body, h->uri, h->uri, h->title, hl_session_key, i ++);
+		g_free(tmp);
+		i ++;
+	}
+
+	if (i == 0) {
+		tmp = body;
+		body = g_strdup_printf("%s\n<tr><td style='text-align:center'"
+		    "colspan='3'>No History</td></tr>\n", body);
 		g_free(tmp);
 	}
 
@@ -1482,6 +1555,13 @@ show_hist(struct tab *t, struct karg *args)
 	footer = g_strdup_printf("</table></div></body></html>");
 
 	page = g_strdup_printf("%s%s%s", header, body, footer);
+
+	/*
+	 * update all history manager tabs as the xtp session
+	 * key has now changed. No need to update the current tab.
+	 * Already did that above.
+	 */
+	update_history_tabs(t);
 
 	g_free(header);
 	g_free(body);
@@ -1503,7 +1583,6 @@ dlman(struct tab *t, struct karg *args)
 	char			*header, *body, *footer, *page, *tmp;
 	char			*ref;
 	int			n_dl = 0;
-	struct tab		*tt;
 
 	DNPRINTF(XT_D_DOWNLOAD, "%s", __func__);
 
@@ -1573,15 +1652,10 @@ dlman(struct tab *t, struct karg *args)
 	 * update all download manager tabs as the xtp session
 	 * key has now changed. No need to update the current tab.
 	 * Already did that above.
+	 *
+	 *
 	 */
-	if (!updating_dl_tabs) {
-		updating_dl_tabs = 1; /* stop infinite recursion */
-		TAILQ_FOREACH(tt, &tabs, entry)
-			if ((tt->xtp_meaning == XT_XTP_TAB_MEANING_DOWNLOAD)
-			    && (tt != t))
-				dlman(tt, NULL);
-		updating_dl_tabs = 0;
-	}
+	update_download_tabs(t);
 
 	g_free(ref);
 	g_free(header);
@@ -1912,13 +1986,16 @@ dlman_ctrl(struct tab *t, uint8_t cmd, int id)
 
 	DNPRINTF(XT_D_DOWNLOAD, "download control: cmd %d, id %d\n", cmd, id);
 
-	/* lookup download in question */
-	find.id = id;
-	d = RB_FIND(download_list, &downloads, &find);
+	/* some commands require a valid download id */
+	if (cmd != XT_XTP_DL_LIST) {
+		/* lookup download in question */
+		find.id = id;
+		d = RB_FIND(download_list, &downloads, &find);
 
-	if (d == NULL) {
-		warn("%s: no such download", __func__);
-		return;
+		if (d == NULL) {
+			warn("%s: no such download", __func__);
+			return;
+		}
 	}
 
 	/* decide what to do */
@@ -1931,23 +2008,72 @@ dlman_ctrl(struct tab *t, uint8_t cmd, int id)
 		g_object_unref(d->download);
 		RB_REMOVE(download_list, &downloads, d);
 		break;
+	case XT_XTP_DL_LIST:
+		/* Nothing, just dlman() below */
+		break;
 	default:
 		warn("%s: unknown command", __func__);
 		break;
 	};
 	dlman(t, NULL);
-	return;
 }
 
-/* 
+/*
+ * Actions on history, only does one thing for now, but
+ * we provide the function for future actions
+ */
+void
+hl_ctrl(struct tab *t, uint8_t cmd, int id)
+{
+	struct history		*h, *next;
+	int			i = 0;
+
+	/*
+	 * XXX make history/download/favorute IDs start from 1 so that
+	 * a 0 implies a atoi() error.
+	 */
+
+	switch (cmd) {
+	case XT_XTP_HL_REMOVE:
+		/* walk backwards, as listed in reverse */
+		for (h = RB_MAX(history_list, &hl); h != NULL; h = next) {
+			next = RB_PREV(history_list, &hl, h);
+			if (id == i) {
+				RB_REMOVE(history_list, &hl, h);
+				g_free((gpointer) h->title);
+				g_free((gpointer) h->uri);
+				g_free(h);
+				break;
+			}
+			i ++;
+		}
+		break;
+	case XT_XTP_HL_LIST:
+		/* Nothing - just show_hist() below */
+		break;
+	default:
+		warn("%s: unknown command", __func__);
+		break;
+	};
+
+	show_hist(t, NULL);
+}
+
+
+/*
  * is the url xtp protocol? (xxxt://)
  * if so, parse and despatch correct bahvior
+ *
+ * XXX use command numbers instead of strings and we can parse the atoi
+ * of them right on. This will mean far less macros. But remember to start
+ * command numbers from 1, so that atoi() error case is not valid.
  */
 int
 parse_xtp_url(struct tab *t, const char *url)
 {
-	char		*dup = NULL, *p, *tokens[4], *last;
+	char		*dup = NULL, *p, *last;
 	uint8_t		n_tokens = 0;
+	char		*tokens[4];
 
 	DNPRINTF(XT_D_URL, "%s: url %s\n", __func__, url);
 
@@ -1984,15 +2110,27 @@ parse_xtp_url(struct tab *t, const char *url)
 		} else if (!strcmp(tokens[2], XT_XTP_DL_REMOVE_STR)) {
 			dlman_ctrl(t, XT_XTP_DL_REMOVE, atoi(tokens[3]));
 		} else if (!strcmp(tokens[2], XT_XTP_DL_LIST_STR))
-			dlman(t, NULL);
+			dlman_ctrl(t, XT_XTP_DL_LIST, NULL);
 		else /* unsupported download command */
 			warn("%s: unsupported dl command: %s",
 			    __func__, tokens[2]);
-	/*
-	 * XXX add favorites handling here eventually
-	 * As this function is getting long, split out into separate func for
-	 * each class.
-	 */
+
+	/* if a history XTP url */
+	} else if (!strcmp(XT_XTP_HL_STR, tokens[0])) {
+
+		/* validate session key */
+		if (!validate_xtp_session_key(hl_session_key, tokens[1])) {
+			warn("%s: invalid history session key", __func__);
+			return (1);
+		}
+
+		if (!strcmp(tokens[2], XT_XTP_HL_LIST_STR))
+			hl_ctrl(t, XT_XTP_HL_LIST, NULL);
+		else if (!strcmp(tokens[2], XT_XTP_HL_REMOVE_STR))
+			hl_ctrl(t, XT_XTP_HL_REMOVE, atoi(tokens[3]));
+		else
+			warn("%s: unsupported hl command: %s", __func__, tokens[2]);
+
 	} else /* unsupported class */
 		warn("%s: unsupported class: %s", __func__, tokens[0]);
 
@@ -2169,6 +2307,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 			else
 				h->title = g_strdup(uri);
 			RB_INSERT(history_list, &hl, h);
+			update_history_tabs(NULL);
 		}
 
 		break;
@@ -3271,6 +3410,7 @@ main(int argc, char *argv[])
 
 	/* generate session keys for xtp pages */
 	generate_xtp_session_key(&dl_session_key);
+	generate_xtp_session_key(&hl_session_key);
 
 	/* prepare gtk */
 	gtk_init(&argc, &argv);
