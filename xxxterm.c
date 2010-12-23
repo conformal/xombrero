@@ -366,6 +366,7 @@ int			cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
 	"%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
 char			*dl_session_key;	/* downloads */
 char			*hl_session_key;	/* history list */
+char			*cl_session_key;	/* cookie list */
 
 char			*home = "http://www.peereboom.us";
 char			*search_string = NULL;
@@ -1660,7 +1661,7 @@ show_cookies(struct tab *t, struct karg *args)
 
 	/* Generate a new session key */
 	if (!updating_hl_tabs)
-		generate_xtp_session_key(&hl_session_key);
+		generate_xtp_session_key(&cl_session_key);
 
 	/* header */
 	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG "\n<head>"
@@ -1711,7 +1712,7 @@ show_cookies(struct tab *t, struct karg *args)
 
 		    XT_XTP_STR,
 		    XT_XTP_CL,
-		    hl_session_key,
+		    cl_session_key,
 		    XT_XTP_CL_REMOVE,
 		    i++
 		    );
@@ -2371,9 +2372,17 @@ parse_xtp_url(struct tab *t, const char *url)
 		hl_ctrl(t, atoi(tokens[2]), atoi(tokens[3]));
 
 		break;
+	case XT_XTP_CL:
+		/* validate session key */
+		if (!validate_xtp_session_key(cl_session_key, tokens[1])) {
+			warn("%s: invalid history session key", __func__);
+			return (1);
+		}
 
+		fprintf(stderr, "omg do something to a cookie\n");
+		break;
 	default:/* unsupported class */
-		warn("%s: unsupported class: %s", __func__, tokens[0]);
+		warnx("%s: unsupported class: %s", __func__, tokens[0]);
 		break;
 	}
 
@@ -3661,6 +3670,7 @@ main(int argc, char *argv[])
 	/* generate session keys for xtp pages */
 	generate_xtp_session_key(&dl_session_key);
 	generate_xtp_session_key(&hl_session_key);
+	generate_xtp_session_key(&cl_session_key);
 
 	/* prepare gtk */
 	gtk_init(&argc, &argv);
