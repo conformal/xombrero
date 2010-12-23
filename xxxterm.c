@@ -245,6 +245,7 @@ struct karg {
 /* XTP classes (xxxt://<class>) */
 #define XT_XTP_DL		1	/* downloads */
 #define XT_XTP_HL		2	/* history */
+#define XT_XTP_CL		3	/* cookies */
 
 /* XTP download actions */
 #define XT_XTP_DL_LIST		1
@@ -254,6 +255,10 @@ struct karg {
 /* XTP history actions */
 #define XT_XTP_HL_LIST		1
 #define XT_XTP_HL_REMOVE	2
+
+/* XTP history actions */
+#define XT_XTP_CL_LIST		1
+#define XT_XTP_CL_REMOVE	2
 
 /* XXX add favorites to xtp */
 
@@ -1637,6 +1642,109 @@ update_history_tabs(struct tab *apart_from)
 }
 
 int
+show_cookies(struct tab *t, struct karg *args)
+{
+	char			*header, *body, *footer, *page, *tmp;
+	int			i = 1; /* all ids start 1 */
+	GSList			*cf;
+	SoupCookie		*c;
+
+
+	DNPRINTF(XT_D_CMD, "%s", __func__);
+
+	if (t == NULL)
+		errx(1, "%s: null tab", __func__);
+
+	/* mark this tab as history manager */
+	t->xtp_meaning = XT_XTP_TAB_MEANING_HISTORY;
+
+	/* Generate a new session key */
+	if (!updating_hl_tabs)
+		generate_xtp_session_key(&hl_session_key);
+
+	/* header */
+	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG "\n<head>"
+	    "<title>Cookie Jar</title>\n"
+	    "%s"
+	    "</head>"
+	    "<h1>Cookie Jar</h1>\n",
+	    "");
+	    //XT_PAGE_STYLE);
+
+	/* body */
+	body = g_strdup_printf("<div align='center'><table><tr>"
+	    "<th>Name</th>"
+	    "<th>Value</th>"
+	    "<th>Domain</th>"
+	    "<th>Path</th>"
+	    "<th>Expires</th>"
+	    "<th>Secure</th>"
+	    "<th>HTTP_only</th>"
+	    "<th>Remove</th></tr>\n");
+
+	cf = soup_cookie_jar_all_cookies(p_cookiejar);
+
+	for (; cf; cf = cf->next) {
+		c = cf->data;
+
+		tmp = body;
+		body = g_strdup_printf(
+		    "%s\n<tr>"
+		    "<td style='width: 10%%; word-break: break-all'>%s</td>"
+		    "<td style='width: 20%%; word-break: break-all'>%s</td>"
+		    "<td style='width: 10%%; word-break: break-all'>%s</td>"
+		    "<td style='width: 8%%; word-break: break-all'>%s</td>"
+		    "<td style='width: 12%%; word-break: break-all'>%s</td>"
+		    "<td style='width: 3%%; text-align: center'>%d</td>"
+		    "<td style='width: 3%%; text-align: center'>%d</td>"
+		    "<td style='width: 3%%; text-align: center'>"
+		    "<a href='%s%d/%s/%d/%d'>X</a></td></tr>\n",
+		    body,
+		    c->name,
+		    c->value,
+		    c->domain,
+		    c->path,
+		    c->expires ?
+		        soup_date_to_string(c->expires, SOUP_DATE_HTTP) : "",
+		    c->secure,
+		    c->http_only,
+
+		    XT_XTP_STR,
+		    XT_XTP_CL,
+		    hl_session_key,
+		    XT_XTP_CL_REMOVE,
+		    i++
+		    );
+
+		g_free(tmp);
+		i++;
+	}
+	soup_cookies_free(cf);
+
+	/* small message if there are none */
+	if (i == 1) {
+		tmp = body;
+		body = g_strdup_printf("%s\n<tr><td style='text-align:center'"
+		    "colspan='8'>No Cookies</td></tr>\n", body);
+		g_free(tmp);
+	}
+
+	/* footer */
+	footer = g_strdup_printf("</table></div></body></html>");
+
+	page = g_strdup_printf("%s%s%s", header, body, footer);
+
+	g_free(header);
+	g_free(body);
+	g_free(footer);
+
+	webkit_web_view_load_string(t->wv, page, "text/html", "UTF-8", "");
+	g_free(page);
+
+	return (0);
+}
+
+int
 show_hist(struct tab *t, struct karg *args)
 {
 	char			*header, *body, *footer, *page, *tmp;
@@ -2056,6 +2164,7 @@ struct cmd {
 	{ "about",		0,	about,			{0} },
 	{ "stats",		0,	stats,			{0} },
 	{ "version",		0,	about,			{0} },
+	{ "cookies",		0,	show_cookies,		{0} },
 
 	/* favorites */
 	{ "fav",		0,	favorites,		{0} },
