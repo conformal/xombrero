@@ -1001,14 +1001,28 @@ focus(struct tab *t, struct karg *args)
 int
 help(struct tab *t, struct karg *args)
 {
+	char			*help;
+
 	if (t == NULL)
 		errx(1, "help");
 
-	webkit_web_view_load_string(t->wv,
-	    "<html><body><h1>XXXTerm</h1></body></html>",
-	    NULL,
-	    NULL,
-	    NULL);
+
+	help = XT_DOCTYPE
+	    "<html>"
+	    "<head>"
+	    "<title>XXXterm</title>"
+	    "<meta http-equiv=\"REFRESH\" content=\"0;"
+	        "url=http://opensource.conformal.com/cgi-bin/man-cgi?xxxterm\">"
+	    "</head>"
+	    "<body>"
+	    "XXXterm man page<a href=\"http://opensource.conformal.com/"
+	        "cgi-bin/man-cgi?xxxterm\">http://opensource.conformal.com/"
+		"cgi-bin/man-cgi?xxxterm</a>"
+	    "</body>"
+	    "</html>"
+	    ;
+
+	webkit_web_view_load_string(t->wv, help, NULL, NULL, NULL);
 
 	return (0);
 }
@@ -1451,13 +1465,13 @@ dlman_table_row(char *html, struct download *dl)
 	gdouble			progress;
 	char			cur_sz[FMT_SCALED_STRSIZE];
 	char			tot_sz[FMT_SCALED_STRSIZE];
-	char			*xtp_prefix; 
+	char			*xtp_prefix;
 
 	DNPRINTF(XT_D_DOWNLOAD, "%s: dl->id %d\n", __func__, dl->id);
 
 	/* All actions wil take this form:
 	 * xxxt://class/seskey
-	 */ 
+	 */
 	xtp_prefix = g_strdup_printf("%s%d/%s/",
 	    XT_XTP_STR, XT_XTP_DL, dl_session_key);
 
