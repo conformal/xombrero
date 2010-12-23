@@ -316,6 +316,7 @@ struct domain_list	js_wl;
 int			updating_dl_tabs = 0;
 int			updating_hl_tabs = 0;
 char			*global_search;
+uint64_t		blocked_cookies = 0;
 
 /* mime types */
 struct mime_type {
@@ -999,13 +1000,40 @@ focus(struct tab *t, struct karg *args)
 }
 
 int
+stats(struct tab *t, struct karg *args)
+{
+	char			*stats;
+
+	if (t == NULL)
+		errx(1, "stats");
+
+	stats = g_strdup_printf(XT_DOCTYPE
+	    "<html>"
+	    "<head>"
+	    "<title>Statistics</title>"
+	    "</head>"
+	    "<h1>Statistics</h1>"
+	    "<body>"
+	    "Cookies blocked(*) this session: %llu\n"
+	    "<p><small><b>*</b> results vary based on settings"
+	    "</body>"
+	    "</html>",
+	   blocked_cookies
+	    );
+
+	webkit_web_view_load_string(t->wv, stats, NULL, NULL, "");
+	g_free(stats);
+
+	return (0);
+}
+
+int
 about(struct tab *t, struct karg *args)
 {
 	char			*about;
 
 	if (t == NULL)
 		errx(1, "about");
-
 
 	about = g_strdup_printf(XT_DOCTYPE
 	    "<html>"
@@ -1028,8 +1056,8 @@ about(struct tab *t, struct karg *args)
 	    );
 
 	webkit_web_view_load_string(t->wv, about, NULL, NULL, "");
-
 	g_free(about);
+
 	return (0);
 }
 
@@ -1040,7 +1068,6 @@ help(struct tab *t, struct karg *args)
 
 	if (t == NULL)
 		errx(1, "help");
-
 
 	help = XT_DOCTYPE
 	    "<html>"
@@ -2027,6 +2054,7 @@ struct cmd {
 	{ "qa!",		0,	quit,			{0} },
 	{ "help",		0,	help,			{0} },
 	{ "about",		0,	about,			{0} },
+	{ "stats",		0,	stats,			{0} },
 	{ "version",		0,	about,			{0} },
 
 	/* favorites */
@@ -3394,6 +3422,7 @@ cookiejar_changed_cb(SoupCookieJar *jar, SoupCookie *old_cookie,
 
 	if (new_cookie) {
 		if ((d = wl_find(new_cookie->domain, &c_wl)) == NULL) {
+			blocked_cookies++;
 			DNPRINTF(XT_D_COOKIE,
 			    "cookiejar_changed_cb: reject %s\n",
 			    new_cookie->domain);
