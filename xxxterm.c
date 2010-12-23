@@ -999,6 +999,41 @@ focus(struct tab *t, struct karg *args)
 }
 
 int
+about(struct tab *t, struct karg *args)
+{
+	char			*about;
+
+	if (t == NULL)
+		errx(1, "about");
+
+
+	about = g_strdup_printf(XT_DOCTYPE
+	    "<html>"
+	    "<head>"
+	    "<title>About</title>"
+	    "</head>"
+	    "<h1>About</h1>"
+	    "<body>"
+	    "<b>Version: %s</b><p>"
+	    "Authors:"
+	    "<ul>"
+	    "<li>Marco Peereboom &lt;marco@peereboom.us&gt;</li>"
+	    "<li>Edd Barrett &lt;vext01@gmail.com&gt; </li>"
+	    "</ul>"
+	    "Copyrights and licenses can be found on the XXXterm "
+	    "<a href=\"http://opensource.conformal.com/wiki/XXXTerm\">website</a>"
+	    "</body>"
+	    "</html>",
+	    version
+	    );
+
+	webkit_web_view_load_string(t->wv, about, NULL, NULL, "");
+
+	g_free(about);
+	return (0);
+}
+
+int
 help(struct tab *t, struct karg *args)
 {
 	char			*help;
@@ -1022,7 +1057,7 @@ help(struct tab *t, struct karg *args)
 	    "</html>"
 	    ;
 
-	webkit_web_view_load_string(t->wv, help, NULL, NULL, NULL);
+	webkit_web_view_load_string(t->wv, help, NULL, NULL, "");
 
 	return (0);
 }
@@ -1991,6 +2026,8 @@ struct cmd {
 	{ "qa",			0,	quit,			{0} },
 	{ "qa!",		0,	quit,			{0} },
 	{ "help",		0,	help,			{0} },
+	{ "about",		0,	about,			{0} },
+	{ "version",		0,	about,			{0} },
 
 	/* favorites */
 	{ "fav",		0,	favorites,		{0} },
