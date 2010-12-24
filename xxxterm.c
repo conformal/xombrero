@@ -2131,6 +2131,18 @@ print_page(struct tab *t, struct karg *args)
 	return (0);
 }
 
+int
+go_home(struct tab *t, struct karg *args)
+{
+	char			*newuri;
+
+	newuri = guess_url_type((char *)home);
+	webkit_web_view_load_uri(t->wv, newuri);
+	free(newuri);
+
+	return (0);
+}
+
 /* inherent to GTK not all keys will be caught at all times */
 /* XXX sort key bindings */
 struct key {
@@ -2234,6 +2246,7 @@ struct cmd {
 	{ "h"		,	0,	xtp_page_hl,		{0} },
 	{ "hist"	,	0,	xtp_page_hl,		{0} },
 	{ "history"	,	0,	xtp_page_hl,		{0} },
+	{ "home"	,	0,	go_home,		{0} },
 
 	{ "1",			0,	move,			{.i = XT_MOVE_TOP} },
 	{ "print",		0,	print_page,		{0} },
