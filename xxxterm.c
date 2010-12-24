@@ -197,7 +197,7 @@ struct domain {
 };
 RB_HEAD(domain_list, domain);
 
-/* starts from 1 to catch atoi() failures when calling dlman_ctrl() */
+/* starts from 1 to catch atoi() failures when calling xtp_handle_dl() */
 int				next_download_id = 1;
 
 struct karg {
@@ -218,9 +218,8 @@ struct karg {
 #define XT_PAGE_STYLE		"<style type='text/css'>\n" \
 				"td {overflow: hidden;}\n"  \
 				"th {background-color: #cccccc}"  \
-				"table {width: 90%; border: 1px black"    \
+				"table {width: 90%%; border: 1px black"    \
 				" solid; table-layout: fixed}\n</style>\n\n"
-
 /* file sizes */
 #define SZ_KB		((uint64_t) 1024)
 #define SZ_MB		(SZ_KB * SZ_KB)
@@ -246,6 +245,7 @@ struct karg {
 #define XT_XTP_DL		1	/* downloads */
 #define XT_XTP_HL		2	/* history */
 #define XT_XTP_CL		3	/* cookies */
+#define XT_XTP_FL		4	/* favorites */
 
 /* XTP download actions */
 #define XT_XTP_DL_LIST		1
@@ -256,17 +256,20 @@ struct karg {
 #define XT_XTP_HL_LIST		1
 #define XT_XTP_HL_REMOVE	2
 
-/* XTP history actions */
+/* XTP cookie actions */
 #define XT_XTP_CL_LIST		1
 #define XT_XTP_CL_REMOVE	2
 
-/* XXX add favorites to xtp */
+/* XTP cookie actions */
+#define XT_XTP_FL_LIST		1
+#define XT_XTP_FL_REMOVE	2
 
 /* xtp tab meanings  - identifies which tabs have xtp pages in */
 #define XT_XTP_TAB_MEANING_NORMAL	0 /* normal url */
-#define XT_XTP_TAB_MEANING_DOWNLOAD	1 /* download manager in this tab */
-#define XT_XTP_TAB_MEANING_FAVORITE	2 /* favorite manager in this tab */
-#define XT_XTP_TAB_MEANING_HISTORY	3 /* history manager in this tab */
+#define XT_XTP_TAB_MEANING_DL		1 /* download manager in this tab */
+#define XT_XTP_TAB_MEANING_FL		2 /* favorite manager in this tab */
+#define XT_XTP_TAB_MEANING_HL		3 /* history manager in this tab */
+#define XT_XTP_TAB_MEANING_CL		3 /* cookie manager in this tab */
 
 /* actions */
 #define XT_MOVE_INVALID		(0)
@@ -320,6 +323,8 @@ struct domain_list	c_wl;
 struct domain_list	js_wl;
 int			updating_dl_tabs = 0;
 int			updating_hl_tabs = 0;
+int			updating_cl_tabs = 0;
+int			updating_fl_tabs = 0;
 char			*global_search;
 uint64_t		blocked_cookies = 0;
 
@@ -367,6 +372,7 @@ int			cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
 char			*dl_session_key;	/* downloads */
 char			*hl_session_key;	/* history list */
 char			*cl_session_key;	/* cookie list */
+char			*fl_session_key;	/* favorites list */
 
 char			*home = "http://www.peereboom.us";
 char			*search_string = NULL;
@@ -387,8 +393,10 @@ void			delete_tab(struct tab *);
 void			adjustfont_webkit(struct tab *, int);
 int			run_script(struct tab *, char *);
 int			download_rb_cmp(struct download *, struct download *);
-int			show_hist(struct tab *t, struct karg *args);
-int			dlman(struct tab *t, struct karg *args);
+int			xtp_page_hl(struct tab *t, struct karg *args);
+int			xtp_page_dl(struct tab *t, struct karg *args);
+int			xtp_page_cl(struct tab *t, struct karg *args);
+int			xtp_page_fl(struct tab *t, struct karg *args);
 
 int
 history_rb_cmp(struct history *h1, struct history *h2)
@@ -1095,9 +1103,27 @@ help(struct tab *t, struct karg *args)
 	return (0);
 }
 
+/*
+ * update all favorite tabs apart from one. Pass NULL if
+ * you want to update all.
+ */
+void
+update_favorite_tabs(struct tab *apart_from)
+{
+	struct tab			*t;
+	if (!updating_fl_tabs) {
+		updating_fl_tabs = 1; /* stop infinite recursion */
+		TAILQ_FOREACH(t, &tabs, entry)
+			if ((t->xtp_meaning == XT_XTP_TAB_MEANING_FL)
+			    && (t != apart_from))
+				xtp_page_fl(t, NULL);
+		updating_fl_tabs = 0;
+	}
+}
+
 /* show a list of favorites (bookmarks) */
 int
-favorites(struct tab *t, struct karg *args)
+xtp_page_fl(struct tab *t, struct karg *args)
 {
 	char			file[PATH_MAX];
 	FILE			*f;
@@ -1109,7 +1135,10 @@ favorites(struct tab *t, struct karg *args)
 	DNPRINTF(XT_D_FAVORITE, "%s:", __func__);
 
 	if (t == NULL)
-		errx(1, "favorites");
+		warn("%s: bad param", __func__);
+
+	/* mark tab as favorite list */
+	t->xtp_meaning = XT_XTP_TAB_MEANING_FL;
 
 	/* open favorites */
 	snprintf(file, sizeof file, "%s/%s/%s",
@@ -1129,7 +1158,8 @@ favorites(struct tab *t, struct karg *args)
 
 	/* body */
 	body = g_strdup_printf("<div align='center'><table><tr>"
-	    "<th style='width: 4%%'>&#35;</th><th>Link</th></tr>\n");
+	    "<th style='width: 4%%'>&#35;</th><th>Link</th>"
+	    "<th style='width: 15%%'>Remove</th></tr>\n");
 
 	for (i = 1;;) {
 		if ((title = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
@@ -1150,8 +1180,14 @@ favorites(struct tab *t, struct karg *args)
 			}
 
 		tmp = body;
-		body = g_strdup_printf("%s<tr><td>%d</td><td><a href='%s'>%s"
-		    "</a></td></tr>\n", body, i, uri, title);
+		body = g_strdup_printf("%s<tr>"
+		    "<td>%d</td>"
+		    "<td><a href='%s'>%s</a></td>"
+		    "<td style='text-align: center'>"
+		    "<a href='%s%d/%s/%d/%d'>X</a></td>"
+		    "</tr>\n",
+		    body, i, uri, title,
+		    XT_XTP_STR, XT_XTP_FL, fl_session_key, XT_XTP_FL_REMOVE, i);
 
 		g_free(tmp);
 
@@ -1175,6 +1211,8 @@ favorites(struct tab *t, struct karg *args)
 		webkit_web_view_load_string(t->wv, html, NULL, NULL, "");
 	}
 
+	update_favorite_tabs(t);
+
 	if (header)
 		g_free(header);
 	if (body)
@@ -1186,7 +1224,14 @@ favorites(struct tab *t, struct karg *args)
 }
 
 int
-favadd(struct tab *t, struct karg *args)
+remove_cookie(int index)
+{
+	/* XXX MARCO IMPLEMENT THIS */
+	return (1);
+}
+
+int
+add_favorite(struct tab *t, struct karg *args)
 {
 	char			file[PATH_MAX];
 	FILE			*f;
@@ -1196,7 +1241,7 @@ favadd(struct tab *t, struct karg *args)
 	const gchar		*uri, *title;
 
 	if (t == NULL)
-		errx(1, "favadd");
+		warn("%s: bad param", __func__);
 
 	snprintf(file, sizeof file, "%s/%s/%s",
 	    pwd->pw_dir, XT_DIR, XT_FAVS_FILE);
@@ -1235,6 +1280,8 @@ done:
 	if (line)
 		free(line);
 	fclose(f);
+
+	update_favorite_tabs(NULL);
 
 	return (0);
 }
@@ -1525,7 +1572,7 @@ command(struct tab *t, struct karg *args)
  * appended. Old string is freed.
  */
 char *
-dlman_table_row(char *html, struct download *dl)
+xtp_page_dl_row(char *html, struct download *dl)
 {
 
 	WebKitDownloadStatus	stat;
@@ -1616,10 +1663,28 @@ update_download_tabs(struct tab *apart_from)
 	if (!updating_dl_tabs) {
 		updating_dl_tabs = 1; /* stop infinite recursion */
 		TAILQ_FOREACH(t, &tabs, entry)
-			if ((t->xtp_meaning == XT_XTP_TAB_MEANING_DOWNLOAD)
+			if ((t->xtp_meaning == XT_XTP_TAB_MEANING_DL)
 			    && (t != apart_from))
-				dlman(t, NULL);
+				xtp_page_dl(t, NULL);
 		updating_dl_tabs = 0;
+	}
+}
+
+/*
+ * update all cookie tabs apart from one. Pass NULL if
+ * you want to update all.
+ */
+void
+update_cookie_tabs(struct tab *apart_from)
+{
+	struct tab			*t;
+	if (!updating_cl_tabs) {
+		updating_cl_tabs = 1; /* stop infinite recursion */
+		TAILQ_FOREACH(t, &tabs, entry)
+			if ((t->xtp_meaning == XT_XTP_TAB_MEANING_CL)
+			    && (t != apart_from))
+				xtp_page_cl(t, NULL);
+		updating_cl_tabs = 0;
 	}
 }
 
@@ -1635,15 +1700,16 @@ update_history_tabs(struct tab *apart_from)
 	if (!updating_hl_tabs) {
 		updating_hl_tabs = 1; /* stop infinite recursion */
 		TAILQ_FOREACH(t, &tabs, entry)
-			if ((t->xtp_meaning == XT_XTP_TAB_MEANING_HISTORY)
+			if ((t->xtp_meaning == XT_XTP_TAB_MEANING_HL)
 			    && (t != apart_from))
-				show_hist(t, NULL);
+				xtp_page_hl(t, NULL);
 		updating_hl_tabs = 0;
 	}
 }
 
+/* cookie management XTP page */
 int
-show_cookies(struct tab *t, struct karg *args)
+xtp_page_cl(struct tab *t, struct karg *args)
 {
 	char			*header, *body, *footer, *page, *tmp;
 	int			i = 1; /* all ids start 1 */
@@ -1656,21 +1722,17 @@ show_cookies(struct tab *t, struct karg *args)
 	if (t == NULL)
 		errx(1, "%s: null tab", __func__);
 
-	/* mark this tab as history manager */
-	t->xtp_meaning = XT_XTP_TAB_MEANING_HISTORY;
+	/* mark this tab as cookie jar */
+	t->xtp_meaning = XT_XTP_TAB_MEANING_CL;
 
 	/* Generate a new session key */
-	if (!updating_hl_tabs)
+	if (!updating_cl_tabs)
 		generate_xtp_session_key(&cl_session_key);
 
 	/* header */
-	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG "\n<head>"
-	    "<title>Cookie Jar</title>\n"
-	    "%s"
-	    "</head>"
-	    "<h1>Cookie Jar</h1>\n",
-	    "");
-	    //XT_PAGE_STYLE);
+	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG
+	  "\n<head><title>Cookie Jar</title>\n" XT_PAGE_STYLE
+	  "</head><body><h1>Cookie Jar</h1>\n");
 
 	/* body */
 	body = g_strdup_printf("<div align='center'><table><tr>"
@@ -1714,7 +1776,7 @@ show_cookies(struct tab *t, struct karg *args)
 		    XT_XTP_CL,
 		    cl_session_key,
 		    XT_XTP_CL_REMOVE,
-		    i++
+		    i
 		    );
 
 		g_free(tmp);
@@ -1740,13 +1802,15 @@ show_cookies(struct tab *t, struct karg *args)
 	g_free(footer);
 
 	webkit_web_view_load_string(t->wv, page, "text/html", "UTF-8", "");
+	update_history_tabs(t);
+
 	g_free(page);
 
 	return (0);
 }
 
 int
-show_hist(struct tab *t, struct karg *args)
+xtp_page_hl(struct tab *t, struct karg *args)
 {
 	char			*header, *body, *footer, *page, *tmp;
 	struct history		*h;
@@ -1758,7 +1822,7 @@ show_hist(struct tab *t, struct karg *args)
 		errx(1, "%s: null tab", __func__);
 
 	/* mark this tab as history manager */
-	t->xtp_meaning = XT_XTP_TAB_MEANING_HISTORY;
+	t->xtp_meaning = XT_XTP_TAB_MEANING_HL;
 
 	/* Generate a new session key */
 	if (!updating_hl_tabs)
@@ -1786,10 +1850,10 @@ show_hist(struct tab *t, struct karg *args)
 		    "<a href='%s%d/%s/%d/%d'>X</a></td></tr>\n",
 		    body, h->uri, h->uri, h->title,
 		    XT_XTP_STR, XT_XTP_HL, hl_session_key,
-		    XT_XTP_HL_REMOVE, i ++);
+		    XT_XTP_HL_REMOVE, i);
 
 		g_free(tmp);
-		i ++;
+		i++;
 	}
 
 	/* small message if there are none */
@@ -1826,7 +1890,7 @@ show_hist(struct tab *t, struct karg *args)
  * Generate a web page detailing the status of any downloads
  */
 int
-dlman(struct tab *t, struct karg *args)
+xtp_page_dl(struct tab *t, struct karg *args)
 {
 	struct download		*dl;
 	char			*header, *body, *footer, *page, *tmp;
@@ -1839,11 +1903,11 @@ dlman(struct tab *t, struct karg *args)
 		errx(1, "%s: null tab", __func__);
 
 	/* mark as a download manager tab */
-	t->xtp_meaning = XT_XTP_TAB_MEANING_DOWNLOAD;
+	t->xtp_meaning = XT_XTP_TAB_MEANING_DL;
 
 	/*
-	 * Generate a new session key for next dlman instance.
-	 * This only happens for the top level call to dlman(),
+	 * Generate a new session key for next page instance.
+	 * This only happens for the top level call to xtp_page_dl()
 	 * in which case updating_dl_tabs is 0.
 	 */
 	if (!updating_dl_tabs)
@@ -1877,7 +1941,7 @@ dlman(struct tab *t, struct karg *args)
 	    XT_XTP_STR, XT_XTP_DL, dl_session_key, XT_XTP_DL_LIST);
 
 	RB_FOREACH_REVERSE(dl, download_list, &downloads) {
-		body = dlman_table_row(body, dl);
+		body = xtp_page_dl_row(body, dl);
 		n_dl ++;
 	}
 
@@ -1900,8 +1964,6 @@ dlman(struct tab *t, struct karg *args)
 	 * update all download manager tabs as the xtp session
 	 * key has now changed. No need to update the current tab.
 	 * Already did that above.
-	 *
-	 *
 	 */
 	update_download_tabs(t);
 
@@ -2078,8 +2140,8 @@ struct key {
 	int		(*func)(struct tab *, struct karg *);
 	struct karg	arg;
 } keys[] = {
-	{ GDK_MOD1_MASK,	0,	GDK_d,		dlman,		{0} },
-	{ GDK_CONTROL_MASK,	0,	GDK_h,		show_hist,	{0} },
+	{ GDK_MOD1_MASK,	0,	GDK_d,		xtp_page_dl,	{0} },
+	{ GDK_CONTROL_MASK,	0,	GDK_h,		xtp_page_hl,	{0} },
 	{ GDK_CONTROL_MASK,	0,	GDK_p,		print_page,	{0}},
 	{ 0,			0,	GDK_slash,	command,	{.i = '/'} },
 	{ GDK_SHIFT_MASK,	0,	GDK_question,	command,	{.i = '?'} },
@@ -2106,7 +2168,7 @@ struct key {
 	{ 0,			0,	GDK_F5,		navaction,	{.i = XT_NAV_RELOAD} },
 	{ GDK_CONTROL_MASK,	0,	GDK_r,		navaction,	{.i = XT_NAV_RELOAD} },
 	{ GDK_CONTROL_MASK,	0,	GDK_l,		navaction,	{.i = XT_NAV_RELOAD} },
-	{ GDK_CONTROL_MASK,	0,	GDK_f,		favorites,	{0} }, /* XXX make it work in edit boxes */
+	{ GDK_CONTROL_MASK,	0,	GDK_f,		xtp_page_fl,	{0} }, /* XXX make it work in edit boxes */
 
 	/* vertical movement */
 	{ 0,			0,	GDK_j,		move,		{.i = XT_MOVE_DOWN} },
@@ -2165,15 +2227,13 @@ struct cmd {
 	{ "about",		0,	about,			{0} },
 	{ "stats",		0,	stats,			{0} },
 	{ "version",		0,	about,			{0} },
-	{ "cookies",		0,	show_cookies,		{0} },
-
-	/* favorites */
-	{ "fav",		0,	favorites,		{0} },
-	{ "favadd",		0,	favadd,			{0} },
-	{ "dl"		,	0,	dlman,			{0} },
-	{ "h"		,	0,	show_hist,		{0} },
-	{ "hist"	,	0,	show_hist,		{0} },
-	{ "history"	,	0,	show_hist,		{0} },
+	{ "cookies",		0,	xtp_page_cl,		{0} },
+	{ "fav",		0,	xtp_page_fl,		{0} },
+	{ "favadd",		0,	add_favorite,		{0} },
+	{ "dl"		,	0,	xtp_page_dl,		{0} },
+	{ "h"		,	0,	xtp_page_hl,		{0} },
+	{ "hist"	,	0,	xtp_page_hl,		{0} },
+	{ "history"	,	0,	xtp_page_hl,		{0} },
 
 	{ "1",			0,	move,			{.i = XT_MOVE_TOP} },
 	{ "print",		0,	print_page,		{0} },
@@ -2233,7 +2293,7 @@ focus_uri_entry_cb(GtkWidget* w, GtkDirectionType direction, struct tab *t)
  * cancel, remove, etc. downloads
  */
 void
-dlman_ctrl(struct tab *t, uint8_t cmd, int id)
+xtp_handle_dl(struct tab *t, uint8_t cmd, int id)
 {
 	struct download		find, *d;
 
@@ -2262,13 +2322,13 @@ dlman_ctrl(struct tab *t, uint8_t cmd, int id)
 		RB_REMOVE(download_list, &downloads, d);
 		break;
 	case XT_XTP_DL_LIST:
-		/* Nothing, just dlman() below */
+		/* Nothing */
 		break;
 	default:
 		warn("%s: unknown command", __func__);
 		break;
 	};
-	dlman(t, NULL);
+	xtp_page_dl(t, NULL);
 }
 
 /*
@@ -2276,7 +2336,7 @@ dlman_ctrl(struct tab *t, uint8_t cmd, int id)
  * we provide the function for future actions
  */
 void
-hl_ctrl(struct tab *t, uint8_t cmd, int id)
+xtp_handle_hl(struct tab *t, uint8_t cmd, int id)
 {
 	struct history		*h, *next;
 	int			i = 1;
@@ -2293,20 +2353,143 @@ hl_ctrl(struct tab *t, uint8_t cmd, int id)
 				g_free(h);
 				break;
 			}
-			i ++;
+			i++;
 		}
 		break;
 	case XT_XTP_HL_LIST:
-		/* Nothing - just show_hist() below */
+		/* Nothing - just xtp_page_hl() below */
 		break;
 	default:
 		warn("%s: unknown command", __func__);
 		break;
 	};
 
-	show_hist(t, NULL);
+	xtp_page_hl(t, NULL);
 }
 
+/* remove a favorite */
+void
+remove_favorite(int index)
+{
+	char			file[PATH_MAX], *title, *uri;
+	char			*new_favs, *tmp;
+	FILE			*f;
+	int			i;
+	size_t			len, lineno;
+
+	/* open favorites */
+	snprintf(file, sizeof file, "%s/%s/%s",
+	    pwd->pw_dir, XT_DIR, XT_FAVS_FILE);
+
+	if ((f = fopen(file, "r")) == NULL) {
+		warn("%s: can't open favorites", __func__);
+		return;
+	}
+
+	/* build a string which will become the new favroites file */
+	new_favs = g_strdup_printf("%s", "");
+
+	for (i = 1;;) {
+		if ((title = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
+			if (feof(f) || ferror(f))
+				break;
+		if (len == 0) {
+			free(title);
+			title = NULL;
+			continue;
+		}
+
+		if ((uri = fparseln(f, &len, &lineno, NULL, 0)) == NULL) {
+			if (feof(f) || ferror(f)) {
+				warn("%s: can't parse favorites", __func__);
+				goto clean;
+			}
+		}
+
+		/* as long as this isn't the one we are deleting add to file */
+		if (i != index) {
+			tmp = new_favs;
+			new_favs = g_strdup_printf("%s%s\n%s\n",
+			    new_favs, title, uri);
+			g_free(tmp);
+		}
+
+		free(uri);
+		uri = NULL;
+		free(title);
+		title = NULL;
+		i++;
+	}
+	fclose(f);
+
+	/* write back new favorites file */
+	if ((f = fopen(file, "w")) == NULL) {
+		warn("%s: can't open favorites", __func__);
+		goto clean;
+	}
+
+	fwrite(new_favs, strlen(new_favs), 1, f);
+	fclose(f);
+
+clean:
+	if (uri)
+		free(uri);
+	if (title)
+		free(title);
+
+	g_free(new_favs);
+}
+
+void
+xtp_handle_fl(struct tab *t, uint8_t cmd, int arg)
+{
+	switch (cmd) {
+	case XT_XTP_FL_LIST:
+		/* nothing, just the below call to xtp_page_fl() */
+		break;
+	case XT_XTP_FL_REMOVE:
+		remove_favorite(arg);
+		break;
+	default:
+		warn("%s: invalid favorites command", __func__);
+		break;
+	};
+
+	xtp_page_fl(t, NULL);
+}
+
+void
+xtp_handle_cl(struct tab *t, uint8_t cmd, int arg)
+{
+	switch (cmd) {
+	case XT_XTP_CL_LIST:
+		/* nothing, just xtp_page_cl() */
+		break;
+	case XT_XTP_CL_REMOVE:
+		remove_cookie(arg);
+		break;
+	default:
+		warn("%s: unknown cookie xtp command", __func__);
+		break;
+	};
+
+	xtp_page_cl(t, NULL);
+}
+
+/* link an XTP class to it's session key and handler function */
+struct xtp_despatch {
+	uint8_t			xtp_class;
+	char			**session_key;
+	void			(*handle_func)(struct tab *, uint8_t, int);
+};
+
+struct xtp_despatch		xtp_despatches[] = {
+	{ XT_XTP_DL, &dl_session_key, xtp_handle_dl },
+	{ XT_XTP_HL, &hl_session_key, xtp_handle_hl },
+	{ XT_XTP_FL, &fl_session_key, xtp_handle_fl },
+	{ XT_XTP_CL, &cl_session_key, xtp_handle_cl },
+	{ NULL, NULL, NULL }
+};
 
 /*
  * is the url xtp protocol? (xxxt://)
@@ -2315,11 +2498,14 @@ hl_ctrl(struct tab *t, uint8_t cmd, int id)
 int
 parse_xtp_url(struct tab *t, const char *url)
 {
-	char		*dup = NULL, *p, *last;
-	uint8_t		n_tokens = 0;
-	char		*tokens[4] = {NULL, NULL, NULL, ""};
+	char			*dup = NULL, *p, *last;
+	uint8_t			n_tokens = 0;
+	char			*tokens[4] = {NULL, NULL, NULL, ""};
+	struct xtp_despatch	*dsp, *dsp_match = NULL;
+	uint8_t			req_class;
 
-	/* tokens array meaning:
+	/*
+	 * tokens array meaning:
 	 *   tokens[0] = class
 	 *   tokens[1] = session key
 	 *   tokens[2] = action
@@ -2345,47 +2531,30 @@ parse_xtp_url(struct tab *t, const char *url)
 
 	/* should be atleast three fields 'class/seskey/command/arg' */
 	if (n_tokens < 3)
-		return 0;
+		goto clean;
 
-	switch (atoi(tokens[0])) {
-	/* if a download XTP url */
-	case XT_XTP_DL:
-
-		/* validate session key */
-		if (!validate_xtp_session_key(dl_session_key, tokens[1])) {
-			warn("%s: invalid download session key", __func__);
-			return (1);
+	dsp = xtp_despatches;
+	req_class = atoi(tokens[0]);
+	while (dsp->xtp_class != NULL) {
+		if (dsp->xtp_class == req_class) {
+			dsp_match = dsp;
+			break;
 		}
-
-		dlman_ctrl(t, atoi(tokens[2]), atoi(tokens[3]));
-
-	/* if a history XTP url */
-		break;
-	case XT_XTP_HL:
-
-		/* validate session key */
-		if (!validate_xtp_session_key(hl_session_key, tokens[1])) {
-			warn("%s: invalid history session key", __func__);
-			return (1);
-		}
-
-		hl_ctrl(t, atoi(tokens[2]), atoi(tokens[3]));
-
-		break;
-	case XT_XTP_CL:
-		/* validate session key */
-		if (!validate_xtp_session_key(cl_session_key, tokens[1])) {
-			warn("%s: invalid history session key", __func__);
-			return (1);
-		}
-
-		fprintf(stderr, "omg do something to a cookie\n");
-		break;
-	default:/* unsupported class */
-		warnx("%s: unsupported class: %s", __func__, tokens[0]);
-		break;
+		dsp++;
 	}
 
+	/* did we find one atall? */
+	if (dsp_match == NULL) {
+		warn("%s: no matching xtp despatch found", __func__);
+		goto clean;
+	}
+
+	/* check session key and call despatch function */
+	if (validate_xtp_session_key(*(dsp_match->session_key), tokens[1])) {
+		dsp_match->handle_func(t, atoi(tokens[2]), atoi(tokens[3]));
+	}
+
+clean:
 	if (dup)
 		g_free(dup);
 
@@ -3671,6 +3840,7 @@ main(int argc, char *argv[])
 	generate_xtp_session_key(&dl_session_key);
 	generate_xtp_session_key(&hl_session_key);
 	generate_xtp_session_key(&cl_session_key);
+	generate_xtp_session_key(&fl_session_key);
 
 	/* prepare gtk */
 	gtk_init(&argc, &argv);
