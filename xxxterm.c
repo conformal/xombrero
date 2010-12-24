@@ -1140,6 +1140,10 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	/* mark tab as favorite list */
 	t->xtp_meaning = XT_XTP_TAB_MEANING_FL;
 
+	/* new session key */
+	if (!update_favorite_tabs)
+		generate_xtp_session_key(&fl_session_key);
+
 	/* open favorites */
 	snprintf(file, sizeof file, "%s/%s/%s",
 	    pwd->pw_dir, XT_DIR, XT_FAVS_FILE);
