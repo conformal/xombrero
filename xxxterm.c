@@ -28,7 +28,6 @@
  *	autocompletion on various inputs
  *	create privacy browsing
  *		- encrypted local data
- *	add js whitelist
  */
 
 #include <stdio.h>
@@ -1074,6 +1073,21 @@ toggle_js(struct tab *t, struct karg *args)
 			webkit_web_view_reload(t->wv);
 			return (0);
 		}
+
+	return (0);
+}
+
+int
+toggle_src(struct tab *t, struct karg *args)
+{
+	gboolean		mode;
+
+	if (t == NULL)
+		return (0);
+
+	mode = webkit_web_view_get_view_source_mode(t->wv);
+	webkit_web_view_set_view_source_mode(t->wv, !mode);
+	webkit_web_view_reload(t->wv);
 
 	return (0);
 }
@@ -2243,6 +2257,7 @@ struct key {
 	{ GDK_SHIFT_MASK,	0,	GDK_colon,	command,	{.i = ':'} },
 	{ GDK_CONTROL_MASK,	0,	GDK_q,		quit,		{0} },
 	{ GDK_CONTROL_MASK,	0,	GDK_j,		toggle_js,	{0} },
+	{ GDK_CONTROL_MASK,	0,	GDK_s,		toggle_src,	{0} },
 
 	/* search */
 	{ 0,			0,	GDK_n,		search,		{.i = XT_SEARCH_NEXT} },
