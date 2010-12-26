@@ -161,6 +161,15 @@ the alias on the address bar is substituted.
 For example, if g,http://www.google.com/search?q=%s is defined as an alias,
 then the URL http://www.google.com/search?q=foo is loaded when navigating to
 "g foo".
+.It Cm ssl_ca_file
+If set to a valid PEM file all server certificates will be validated against it.
+The URL bar will be colored green when the certificate is trusted and yellow when
+untrusted.
+.Pp
+If ssl_ca_file is not set then the URL bar will color all https connections red.
+.It Cm ssl_strict_certs
+If this value is set connections to untrusted sites will be aborted.
+This value is only used if ssl_ca_file is set.
 .El
 .Pp
 .Nm

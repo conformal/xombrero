@@ -362,6 +362,9 @@ int			enable_cookie_whitelist = 1;
 int			enable_js_whitelist = 1;
 time_t			session_timeout = 3600; /* cookie session timeout */
 int			cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
+char			*ssl_ca_file = NULL;
+gboolean		ssl_strict_certs = FALSE;
+
 /*
  * Session IDs.
  * We use these to prevent people putting xxxt:// URLs on
@@ -811,10 +814,16 @@ config_parse(char *filename)
 			if (http_proxy)
 				g_free(http_proxy);
 			http_proxy = g_strdup(val);
-		} else if (!strcmp(var, "search_string")) {
+		} else if (!strcmp(var, "ssl_strict_certs"))
+			ssl_strict_certs = atoi(val);
+		else if (!strcmp(var, "search_string")) {
 			if (search_string)
 				g_free(search_string);
 			search_string = g_strdup(val);
+		} else if (!strcmp(var, "ssl_ca_file")) {
+			if (ssl_ca_file)
+				g_free(ssl_ca_file);
+			ssl_ca_file = g_strdup(val);
 		} else if (!strcmp(var, "download_dir")) {
 			if (val[0] == '~')
 				snprintf(download_dir, sizeof download_dir,
@@ -2732,9 +2741,56 @@ check_and_set_js(gchar *uri, struct tab *t)
 }
 
 void
+show_ca_status(struct tab *t, const char *uri)
+{
+	WebKitWebFrame		*frame;
+	WebKitWebDataSource	*source;
+	WebKitNetworkRequest	*request;
+	SoupMessage		*message;
+	GdkColor		color;
+	gchar			*col_str = "white";
+
+	DNPRINTF(XT_D_URL, "show_ca_status: %d %s %s\n",
+	    ssl_strict_certs, ssl_ca_file, uri);
+
+	if (uri == NULL)
+		goto done;
+	if (ssl_ca_file == NULL) {
+		if (g_str_has_prefix(uri, "http://"))
+			goto done;
+		if (g_str_has_prefix(uri, "https://")) {
+			col_str = "red";
+			goto done;
+		}
+		return;
+	}
+	if (g_str_has_prefix(uri, "http://") ||
+	    !g_str_has_prefix(uri, "https://"))
+		goto done;
+
+	frame = webkit_web_view_get_main_frame(t->wv);
+	source = webkit_web_frame_get_data_source(frame);
+	request = webkit_web_data_source_get_request(source);
+	message = webkit_network_request_get_message(request);
+
+	if (message && (soup_message_get_flags(message) &
+	    SOUP_MESSAGE_CERTIFICATE_TRUSTED)) {
+		col_str = "green";
+		goto done;
+	} else {
+		col_str = "yellow";
+		goto done;
+	}
+done:
+	if (col_str) {
+		gdk_color_parse(col_str, &color);
+		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
+	}
+}
+
+void
 notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 {
-	GdkColor		color;
 	WebKitWebFrame		*frame;
 	const gchar		*set = NULL, *uri = NULL, *title = NULL;
 	struct history		*h, find;
@@ -2775,13 +2831,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		if (uri)
 			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
 
-		/* color uri_entry */
-		if (uri && !strncmp(uri, "https://", strlen("https://")))
-			gdk_color_parse("green", &color);
-		else
-			gdk_color_parse("white", &color);
-		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
-
+		show_ca_status(t, uri);
 		break;
 
 	case WEBKIT_LOAD_FIRST_VISUALLY_NON_EMPTY_LAYOUT:
@@ -3993,6 +4043,18 @@ main(int argc, char *argv[])
 	session = webkit_get_default_session();
 	snprintf(file, sizeof file, "%s/cookies.txt", work_dir);
 	setup_cookies(file);
+
+	if (ssl_ca_file) {
+		if (stat(ssl_ca_file, &sb)) {
+			warn("no CA file: %s", ssl_ca_file);
+			g_free(ssl_ca_file);
+			ssl_ca_file = NULL;
+		} else
+			g_object_set(session,
+			    SOUP_SESSION_SSL_CA_FILE, ssl_ca_file,
+			    SOUP_SESSION_SSL_STRICT, ssl_strict_certs,
+			    (void *)NULL);
+	}
 
 	/* proxy */
 	env_proxy = getenv("http_proxy");
