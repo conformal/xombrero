@@ -2244,13 +2244,13 @@ go_home(struct tab *t, struct karg *args)
 /* XXX sort key bindings */
 struct key {
 	guint		mask;
-	guint		modkey;
+	guint		use_in_entry;
 	guint		key;
 	int		(*func)(struct tab *, struct karg *);
 	struct karg	arg;
 } keys[] = {
 	{ GDK_MOD1_MASK,	0,	GDK_d,		xtp_page_dl,	{0} },
-	{ GDK_CONTROL_MASK,	0,	GDK_h,		xtp_page_hl,	{0} },
+	{ GDK_MOD1_MASK,	0,	GDK_h,		xtp_page_hl,	{0} },
 	{ GDK_CONTROL_MASK,	0,	GDK_p,		print_page,	{0}},
 	{ 0,			0,	GDK_slash,	command,	{.i = '/'} },
 	{ GDK_SHIFT_MASK,	0,	GDK_question,	command,	{.i = '?'} },
@@ -2278,7 +2278,7 @@ struct key {
 	{ 0,			0,	GDK_F5,		navaction,	{.i = XT_NAV_RELOAD} },
 	{ GDK_CONTROL_MASK,	0,	GDK_r,		navaction,	{.i = XT_NAV_RELOAD} },
 	{ GDK_CONTROL_MASK,	0,	GDK_l,		navaction,	{.i = XT_NAV_RELOAD} },
-	{ GDK_CONTROL_MASK,	0,	GDK_f,		xtp_page_fl,	{0} }, /* XXX make it work in edit boxes */
+	{ GDK_MOD1_MASK,	1,	GDK_f,		xtp_page_fl,	{0} },
 
 	/* vertical movement */
 	{ 0,			0,	GDK_j,		move,		{.i = XT_MOVE_DOWN} },
@@ -2306,7 +2306,7 @@ struct key {
 
 	/* tabs */
 	{ GDK_CONTROL_MASK,	0,	GDK_t,		tabaction,	{.i = XT_TAB_NEW} },
-	{ GDK_CONTROL_MASK,	0,	GDK_w,		tabaction,	{.i = XT_TAB_DELETE} },
+	{ GDK_CONTROL_MASK,	1,	GDK_w,		tabaction,	{.i = XT_TAB_DELETE} },
 	{ GDK_CONTROL_MASK,	0,	GDK_1,		movetab,	{.i = 1} },
 	{ GDK_CONTROL_MASK,	0,	GDK_2,		movetab,	{.i = 2} },
 	{ GDK_CONTROL_MASK,	0,	GDK_3,		movetab,	{.i = 3} },
@@ -3336,6 +3336,28 @@ cmd_complete(struct tab *t, char *s)
 #endif
 
 int
+entry_key_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
+{
+	int			i;
+
+	if (t == NULL)
+		errx(1, "entry_key_cb");
+
+	DNPRINTF(XT_D_CMD, "entry_key_cb: keyval 0x%x mask 0x%x t %p\n",
+	    e->keyval, e->state, t);
+
+	for (i = 0; i < LENGTH(keys); i++)
+		if (e->keyval == keys[i].key &&
+		    CLEAN(e->state) == keys[i].mask &&
+		    keys[i].use_in_entry) {
+			keys[i].func(t, &keys[i].arg);
+			return (XT_CB_HANDLED);
+		}
+
+	return (XT_CB_PASSTHROUGH);
+}
+
+int
 cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 {
 	int			rv = XT_CB_HANDLED;
@@ -3604,6 +3626,8 @@ create_toolbar(struct tab *t)
 	gtk_container_add(GTK_CONTAINER(i), t->uri_entry);
 	g_signal_connect(G_OBJECT(t->uri_entry), "activate",
 	    G_CALLBACK(activate_uri_entry_cb), t);
+	g_signal_connect(G_OBJECT(t->uri_entry), "key-press-event",
+	    (GCallback)entry_key_cb, t);
 	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), i, -1);
 
 	/* search entry */
@@ -3614,6 +3638,8 @@ create_toolbar(struct tab *t)
 		gtk_container_add(GTK_CONTAINER(i), t->search_entry);
 		g_signal_connect(G_OBJECT(t->search_entry), "activate",
 		    G_CALLBACK(activate_search_entry_cb), t);
+		g_signal_connect(G_OBJECT(t->uri_entry), "key-press-event",
+		    (GCallback)entry_key_cb, t);
 		gtk_toolbar_insert(GTK_TOOLBAR(toolbar), i, -1);
 	}
 
