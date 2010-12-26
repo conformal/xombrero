@@ -1005,7 +1005,7 @@ save_tabs(struct tab *t, struct karg *args)
 	    pwd->pw_dir, XT_DIR, XT_SAVED_TABS_FILE);
 
 	if ((f = fopen(file, "w")) == NULL) {
-		warn("save_tabs_and_quit");
+		warn("save_tabs");
 		return (1);
 	}
 
