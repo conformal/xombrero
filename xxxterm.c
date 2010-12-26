@@ -210,6 +210,7 @@ struct karg {
 #define XT_DIR			(".xxxterm")
 #define XT_CONF_FILE		("xxxterm.conf")
 #define XT_FAVS_FILE		("favorites")
+#define XT_SAVED_TABS_FILE	("saved_tabs")
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
 #define XT_DOCTYPE		"<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>"
@@ -952,6 +953,75 @@ quit(struct tab *t, struct karg *args)
 }
 
 int
+restore_saved_tabs(void)
+{
+	char		file[PATH_MAX];
+	FILE		*f;
+	char		*line = NULL;
+	size_t		linelen;
+	int		empty_saved_tabs_file = 1;
+
+	snprintf(file, sizeof file, "%s/%s/%s",
+	    pwd->pw_dir, XT_DIR, XT_SAVED_TABS_FILE);
+
+	if ((f = fopen(file, "r")) == NULL)
+		return (empty_saved_tabs_file);
+
+	while (!feof(f)) {
+		line = fparseln(f, &linelen, NULL, NULL, 0);
+		if (line) {
+			create_new_tab(line, 1);
+			empty_saved_tabs_file = 0;
+		}
+		free(line);
+		line = NULL;
+	}
+
+	fclose(f);
+	/*remove(file);*/
+
+	return (empty_saved_tabs_file);
+}
+
+int
+save_tabs(struct tab *t, struct karg *args)
+{
+	char			file[PATH_MAX];
+	FILE			*f;
+	struct tab		*ti;
+	WebKitWebFrame		*frame;
+	const gchar		*uri;
+
+	snprintf(file, sizeof file, "%s/%s/%s",
+	    pwd->pw_dir, XT_DIR, XT_SAVED_TABS_FILE);
+
+	if ((f = fopen(file, "w")) == NULL) {
+		warn("save_tabs_and_quit");
+		return (1);
+	}
+
+	TAILQ_FOREACH(ti, &tabs, entry) {
+		frame = webkit_web_view_get_main_frame(ti->wv);
+		uri = webkit_web_frame_get_uri(frame);
+		if (uri)
+			fprintf(f, "%s\n", uri);
+	}
+
+	fclose(f);
+
+	return (0);
+}
+
+int
+save_tabs_and_quit(struct tab *t, struct karg *args)
+{
+	save_tabs(t, NULL);
+	quit(t, NULL);
+
+	return (1);
+}
+
+int
 toggle_js(struct tab *t, struct karg *args)
 {
 	int			es, i;
@@ -1141,7 +1211,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	t->xtp_meaning = XT_XTP_TAB_MEANING_FL;
 
 	/* new session key */
-	if (!update_favorite_tabs)
+	if (!updating_fl_tabs)
 		generate_xtp_session_key(&fl_session_key);
 
 	/* open favorites */
@@ -2239,6 +2309,9 @@ struct cmd {
 	{ "q!",			0,	quit,			{0} },
 	{ "qa",			0,	quit,			{0} },
 	{ "qa!",		0,	quit,			{0} },
+	{ "w",			0,	save_tabs,		{0} },
+	{ "wq",			0,	save_tabs_and_quit,	{0} },
+	{ "wq!",		0,	save_tabs_and_quit,	{0} },
 	{ "help",		0,	help,			{0} },
 	{ "about",		0,	about,			{0} },
 	{ "stats",		0,	stats,			{0} },
@@ -3929,6 +4002,8 @@ main(int argc, char *argv[])
 		setup_proxy(http_proxy);
 
 	create_canvas();
+
+	focus = restore_saved_tabs();
 
 	while (argc) {
 		create_new_tab(argv[0], focus);
