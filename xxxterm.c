@@ -2039,7 +2039,7 @@ xtp_page_dl(struct tab *t, struct karg *args)
 
 	RB_FOREACH_REVERSE(dl, download_list, &downloads) {
 		body = xtp_page_dl_row(body, dl);
-		n_dl ++;
+		n_dl++;
 	}
 
 	/* message if no downloads in list */
@@ -3086,7 +3086,7 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download, struct tab *
 		download_entry = g_malloc(sizeof(struct download));
 		download_entry->download = wk_download;
 		download_entry->tab = t;
-		download_entry->id = next_download_id ++;
+		download_entry->id = next_download_id++;
 		RB_INSERT(download_list, &downloads, download_entry);
 		/* get from history */
 		g_object_ref(wk_download);
