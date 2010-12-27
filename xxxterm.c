@@ -3303,8 +3303,10 @@ cmd_keyrelease_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 
 	if (c[0] == ':')
 		goto done;
-	if (strlen(c) == 1)
+	if (strlen(c) == 1) {
+		webkit_web_view_unmark_text_matches(t->wv);
 		goto done;
+	}
 
 	if (c[0] == '/')
 		forward = TRUE;
@@ -3421,6 +3423,10 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	case GDK_Escape:
 		gtk_widget_hide(t->cmd);
 		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+
+		/* cancel search */
+		if (c[0] == '/' || c[0] == '?')
+			webkit_web_view_unmark_text_matches(t->wv);
 		goto done;
 	}
 
