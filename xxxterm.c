@@ -2426,20 +2426,6 @@ tab_close_cb(GtkWidget *event_box, GdkEventButton *event, struct tab *t)
 	return (FALSE);
 }
 
-void
-focus_uri_entry_cb(GtkWidget* w, GtkDirectionType direction, struct tab *t)
-{
-	DNPRINTF(XT_D_URL, "focus_uri_entry_cb: tab %d focus_wv %d\n",
-	    t->tab_id, t->focus_wv);
-
-	if (t == NULL)
-		errx(1, "focus_uri_entry_cb");
-
-	/* focus on wv instead */
-	if (t->focus_wv)
-		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
-}
-
 /*
  * cancel, remove, etc. downloads
  */
@@ -3620,17 +3606,10 @@ create_window(void)
 GtkWidget *
 create_toolbar(struct tab *t)
 {
-	GtkWidget		*toolbar = gtk_toolbar_new();
-	GtkToolItem		*i;
+	GtkWidget		*toolbar = NULL, *b;
 
-#if GTK_CHECK_VERSION(2,15,0)
-	gtk_orientable_set_orientation(GTK_ORIENTABLE(toolbar),
-	    GTK_ORIENTATION_HORIZONTAL);
-#else
-	gtk_toolbar_set_orientation(GTK_TOOLBAR(toolbar),
-	    GTK_ORIENTATION_HORIZONTAL);
-#endif
-	gtk_toolbar_set_style(GTK_TOOLBAR(toolbar), GTK_TOOLBAR_BOTH_HORIZ);
+	b = gtk_hbox_new(FALSE, 0);
+	toolbar = b;
 
 	if (fancy_bar) {
 		/* backward button */
@@ -3638,7 +3617,8 @@ create_toolbar(struct tab *t)
 		gtk_widget_set_sensitive(GTK_WIDGET(t->backward), FALSE);
 		g_signal_connect(G_OBJECT(t->backward), "clicked",
 		    G_CALLBACK(backward_cb), t);
-		gtk_toolbar_insert(GTK_TOOLBAR(toolbar), t->backward, -1);
+		gtk_box_pack_start(GTK_BOX(b), GTK_WIDGET(t->backward), FALSE,
+		    FALSE, 0);
 
 		/* forward button */
 		t->forward =
@@ -3646,38 +3626,34 @@ create_toolbar(struct tab *t)
 		gtk_widget_set_sensitive(GTK_WIDGET(t->forward), FALSE);
 		g_signal_connect(G_OBJECT(t->forward), "clicked",
 		    G_CALLBACK(forward_cb), t);
-		gtk_toolbar_insert(GTK_TOOLBAR(toolbar), t->forward, -1);
+		gtk_box_pack_start(GTK_BOX(b), GTK_WIDGET(t->forward), FALSE,
+		    FALSE, 0);
 
 		/* stop button */
 		t->stop = gtk_tool_button_new_from_stock(GTK_STOCK_STOP);
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 		g_signal_connect(G_OBJECT(t->stop), "clicked",
 		    G_CALLBACK(stop_cb), t);
-		gtk_toolbar_insert(GTK_TOOLBAR(toolbar), t->stop, -1);
+		gtk_box_pack_start(GTK_BOX(b), GTK_WIDGET(t->stop), FALSE,
+		    FALSE, 0);
 	}
 
-	/* uri entry */
-	i = gtk_tool_item_new();
-	gtk_tool_item_set_expand(i, TRUE);
 	t->uri_entry = gtk_entry_new();
-	gtk_container_add(GTK_CONTAINER(i), t->uri_entry);
 	g_signal_connect(G_OBJECT(t->uri_entry), "activate",
 	    G_CALLBACK(activate_uri_entry_cb), t);
 	g_signal_connect(G_OBJECT(t->uri_entry), "key-press-event",
 	    (GCallback)entry_key_cb, t);
-	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), i, -1);
+	gtk_box_pack_start(GTK_BOX(b), t->uri_entry, TRUE, TRUE, 0);
 
 	/* search entry */
 	if (fancy_bar && search_string) {
-		i = gtk_tool_item_new();
 		t->search_entry = gtk_entry_new();
 		gtk_entry_set_width_chars(GTK_ENTRY(t->search_entry), 30);
-		gtk_container_add(GTK_CONTAINER(i), t->search_entry);
 		g_signal_connect(G_OBJECT(t->search_entry), "activate",
 		    G_CALLBACK(activate_search_entry_cb), t);
 		g_signal_connect(G_OBJECT(t->uri_entry), "key-press-event",
 		    (GCallback)entry_key_cb, t);
-		gtk_toolbar_insert(GTK_TOOLBAR(toolbar), i, -1);
+		gtk_box_pack_start(GTK_BOX(b), t->search_entry, FALSE, FALSE, 0);
 	}
 
 	return (toolbar);
@@ -3824,9 +3800,6 @@ create_new_tab(char *title, int focus)
 	g_object_connect((GObject*)t->toolbar,
 	    "signal-after::key-press-event", (GCallback)webview_keypress_cb, t,
 	    (char *)NULL);
-
-	g_signal_connect(G_OBJECT(t->uri_entry), "focus",
-	    G_CALLBACK(focus_uri_entry_cb), t);
 
 	g_signal_connect(G_OBJECT(event_box), "button_press_event", G_CALLBACK(tab_close_cb), t);
 
