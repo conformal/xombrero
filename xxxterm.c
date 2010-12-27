@@ -2288,7 +2288,7 @@ struct key {
 	{ GDK_SHIFT_MASK,	0,	GDK_G,		move,		{.i = XT_MOVE_BOTTOM} },
 	{ 0,			0,	GDK_End,	move,		{.i = XT_MOVE_BOTTOM} },
 	{ 0,			0,	GDK_Home,	move,		{.i = XT_MOVE_TOP} },
-	{ 0,			GDK_g,	GDK_g,		move,		{.i = XT_MOVE_TOP} }, /* XXX make this work */
+	{ 0,			0,	GDK_g,		move,		{.i = XT_MOVE_TOP} }, /* XXX make this work */
 	{ 0,			0,	GDK_space,	move,		{.i = XT_MOVE_PAGEDOWN} },
 	{ GDK_CONTROL_MASK,	0,	GDK_f,		move,		{.i = XT_MOVE_PAGEDOWN} },
 	{ GDK_CONTROL_MASK,	0,	GDK_d,		move,		{.i = XT_MOVE_HALFDOWN} },
