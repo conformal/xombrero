@@ -84,7 +84,6 @@ THE SOFTWARE.
 
 static char		*version = "$xxxterm$";
 
-#define XT_DEBUG
 /*#define XT_DEBUG*/
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
@@ -141,6 +140,7 @@ struct tab {
 	GtkToolItem		*backward;
 	GtkToolItem		*forward;
 	GtkToolItem		*stop;
+	GtkToolItem		*js_toggle;
 	guint			tab_id;
 	WebKitWebView		*wv;
 
@@ -1060,9 +1060,6 @@ toggle_js(struct tab *t, struct karg *args)
 	g_object_get((GObject *)t->settings,
 	    "enable-scripts", &es, (char *)NULL);
 	es = !es;
-	g_object_set((GObject *)t->settings,
-	    "enable-scripts", es, (char *)NULL);
-	webkit_web_view_set_settings(t->wv, t->settings);
 
 	frame = webkit_web_view_get_main_frame(t->wv);
 	s = (gchar *)webkit_web_frame_get_uri(frame);
@@ -1083,18 +1080,35 @@ toggle_js(struct tab *t, struct karg *args)
 		/* chop string at first slash */
 		if (s[i] == '/' || s[i] == '\0') {
 			s[i] = '\0';
-			if (es)
+			if (es) {
+				gtk_tool_button_set_stock_id(
+				    GTK_TOOL_BUTTON(t->js_toggle),
+				    GTK_STOCK_MEDIA_PLAY);
 				wl_add(s, &js_wl);
-			else {
+			} else {
 				d = wl_find(s, &js_wl);
 				if (d)
 					RB_REMOVE(domain_list, &js_wl, d);
+				gtk_tool_button_set_stock_id(
+				    GTK_TOOL_BUTTON(t->js_toggle),
+				    GTK_STOCK_MEDIA_PAUSE);
 			}
+			g_object_set((GObject *)t->settings,
+			    "enable-scripts", es, (char *)NULL);
+			webkit_web_view_set_settings(t->wv, t->settings);
+
 			webkit_web_view_reload(t->wv);
+
 			return (0);
 		}
 
 	return (0);
+}
+
+void
+js_toggle_cb(GtkWidget *w, struct tab *t)
+{
+	toggle_js(t, NULL);
 }
 
 int
@@ -2777,6 +2791,9 @@ check_and_set_js(gchar *uri, struct tab *t)
 	g_object_set((GObject *)t->settings,
 	    "enable-scripts", es, (char *)NULL);
 	webkit_web_view_set_settings(t->wv, t->settings);
+
+	gtk_tool_button_set_stock_id(GTK_TOOL_BUTTON(t->js_toggle),
+	    es ? GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE);
 }
 
 void
@@ -2851,12 +2868,6 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), TRUE);
 		t->focus_wv = 1;
-		/* check if js white listing is enabled */
-		if (enable_js_whitelist) {
-			frame = webkit_web_view_get_main_frame(wview);
-			uri = webkit_web_frame_get_uri(frame);
-			check_and_set_js((gchar *)uri, t);
-		}
 
 		/* take focus if we are visible */
 		if (gtk_notebook_get_current_page(notebook) == t->tab_id)
@@ -2869,6 +2880,13 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		uri = webkit_web_frame_get_uri(frame);
 		if (uri)
 			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
+
+		/* check if js white listing is enabled */
+		if (enable_js_whitelist) {
+			frame = webkit_web_view_get_main_frame(wview);
+			uri = webkit_web_frame_get_uri(frame);
+			check_and_set_js((gchar *)uri, t);
+		}
 
 		show_ca_status(t, uri);
 		break;
@@ -3642,6 +3660,16 @@ create_toolbar(struct tab *t)
 		g_signal_connect(G_OBJECT(t->stop), "clicked",
 		    G_CALLBACK(stop_cb), t);
 		gtk_box_pack_start(GTK_BOX(b), GTK_WIDGET(t->stop), FALSE,
+		    FALSE, 0);
+
+		/* JS button */
+		t->js_toggle =
+		    gtk_tool_button_new_from_stock(enable_scripts ?
+		        GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE);
+		gtk_widget_set_sensitive(GTK_WIDGET(t->js_toggle), TRUE);
+		g_signal_connect(G_OBJECT(t->js_toggle), "clicked",
+		    G_CALLBACK(js_toggle_cb), t);
+		gtk_box_pack_start(GTK_BOX(b), GTK_WIDGET(t->js_toggle), FALSE,
 		    FALSE, 0);
 	}
 
