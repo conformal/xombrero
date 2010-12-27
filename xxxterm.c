@@ -84,6 +84,7 @@ THE SOFTWARE.
 
 static char		*version = "$xxxterm$";
 
+#define XT_DEBUG
 /*#define XT_DEBUG*/
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
@@ -3931,6 +3932,9 @@ setup_cookies(char *file)
 	 * I'll take a diff if someone knows how to do this within the gtk
 	 * framework.
 	 */
+
+	if (cookies_enabled == 0)
+		return;
 
 	p_cookiejar = soup_cookie_jar_text_new(file, read_only_cookies);
 	if (enable_cookie_whitelist) {
