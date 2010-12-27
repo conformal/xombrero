@@ -269,7 +269,7 @@ struct karg {
 #define XT_XTP_TAB_MEANING_DL		1 /* download manager in this tab */
 #define XT_XTP_TAB_MEANING_FL		2 /* favorite manager in this tab */
 #define XT_XTP_TAB_MEANING_HL		3 /* history manager in this tab */
-#define XT_XTP_TAB_MEANING_CL		3 /* cookie manager in this tab */
+#define XT_XTP_TAB_MEANING_CL		4 /* cookie manager in this tab */
 
 /* actions */
 #define XT_MOVE_INVALID		(0)
@@ -480,6 +480,25 @@ valid_url_type(char *url)
 			return (0);
 
 	return (1);
+}
+
+void
+print_cookie(char *msg, SoupCookie *c)
+{
+	if (c == NULL)
+		return;
+
+	if (msg)
+		DNPRINTF(XT_D_COOKIE, "%s\n", msg);
+	DNPRINTF(XT_D_COOKIE, "name     : %s\n", c->name);
+	DNPRINTF(XT_D_COOKIE, "value    : %s\n", c->value);
+	DNPRINTF(XT_D_COOKIE, "domain   : %s\n", c->domain);
+	DNPRINTF(XT_D_COOKIE, "path     : %s\n", c->path);
+	DNPRINTF(XT_D_COOKIE, "expires  : %s\n",
+	    c->expires ? soup_date_to_string(c->expires, SOUP_DATE_HTTP) : "");
+	DNPRINTF(XT_D_COOKIE, "secure   : %d\n", c->secure);
+	DNPRINTF(XT_D_COOKIE, "http_only: %d\n", c->http_only);
+	DNPRINTF(XT_D_COOKIE, "====================================\n");
 }
 
 char *
@@ -1323,8 +1342,27 @@ xtp_page_fl(struct tab *t, struct karg *args)
 int
 remove_cookie(int index)
 {
-	/* XXX MARCO IMPLEMENT THIS */
-	return (1);
+	int			i, rv = 1;
+	GSList			*cf;
+	SoupCookie		*c;
+
+	DNPRINTF(XT_D_COOKIE, "remove_cookie: %d\n", index);
+
+	cf = soup_cookie_jar_all_cookies(p_cookiejar);
+
+	for (i = 1; cf; cf = cf->next, i++) {
+		if (i != index)
+			continue;
+		c = cf->data;
+		print_cookie("remove cookie", c);
+		soup_cookie_jar_delete_cookie(p_cookiejar, c);
+		rv = 0;
+		break;
+	}
+
+	soup_cookies_free(cf);
+
+	return (rv);
 }
 
 int
@@ -1813,7 +1851,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	GSList			*cf;
 	SoupCookie		*c;
 
-
+	/* XXX edd, this does not redraw in all tabs */
 	DNPRINTF(XT_D_CMD, "%s", __func__);
 
 	if (t == NULL)
@@ -3858,25 +3896,6 @@ create_canvas(void)
 	gtk_container_add(GTK_CONTAINER(main_window), vbox);
 	gtk_window_set_title(GTK_WINDOW(main_window), XT_NAME);
 	gtk_widget_show_all(main_window);
-}
-
-void
-print_cookie(char *msg, SoupCookie *c)
-{
-	if (c == NULL)
-		return;
-
-	if (msg)
-		DNPRINTF(XT_D_COOKIE, "%s\n", msg);
-	DNPRINTF(XT_D_COOKIE, "name     : %s\n", c->name);
-	DNPRINTF(XT_D_COOKIE, "value    : %s\n", c->value);
-	DNPRINTF(XT_D_COOKIE, "domain   : %s\n", c->domain);
-	DNPRINTF(XT_D_COOKIE, "path     : %s\n", c->path);
-	DNPRINTF(XT_D_COOKIE, "expires  : %s\n",
-	    c->expires ? soup_date_to_string(c->expires, SOUP_DATE_HTTP) : "");
-	DNPRINTF(XT_D_COOKIE, "secure   : %d\n", c->secure);
-	DNPRINTF(XT_D_COOKIE, "http_only: %d\n", c->http_only);
-	DNPRINTF(XT_D_COOKIE, "====================================\n");
 }
 
 void
