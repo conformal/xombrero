@@ -1851,7 +1851,6 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	GSList			*cf;
 	SoupCookie		*c;
 
-	/* XXX edd, this does not redraw in all tabs */
 	DNPRINTF(XT_D_CMD, "%s", __func__);
 
 	if (t == NULL)
@@ -1937,7 +1936,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	g_free(footer);
 
 	webkit_web_view_load_string(t->wv, page, "text/html", "UTF-8", "");
-	update_history_tabs(t);
+	update_cookie_tabs(t);
 
 	g_free(page);
 
