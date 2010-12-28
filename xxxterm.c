@@ -372,6 +372,7 @@ char			*ssl_ca_file = NULL;
 gboolean		ssl_strict_certs = FALSE;
 int			enable_socket = 1;
 int			append_next = 1; /* append tab after current tab */
+int			single_instance = 0; /* only allow one xxxterm to run */
 
 /*
  * Session IDs.
@@ -793,6 +794,8 @@ config_parse(char *filename)
 			ctrl_click_focus = atoi(val);
 		else if (!strcmp(var, "append_next"))
 			append_next = atoi(val);
+		else if (!strcmp(var, "single_instance"))
+			single_instance = atoi(val);
 		else if (!strcmp(var, "read_only_cookies"))
 			read_only_cookies = atoi(val);
 		else if (!strcmp(var, "cookies_enabled"))
@@ -4141,6 +4144,33 @@ socket_watcher(gpointer data, gint fd, GdkInputCondition cond)
 }
 
 int
+is_running(void)
+{
+	int			s, len, rv = 1;
+	struct sockaddr_un	sa;
+
+	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+		warn("is_running: socket");
+		return (-1);
+	}
+
+	sa.sun_family = AF_UNIX;
+	snprintf(sa.sun_path, sizeof(sa.sun_path), "%s/%s/%s",
+	    pwd->pw_dir, XT_DIR, XT_SOCKET_FILE);
+	len = SUN_LEN(&sa);
+
+	/* connect to see if there is a listener */
+	if (connect(s, (struct sockaddr *)&sa, len) == -1)
+		rv = 0; /* not running */
+	else
+		rv = 1; /* already running */
+
+	close(s);
+
+	return (rv);
+}
+
+int
 build_socket(void)
 {
 	int			s, len;
@@ -4224,16 +4254,6 @@ main(int argc, char *argv[])
 	}
 	argc -= optind;
 	argv += optind;
-
-	if (optn) {
-		while (argc) {
-			send_url_to_socket(argv[0]);
-
-			argc--;
-			argv++;
-		}
-		exit(0);
-	}
 
 	TAILQ_INIT(&tabs);
 	RB_INIT(&hl);
@@ -4327,6 +4347,23 @@ main(int argc, char *argv[])
 	else
 		setup_proxy(http_proxy);
 
+	/* see if there is already an xxxterm running */
+	if (single_instance && is_running()) {
+		optn = 1;
+		warnx("already running");
+	}
+
+	if (optn) {
+		while (argc) {
+			send_url_to_socket(argv[0]);
+
+			argc--;
+			argv++;
+		}
+		exit(0);
+	}
+
+	/* go graphical */
 	create_canvas();
 
 	focus = restore_saved_tabs();
