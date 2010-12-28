@@ -25,8 +25,8 @@
 .Bk -words
 .Op Fl STtV
 .Op Fl f Ar file
-.Op Fl n Ar url
-.Op Ar uri ...
+.Op Fl n
+.Op Ar url ...
 .Ek
 .Sh DESCRIPTION
 .Nm
@@ -75,9 +75,10 @@ Disable the toolbar.
 Disable visualization of tabs.
 .It Fl t
 Disable tabs.
-.It Fl n Ar url
+.It Fl n
 Open a new tab in a running
-.Nm .
+.Nm
+for each specified url.
 This option requires enable_socket to be enabled.
 .It Fl V
 Display version and exit.

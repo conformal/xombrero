@@ -4183,7 +4183,7 @@ void
 usage(void)
 {
 	fprintf(stderr,
-	    "%s [-STVt][-f file][-n url] url ...\n", __progname);
+	    "%s [-nSTVt][-f file] url ...\n", __progname);
 	exit(0);
 }
 
@@ -4191,13 +4191,13 @@ int
 main(int argc, char *argv[])
 {
 	struct stat		sb;
-	int			c, focus = 1, s;
+	int			c, focus = 1, s, optn = 0;
 	char			conf[PATH_MAX] = { '\0' };
 	char			file[PATH_MAX];
 	char			*env_proxy = NULL;
 	FILE			*f = NULL;
 
-	while ((c = getopt(argc, argv, "STVf:tn:")) != -1) {
+	while ((c = getopt(argc, argv, "STVf:tn")) != -1) {
 		switch (c) {
 		case 'S':
 			showurl = 0;
@@ -4215,8 +4215,8 @@ main(int argc, char *argv[])
 			tabless = 1;
 			break;
 		case 'n':
-			send_url_to_socket(optarg);
-			exit(0);
+			optn = 1;
+			break;
 		default:
 			usage();
 			/* NOTREACHED */
@@ -4224,6 +4224,16 @@ main(int argc, char *argv[])
 	}
 	argc -= optind;
 	argv += optind;
+
+	if (optn) {
+		while (argc) {
+			send_url_to_socket(argv[0]);
+
+			argc--;
+			argv++;
+		}
+		exit(0);
+	}
 
 	TAILQ_INIT(&tabs);
 	RB_INIT(&hl);
