@@ -352,17 +352,21 @@ struct alias {
 };
 TAILQ_HEAD(alias_list, alias);
 
-/* settings */
+/* settings that require restart */
 int			showtabs = 1;	/* show tabs on notebook */
 int			showurl = 1;	/* show url toolbar on notebook */
 int			tabless = 0;	/* allow only 1 tab */
+int			enable_socket = 1;
+int			single_instance = 0; /* only allow one xxxterm to run */
+int			fancy_bar = 1;	/* fancy toolbar */
+
+/* runtime settings */
 int			ctrl_click_focus = 0; /* ctrl click gets focus */
 int			cookies_enabled = 1; /* enable cookies */
 int			read_only_cookies = 0; /* enable to not write cookies */
 int			enable_scripts = 0;
 int			enable_plugins = 0;
 int			default_font_size = 12;
-int			fancy_bar = 1;	/* fancy toolbar */
 unsigned		refresh_interval = 10; /* download refresh interval */
 int			enable_cookie_whitelist = 1;
 int			enable_js_whitelist = 1;
@@ -370,10 +374,93 @@ time_t			session_timeout = 3600; /* cookie session timeout */
 int			cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
 char			*ssl_ca_file = NULL;
 gboolean		ssl_strict_certs = FALSE;
-int			enable_socket = 1;
 int			append_next = 1; /* append tab after current tab */
-int			single_instance = 0; /* only allow one xxxterm to run */
+char			*home = NULL;
+char			*search_string = NULL;
+char			*http_proxy = NULL;
+char			download_dir[PATH_MAX];
 
+struct settings;
+int		set_download_dir(struct settings *, char *);
+int		set_cookie_policy(struct settings *, char *);
+int		add_alias(struct settings *, char *);
+int		add_mime_type(struct settings *, char *);
+int		add_cookie_wl(struct settings *, char *);
+int		add_js_wl(struct settings *, char *);
+
+struct settings {
+	char		*name;
+	int		type;
+#define XT_S_INVALID	(0)
+#define XT_S_INT	(1)
+#define XT_S_STR	(2)
+	uint32_t	flags;
+#define XT_SF_NONE	(0)
+#define XT_SF_RESTART	(1<<0)
+#define XT_SF_MANY	(1<<1)
+	int		*ival;
+	char		**sval;
+	int		(*spc)(struct settings *, char *);
+	/* XXX MANY */
+} rs[] = {
+	/* ints */
+	{ "ctrl_click_focus", XT_S_INT, XT_SF_NONE , &ctrl_click_focus, NULL, NULL },
+	{ "append_next", XT_S_INT, XT_SF_NONE , &append_next, NULL, NULL },
+	{ "cookies_enabled", XT_S_INT, XT_SF_NONE , &cookies_enabled, NULL, NULL },
+	{ "read_only_cookies", XT_S_INT, XT_SF_NONE , &read_only_cookies, NULL, NULL },
+	{ "enable_cookie_whitelist", XT_S_INT, XT_SF_NONE , &enable_cookie_whitelist, NULL, NULL },
+	{ "enable_scripts", XT_S_INT, XT_SF_NONE , &enable_scripts, NULL, NULL },
+	{ "enable_plugins", XT_S_INT, XT_SF_NONE , &enable_plugins, NULL, NULL },
+	{ "default_font_size", XT_S_INT, XT_SF_NONE , &default_font_size, NULL, NULL },
+	{ "refresh_interval", XT_S_INT, XT_SF_NONE , &refresh_interval, NULL, NULL },
+	{ "session_timeout", XT_S_INT, XT_SF_NONE , &session_timeout, NULL, NULL },
+	{ "ssl_strict_certs", XT_S_INT, XT_SF_NONE , &ssl_strict_certs, NULL, NULL },
+	{ "enable_js_whitelist", XT_S_INT, XT_SF_NONE , &enable_js_whitelist, NULL, NULL },
+
+	/* special */
+	{ "cookie_policy", XT_S_INT, XT_SF_NONE , NULL, NULL, set_cookie_policy },
+	{ "alias", XT_S_STR, XT_SF_NONE , NULL, NULL, add_alias },
+	{ "mime_type", XT_S_STR, XT_SF_NONE , NULL, NULL, add_mime_type },
+	{ "cookie_wl", XT_S_STR, XT_SF_NONE , NULL, NULL, add_cookie_wl },
+	{ "js_wl", XT_S_STR, XT_SF_NONE , NULL, NULL, add_js_wl },
+	{ "download_dir", XT_S_STR, XT_SF_NONE , NULL, NULL, set_download_dir },
+
+	/* strings */
+	{ "home", XT_S_STR, XT_SF_NONE , NULL, &home, NULL },
+	{ "ssl_ca_file", XT_S_STR, XT_SF_NONE , NULL, &ssl_ca_file, NULL },
+	{ "search_string", XT_S_STR, XT_SF_NONE , NULL, &search_string, NULL },
+
+	/* need restart */
+	{ "fancy_bar", XT_S_INT, XT_SF_RESTART , &fancy_bar, NULL, NULL },
+	{ "single_instance", XT_S_INT, XT_SF_RESTART , &single_instance, NULL, NULL },
+};
+
+int
+set_cookie_policy(struct settings *s, char *val)
+{
+	if (!strcmp(val, "no3rdparty"))
+		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
+	else if (!strcmp(val, "accept"))
+		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_ALWAYS;
+	else if (!strcmp(val, "reject"))
+		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NEVER;
+	else
+		return (1);
+
+	return (0);
+}
+
+int
+set_download_dir(struct settings *s, char *val)
+{
+	if (val[0] == '~')
+		snprintf(download_dir, sizeof download_dir, "%s/%s",
+		    pwd->pw_dir, &val[1]);
+	else
+		strlcpy(download_dir, val, sizeof download_dir);
+
+	return (0);
+}
 /*
  * Session IDs.
  * We use these to prevent people putting xxxt:// URLs on
@@ -387,13 +474,9 @@ char			*hl_session_key;	/* history list */
 char			*cl_session_key;	/* cookie list */
 char			*fl_session_key;	/* favorites list */
 
-char			*home = "http://www.peereboom.us";
-char			*search_string = NULL;
-char			*http_proxy = NULL;
-SoupURI			*proxy_uri = NULL;
 char			work_dir[PATH_MAX];
 char			cookie_file[PATH_MAX];
-char			download_dir[PATH_MAX];
+SoupURI			*proxy_uri = NULL;
 SoupSession		*session;
 SoupCookieJar		*p_cookiejar;
 
@@ -560,8 +643,8 @@ guess_url_type(char *url_in)
 	return (url_out);
 }
 
-void
-add_alias(char *line)
+int
+add_alias(struct settings *s, char *line)
 {
 	char			*l, *alias;
 	struct alias		*a;
@@ -584,10 +667,12 @@ add_alias(char *line)
 	DNPRINTF(XT_D_CONFIG, "add_alias: %s for %s\n", a->a_name, a->a_uri);
 
 	TAILQ_INSERT_TAIL(&aliases, a, entry);
+
+	return (0);
 }
 
-void
-add_mime_type(char *line)
+int
+add_mime_type(struct settings *s, char *line)
 {
 	char			*mime_type;
 	char			*l = NULL;
@@ -620,6 +705,8 @@ add_mime_type(char *line)
 	    m->mt_type, m->mt_action, m->mt_default);
 
 	TAILQ_INSERT_TAIL(&mtl, m, entry);
+
+	return (0);
 }
 
 struct mime_type *
@@ -682,6 +769,20 @@ unwind:
 			g_free(d->d);
 		g_free(d);
 	}
+}
+
+int
+add_cookie_wl(struct settings *s, char *entry)
+{
+	wl_add(entry, &c_wl);
+	return (0);
+}
+
+int
+add_js_wl(struct settings *s, char *entry)
+{
+	wl_add(entry, &js_wl);
+	return (0);
 }
 
 struct domain *
@@ -750,6 +851,8 @@ config_parse(char *filename)
 	FILE			*config;
 	char			*line, *cp, *var, *val;
 	size_t			len, lineno = 0;
+	int			i, handled, *p;
+	char			**s;
 
 	DNPRINTF(XT_D_CONFIG, "config_parse: filename %s\n", filename);
 
@@ -788,83 +891,38 @@ config_parse(char *filename)
 		DNPRINTF(XT_D_CONFIG, "config_parse: %s=%s\n",var ,val);
 
 		/* get settings */
-		if (!strcmp(var, "home"))
-			home = g_strdup(val);
-		else if (!strcmp(var, "ctrl_click_focus"))
-			ctrl_click_focus = atoi(val);
-		else if (!strcmp(var, "append_next"))
-			append_next = atoi(val);
-		else if (!strcmp(var, "single_instance"))
-			single_instance = atoi(val);
-		else if (!strcmp(var, "read_only_cookies"))
-			read_only_cookies = atoi(val);
-		else if (!strcmp(var, "cookies_enabled"))
-			cookies_enabled = atoi(val);
-		else if (!strcmp(var, "enable_scripts"))
-			enable_scripts = atoi(val);
-		else if (!strcmp(var, "enable_plugins"))
-			enable_plugins = atoi(val);
-		else if (!strcmp(var, "default_font_size"))
-			default_font_size = atoi(val);
-		else if (!strcmp(var, "refresh_interval"))
-			refresh_interval = atoi(val);
-		else if (!strcmp(var, "enable_cookie_whitelist"))
-			enable_cookie_whitelist = atoi(val);
-		else if (!strcmp(var, "enable_js_whitelist"))
-			enable_js_whitelist = atoi(val);
-		else if (!strcmp(var, "cookie_policy")) {
-			if (!strcmp(val, "no3rdparty"))
-				cookie_policy =
-				    SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
-			else if (!strcmp(val, "accept"))
-				cookie_policy =
-				    SOUP_COOKIE_JAR_ACCEPT_ALWAYS;
-			else if (!strcmp(val, "reject"))
-				cookie_policy =
-				    SOUP_COOKIE_JAR_ACCEPT_NEVER;
-			else {
-				/* reject when set wrong */
-				warnx("invalid cookie_policy %s", val);
-				cookie_policy =
-				    SOUP_COOKIE_JAR_ACCEPT_NEVER;
+		for (i = 0, handled = 0; i < LENGTH(rs); i++) {
+			if (strcmp(var, rs[i].name))
+				continue;
+
+			if (rs[i].spc) {
+				if (rs[i].spc(&rs[i], val))
+					errx(1, "invalid value for %s", var);
+				handled = 1;
+			} else {
+				switch (rs[i].type) {
+				case XT_S_INT:
+					p = rs[i].ival;
+					*p = atoi(val);
+					handled = 1;
+					break;
+				case XT_S_STR:
+					s = rs[i].sval;
+					if (s == NULL)
+						errx(1, "invalid sval for %s",
+						    rs[i].name);
+					if (*s)
+						g_free(*s);
+					*s = g_strdup(val);
+					handled = 1;
+					break;
+				case XT_S_INVALID:
+				default:
+					errx(1, "invalid type for %s", var);
+				}
 			}
-		} else if (!strcmp(var, "cookie_wl"))
-			wl_add(val, &c_wl);
-		else if (!strcmp(var, "js_wl"))
-			wl_add(val, &js_wl);
-		else if (!strcmp(var, "session_timeout")) {
-			session_timeout = atoi(val);
-			if (session_timeout < 3600)
-				session_timeout = 0; /* use default timeout */
-		} else if (!strcmp(var, "fancy_bar"))
-			fancy_bar = atoi(val);
-		else if (!strcmp(var, "mime_type"))
-			add_mime_type(val);
-		else if (!strcmp(var, "alias"))
-			add_alias(val);
-		else if (!strcmp(var, "http_proxy")) {
-			if (http_proxy)
-				g_free(http_proxy);
-			http_proxy = g_strdup(val);
-		} else if (!strcmp(var, "ssl_strict_certs"))
-			ssl_strict_certs = atoi(val);
-		else if (!strcmp(var, "search_string")) {
-			if (search_string)
-				g_free(search_string);
-			search_string = g_strdup(val);
-		} else if (!strcmp(var, "ssl_ca_file")) {
-			if (ssl_ca_file)
-				g_free(ssl_ca_file);
-			ssl_ca_file = g_strdup(val);
-		} else if (!strcmp(var, "download_dir")) {
-			if (val[0] == '~')
-				snprintf(download_dir, sizeof download_dir,
-				    "%s/%s", pwd->pw_dir, &val[1]);
-			else
-				strlcpy(download_dir, val, sizeof download_dir);
-		} else if (!strcmp(var, "enable_socket"))
-			enable_socket = atoi(val);
-		else
+		}
+		if (handled == 0)
 			errx(1, "invalid conf file entry: %s=%s", var, val);
 
 		free(line);
@@ -4277,6 +4335,9 @@ main(int argc, char *argv[])
 
 	/* set download dir */
 	strlcpy(download_dir, pwd->pw_dir, sizeof download_dir);
+
+	/* set default string settings */
+	home = g_strdup("http://www.peereboom.us");
 
 	/* read config file */
 	if (strlen(conf) == 0)
