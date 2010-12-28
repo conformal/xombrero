@@ -47,6 +47,8 @@
 #include <sys/queue.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
@@ -212,6 +214,7 @@ struct karg {
 #define XT_CONF_FILE		("xxxterm.conf")
 #define XT_FAVS_FILE		("favorites")
 #define XT_SAVED_TABS_FILE	("saved_tabs")
+#define XT_SOCKET_FILE		("socket")
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
 #define XT_DOCTYPE		"<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>"
@@ -222,6 +225,8 @@ struct karg {
 				"th {background-color: #cccccc}"  \
 				"table {width: 90%%; border: 1px black"    \
 				" solid; table-layout: fixed}\n</style>\n\n"
+#define XT_MAX_URL_LENGTH	(4096) /* 1 page is atomic, don't make bigger */
+
 /* file sizes */
 #define SZ_KB		((uint64_t) 1024)
 #define SZ_MB		(SZ_KB * SZ_KB)
@@ -365,6 +370,7 @@ time_t			session_timeout = 3600; /* cookie session timeout */
 int			cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
 char			*ssl_ca_file = NULL;
 gboolean		ssl_strict_certs = FALSE;
+int			enable_socket = 1;
 int			append_next = 1; /* append tab after current tab */
 
 /*
@@ -853,7 +859,9 @@ config_parse(char *filename)
 				    "%s/%s", pwd->pw_dir, &val[1]);
 			else
 				strlcpy(download_dir, val, sizeof download_dir);
-		} else
+		} else if (!strcmp(var, "enable_socket"))
+			enable_socket = atoi(val);
+		else
 			errx(1, "invalid conf file entry: %s=%s", var, val);
 
 		free(line);
@@ -4041,11 +4049,141 @@ setup_proxy(char *uri)
 	}
 }
 
+int
+send_url_to_socket(char *url)
+{
+	int			s, len, rv = -1;
+	struct sockaddr_un	sa;
+
+	pwd = getpwuid(getuid());
+	if (pwd == NULL)
+		errx(1, "invalid user %d", getuid());
+
+	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+		warnx("send_url_to_socket: socket");
+		return (-1);
+	}
+
+	sa.sun_family = AF_UNIX;
+
+	snprintf(sa.sun_path, sizeof(sa.sun_path), "%s/%s/%s",
+	    pwd->pw_dir, XT_DIR, XT_SOCKET_FILE);
+
+	len = SUN_LEN(&sa);
+
+	if (connect(s, (struct sockaddr *)&sa, len) == -1) {
+		warnx("send_url_to_socket: connect");
+		goto done;
+	}
+
+	if (send(s, url, strlen(url) + 1, 0) == -1) {
+		warnx("send_url_to_socket: send");
+		goto done;
+	}
+done:
+	close(s);
+	return (rv);
+}
+
+void
+socket_watcher(gpointer data, gint fd, GdkInputCondition cond)
+{
+	int			s, n;
+	char			str[XT_MAX_URL_LENGTH];
+	socklen_t		t = sizeof(struct sockaddr_un);
+	struct sockaddr_un	sa;
+	struct passwd		*p;
+#ifdef __linux__
+	struct ucred		cr;
+	size_t			len;
+#else
+	uid_t			uid;
+	gid_t			gid;
+#endif
+	if ((s = accept(fd, (struct sockaddr *)&sa, &t)) == -1) {
+		warn("socket_watcher: accept");
+		return;
+	}
+
+#ifdef __linux__
+	len = sizeof(struct ucred);
+	if (getsockopt(s, SOL_SOCKET, SO_PEERCRED, &cr, &len) < 0) {
+		warnx("socket_watcher: getsockopt");
+		return;
+	}
+
+	if (cr.uid != getuid() || cr.gid != getgid()) {
+		warnx("socket_watcher: cr check");
+		return;
+	}
+#else
+	if (getpeereid(s, &uid, &gid) == -1) {
+		warn("socket_watcher: getpeereid");
+		return;
+	}
+	if (uid != getuid() || gid != getgid()) {
+		warnx("socket_watcher: unauthorized user");
+		return;
+	}
+#endif
+
+	p = getpwuid(uid);
+	if (p == NULL) {
+		warnx("socket_watcher: not a valid user");
+		return;
+	}
+
+	n = recv(s, str, sizeof(str), 0);
+	if (n <= 0)
+		return;
+
+	create_new_tab(str, 1);
+}
+
+int
+build_socket(void)
+{
+	int			s, len;
+	struct sockaddr_un	sa;
+
+	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+		warn("build_socket: socket");
+		return (-1);
+	}
+
+	sa.sun_family = AF_UNIX;
+	snprintf(sa.sun_path, sizeof(sa.sun_path), "%s/%s/%s",
+	    pwd->pw_dir, XT_DIR, XT_SOCKET_FILE);
+	len = SUN_LEN(&sa);
+
+	/* connect to see if there is a listener */
+	if (connect(s, (struct sockaddr *)&sa, len) == -1) {
+		/* no listener so we will */
+		unlink(sa.sun_path);
+
+		if (bind(s, (struct sockaddr *)&sa, len) == -1) {
+			warn("build_socket: bind");
+			goto done;
+		}
+
+		if (listen(s, 1) == -1) {
+			warn("build_socket: listen");
+			goto done;
+		}
+
+		return (s);
+	}
+
+done:
+	close(s);
+	return (-1);
+}
+
 void
 usage(void)
 {
 	fprintf(stderr,
-	    "%s [-STVt][-f file] url ...\n", __progname);
+	    "%s [-STVt][-f file][-n url] url ...\n", __progname);
 	exit(0);
 }
 
@@ -4053,13 +4191,13 @@ int
 main(int argc, char *argv[])
 {
 	struct stat		sb;
-	int			c, focus = 1;
+	int			c, focus = 1, s;
 	char			conf[PATH_MAX] = { '\0' };
 	char			file[PATH_MAX];
 	char			*env_proxy = NULL;
 	FILE			*f = NULL;
 
-	while ((c = getopt(argc, argv, "STVf:t")) != -1) {
+	while ((c = getopt(argc, argv, "STVf:tn:")) != -1) {
 		switch (c) {
 		case 'S':
 			showurl = 0;
@@ -4076,6 +4214,9 @@ main(int argc, char *argv[])
 		case 't':
 			tabless = 1;
 			break;
+		case 'n':
+			send_url_to_socket(optarg);
+			exit(0);
 		default:
 			usage();
 			/* NOTREACHED */
@@ -4189,6 +4330,10 @@ main(int argc, char *argv[])
 	}
 	if (focus == 1)
 		create_new_tab(home, 1);
+
+	if (enable_socket)
+		if ((s = build_socket()) != -1)
+			gdk_input_add(s, GDK_INPUT_READ, socket_watcher, NULL);
 
 	gtk_main();
 

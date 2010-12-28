@@ -25,6 +25,7 @@
 .Bk -words
 .Op Fl STtV
 .Op Fl f Ar file
+.Op Fl n Ar url
 .Op Ar uri ...
 .Ek
 .Sh DESCRIPTION
@@ -74,6 +75,10 @@ Disable the toolbar.
 Disable visualization of tabs.
 .It Fl t
 Disable tabs.
+.It Fl n Ar url
+Open a new tab in a running
+.Nm .
+This option requires enable_socket to be enabled.
 .It Fl V
 Display version and exit.
 .El
@@ -173,6 +178,15 @@ If ssl_ca_file is not set then the URL bar will color all https connections red.
 .It Cm ssl_strict_certs
 If this value is set connections to untrusted sites will be aborted.
 This value is only used if ssl_ca_file is set.
+.It Cm enable_socket
+When enabled the first instance of
+.Nm
+will create a socket in the ~/.xxxterm directory.
+Using the -n url option on subsequent
+.Nm
+invocations will cause the specified url to be loaded in a new tab.
+.Pp
+Only a user with identical UID and GID can use this option.
 .El
 .Pp
 .Nm
