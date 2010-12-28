@@ -318,23 +318,6 @@ struct karg {
 
 #define XT_FONT_SET		(0)
 
-/* globals */
-extern char		*__progname;
-struct passwd		*pwd;
-GtkWidget		*main_window;
-GtkNotebook		*notebook;
-struct tab_list		tabs;
-struct history_list	hl;
-struct download_list	downloads;
-struct domain_list	c_wl;
-struct domain_list	js_wl;
-int			updating_dl_tabs = 0;
-int			updating_hl_tabs = 0;
-int			updating_cl_tabs = 0;
-int			updating_fl_tabs = 0;
-char			*global_search;
-uint64_t		blocked_cookies = 0;
-
 /* mime types */
 struct mime_type {
 	char			*mt_type;
@@ -353,32 +336,32 @@ struct alias {
 TAILQ_HEAD(alias_list, alias);
 
 /* settings that require restart */
-int			showtabs = 1;	/* show tabs on notebook */
-int			showurl = 1;	/* show url toolbar on notebook */
-int			tabless = 0;	/* allow only 1 tab */
-int			enable_socket = 1;
-int			single_instance = 0; /* only allow one xxxterm to run */
-int			fancy_bar = 1;	/* fancy toolbar */
+int		showtabs = 1;	/* show tabs on notebook */
+int		showurl = 1;	/* show url toolbar on notebook */
+int		tabless = 0;	/* allow only 1 tab */
+int		enable_socket = 1;
+int		single_instance = 0; /* only allow one xxxterm to run */
+int		fancy_bar = 1;	/* fancy toolbar */
 
 /* runtime settings */
-int			ctrl_click_focus = 0; /* ctrl click gets focus */
-int			cookies_enabled = 1; /* enable cookies */
-int			read_only_cookies = 0; /* enable to not write cookies */
-int			enable_scripts = 0;
-int			enable_plugins = 0;
-int			default_font_size = 12;
-unsigned		refresh_interval = 10; /* download refresh interval */
-int			enable_cookie_whitelist = 1;
-int			enable_js_whitelist = 1;
-time_t			session_timeout = 3600; /* cookie session timeout */
-int			cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
-char			*ssl_ca_file = NULL;
-gboolean		ssl_strict_certs = FALSE;
-int			append_next = 1; /* append tab after current tab */
-char			*home = NULL;
-char			*search_string = NULL;
-char			*http_proxy = NULL;
-char			download_dir[PATH_MAX];
+int		ctrl_click_focus = 0; /* ctrl click gets focus */
+int		cookies_enabled = 1; /* enable cookies */
+int		read_only_cookies = 0; /* enable to not write cookies */
+int		enable_scripts = 0;
+int		enable_plugins = 0;
+int		default_font_size = 12;
+unsigned	refresh_interval = 10; /* download refresh interval */
+int		enable_cookie_whitelist = 1;
+int		enable_js_whitelist = 1;
+time_t		session_timeout = 3600; /* cookie session timeout */
+int		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
+char		*ssl_ca_file = NULL;
+gboolean	ssl_strict_certs = FALSE;
+int		append_next = 1; /* append tab after current tab */
+char		*home = NULL;
+char		*search_string = NULL;
+char		*http_proxy = NULL;
+char		download_dir[PATH_MAX];
 
 struct settings;
 int		set_download_dir(struct settings *, char *);
@@ -395,45 +378,60 @@ struct settings {
 #define XT_S_INT	(1)
 #define XT_S_STR	(2)
 	uint32_t	flags;
-#define XT_SF_NONE	(0)
 #define XT_SF_RESTART	(1<<0)
-#define XT_SF_MANY	(1<<1)
 	int		*ival;
 	char		**sval;
 	int		(*spc)(struct settings *, char *);
 	/* XXX MANY */
 } rs[] = {
 	/* ints */
-	{ "ctrl_click_focus", XT_S_INT, XT_SF_NONE , &ctrl_click_focus, NULL, NULL },
-	{ "append_next", XT_S_INT, XT_SF_NONE , &append_next, NULL, NULL },
-	{ "cookies_enabled", XT_S_INT, XT_SF_NONE , &cookies_enabled, NULL, NULL },
-	{ "read_only_cookies", XT_S_INT, XT_SF_NONE , &read_only_cookies, NULL, NULL },
-	{ "enable_cookie_whitelist", XT_S_INT, XT_SF_NONE , &enable_cookie_whitelist, NULL, NULL },
-	{ "enable_scripts", XT_S_INT, XT_SF_NONE , &enable_scripts, NULL, NULL },
-	{ "enable_plugins", XT_S_INT, XT_SF_NONE , &enable_plugins, NULL, NULL },
-	{ "default_font_size", XT_S_INT, XT_SF_NONE , &default_font_size, NULL, NULL },
-	{ "refresh_interval", XT_S_INT, XT_SF_NONE , &refresh_interval, NULL, NULL },
-	{ "session_timeout", XT_S_INT, XT_SF_NONE , &session_timeout, NULL, NULL },
-	{ "ssl_strict_certs", XT_S_INT, XT_SF_NONE , &ssl_strict_certs, NULL, NULL },
-	{ "enable_js_whitelist", XT_S_INT, XT_SF_NONE , &enable_js_whitelist, NULL, NULL },
+	{ "ctrl_click_focus", XT_S_INT, 0 , &ctrl_click_focus, NULL, NULL },
+	{ "append_next", XT_S_INT, 0 , &append_next, NULL, NULL },
+	{ "cookies_enabled", XT_S_INT, 0 , &cookies_enabled, NULL, NULL },
+	{ "read_only_cookies", XT_S_INT, 0 , &read_only_cookies, NULL, NULL },
+	{ "enable_cookie_whitelist", XT_S_INT, 0 , &enable_cookie_whitelist, NULL, NULL },
+	{ "enable_scripts", XT_S_INT, 0 , &enable_scripts, NULL, NULL },
+	{ "enable_plugins", XT_S_INT, 0 , &enable_plugins, NULL, NULL },
+	{ "default_font_size", XT_S_INT, 0 , &default_font_size, NULL, NULL },
+	{ "refresh_interval", XT_S_INT, 0 , &refresh_interval, NULL, NULL },
+	{ "session_timeout", XT_S_INT, 0 , &session_timeout, NULL, NULL },
+	{ "ssl_strict_certs", XT_S_INT, 0 , &ssl_strict_certs, NULL, NULL },
+	{ "enable_js_whitelist", XT_S_INT, 0 , &enable_js_whitelist, NULL, NULL },
 
 	/* special */
-	{ "cookie_policy", XT_S_INT, XT_SF_NONE , NULL, NULL, set_cookie_policy },
-	{ "alias", XT_S_STR, XT_SF_NONE , NULL, NULL, add_alias },
-	{ "mime_type", XT_S_STR, XT_SF_NONE , NULL, NULL, add_mime_type },
-	{ "cookie_wl", XT_S_STR, XT_SF_NONE , NULL, NULL, add_cookie_wl },
-	{ "js_wl", XT_S_STR, XT_SF_NONE , NULL, NULL, add_js_wl },
-	{ "download_dir", XT_S_STR, XT_SF_NONE , NULL, NULL, set_download_dir },
+	{ "cookie_policy", XT_S_INT, 0 , NULL, NULL, set_cookie_policy },
+	{ "alias", XT_S_STR, 0 , NULL, NULL, add_alias },
+	{ "mime_type", XT_S_STR, 0 , NULL, NULL, add_mime_type },
+	{ "cookie_wl", XT_S_STR, 0 , NULL, NULL, add_cookie_wl },
+	{ "js_wl", XT_S_STR, 0 , NULL, NULL, add_js_wl },
+	{ "download_dir", XT_S_STR, 0 , NULL, NULL, set_download_dir },
 
 	/* strings */
-	{ "home", XT_S_STR, XT_SF_NONE , NULL, &home, NULL },
-	{ "ssl_ca_file", XT_S_STR, XT_SF_NONE , NULL, &ssl_ca_file, NULL },
-	{ "search_string", XT_S_STR, XT_SF_NONE , NULL, &search_string, NULL },
+	{ "home", XT_S_STR, 0 , NULL, &home, NULL },
+	{ "ssl_ca_file", XT_S_STR, 0 , NULL, &ssl_ca_file, NULL },
+	{ "search_string", XT_S_STR, 0 , NULL, &search_string, NULL },
 
 	/* need restart */
 	{ "fancy_bar", XT_S_INT, XT_SF_RESTART , &fancy_bar, NULL, NULL },
 	{ "single_instance", XT_S_INT, XT_SF_RESTART , &single_instance, NULL, NULL },
 };
+
+/* globals */
+extern char		*__progname;
+struct passwd		*pwd;
+GtkWidget		*main_window;
+GtkNotebook		*notebook;
+struct tab_list		tabs;
+struct history_list	hl;
+struct download_list	downloads;
+struct domain_list	c_wl;
+struct domain_list	js_wl;
+int			updating_dl_tabs = 0;
+int			updating_hl_tabs = 0;
+int			updating_cl_tabs = 0;
+int			updating_fl_tabs = 0;
+char			*global_search;
+uint64_t		blocked_cookies = 0;
 
 int
 set_cookie_policy(struct settings *s, char *val)
