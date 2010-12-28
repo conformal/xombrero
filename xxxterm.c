@@ -130,6 +130,7 @@ u_int32_t		swm_debug = 0
 struct tab {
 	TAILQ_ENTRY(tab)	entry;
 	GtkWidget		*vbox;
+	GtkWidget		*tab_content;
 	GtkWidget		*label;
 	GtkWidget		*spinner;
 	GtkWidget		*uri_entry;
@@ -364,6 +365,7 @@ time_t			session_timeout = 3600; /* cookie session timeout */
 int			cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
 char			*ssl_ca_file = NULL;
 gboolean		ssl_strict_certs = FALSE;
+int			append_next = 1; /* append tab after current tab */
 
 /*
  * Session IDs.
@@ -783,6 +785,8 @@ config_parse(char *filename)
 			home = g_strdup(val);
 		else if (!strcmp(var, "ctrl_click_focus"))
 			ctrl_click_focus = atoi(val);
+		else if (!strcmp(var, "append_next"))
+			append_next = atoi(val);
 		else if (!strcmp(var, "read_only_cookies"))
 			read_only_cookies = atoi(val);
 		else if (!strcmp(var, "cookies_enabled"))
@@ -3695,6 +3699,15 @@ create_toolbar(struct tab *t)
 }
 
 void
+recalc_tabs(void)
+{
+	struct tab		*t;
+
+	TAILQ_FOREACH(t, &tabs, entry)
+		t->tab_id = gtk_notebook_page_num(notebook, t->vbox);
+}
+
+void
 delete_tab(struct tab *t)
 {
 	DNPRINTF(XT_D_TAB, "delete_tab: %p\n", t);
@@ -3711,8 +3724,7 @@ delete_tab(struct tab *t)
 	g_free(t->user_agent);
 	g_free(t);
 
-	TAILQ_FOREACH(t, &tabs, entry)
-		t->tab_id = gtk_notebook_page_num(notebook, t->vbox);
+	recalc_tabs();
 }
 
 void
@@ -3732,10 +3744,20 @@ adjustfont_webkit(struct tab *t, int adjust)
 }
 
 void
+append_tab(struct tab *t)
+{
+	if (t == NULL)
+		return;
+
+	TAILQ_INSERT_TAIL(&tabs, t, entry);
+	t->tab_id = gtk_notebook_append_page(notebook, t->vbox, t->tab_content);
+}
+
+void
 create_new_tab(char *title, int focus)
 {
-	struct tab		*t;
-	int			load = 1;
+	struct tab		*t, *tt;
+	int			load = 1, id, notfound;
 	char			*newuri = NULL;
 	GtkWidget		*image, *b, *event_box;
 
@@ -3747,7 +3769,6 @@ create_new_tab(char *title, int focus)
 	}
 
 	t = g_malloc0(sizeof *t);
-	TAILQ_INSERT_TAIL(&tabs, t, entry);
 
 	if (title == NULL) {
 		title = "(untitled)";
@@ -3763,6 +3784,8 @@ create_new_tab(char *title, int focus)
 
 	/* label + button for tab */
 	b = gtk_hbox_new(FALSE, 0);
+	t->tab_content = b;
+
 #if GTK_CHECK_VERSION(2, 20, 0)
 	t->spinner = gtk_spinner_new ();
 #endif
@@ -3797,7 +3820,27 @@ create_new_tab(char *title, int focus)
 	/* and show it all */
 	gtk_widget_show_all(b);
 	gtk_widget_show_all(t->vbox);
-	t->tab_id = gtk_notebook_append_page(notebook, t->vbox, b);
+
+	if (append_next == 0 || gtk_notebook_get_n_pages(notebook) == 0)
+		append_tab(t);
+	else {
+		notfound = 1;
+		id = gtk_notebook_get_current_page(notebook);
+		TAILQ_FOREACH(tt, &tabs, entry) {
+			if (tt->tab_id == id) {
+				notfound = 0;
+				TAILQ_INSERT_AFTER(&tabs, tt, t, entry);
+				gtk_notebook_insert_page(notebook, t->vbox, b,
+				    id + 1);
+				recalc_tabs();
+				break;
+			}
+		}
+		if (notfound) {
+			warnx("could not insert tab, append it instead");
+			append_tab(t);
+		}
+	}
 
 #if GTK_CHECK_VERSION(2, 20, 0)
 	/* turn spinner off if we are a new tab without uri */
