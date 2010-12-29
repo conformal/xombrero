@@ -362,14 +362,74 @@ char		*home = NULL;
 char		*search_string = NULL;
 char		*http_proxy = NULL;
 char		download_dir[PATH_MAX];
+char		runtime_settings[PATH_MAX]; /* override of settings */
 
 struct settings;
 int		set_download_dir(struct settings *, char *);
+int		set_runtime_dir(struct settings *, char *);
 int		set_cookie_policy(struct settings *, char *);
 int		add_alias(struct settings *, char *);
 int		add_mime_type(struct settings *, char *);
 int		add_cookie_wl(struct settings *, char *);
 int		add_js_wl(struct settings *, char *);
+
+char		*get_cookie_policy(struct settings *);
+
+char		*get_download_dir(struct settings *);
+char		*get_runtime_dir(struct settings *);
+
+void		walk_alias(struct settings *, void (*)(struct settings *, char *, void *), void *);
+void		walk_cookie_wl(struct settings *, void (*)(struct settings *, char *, void *), void *);
+void		walk_js_wl(struct settings *, void (*)(struct settings *, char *, void *), void *);
+void		walk_mime_type(struct settings *, void (*)(struct settings *, char *, void *), void *);
+
+struct special {
+	int		(*set)(struct settings *, char *);
+	char		*(*get)(struct settings *);
+	void		(*walk)(struct settings *, void (*cb)(struct settings *, char *, void *), void *);
+};
+
+struct special		s_cookie = {
+	set_cookie_policy,
+	get_cookie_policy,
+	NULL
+};
+
+struct special		s_alias = {
+	add_alias,
+	NULL,
+	walk_alias
+};
+
+struct special		s_mime = {
+	add_mime_type,
+	NULL,
+	walk_mime_type
+};
+
+struct special		s_js = {
+	add_js_wl,
+	NULL,
+	walk_js_wl
+};
+
+struct special		s_cookie_wl = {
+	add_cookie_wl,
+	NULL,
+	walk_cookie_wl
+};
+
+struct special		s_download_dir = {
+	set_download_dir,
+	get_download_dir,
+	NULL
+};
+
+struct special		s_runtime = {
+	set_runtime_dir,
+	get_runtime_dir,
+	NULL
+};
 
 struct settings {
 	char		*name;
@@ -381,7 +441,7 @@ struct settings {
 #define XT_SF_RESTART	(1<<0)
 	int		*ival;
 	char		**sval;
-	int		(*spc)(struct settings *, char *);
+	struct special	*s;
 	/* XXX MANY */
 } rs[] = {
 	/* ints */
@@ -398,14 +458,6 @@ struct settings {
 	{ "ssl_strict_certs", XT_S_INT, 0 , &ssl_strict_certs, NULL, NULL },
 	{ "enable_js_whitelist", XT_S_INT, 0 , &enable_js_whitelist, NULL, NULL },
 
-	/* special */
-	{ "cookie_policy", XT_S_INT, 0 , NULL, NULL, set_cookie_policy },
-	{ "alias", XT_S_STR, 0 , NULL, NULL, add_alias },
-	{ "mime_type", XT_S_STR, 0 , NULL, NULL, add_mime_type },
-	{ "cookie_wl", XT_S_STR, 0 , NULL, NULL, add_cookie_wl },
-	{ "js_wl", XT_S_STR, 0 , NULL, NULL, add_js_wl },
-	{ "download_dir", XT_S_STR, 0 , NULL, NULL, set_download_dir },
-
 	/* strings */
 	{ "home", XT_S_STR, 0 , NULL, &home, NULL },
 	{ "ssl_ca_file", XT_S_STR, 0 , NULL, &ssl_ca_file, NULL },
@@ -414,6 +466,15 @@ struct settings {
 	/* need restart */
 	{ "fancy_bar", XT_S_INT, XT_SF_RESTART , &fancy_bar, NULL, NULL },
 	{ "single_instance", XT_S_INT, XT_SF_RESTART , &single_instance, NULL, NULL },
+
+	/* special */
+	{ "cookie_policy", XT_S_INT, 0 , NULL, NULL, &s_cookie },
+	{ "alias", XT_S_STR, 0 , NULL, NULL, &s_alias },
+	{ "mime_type", XT_S_STR, 0 , NULL, NULL, &s_mime },
+	{ "cookie_wl", XT_S_STR, 0 , NULL, NULL, &s_cookie_wl },
+	{ "js_wl", XT_S_STR, 0 , NULL, NULL, &s_js },
+	{ "download_dir", XT_S_STR, 0 , NULL, NULL, &s_download_dir },
+	{ "runtime_settings", XT_S_STR, 0 , NULL, NULL, &s_runtime },
 };
 
 /* globals */
@@ -433,6 +494,46 @@ int			updating_fl_tabs = 0;
 char			*global_search;
 uint64_t		blocked_cookies = 0;
 
+char *
+get_as_string(struct settings *s)
+{
+	char			*r = NULL;
+
+	if (s == NULL)
+		return (NULL);
+
+	if (s->s) {
+		if (s->s->get)
+			r = s->s->get(s);
+		else
+			warnx("get_as_string skip %s\n", s->name);
+	} else if (s->type == XT_S_INT)
+		r = g_strdup_printf("%d", *s->ival);
+	else if (s->type == XT_S_STR)
+		r = g_strdup(*s->sval);
+	else
+		r = g_strdup_printf("INVALID TYPE");
+
+	return (r);
+}
+
+void
+settings_walk(void (*cb)(struct settings *, char *, void *), void *cb_args)
+{
+	int			i;
+	char			*s;
+
+	for (i = 0; i < LENGTH(rs); i++) {
+		if (rs[i].s && rs[i].s->walk)
+			rs[i].s->walk(&rs[i], cb, cb_args);
+		else {
+			s = get_as_string(&rs[i]);
+			cb(&rs[i], s, cb_args);
+			g_free(s);
+		}
+	}
+}
+
 int
 set_cookie_policy(struct settings *s, char *val)
 {
@@ -448,6 +549,31 @@ set_cookie_policy(struct settings *s, char *val)
 	return (0);
 }
 
+char *
+get_cookie_policy(struct settings *s)
+{
+	char			*r = NULL;
+
+	if (cookie_policy == SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY)
+		r = g_strdup("no3rdparty");
+	else if (cookie_policy == SOUP_COOKIE_JAR_ACCEPT_ALWAYS)
+		r = g_strdup("accept");
+	else if (cookie_policy == SOUP_COOKIE_JAR_ACCEPT_NEVER)
+		r = g_strdup("reject");
+	else
+		return (NULL);
+
+	return (r);
+}
+
+char *
+get_download_dir(struct settings *s)
+{
+	if (download_dir[0] == '\0')
+		return (0);
+	return (g_strdup(download_dir));
+}
+
 int
 set_download_dir(struct settings *s, char *val)
 {
@@ -459,6 +585,27 @@ set_download_dir(struct settings *s, char *val)
 
 	return (0);
 }
+
+char *
+get_runtime_dir(struct settings *s)
+{
+	if (runtime_settings[0] == '\0')
+		return (0);
+	return (g_strdup(runtime_settings));
+}
+
+int
+set_runtime_dir(struct settings *s, char *val)
+{
+	if (val[0] == '~')
+		snprintf(runtime_settings, sizeof runtime_settings, "%s/%s",
+		    pwd->pw_dir, &val[1]);
+	else
+		strlcpy(runtime_settings, val, sizeof runtime_settings);
+
+	return (0);
+}
+
 /*
  * Session IDs.
  * We use these to prevent people putting xxxt:// URLs on
@@ -590,6 +737,23 @@ print_cookie(char *msg, SoupCookie *c)
 	DNPRINTF(XT_D_COOKIE, "secure   : %d\n", c->secure);
 	DNPRINTF(XT_D_COOKIE, "http_only: %d\n", c->http_only);
 	DNPRINTF(XT_D_COOKIE, "====================================\n");
+}
+
+void
+walk_alias(struct settings *s,
+    void (*cb)(struct settings *, char *, void *), void *cb_args)
+{
+	struct alias		*a;
+	char			*str;
+
+	if (s == NULL || cb == NULL)
+		errx(1, "walk_alias");
+
+	TAILQ_FOREACH(a, &aliases, entry) {
+		str = g_strdup_printf("%s --> %s", a->a_name, a->a_uri);
+		cb(s, str, cb_args);
+		g_free(str);
+	}
 }
 
 char *
@@ -730,6 +894,26 @@ find_mime_type(char *mime_type)
 }
 
 void
+walk_mime_type(struct settings *s,
+    void (*cb)(struct settings *, char *, void *), void *cb_args)
+{
+	struct mime_type	*m;
+	char			*str;
+
+	if (s == NULL || cb == NULL)
+		errx(1, "walk_mime_type");
+
+	TAILQ_FOREACH(m, &mtl, entry) {
+		str = g_strdup_printf("%s%s --> %s",
+		    m->mt_type,
+		    m->mt_default ? "*" : "",
+		    m->mt_action);
+		cb(s, str, cb_args);
+		g_free(str);
+	}
+}
+
+void
 wl_add(char *str, struct domain_list *wl)
 {
 	struct domain		*d;
@@ -774,6 +958,32 @@ add_cookie_wl(struct settings *s, char *entry)
 {
 	wl_add(entry, &c_wl);
 	return (0);
+}
+
+void
+walk_cookie_wl(struct settings *s,
+    void (*cb)(struct settings *, char *, void *), void *cb_args)
+{
+	struct domain		*d;
+
+	if (s == NULL || cb == NULL)
+		errx(1, "walk_cookie_wl");
+
+	RB_FOREACH_REVERSE(d, domain_list, &c_wl)
+		cb(s, d->d, cb_args);
+}
+
+void
+walk_js_wl(struct settings *s,
+    void (*cb)(struct settings *, char *, void *), void *cb_args)
+{
+	struct domain		*d;
+
+	if (s == NULL || cb == NULL)
+		errx(1, "walk_js_wl");
+
+	RB_FOREACH_REVERSE(d, domain_list, &js_wl)
+		cb(s, d->d, cb_args);
 }
 
 int
@@ -844,23 +1054,33 @@ wl_find_uri(gchar *s, struct domain_list *wl)
 
 #define	WS	"\n= \t"
 void
-config_parse(char *filename)
+config_parse(char *filename, int runtime)
 {
-	FILE			*config;
+	FILE			*config, *f;
 	char			*line, *cp, *var, *val;
 	size_t			len, lineno = 0;
 	int			i, handled, *p;
-	char			**s;
+	char			**s, file[PATH_MAX];
+	struct stat		sb;
 
 	DNPRINTF(XT_D_CONFIG, "config_parse: filename %s\n", filename);
-
-	TAILQ_INIT(&mtl);
-	TAILQ_INIT(&aliases);
 
 	if (filename == NULL)
 		return;
 
-	if ((config = fopen(filename, "r")) == NULL) {
+	if (runtime && runtime_settings[0] != '\0') {
+		snprintf(file, sizeof file, "%s/%s", work_dir, runtime_settings);
+		if (stat(file, &sb)) {
+			warnx("runtime file doesn't exist, creating it");
+			if ((f = fopen(file, "w")) == NULL)
+				err(1, "runtime");
+			fprintf(f, "# AUTO GENERATED, DO NOT EDIT\n");
+			fclose(f);
+		}
+	} else
+		strlcpy(file, filename, sizeof file);
+
+	if ((config = fopen(file, "r")) == NULL) {
 		warn("config_parse: cannot open %s", filename);
 		return;
 	}
@@ -893,8 +1113,8 @@ config_parse(char *filename)
 			if (strcmp(var, rs[i].name))
 				continue;
 
-			if (rs[i].spc) {
-				if (rs[i].spc(&rs[i], val))
+			if (rs[i].s) {
+				if (rs[i].s->set(&rs[i], val))
 					errx(1, "invalid value for %s", var);
 				handled = 1;
 			} else {
@@ -2257,9 +2477,78 @@ mnprintf(char **buf, int *len, char *fmt, ...)
 	return (0);
 }
 
+struct settings_args {
+	char		**body;
+	int		i;
+};
+
+void
+print_setting(struct settings *s, char *val, void *cb_args)
+{
+	char			*tmp;
+	struct settings_args	*sa = cb_args;
+
+	if (sa == NULL) {
+		warnx("*** %s", s->name);
+		return;
+	}
+
+	tmp = *sa->body;
+	*sa->body = g_strdup_printf(
+	    "%s\n<tr>"
+	    "<td style='width: 10%%; word-break: break-all'>%s</td>"
+	    "<td style='width: 20%%; word-break: break-all'>%s</td>",
+	    *sa->body,
+	    s->name,
+	    val
+	    );
+	g_free(tmp);
+	sa->i++;
+}
+
 int
 set(struct tab *t, struct karg *args)
 {
+	char			*header, *body, *footer, *page, *tmp;
+	int			i = 1;
+	struct settings_args	sa;
+
+	bzero(&sa, sizeof sa);
+	sa.body = &body;
+
+	/* header */
+	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG
+	  "\n<head><title>Settings</title>\n"
+	  "</head><body><h1>Settings</h1>\n");
+
+	/* body */
+	body = g_strdup_printf("<div align='center'><table><tr>"
+	    "<th align='left'>Setting</th>"
+	    "<th align='left'>Value</th></tr>\n");
+
+	settings_walk(print_setting, &sa);
+	i = sa.i;
+
+	/* small message if there are none */
+	if (i == 1) {
+		tmp = body;
+		body = g_strdup_printf("%s\n<tr><td style='text-align:center'"
+		    "colspan='2'>No settings</td></tr>\n", body);
+		g_free(tmp);
+	}
+
+	/* footer */
+	footer = g_strdup_printf("</table></div></body></html>");
+
+	page = g_strdup_printf("%s%s%s", header, body, footer);
+
+	g_free(header);
+	g_free(body);
+	g_free(footer);
+
+	webkit_web_view_load_string(t->wv, page, "text/html", "UTF-8", "");
+
+#if 0
 	struct mime_type	*m;
 	char			b[16 * 1024], *s, *pars;
 	int			l;
@@ -2327,7 +2616,7 @@ done:
 		g_free(args->s);
 		args->s = NULL;
 	}
-
+#endif
 	return (XT_CB_PASSTHROUGH);
 }
 
@@ -4315,6 +4604,8 @@ main(int argc, char *argv[])
 	RB_INIT(&hl);
 	RB_INIT(&js_wl);
 	RB_INIT(&downloads);
+	TAILQ_INIT(&mtl);
+	TAILQ_INIT(&aliases);
 
 	/* generate session keys for xtp pages */
 	generate_xtp_session_key(&dl_session_key);
@@ -4341,23 +4632,7 @@ main(int argc, char *argv[])
 	if (strlen(conf) == 0)
 		snprintf(conf, sizeof conf, "%s/.%s",
 		    pwd->pw_dir, XT_CONF_FILE);
-	config_parse(conf);
-
-	/* download dir */
-	if (!strcmp(download_dir, pwd->pw_dir))
-		strlcat(download_dir, "/downloads", sizeof download_dir);
-
-	if (stat(download_dir, &sb)) {
-		if (mkdir(download_dir, S_IRWXU) == -1)
-			err(1, "mkdir download_dir");
-	}
-	if (S_ISDIR(sb.st_mode) == 0)
-		errx(1, "%s not a dir", download_dir);
-	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
-		warnx("fixing invalid permissions on %s", download_dir);
-		if (chmod(download_dir, S_IRWXU) == -1)
-			err(1, "chmod");
-	}
+	config_parse(conf, 0);
 
 	/* working directory */
 	snprintf(work_dir, sizeof work_dir, "%s/%s", pwd->pw_dir, XT_DIR);
@@ -4370,6 +4645,25 @@ main(int argc, char *argv[])
 	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
 		warnx("fixing invalid permissions on %s", work_dir);
 		if (chmod(work_dir, S_IRWXU) == -1)
+			err(1, "chmod");
+	}
+
+	/* runtime settings that can override config file */
+	if (runtime_settings[0] != '\0')
+		config_parse(runtime_settings, 1);
+
+	/* download dir */
+	if (!strcmp(download_dir, pwd->pw_dir))
+		strlcat(download_dir, "/downloads", sizeof download_dir);
+	if (stat(download_dir, &sb)) {
+		if (mkdir(download_dir, S_IRWXU) == -1)
+			err(1, "mkdir download_dir");
+	}
+	if (S_ISDIR(sb.st_mode) == 0)
+		errx(1, "%s not a dir", download_dir);
+	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
+		warnx("fixing invalid permissions on %s", download_dir);
+		if (chmod(download_dir, S_IRWXU) == -1)
 			err(1, "chmod");
 	}
 
