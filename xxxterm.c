@@ -370,6 +370,7 @@ char		*search_string = NULL;
 char		*http_proxy = NULL;
 char		download_dir[PATH_MAX];
 char		runtime_settings[PATH_MAX]; /* override of settings */
+int		allow_volatile_cookies = 0;
 
 struct settings;
 int		set_download_dir(struct settings *, char *);
@@ -452,6 +453,7 @@ struct settings {
 	struct special	*s;
 } rs[] = {
 	{ "append_next", XT_S_INT, 0 , &append_next, NULL, NULL },
+	{ "allow_volatile_cookies", XT_S_INT, 0 , &allow_volatile_cookies, NULL, NULL },
 	{ "cookies_enabled", XT_S_INT, 0 , &cookies_enabled, NULL, NULL },
 	{ "cookie_policy", XT_S_INT, 0 , NULL, NULL, &s_cookie },
 	{ "ctrl_click_focus", XT_S_INT, 0 , &ctrl_click_focus, NULL, NULL },
@@ -1407,6 +1409,65 @@ paste_uri(struct tab *t, struct karg *args)
 	return (0);
 }
 
+char *
+find_domain(char *s, int add_dot)
+{
+	int			i;
+	char			old;
+	char			*r = NULL;
+
+	if (s == NULL)
+		return (NULL);
+
+	if (!strncmp(s, "http://", strlen("http://")))
+		s = &s[strlen("http://")];
+	else if (!strncmp(s, "https://", strlen("https://")))
+		s = &s[strlen("https://")];
+
+	if (strlen(s) < 2)
+		return (NULL);
+
+	for (i = 0; i < strlen(s) + 1 /* yes er need this */; i++)
+		/* chop string at first slash */
+		if (s[i] == '/' || s[i] == '\0') {
+			old = s[i];
+			s[i] = '\0';
+			if (add_dot)
+				r = g_strdup_printf(".%s", s);
+			else
+				r = g_strdup(s);
+			s[i] = old;
+			break;
+		}
+
+	return (r);
+}
+
+int
+toggle_cwl(struct tab *t, struct karg *args)
+{
+	WebKitWebFrame		*frame;
+	struct domain		*d;
+	char			*uri, *dom;
+
+	frame = webkit_web_view_get_main_frame(t->wv);
+	uri = (char *)webkit_web_frame_get_uri(frame);
+	dom = find_domain(uri, 1);
+	warnx("looking for %s", dom);
+	d = wl_find(dom, &c_wl);
+	if (d == NULL) {
+		/* enable cookies for domain */
+		wl_add(dom, &c_wl);
+	} else {
+		/* disable cookies for domain */
+		RB_REMOVE(domain_list, &c_wl, d);
+	}
+
+	webkit_web_view_reload(t->wv);
+
+	return (0);
+}
+
 int
 toggle_js(struct tab *t, struct karg *args)
 {
@@ -1749,40 +1810,6 @@ remove_cookie(int index)
 	soup_cookies_free(cf);
 
 	return (rv);
-}
-
-char *
-find_domain(char *s, int add_dot)
-{
-	int			i;
-	char			old;
-	char			*r = NULL;
-
-	if (s == NULL)
-		return (NULL);
-
-	if (!strncmp(s, "http://", strlen("http://")))
-		s = &s[strlen("http://")];
-	else if (!strncmp(s, "https://", strlen("https://")))
-		s = &s[strlen("https://")];
-
-	if (strlen(s) < 2)
-		return (NULL);
-
-	for (i = 0; i < strlen(s) + 1 /* yes er need this */; i++)
-		/* chop string at first slash */
-		if (s[i] == '/' || s[i] == '\0') {
-			old = s[i];
-			s[i] = '\0';
-			if (add_dot)
-				r = g_strdup_printf(".%s", s);
-			else
-				r = g_strdup(s);
-			s[i] = old;
-			break;
-		}
-
-	return (r);
 }
 
 int
@@ -2854,6 +2881,7 @@ struct key {
 	{ GDK_SHIFT_MASK,	0,	GDK_colon,	command,	{.i = ':'} },
 	{ GDK_CONTROL_MASK,	0,	GDK_q,		quit,		{0} },
 	{ GDK_CONTROL_MASK,	0,	GDK_j,		toggle_js,	{.i = XT_JS_TOGGLE} },
+	{ GDK_MOD1_MASK,	0,	GDK_c,		toggle_cwl,	{.i = XT_JS_TOGGLE} },
 	{ GDK_CONTROL_MASK,	0,	GDK_s,		toggle_src,	{0} },
 	{ 0,			0,	GDK_y,		yank_uri,	{0} },
 	{ 0,			0,	GDK_p,		paste_uri,	{.i = XT_PASTE_CURRENT_TAB} },
@@ -4499,16 +4527,36 @@ cookiejar_changed_cb(SoupCookieJar *jar, SoupCookie *old_cookie,
 	struct domain		*d = NULL;
 	void			(*hook)(SoupCookieJar *, SoupCookie *,
 				    SoupCookie *, gpointer);
-
-	if (new_cookie) {
+	/*
+	 * This is pretty terrible and needs a rewrite.
+	 *
+	 * The idea is to delete the cookie as it comes in so we need to not
+	 * credit the blocked_cookies counter in the delete path.
+	 *
+	 * The problem doing this is that we don't tell the other end we
+	 * rejected the cookie,  It does seem to work.
+	 */
+	if (new_cookie)
 		if ((d = wl_find(new_cookie->domain, &c_wl)) == NULL) {
 			blocked_cookies++;
 			DNPRINTF(XT_D_COOKIE,
 			    "cookiejar_changed_cb: reject %s\n",
 			    new_cookie->domain);
+			if (allow_volatile_cookies == 0)
+				soup_cookie_jar_delete_cookie(jar, new_cookie);
+			return;
+		}
+	if (old_cookie)
+		if ((d = wl_find(old_cookie->domain, &c_wl)) == NULL) {
+			DNPRINTF(XT_D_COOKIE,
+			    "cookiejar_changed_cb: reject %s\n",
+			    old_cookie->domain);
+			if (allow_volatile_cookies == 0)
+				soup_cookie_jar_delete_cookie(jar, old_cookie);
 			return;
 		}
 
+	if (new_cookie) {
 		print_cookie("old_cookie", old_cookie);
 		print_cookie("new_cookie", new_cookie);
 		if (new_cookie->expires == NULL && session_timeout) {

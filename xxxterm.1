@@ -110,6 +110,11 @@ When set a new tab is appended after the current tab instead of being appended
 as the last tab.
 .It Cm cookies_enabled
 Enable cookies.
+.It Cm allow_volatile_cookies
+If set cookies are stored in the session cache but will be discarded once
+.Nm
+exits.
+Unfortunately enabling this does allow for some limited tracking on the web.
 .It Cm enable_scripts
 Enable scripts.
 .It Cm enable_plugins
