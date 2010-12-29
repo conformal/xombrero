@@ -2220,10 +2220,22 @@ movetab(struct tab *t, struct karg *args)
 
 		switch (args->i) {
 		case XT_TAB_NEXT:
-			gtk_notebook_next_page(notebook);
+			/* if at the last page, loop around to the first */
+			if (gtk_notebook_get_current_page(notebook) ==
+			    gtk_notebook_get_n_pages(notebook) - 1) {
+				gtk_notebook_set_current_page(notebook, 0);
+			} else {
+				gtk_notebook_next_page(notebook);
+			}
 			break;
 		case XT_TAB_PREV:
-			gtk_notebook_prev_page(notebook);
+			/* if at the first page, loop around to the last */
+			if (gtk_notebook_current_page(notebook) == 0) {
+				gtk_notebook_set_current_page(notebook,
+							      gtk_notebook_get_n_pages(notebook) - 1);
+			} else {
+				gtk_notebook_prev_page(notebook);
+			}
 			break;
 		case XT_TAB_FIRST:
 			gtk_notebook_set_current_page(notebook, 0);
@@ -3026,6 +3038,8 @@ struct key {
 	{ GDK_CONTROL_MASK,	0,	GDK_0,		movetab,	{.i = 10} },
 	{ GDK_CONTROL_MASK|GDK_SHIFT_MASK, 0, GDK_less, movetab,	{.i = XT_TAB_FIRST} },
 	{ GDK_CONTROL_MASK|GDK_SHIFT_MASK, 0, GDK_greater, movetab,	{.i = XT_TAB_LAST} },
+	{ GDK_CONTROL_MASK,	0,	GDK_Left,	movetab,	{.i = XT_TAB_PREV} },
+	{ GDK_CONTROL_MASK,	0,	GDK_Right,	movetab,	{.i = XT_TAB_NEXT} },
 	{ GDK_CONTROL_MASK,	0,	GDK_minus,	resizetab,	{.i = -1} },
 	{ GDK_CONTROL_MASK|GDK_SHIFT_MASK, 0, GDK_plus,	resizetab,	{.i = 1} },
 	{ GDK_CONTROL_MASK,	0,	GDK_equal,	resizetab,	{.i = 1} },
