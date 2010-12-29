@@ -316,6 +316,9 @@ struct karg {
 #define XT_SEARCH_NEXT		(1)
 #define XT_SEARCH_PREV		(2)
 
+#define XT_PASTE_CURRENT_TAB	(0)
+#define XT_PASTE_NEW_TAB	(1)
+
 #define XT_FONT_SET		(0)
 
 #define XT_JS_TOGGLE		(0)
@@ -1340,6 +1343,68 @@ save_tabs_and_quit(struct tab *t, struct karg *args)
 	quit(t, NULL);
 
 	return (1);
+}
+
+int
+yank_uri(struct tab *t, struct karg *args)
+{
+	WebKitWebFrame		*frame;
+	const gchar		*uri;
+	GtkClipboard		*clipboard;
+
+	frame = webkit_web_view_get_main_frame(t->wv);
+	uri = webkit_web_frame_get_uri(frame);
+	if (!uri)
+		return (1);
+
+	clipboard = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
+	gtk_clipboard_set_text(clipboard, uri, -1);
+
+	return (0);
+}
+
+struct paste_args {
+	struct tab	*t;
+	int		i;
+};
+
+void
+paste_uri_cb(GtkClipboard *clipboard, const gchar *text, gpointer data)
+{
+	struct paste_args	*pap;
+
+	if (data == NULL)
+		return;
+
+	pap = (struct paste_args *)data;
+
+	switch(pap->i) {
+	case XT_PASTE_CURRENT_TAB:
+		webkit_web_view_load_uri(pap->t->wv, text);
+		break;
+	case XT_PASTE_NEW_TAB:
+		create_new_tab((char *)text, 1);
+		break;
+	}
+
+	g_free(pap);
+}
+
+int
+paste_uri(struct tab *t, struct karg *args)
+{
+	GtkClipboard		*clipboard;
+	struct paste_args	*pap;
+
+	pap = g_malloc(sizeof(struct paste_args));
+
+	pap->t = t;
+	pap->i = args->i;
+
+	clipboard = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
+	gtk_clipboard_request_text(clipboard, paste_uri_cb, pap);
+
+	return (0);
 }
 
 int
@@ -2790,6 +2855,9 @@ struct key {
 	{ GDK_CONTROL_MASK,	0,	GDK_q,		quit,		{0} },
 	{ GDK_CONTROL_MASK,	0,	GDK_j,		toggle_js,	{.i = XT_JS_TOGGLE} },
 	{ GDK_CONTROL_MASK,	0,	GDK_s,		toggle_src,	{0} },
+	{ 0,			0,	GDK_y,		yank_uri,	{0} },
+	{ 0,			0,	GDK_p,		paste_uri,	{.i = XT_PASTE_CURRENT_TAB} },
+	{ GDK_SHIFT_MASK,	0,	GDK_P,		paste_uri,	{.i = XT_PASTE_NEW_TAB} },
 
 	/* search */
 	{ 0,			0,	GDK_n,		search,		{.i = XT_SEARCH_NEXT} },
