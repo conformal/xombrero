@@ -318,6 +318,10 @@ struct karg {
 
 #define XT_FONT_SET		(0)
 
+#define XT_JS_TOGGLE		(0)
+#define XT_JS_ENABLE		(1)
+#define XT_JS_DISABLE		(2)
+
 /* mime types */
 struct mime_type {
 	char			*mt_type;
@@ -1113,6 +1117,7 @@ config_parse(char *filename, int runtime)
 				if (rs[i].s->set(&rs[i], val))
 					errx(1, "invalid value for %s", var);
 				handled = 1;
+				break;
 			} else {
 				switch (rs[i].type) {
 				case XT_S_INT:
@@ -1135,6 +1140,7 @@ config_parse(char *filename, int runtime)
 					errx(1, "invalid type for %s", var);
 				}
 			}
+			break;
 		}
 		if (handled == 0)
 			errx(1, "invalid conf file entry: %s=%s", var, val);
@@ -1344,9 +1350,19 @@ toggle_js(struct tab *t, struct karg *args)
 	gchar			*s;
 	struct domain		*d;
 
+	if (args == NULL)
+		return (0);
+
 	g_object_get((GObject *)t->settings,
 	    "enable-scripts", &es, (char *)NULL);
-	es = !es;
+	if (args->i == XT_JS_TOGGLE)
+		es = !es;
+	else if (args->i == XT_JS_ENABLE && es != 1)
+		es = 1;
+	else if (args->i == XT_JS_DISABLE && es != 0)
+		es = 0;
+	else
+		return (0);
 
 	frame = webkit_web_view_get_main_frame(t->wv);
 	s = (gchar *)webkit_web_frame_get_uri(frame);
@@ -1395,7 +1411,10 @@ toggle_js(struct tab *t, struct karg *args)
 void
 js_toggle_cb(GtkWidget *w, struct tab *t)
 {
-	toggle_js(t, NULL);
+	struct karg		a;
+
+	a.i = XT_JS_TOGGLE;
+	toggle_js(t, &a);
 }
 
 int
@@ -1667,6 +1686,101 @@ remove_cookie(int index)
 	return (rv);
 }
 
+char *
+find_domain(char *s, int add_dot)
+{
+	int			i;
+	char			old;
+	char			*r = NULL;
+
+	if (s == NULL)
+		return (NULL);
+
+	if (!strncmp(s, "http://", strlen("http://")))
+		s = &s[strlen("http://")];
+	else if (!strncmp(s, "https://", strlen("https://")))
+		s = &s[strlen("https://")];
+
+	if (strlen(s) < 2)
+		return (NULL);
+
+	for (i = 0; i < strlen(s) + 1 /* yes er need this */; i++)
+		/* chop string at first slash */
+		if (s[i] == '/' || s[i] == '\0') {
+			old = s[i];
+			s[i] = '\0';
+			if (add_dot)
+				r = g_strdup_printf(".%s", s);
+			else
+				r = g_strdup(s);
+			s[i] = old;
+			break;
+		}
+
+	return (r);
+}
+
+int
+add_js(struct tab *t, struct karg *args)
+{
+	char			file[PATH_MAX];
+	FILE			*f;
+	char			*line = NULL, *lt = NULL;
+	size_t			linelen;
+	WebKitWebFrame		*frame;
+	char			*dom = NULL, *uri;
+	struct karg		a;
+
+	if (t == NULL)
+		return (1);
+
+	if (runtime_settings[0] == '\0')
+		return (1);
+
+	snprintf(file, sizeof file, "%s/%s", work_dir, runtime_settings);
+	if ((f = fopen(file, "r+")) == NULL)
+		return (1);
+
+	frame = webkit_web_view_get_main_frame(t->wv);
+	uri = (char *)webkit_web_frame_get_uri(frame);
+	dom = find_domain(uri, 1);
+	if (uri == NULL || dom == NULL) {
+		webkit_web_view_load_string(t->wv,
+		    "<html><body>Can't add domain to JavaScript white list</body></html>",
+		    NULL,
+		    NULL,
+		    NULL);
+		goto done;
+	}
+
+	lt =g_strdup_printf("js_wl=%s", dom);
+
+	while (!feof(f)) {
+		line = fparseln(f, &linelen, NULL, NULL, 0);
+		if (line == NULL)
+			continue;
+		if (!strcmp(line, lt))
+			goto done;
+		free(line);
+		line = NULL;
+	}
+
+	fprintf(f, "%s\n", lt);
+
+	a.i = XT_JS_TOGGLE;
+	toggle_js(t, &a);
+done:
+	if (line)
+		free(line);
+	if (dom)
+		g_free(dom);
+	if (lt)
+		g_free(lt);
+	fclose(f);
+
+	return (0);
+}
+
 int
 add_favorite(struct tab *t, struct karg *args)
 {
@@ -1678,7 +1792,7 @@ add_favorite(struct tab *t, struct karg *args)
 	const gchar		*uri, *title;
 
 	if (t == NULL)
-		warn("%s: bad param", __func__);
+		return (1);
 
 	snprintf(file, sizeof file, "%s/%s/%s",
 	    pwd->pw_dir, XT_DIR, XT_FAVS_FILE);
@@ -2449,7 +2563,7 @@ search(struct tab *t, struct karg *args)
 
 	return (XT_CB_HANDLED);
 }
-
+#if 0
 int
 mnprintf(char **buf, int *len, char *fmt, ...)
 {
@@ -2472,7 +2586,7 @@ mnprintf(char **buf, int *len, char *fmt, ...)
 
 	return (0);
 }
-
+#endif
 struct settings_args {
 	char		**body;
 	int		i;
@@ -2512,45 +2626,48 @@ print_setting(struct settings *s, char *val, void *cb_args)
 int
 set(struct tab *t, struct karg *args)
 {
-	char			*header, *body, *footer, *page, *tmp;
+	char			*header, *body, *footer, *page, *tmp, *pars;
 	int			i = 1;
 	struct settings_args	sa;
 
-	bzero(&sa, sizeof sa);
-	sa.body = &body;
+	if ((pars = getparams(args->s, "set")) == NULL) {
+		bzero(&sa, sizeof sa);
+		sa.body = &body;
 
-	/* header */
-	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG
-	  "\n<head><title>Settings</title>\n"
-	  "</head><body><h1>Settings</h1>\n");
+		/* header */
+		header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG
+		  "\n<head><title>Settings</title>\n"
+		  "</head><body><h1>Settings</h1>\n");
 
-	/* body */
-	body = g_strdup_printf("<div align='center'><table><tr>"
-	    "<th align='left'>Setting</th>"
-	    "<th align='left'>Value</th></tr>\n");
+		/* body */
+		body = g_strdup_printf("<div align='center'><table><tr>"
+		    "<th align='left'>Setting</th>"
+		    "<th align='left'>Value</th></tr>\n");
 
-	settings_walk(print_setting, &sa);
-	i = sa.i;
+		settings_walk(print_setting, &sa);
+		i = sa.i;
 
-	/* small message if there are none */
-	if (i == 1) {
-		tmp = body;
-		body = g_strdup_printf("%s\n<tr><td style='text-align:center'"
-		    "colspan='2'>No settings</td></tr>\n", body);
-		g_free(tmp);
+		/* small message if there are none */
+		if (i == 1) {
+			tmp = body;
+			body = g_strdup_printf("%s\n<tr><td style='text-align:center'"
+			    "colspan='2'>No settings</td></tr>\n", body);
+			g_free(tmp);
+		}
+
+		/* footer */
+		footer = g_strdup_printf("</table></div></body></html>");
+
+		page = g_strdup_printf("%s%s%s", header, body, footer);
+
+		g_free(header);
+		g_free(body);
+		g_free(footer);
+
+		webkit_web_view_load_string(t->wv, page, "text/html", "UTF-8", "");
+	} else {
+		fprintf(stderr, "pars %s\n", pars);
 	}
-
-	/* footer */
-	footer = g_strdup_printf("</table></div></body></html>");
-
-	page = g_strdup_printf("%s%s%s", header, body, footer);
-
-	g_free(header);
-	g_free(body);
-	g_free(footer);
-
-	webkit_web_view_load_string(t->wv, page, "text/html", "UTF-8", "");
-
 #if 0
 	struct mime_type	*m;
 	char			b[16 * 1024], *s, *pars;
@@ -2671,7 +2788,7 @@ struct key {
 	{ GDK_SHIFT_MASK,	0,	GDK_question,	command,	{.i = '?'} },
 	{ GDK_SHIFT_MASK,	0,	GDK_colon,	command,	{.i = ':'} },
 	{ GDK_CONTROL_MASK,	0,	GDK_q,		quit,		{0} },
-	{ GDK_CONTROL_MASK,	0,	GDK_j,		toggle_js,	{0} },
+	{ GDK_CONTROL_MASK,	0,	GDK_j,		toggle_js,	{.i = XT_JS_TOGGLE} },
 	{ GDK_CONTROL_MASK,	0,	GDK_s,		toggle_src,	{0} },
 
 	/* search */
@@ -2758,6 +2875,7 @@ struct cmd {
 	{ "cookies",		0,	xtp_page_cl,		{0} },
 	{ "fav",		0,	xtp_page_fl,		{0} },
 	{ "favadd",		0,	add_favorite,		{0} },
+	{ "jsadd",		0,	add_js,			{0} },
 	{ "dl"		,	0,	xtp_page_dl,		{0} },
 	{ "h"		,	0,	xtp_page_hl,		{0} },
 	{ "hist"	,	0,	xtp_page_hl,		{0} },
