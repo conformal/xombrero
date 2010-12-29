@@ -439,42 +439,38 @@ struct settings {
 #define XT_S_STR	(2)
 	uint32_t	flags;
 #define XT_SF_RESTART	(1<<0)
+#define XT_SF_RUNTIME	(1<<1)
 	int		*ival;
 	char		**sval;
 	struct special	*s;
 } rs[] = {
-	/* ints */
-	{ "ctrl_click_focus", XT_S_INT, 0 , &ctrl_click_focus, NULL, NULL },
 	{ "append_next", XT_S_INT, 0 , &append_next, NULL, NULL },
 	{ "cookies_enabled", XT_S_INT, 0 , &cookies_enabled, NULL, NULL },
-	{ "read_only_cookies", XT_S_INT, 0 , &read_only_cookies, NULL, NULL },
-	{ "enable_cookie_whitelist", XT_S_INT, 0 , &enable_cookie_whitelist, NULL, NULL },
-	{ "enable_scripts", XT_S_INT, 0 , &enable_scripts, NULL, NULL },
-	{ "enable_plugins", XT_S_INT, 0 , &enable_plugins, NULL, NULL },
-	{ "default_font_size", XT_S_INT, 0 , &default_font_size, NULL, NULL },
-	{ "refresh_interval", XT_S_INT, 0 , &refresh_interval, NULL, NULL },
-	{ "session_timeout", XT_S_INT, 0 , &session_timeout, NULL, NULL },
-	{ "ssl_strict_certs", XT_S_INT, 0 , &ssl_strict_certs, NULL, NULL },
-	{ "enable_js_whitelist", XT_S_INT, 0 , &enable_js_whitelist, NULL, NULL },
-
-	/* strings */
-	{ "home", XT_S_STR, 0 , NULL, &home, NULL },
-	{ "ssl_ca_file", XT_S_STR, 0 , NULL, &ssl_ca_file, NULL },
-	{ "search_string", XT_S_STR, 0 , NULL, &search_string, NULL },
-
-	/* need restart */
-	{ "fancy_bar", XT_S_INT, XT_SF_RESTART , &fancy_bar, NULL, NULL },
-	{ "enable_socket", XT_S_INT, XT_SF_RESTART , &enable_socket, NULL, NULL },
-	{ "single_instance", XT_S_INT, XT_SF_RESTART , &single_instance, NULL, NULL },
-
-	/* special */
 	{ "cookie_policy", XT_S_INT, 0 , NULL, NULL, &s_cookie },
-	{ "alias", XT_S_STR, 0 , NULL, NULL, &s_alias },
-	{ "mime_type", XT_S_STR, 0 , NULL, NULL, &s_mime },
-	{ "cookie_wl", XT_S_STR, 0 , NULL, NULL, &s_cookie_wl },
-	{ "js_wl", XT_S_STR, 0 , NULL, NULL, &s_js },
+	{ "ctrl_click_focus", XT_S_INT, 0 , &ctrl_click_focus, NULL, NULL },
+	{ "default_font_size", XT_S_INT, 0 , &default_font_size, NULL, NULL },
 	{ "download_dir", XT_S_STR, 0 , NULL, NULL, &s_download_dir },
+	{ "enable_cookie_whitelist", XT_S_INT, 0 , &enable_cookie_whitelist, NULL, NULL },
+	{ "enable_js_whitelist", XT_S_INT, 0 , &enable_js_whitelist, NULL, NULL },
+	{ "enable_plugins", XT_S_INT, 0 , &enable_plugins, NULL, NULL },
+	{ "enable_scripts", XT_S_INT, 0 , &enable_scripts, NULL, NULL },
+	{ "enable_socket", XT_S_INT, XT_SF_RESTART , &enable_socket, NULL, NULL },
+	{ "fancy_bar", XT_S_INT, XT_SF_RESTART , &fancy_bar, NULL, NULL },
+	{ "home", XT_S_STR, 0 , NULL, &home, NULL },
+	{ "read_only_cookies", XT_S_INT, 0 , &read_only_cookies, NULL, NULL },
+	{ "refresh_interval", XT_S_INT, 0 , &refresh_interval, NULL, NULL },
 	{ "runtime_settings", XT_S_STR, 0 , NULL, NULL, &s_runtime },
+	{ "search_string", XT_S_STR, 0 , NULL, &search_string, NULL },
+	{ "session_timeout", XT_S_INT, 0 , &session_timeout, NULL, NULL },
+	{ "single_instance", XT_S_INT, XT_SF_RESTART , &single_instance, NULL, NULL },
+	{ "ssl_ca_file", XT_S_STR, 0 , NULL, &ssl_ca_file, NULL },
+	{ "ssl_strict_certs", XT_S_INT, 0 , &ssl_strict_certs, NULL, NULL },
+
+	/* runtime settings */
+	{ "alias", XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_alias },
+	{ "cookie_wl", XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_cookie_wl },
+	{ "js_wl", XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_js },
+	{ "mime_type", XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_mime },
 };
 
 /* globals */
@@ -2485,7 +2481,7 @@ struct settings_args {
 void
 print_setting(struct settings *s, char *val, void *cb_args)
 {
-	char			*tmp;
+	char			*tmp, *color;
 	struct settings_args	*sa = cb_args;
 
 	if (sa == NULL) {
@@ -2493,13 +2489,20 @@ print_setting(struct settings *s, char *val, void *cb_args)
 		return;
 	}
 
+	if (s->flags & XT_SF_RUNTIME)
+		color = "#22cc22";
+	else
+		color = "#cccccc";
+
 	tmp = *sa->body;
 	*sa->body = g_strdup_printf(
 	    "%s\n<tr>"
-	    "<td style='width: 10%%; word-break: break-all'>%s</td>"
-	    "<td style='width: 20%%; word-break: break-all'>%s</td>",
+	    "<td style='background-color: %s; width: 10%%; word-break: break-all'>%s</td>"
+	    "<td style='background-color: %s; width: 20%%; word-break: break-all'>%s</td>",
 	    *sa->body,
+	    color,
 	    s->name,
+	    color,
 	    val
 	    );
 	g_free(tmp);
