@@ -321,9 +321,9 @@ struct karg {
 
 #define XT_FONT_SET		(0)
 
-#define XT_JS_TOGGLE		(0)
-#define XT_JS_ENABLE		(1)
-#define XT_JS_DISABLE		(2)
+#define XT_WL_TOGGLE		(0)
+#define XT_WL_ENABLE		(1)
+#define XT_WL_DISABLE		(2)
 
 /* mime types */
 struct mime_type {
@@ -1449,13 +1449,31 @@ toggle_cwl(struct tab *t, struct karg *args)
 	WebKitWebFrame		*frame;
 	struct domain		*d;
 	char			*uri, *dom;
+	int			es;
+
+	if (args == NULL)
+		return (0);
 
 	frame = webkit_web_view_get_main_frame(t->wv);
 	uri = (char *)webkit_web_frame_get_uri(frame);
 	dom = find_domain(uri, 1);
 	warnx("looking for %s", dom);
 	d = wl_find(dom, &c_wl);
-	if (d == NULL) {
+	if (d == NULL)
+		es = 0;
+	else
+		es = 1;
+
+	if (args->i == XT_WL_TOGGLE)
+		es = !es;
+	else if (args->i == XT_WL_ENABLE && es != 1)
+		es = 1;
+	else if (args->i == XT_WL_DISABLE && es != 0)
+		es = 0;
+	else
+		return (0);
+
+	if (es) {
 		/* enable cookies for domain */
 		wl_add(dom, &c_wl);
 	} else {
@@ -1481,11 +1499,11 @@ toggle_js(struct tab *t, struct karg *args)
 
 	g_object_get((GObject *)t->settings,
 	    "enable-scripts", &es, (char *)NULL);
-	if (args->i == XT_JS_TOGGLE)
+	if (args->i == XT_WL_TOGGLE)
 		es = !es;
-	else if (args->i == XT_JS_ENABLE && es != 1)
+	else if (args->i == XT_WL_ENABLE && es != 1)
 		es = 1;
-	else if (args->i == XT_JS_DISABLE && es != 0)
+	else if (args->i == XT_WL_DISABLE && es != 0)
 		es = 0;
 	else
 		return (0);
@@ -1539,7 +1557,7 @@ js_toggle_cb(GtkWidget *w, struct tab *t)
 {
 	struct karg		a;
 
-	a.i = XT_JS_TOGGLE;
+	a.i = XT_WL_TOGGLE;
 	toggle_js(t, &a);
 }
 
@@ -1813,6 +1831,67 @@ remove_cookie(int index)
 }
 
 int
+add_cookie(struct tab *t, struct karg *args)
+{
+	char			file[PATH_MAX];
+	FILE			*f;
+	char			*line = NULL, *lt = NULL;
+	size_t			linelen;
+	WebKitWebFrame		*frame;
+	char			*dom = NULL, *uri;
+	struct karg		a;
+
+	if (t == NULL)
+		return (1);
+
+	if (runtime_settings[0] == '\0')
+		return (1);
+
+	snprintf(file, sizeof file, "%s/%s", work_dir, runtime_settings);
+	if ((f = fopen(file, "r+")) == NULL)
+		return (1);
+
+	frame = webkit_web_view_get_main_frame(t->wv);
+	uri = (char *)webkit_web_frame_get_uri(frame);
+	dom = find_domain(uri, 1);
+	if (uri == NULL || dom == NULL) {
+		webkit_web_view_load_string(t->wv,
+		    "<html><body>Can't add domain to Cookie white list</body></html>",
+		    NULL,
+		    NULL,
+		    NULL);
+		goto done;
+	}
+
+	lt =g_strdup_printf("cookie_wl=%s", dom);
+
+	while (!feof(f)) {
+		line = fparseln(f, &linelen, NULL, NULL, 0);
+		if (line == NULL)
+			continue;
+		if (!strcmp(line, lt))
+			goto done;
+		free(line);
+		line = NULL;
+	}
+
+	fprintf(f, "%s\n", lt);
+
+	a.i = XT_WL_TOGGLE;
+	toggle_cwl(t, &a);
+done:
+	if (line)
+		free(line);
+	if (dom)
+		g_free(dom);
+	if (lt)
+		g_free(lt);
+	fclose(f);
+
+	return (0);
+}
+
+int
 add_js(struct tab *t, struct karg *args)
 {
 	char			file[PATH_MAX];
@@ -1859,7 +1938,7 @@ add_js(struct tab *t, struct karg *args)
 
 	fprintf(f, "%s\n", lt);
 
-	a.i = XT_JS_TOGGLE;
+	a.i = XT_WL_TOGGLE;
 	toggle_js(t, &a);
 done:
 	if (line)
@@ -2880,8 +2959,8 @@ struct key {
 	{ GDK_SHIFT_MASK,	0,	GDK_question,	command,	{.i = '?'} },
 	{ GDK_SHIFT_MASK,	0,	GDK_colon,	command,	{.i = ':'} },
 	{ GDK_CONTROL_MASK,	0,	GDK_q,		quit,		{0} },
-	{ GDK_CONTROL_MASK,	0,	GDK_j,		toggle_js,	{.i = XT_JS_TOGGLE} },
-	{ GDK_MOD1_MASK,	0,	GDK_c,		toggle_cwl,	{.i = XT_JS_TOGGLE} },
+	{ GDK_CONTROL_MASK,	0,	GDK_j,		toggle_js,	{.i = XT_WL_TOGGLE} },
+	{ GDK_MOD1_MASK,	0,	GDK_c,		toggle_cwl,	{.i = XT_WL_TOGGLE} },
 	{ GDK_CONTROL_MASK,	0,	GDK_s,		toggle_src,	{0} },
 	{ 0,			0,	GDK_y,		yank_uri,	{0} },
 	{ 0,			0,	GDK_p,		paste_uri,	{.i = XT_PASTE_CURRENT_TAB} },
@@ -2972,6 +3051,7 @@ struct cmd {
 	{ "fav",		0,	xtp_page_fl,		{0} },
 	{ "favadd",		0,	add_favorite,		{0} },
 	{ "jsadd",		0,	add_js,			{0} },
+	{ "cookieadd",		0,	add_cookie,			{0} },
 	{ "dl"		,	0,	xtp_page_dl,		{0} },
 	{ "h"		,	0,	xtp_page_hl,		{0} },
 	{ "hist"	,	0,	xtp_page_hl,		{0} },
