@@ -339,7 +339,7 @@ TAILQ_HEAD(alias_list, alias);
 int		showtabs = 1;	/* show tabs on notebook */
 int		showurl = 1;	/* show url toolbar on notebook */
 int		tabless = 0;	/* allow only 1 tab */
-int		enable_socket = 1;
+int		enable_socket = 0;
 int		single_instance = 0; /* only allow one xxxterm to run */
 int		fancy_bar = 1;	/* fancy toolbar */
 
@@ -442,7 +442,6 @@ struct settings {
 	int		*ival;
 	char		**sval;
 	struct special	*s;
-	/* XXX MANY */
 } rs[] = {
 	/* ints */
 	{ "ctrl_click_focus", XT_S_INT, 0 , &ctrl_click_focus, NULL, NULL },
@@ -465,6 +464,7 @@ struct settings {
 
 	/* need restart */
 	{ "fancy_bar", XT_S_INT, XT_SF_RESTART , &fancy_bar, NULL, NULL },
+	{ "enable_socket", XT_S_INT, XT_SF_RESTART , &enable_socket, NULL, NULL },
 	{ "single_instance", XT_S_INT, XT_SF_RESTART , &single_instance, NULL, NULL },
 
 	/* special */
@@ -4192,10 +4192,8 @@ create_new_tab(char *title, int focus)
 				break;
 			}
 		}
-		if (notfound) {
-			warnx("could not insert tab, append it instead");
+		if (notfound)
 			append_tab(t);
-		}
 	}
 
 #if GTK_CHECK_VERSION(2, 20, 0)
@@ -4413,10 +4411,8 @@ send_url_to_socket(char *url)
 	}
 
 	sa.sun_family = AF_UNIX;
-
 	snprintf(sa.sun_path, sizeof(sa.sun_path), "%s/%s/%s",
 	    pwd->pw_dir, XT_DIR, XT_SOCKET_FILE);
-
 	len = SUN_LEN(&sa);
 
 	if (connect(s, (struct sockaddr *)&sa, len) == -1) {
@@ -4441,30 +4437,14 @@ socket_watcher(gpointer data, gint fd, GdkInputCondition cond)
 	socklen_t		t = sizeof(struct sockaddr_un);
 	struct sockaddr_un	sa;
 	struct passwd		*p;
-#ifdef __linux__
-	struct ucred		cr;
-	size_t			len;
-#else
 	uid_t			uid;
 	gid_t			gid;
-#endif
+
 	if ((s = accept(fd, (struct sockaddr *)&sa, &t)) == -1) {
 		warn("socket_watcher: accept");
 		return;
 	}
 
-#ifdef __linux__
-	len = sizeof(struct ucred);
-	if (getsockopt(s, SOL_SOCKET, SO_PEERCRED, &cr, &len) < 0) {
-		warnx("socket_watcher: getsockopt");
-		return;
-	}
-
-	if (cr.uid != getuid() || cr.gid != getgid()) {
-		warnx("socket_watcher: cr check");
-		return;
-	}
-#else
 	if (getpeereid(s, &uid, &gid) == -1) {
 		warn("socket_watcher: getpeereid");
 		return;
@@ -4473,7 +4453,6 @@ socket_watcher(gpointer data, gint fd, GdkInputCondition cond)
 		warnx("socket_watcher: unauthorized user");
 		return;
 	}
-#endif
 
 	p = getpwuid(uid);
 	if (p == NULL) {
