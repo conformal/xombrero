@@ -56,6 +56,8 @@
 #include <libsoup/soup.h>
 #include <JavaScriptCore/JavaScript.h>
 
+#include "cookiejarxt.h"
+
 #include "javascript.h"
 /*
 
@@ -86,6 +88,7 @@ THE SOFTWARE.
 
 static char		*version = "$xxxterm$";
 
+#define XT_DEBUG
 /*#define XT_DEBUG*/
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
@@ -999,7 +1002,7 @@ add_js_wl(struct settings *s, char *entry)
 }
 
 struct domain *
-wl_find(gchar *search, struct domain_list *wl)
+wl_find(const gchar *search, struct domain_list *wl)
 {
 	int			i;
 	struct domain		*d = NULL, dfind;
@@ -1032,9 +1035,11 @@ done:
 }
 
 struct domain *
-wl_find_uri(gchar *s, struct domain_list *wl)
+wl_find_uri(const gchar *s, struct domain_list *wl)
 {
 	int			i;
+	char			*ss;
+	struct domain		*r;
 
 	if (s == NULL || wl == NULL)
 		return (NULL);
@@ -1050,8 +1055,11 @@ wl_find_uri(gchar *s, struct domain_list *wl)
 	for (i = 0; i < strlen(s) + 1 /* yes er need this */; i++)
 		/* chop string at first slash */
 		if (s[i] == '/' || s[i] == '\0') {
-			s[i] = '\0';
-			return (wl_find(s, wl));
+			ss = g_strdup(s);
+			ss[i] = '\0';
+			r = wl_find(ss, wl);
+			g_free(ss);
+			return (r);
 		}
 
 	return (NULL);
@@ -1410,11 +1418,10 @@ paste_uri(struct tab *t, struct karg *args)
 }
 
 char *
-find_domain(char *s, int add_dot)
+find_domain(const char *s, int add_dot)
 {
 	int			i;
-	char			old;
-	char			*r = NULL;
+	char			*r = NULL, *ss = NULL;
 
 	if (s == NULL)
 		return (NULL);
@@ -1427,18 +1434,18 @@ find_domain(char *s, int add_dot)
 	if (strlen(s) < 2)
 		return (NULL);
 
-	for (i = 0; i < strlen(s) + 1 /* yes er need this */; i++)
+	ss = g_strdup(s);
+	for (i = 0; i < strlen(ss) + 1 /* yes er need this */; i++)
 		/* chop string at first slash */
-		if (s[i] == '/' || s[i] == '\0') {
-			old = s[i];
-			s[i] = '\0';
+		if (ss[i] == '/' || ss[i] == '\0') {
+			ss[i] = '\0';
 			if (add_dot)
-				r = g_strdup_printf(".%s", s);
+				r = g_strdup_printf(".%s", ss);
 			else
-				r = g_strdup(s);
-			s[i] = old;
+				r = g_strdup(ss);
 			break;
 		}
+	g_free(ss);
 
 	return (r);
 }
@@ -1457,7 +1464,6 @@ toggle_cwl(struct tab *t, struct karg *args)
 	frame = webkit_web_view_get_main_frame(t->wv);
 	uri = (char *)webkit_web_frame_get_uri(frame);
 	dom = find_domain(uri, 1);
-	warnx("looking for %s", dom);
 	d = wl_find(dom, &c_wl);
 	if (d == NULL)
 		es = 0;
@@ -1483,6 +1489,7 @@ toggle_cwl(struct tab *t, struct karg *args)
 
 	webkit_web_view_reload(t->wv);
 
+	g_free(dom);
 	return (0);
 }
 
@@ -1491,7 +1498,8 @@ toggle_js(struct tab *t, struct karg *args)
 {
 	int			es, i;
 	WebKitWebFrame		*frame;
-	gchar			*s;
+	const gchar		*s;
+	gchar			*ss;
 	struct domain		*d;
 
 	if (args == NULL)
@@ -1510,7 +1518,6 @@ toggle_js(struct tab *t, struct karg *args)
 
 	frame = webkit_web_view_get_main_frame(t->wv);
 	s = (gchar *)webkit_web_frame_get_uri(frame);
-
 	/* this code is shared with wl_find_uri, refactor */
 	if (s == NULL)
 		return (NULL);
@@ -1523,17 +1530,18 @@ toggle_js(struct tab *t, struct karg *args)
 	if (strlen(s) < 2)
 		return (NULL);
 
+	ss = g_strdup(s);
 	for (i = 0; i < strlen(s) + 1; i++)
 		/* chop string at first slash */
-		if (s[i] == '/' || s[i] == '\0') {
-			s[i] = '\0';
+		if (ss[i] == '/' || ss[i] == '\0') {
+			ss[i] = '\0';
 			if (es) {
 				gtk_tool_button_set_stock_id(
 				    GTK_TOOL_BUTTON(t->js_toggle),
 				    GTK_STOCK_MEDIA_PLAY);
-				wl_add(s, &js_wl);
+				wl_add(ss, &js_wl);
 			} else {
-				d = wl_find(s, &js_wl);
+				d = wl_find(ss, &js_wl);
 				if (d)
 					RB_REMOVE(domain_list, &js_wl, d);
 				gtk_tool_button_set_stock_id(
@@ -1543,12 +1551,11 @@ toggle_js(struct tab *t, struct karg *args)
 			g_object_set((GObject *)t->settings,
 			    "enable-scripts", es, (char *)NULL);
 			webkit_web_view_set_settings(t->wv, t->settings);
-
 			webkit_web_view_reload(t->wv);
-
-			return (0);
+			goto done;
 		}
-
+done:
+	g_free(ss);
 	return (0);
 }
 
@@ -4888,6 +4895,7 @@ main(int argc, char *argv[])
 	char			file[PATH_MAX];
 	char			*env_proxy = NULL;
 	FILE			*f = NULL;
+swm_debug = XT_D_COOKIE;
 
 	while ((c = getopt(argc, argv, "STVf:tn")) != -1) {
 		switch (c) {
