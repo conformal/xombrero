@@ -4589,6 +4589,9 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkNotebookPage *nbp, guint pn,
 			gtk_window_set_title(GTK_WINDOW(main_window), uri);
 
 			gtk_widget_hide(t->cmd);
+
+			if (t->focus_wv)
+				gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 		}
 	}
 }
