@@ -56,8 +56,6 @@
 #include <libsoup/soup.h>
 #include <JavaScriptCore/JavaScript.h>
 
-#include "cookiejarxt.h"
-
 #include "javascript.h"
 /*
 
