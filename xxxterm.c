@@ -4061,6 +4061,9 @@ entry_key_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	DNPRINTF(XT_D_CMD, "entry_key_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
 
+	if (e->keyval == GDK_Escape)
+		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+
 	for (i = 0; i < LENGTH(keys); i++)
 		if (e->keyval == keys[i].key &&
 		    CLEAN(e->state) == keys[i].mask &&
@@ -4357,7 +4360,7 @@ create_toolbar(struct tab *t)
 		gtk_entry_set_width_chars(GTK_ENTRY(t->search_entry), 30);
 		g_signal_connect(G_OBJECT(t->search_entry), "activate",
 		    G_CALLBACK(activate_search_entry_cb), t);
-		g_signal_connect(G_OBJECT(t->uri_entry), "key-press-event",
+		g_signal_connect(G_OBJECT(t->search_entry), "key-press-event",
 		    (GCallback)entry_key_cb, t);
 		gtk_box_pack_start(GTK_BOX(b), t->search_entry, FALSE, FALSE, 0);
 	}
@@ -4600,6 +4603,7 @@ create_canvas(void)
 	if (showtabs == 0)
 		gtk_notebook_set_show_tabs(GTK_NOTEBOOK(notebook), FALSE);
 	gtk_notebook_set_scrollable(notebook, TRUE);
+	gtk_widget_set_can_focus(GTK_WIDGET(notebook), FALSE);
 
 	gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(notebook), TRUE, TRUE, 0);
 
