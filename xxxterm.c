@@ -1785,6 +1785,16 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	}
 	fclose(f);
 
+	/* if none, say so */
+	if (i == 1) {
+		tmp = body;
+		body = g_strdup_printf("%s<tr>"
+		    "<td colspan='3' style='text-align: center'>"
+		    "No favorites - To add one use the 'favadd' command."
+		    "</td></tr>", body);
+		g_free(tmp);
+	}
+
 	if (uri)
 		free(uri);
 	if (title)
@@ -1969,6 +1979,12 @@ add_favorite(struct tab *t, struct karg *args)
 
 	if (t == NULL)
 		return (1);
+
+	/* don't allow adding of xtp pages to favorites */
+	if (t->xtp_meaning != XT_XTP_TAB_MEANING_NORMAL) {
+		warn("%s: can't add xtp pages to favorites", __func__);
+		return (1);
+	}
 
 	snprintf(file, sizeof file, "%s/%s/%s",
 	    pwd->pw_dir, XT_DIR, XT_FAVS_FILE);
