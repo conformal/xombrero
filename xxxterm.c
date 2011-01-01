@@ -38,6 +38,7 @@
 #include <unistd.h>
 #include <util.h>
 #include <pthread.h>
+#include <dlfcn.h>
 
 #ifdef __linux__
 #include "linux/tree.h"
@@ -86,7 +87,11 @@ THE SOFTWARE.
 
 static char		*version = "$xxxterm$";
 
-#define XT_DEBUG
+/* hooked functions */
+void		(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
+void		(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
+		    SoupCookie *);
+
 /*#define XT_DEBUG*/
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
@@ -198,6 +203,7 @@ RB_HEAD(download_list, download);
 struct domain {
 	RB_ENTRY(domain)	entry;
 	gchar			*d;
+	int			handy; /* app use */
 };
 RB_HEAD(domain_list, domain);
 
@@ -629,6 +635,7 @@ char			work_dir[PATH_MAX];
 char			cookie_file[PATH_MAX];
 SoupURI			*proxy_uri = NULL;
 SoupSession		*session;
+SoupCookieJar		*s_cookiejar;
 SoupCookieJar		*p_cookiejar;
 
 struct mime_type_list	mtl;
@@ -920,7 +927,7 @@ walk_mime_type(struct settings *s,
 }
 
 void
-wl_add(char *str, struct domain_list *wl)
+wl_add(char *str, struct domain_list *wl, int handy)
 {
 	struct domain		*d;
 	int			add_dot = 0;
@@ -945,6 +952,7 @@ wl_add(char *str, struct domain_list *wl)
 		d->d = g_strdup_printf(".%s", str);
 	else
 		d->d = g_strdup(str);
+	d->handy = handy;
 
 	if (RB_INSERT(domain_list, wl, d))
 		goto unwind;
@@ -962,7 +970,7 @@ unwind:
 int
 add_cookie_wl(struct settings *s, char *entry)
 {
-	wl_add(entry, &c_wl);
+	wl_add(entry, &c_wl, 1);
 	return (0);
 }
 
@@ -995,7 +1003,7 @@ walk_js_wl(struct settings *s,
 int
 add_js_wl(struct settings *s, char *entry)
 {
-	wl_add(entry, &js_wl);
+	wl_add(entry, &js_wl, 1 /* not used */);
 	return (0);
 }
 
@@ -1474,12 +1482,10 @@ toggle_cwl(struct tab *t, struct karg *args)
 		es = 1;
 	else if (args->i == XT_WL_DISABLE && es != 0)
 		es = 0;
-	else
-		return (0);
 
 	if (es) {
 		/* enable cookies for domain */
-		wl_add(dom, &c_wl);
+		wl_add(dom, &c_wl, 0);
 	} else {
 		/* disable cookies for domain */
 		RB_REMOVE(domain_list, &c_wl, d);
@@ -1537,7 +1543,7 @@ toggle_js(struct tab *t, struct karg *args)
 				gtk_tool_button_set_stock_id(
 				    GTK_TOOL_BUTTON(t->js_toggle),
 				    GTK_STOCK_MEDIA_PLAY);
-				wl_add(ss, &js_wl);
+				wl_add(ss, &js_wl, 0 /* not used */);
 			} else {
 				d = wl_find(ss, &js_wl);
 				if (d)
@@ -1828,14 +1834,14 @@ remove_cookie(int index)
 
 	DNPRINTF(XT_D_COOKIE, "remove_cookie: %d\n", index);
 
-	cf = soup_cookie_jar_all_cookies(p_cookiejar);
+	cf = soup_cookie_jar_all_cookies(s_cookiejar);
 
 	for (i = 1; cf; cf = cf->next, i++) {
 		if (i != index)
 			continue;
 		c = cf->data;
 		print_cookie("remove cookie", c);
-		soup_cookie_jar_delete_cookie(p_cookiejar, c);
+		soup_cookie_jar_delete_cookie(s_cookiejar, c);
 		rv = 0;
 		break;
 	}
@@ -1855,6 +1861,9 @@ add_cookie(struct tab *t, struct karg *args)
 	WebKitWebFrame		*frame;
 	char			*dom = NULL, *uri;
 	struct karg		a;
+	struct domain		*d = NULL;
+	GSList			*cf;
+	SoupCookie		*ci, *c;
 
 	if (t == NULL)
 		return (1);
@@ -1892,8 +1901,24 @@ add_cookie(struct tab *t, struct karg *args)
 
 	fprintf(f, "%s\n", lt);
 
-	a.i = XT_WL_TOGGLE;
+	a.i = XT_WL_ENABLE;
 	toggle_cwl(t, &a);
+	d = wl_find(dom, &c_wl);
+	if (d)
+		d->handy = 1;
+
+	/* find and add to persistent jar */
+	cf = soup_cookie_jar_all_cookies(s_cookiejar);
+	for (;cf; cf = cf->next) {
+		ci = cf->data;
+		if (!strcmp(dom, ci->domain) ||
+		    !strcmp(&dom[1], ci->domain)) /* deal with leading . */ {
+			c = soup_cookie_copy(ci);
+			_soup_cookie_jar_add_cookie(p_cookiejar, c);
+		}
+	}
+	soup_cookies_free(cf);
+
 done:
 	if (line)
 		free(line);
@@ -2499,7 +2524,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	    "<th>HTTP_only</th>"
 	    "<th>Remove</th></tr>\n");
 
-	cf = soup_cookie_jar_all_cookies(p_cookiejar);
+	cf = soup_cookie_jar_all_cookies(s_cookiejar);
 
 	for (; cf; cf = cf->next) {
 		c = cf->data;
@@ -4642,93 +4667,142 @@ create_canvas(void)
 }
 
 void
-cookiejar_changed_cb(SoupCookieJar *jar, SoupCookie *old_cookie,
-    SoupCookie *new_cookie, gpointer user_data)
+set_hook(void **hook, char *name)
 {
-	SoupCookieJarClass	*p;
-	struct domain		*d = NULL;
-	void			(*hook)(SoupCookieJar *, SoupCookie *,
-				    SoupCookie *, gpointer);
-	/*
-	 * This is pretty terrible and needs a rewrite.
-	 *
-	 * The idea is to delete the cookie as it comes in so we need to not
-	 * credit the blocked_cookies counter in the delete path.
-	 *
-	 * The problem doing this is that we don't tell the other end we
-	 * rejected the cookie,  It does seem to work.
-	 */
-	if (new_cookie)
-		if ((d = wl_find(new_cookie->domain, &c_wl)) == NULL) {
-			blocked_cookies++;
-			DNPRINTF(XT_D_COOKIE,
-			    "cookiejar_changed_cb: reject %s\n",
-			    new_cookie->domain);
-			if (allow_volatile_cookies == 0)
-				soup_cookie_jar_delete_cookie(jar, new_cookie);
-			return;
-		}
-	if (old_cookie)
-		if ((d = wl_find(old_cookie->domain, &c_wl)) == NULL) {
-			DNPRINTF(XT_D_COOKIE,
-			    "cookiejar_changed_cb: reject %s\n",
-			    old_cookie->domain);
-			if (allow_volatile_cookies == 0)
-				soup_cookie_jar_delete_cookie(jar, old_cookie);
-			return;
-		}
+	if (hook == NULL)
+		errx(1, "set_hook");
 
-	if (new_cookie) {
-		print_cookie("old_cookie", old_cookie);
-		print_cookie("new_cookie", new_cookie);
-		if (new_cookie->expires == NULL && session_timeout) {
-			soup_cookie_set_expires(new_cookie,
-			    soup_date_new_from_now(session_timeout));
-			print_cookie("modified new_cookie", new_cookie);
+	if (*hook == NULL) {
+		*hook = dlsym(RTLD_NEXT, name);
+		if (*hook == NULL)
+			errx(1, "can't hook %s", name);
+	}
+}
+
+/* override libsoup soup_cookie_equal because it doesn't look at domain */
+gboolean
+soup_cookie_equal(SoupCookie *cookie1, SoupCookie *cookie2)
+{
+	g_return_val_if_fail(cookie1, FALSE);
+	g_return_val_if_fail(cookie2, FALSE);
+
+	return (!strcmp (cookie1->name, cookie2->name) &&
+	    !strcmp (cookie1->value, cookie2->value) &&
+	    !strcmp (cookie1->path, cookie2->path) &&
+	    !strcmp (cookie1->domain, cookie2->domain));
+}
+
+void
+transfer_cookies(void)
+{
+	GSList			*cf;
+	SoupCookie		*sc, *pc;
+
+	cf = soup_cookie_jar_all_cookies(p_cookiejar);
+
+	for (;cf; cf = cf->next) {
+		pc = cf->data;
+		sc = soup_cookie_copy(pc);
+		_soup_cookie_jar_add_cookie(s_cookiejar, sc);
+	}
+
+	soup_cookies_free(cf);
+}
+
+void
+soup_cookie_jar_delete_cookie(SoupCookieJar *jar, SoupCookie *c)
+{
+	GSList			*cf;
+	SoupCookie		*ci;
+
+	print_cookie("soup_cookie_jar_delete_cookie", c);
+
+	/* find and remove from persistent jar */
+	cf = soup_cookie_jar_all_cookies(p_cookiejar);
+
+	for (;cf; cf = cf->next) {
+		ci = cf->data;
+		if (soup_cookie_equal(ci, c)) {
+			_soup_cookie_jar_delete_cookie(p_cookiejar, ci);
+			break;
 		}
 	}
 
-	/* call original function to do it's magic */
-	p = SOUP_COOKIE_JAR_GET_CLASS(p_cookiejar);
-	hook = (void *)(p->_libsoup_reserved3);
-	hook(jar, old_cookie, new_cookie, NULL);
+	soup_cookies_free(cf);
+
+	/* delete from session jar */
+	_soup_cookie_jar_delete_cookie(s_cookiejar, c);
+}
+
+void
+soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
+{
+	struct domain		*d;
+	SoupCookie		*c;
+
+	DNPRINTF(XT_D_COOKIE, "soup_cookie_jar_add_cookie: %p %p %p\n",
+	    jar, p_cookiejar, s_cookiejar);
+
+	/* see if we are up and running */
+	if (p_cookiejar == NULL) {
+		_soup_cookie_jar_add_cookie(jar, cookie);
+		return;
+	}
+	/* disallow p_cookiejar adds, shouldn't happen */
+	if (jar == p_cookiejar)
+		return;
+
+	if ((d = wl_find(cookie->domain, &c_wl)) == NULL) {
+		blocked_cookies++;
+		DNPRINTF(XT_D_COOKIE,
+		    "soup_cookie_jar_add_cookie: reject %s\n",
+		    cookie->domain);
+		if (!allow_volatile_cookies)
+			return;
+	}
+
+	if (cookie->expires == NULL && session_timeout) {
+		soup_cookie_set_expires(cookie,
+		    soup_date_new_from_now(session_timeout));
+		print_cookie("modified add cookie", cookie);
+	}
+
+	/* add to session jar */
+	print_cookie("soup_cookie_jar_add_cookie", cookie);
+	_soup_cookie_jar_add_cookie(s_cookiejar, cookie);
+
+	/* see if we are white listed for persistence */
+	if (d && d->handy) {
+		/* add to persistent jar */
+		c = soup_cookie_copy(cookie);
+		_soup_cookie_jar_add_cookie(p_cookiejar, c);
+	}
 }
 
 void
 setup_cookies(char *file)
 {
-	SoupCookieJarClass	*p;
-
-	/*
-	 * First I'd like to apologize for what you are about to see.
-	 * The issue really is a flaw in libsoup which doesn't let us
-	 * hook the "changed" callback properly.  It lets us hook it
-	 * but there is no way to halt execution because of the void
-	 * return type.
-	 *
-	 * To work around this we mess with the class pointers themselves
-	 * and do our thing.  In our new function we'll determine if we
-	 * want to continue execution.
-	 *
-	 * Evil, check.  Ugly, check.  Prone to failure, check.
-	 * Probably a better way of doing this, check!
-	 *
-	 * I'll take a diff if someone knows how to do this within the gtk
-	 * framework.
-	 */
-
 	if (cookies_enabled == 0)
 		return;
 
+	set_hook((void *)&_soup_cookie_jar_add_cookie,
+	    "soup_cookie_jar_add_cookie");
+	set_hook((void *)&_soup_cookie_jar_delete_cookie,
+	    "soup_cookie_jar_delete_cookie");
+
+	/*
+	 * the following code is intricate due to overriding several libsoup
+	 * functions.
+	 * do not alter order of these operations.
+	 */
 	p_cookiejar = soup_cookie_jar_text_new(file, read_only_cookies);
-	if (enable_cookie_whitelist) {
-		p = SOUP_COOKIE_JAR_GET_CLASS(p_cookiejar);
-		p->_libsoup_reserved3 = (void *)(p->changed);
-		p->changed = (void *)(cookiejar_changed_cb);
-	}
-	g_object_set(G_OBJECT(p_cookiejar), SOUP_COOKIE_JAR_ACCEPT_POLICY,
+
+	s_cookiejar = soup_cookie_jar_new();
+	g_object_set(G_OBJECT(s_cookiejar), SOUP_COOKIE_JAR_ACCEPT_POLICY,
 	    cookie_policy, (void *)NULL);
-	soup_session_add_feature(session, (SoupSessionFeature*)p_cookiejar);
+	transfer_cookies();
+
+	soup_session_add_feature(session, (SoupSessionFeature*)s_cookiejar);
 }
 
 void
@@ -4909,7 +4983,6 @@ main(int argc, char *argv[])
 	char			file[PATH_MAX];
 	char			*env_proxy = NULL;
 	FILE			*f = NULL;
-swm_debug = XT_D_COOKIE;
 
 	while ((c = getopt(argc, argv, "STVf:tn")) != -1) {
 		switch (c) {
