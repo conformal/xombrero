@@ -4502,6 +4502,7 @@ undo_close_tab_push(const gchar *uri)
 	if (undo_count > XT_MAX_UNDO_CLOSE_TAB) {
 		u2 = TAILQ_LAST(&undos, undo_tailq);
 		TAILQ_REMOVE(&undos, u2, entry);
+		g_free(u2->uri);
 		g_free(u2);
 	} else
 		undo_count++;
