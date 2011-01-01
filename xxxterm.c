@@ -4813,6 +4813,9 @@ soup_cookie_jar_delete_cookie(SoupCookieJar *jar, SoupCookie *c)
 
 	print_cookie("soup_cookie_jar_delete_cookie", c);
 
+	if (jar == NULL || c == NULL)
+		return;
+
 	/* find and remove from persistent jar */
 	cf = soup_cookie_jar_all_cookies(p_cookiejar);
 
@@ -4863,16 +4866,17 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 		print_cookie("modified add cookie", cookie);
 	}
 
-	/* add to session jar */
-	print_cookie("soup_cookie_jar_add_cookie", cookie);
-	_soup_cookie_jar_add_cookie(s_cookiejar, cookie);
-
 	/* see if we are white listed for persistence */
 	if (d && d->handy) {
 		/* add to persistent jar */
 		c = soup_cookie_copy(cookie);
+		print_cookie("soup_cookie_jar_add_cookie p_cookiejar", c);
 		_soup_cookie_jar_add_cookie(p_cookiejar, c);
 	}
+
+	/* add to session jar */
+	print_cookie("soup_cookie_jar_add_cookie s_cookiejar", cookie);
+	_soup_cookie_jar_add_cookie(s_cookiejar, cookie);
 }
 
 void
