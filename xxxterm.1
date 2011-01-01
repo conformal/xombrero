@@ -246,6 +246,19 @@ Focus on URI entry
 Focus on search entry
 .El
 .Pp
+Command aliases (useful when -S flag is used):
+.Pp
+.Bl -tag -width "tabnew, tabedit, tabe [URI]" -offset indent -compact
+.It Cm F9
+Alias for ":open" (See command descriptions below)
+.It Cm F10
+Alias for ":open <current-uri>"
+.It Cm F11
+Alias for ":tabnew"
+.It Cm F12
+Alias for ":tabnew <current-uri>"
+.El
+.Pp
 Navigation:
 .Pp
 .Bl -tag -width "tabnew, tabedit, tabe [URI]" -offset indent -compact
@@ -298,6 +311,8 @@ Tab Manipulation:
 Create new tab with focus in URI entry
 .It Cm C-W
 Destroy current tab
+.It Cm U
+Undo close tab
 .It Cm C-Left
 Go to the previous tab.
 .It Cm C-Right

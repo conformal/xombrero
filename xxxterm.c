@@ -207,6 +207,12 @@ struct domain {
 };
 RB_HEAD(domain_list, domain);
 
+struct undo {
+        TAILQ_ENTRY(undo)	entry;
+        gchar			*uri;
+};
+TAILQ_HEAD(undo_tailq, undo);
+
 /* starts from 1 to catch atoi() failures when calling xtp_handle_dl() */
 int				next_download_id = 1;
 
@@ -233,6 +239,7 @@ struct karg {
 				"table {width: 90%%; border: 1px black"    \
 				" solid; table-layout: fixed}\n</style>\n\n"
 #define XT_MAX_URL_LENGTH	(4096) /* 1 page is atomic, don't make bigger */
+#define XT_MAX_UNDO_CLOSE_TAB	(32)
 
 /* file sizes */
 #define SZ_KB		((uint64_t) 1024)
@@ -309,6 +316,7 @@ struct karg {
 #define XT_TAB_DELETE		(2)
 #define XT_TAB_DELQUIT		(3)
 #define XT_TAB_OPEN		(4)
+#define XT_TAB_UNDO_CLOSE	(5)
 
 #define XT_NAV_INVALID		(0)
 #define XT_NAV_BACK		(1)
@@ -332,6 +340,11 @@ struct karg {
 #define XT_WL_ENABLE		(1)
 #define XT_WL_DISABLE		(2)
 
+#define XT_CMD_OPEN		(0)
+#define XT_CMD_OPEN_CURRENT	(1)
+#define XT_CMD_TABNEW		(2)
+#define XT_CMD_TABNEW_CURRENT	(3)
+
 /* mime types */
 struct mime_type {
 	char			*mt_type;
@@ -343,7 +356,7 @@ TAILQ_HEAD(mime_type_list, mime_type);
 
 /* uri aliases */
 struct alias {
-	char			*a_name;;
+	char			*a_name;
 	char			*a_uri;
 	TAILQ_ENTRY(alias)	 entry;
 };
@@ -499,6 +512,8 @@ struct history_list	hl;
 struct download_list	downloads;
 struct domain_list	c_wl;
 struct domain_list	js_wl;
+struct undo_tailq	undos;
+int			undo_count;
 int			updating_dl_tabs = 0;
 int			updating_hl_tabs = 0;
 int			updating_cl_tabs = 0;
@@ -2176,6 +2191,7 @@ tabaction(struct tab *t, struct karg *args)
 {
 	int			rv = XT_CB_HANDLED;
 	char			*url = NULL, *newuri = NULL;
+	struct undo		*u;
 
 	DNPRINTF(XT_D_TAB, "tabaction: %p %d %d\n", t, args->i, t->focus_wv);
 
@@ -2215,6 +2231,19 @@ tabaction(struct tab *t, struct karg *args)
 		webkit_web_view_load_uri(t->wv, url);
 		if (newuri)
 			g_free(newuri);
+		break;
+	case XT_TAB_UNDO_CLOSE:
+		if (undo_count == 0) {
+			DNPRINTF(XT_D_TAB, "%s: no tabs to undo close", __func__);
+			goto done;
+		} else {
+			undo_count--;
+			u = TAILQ_FIRST(&undos);
+			create_new_tab(u->uri, 1);
+			TAILQ_REMOVE(&undos, u, entry);
+			g_free(u->uri);
+			g_free(u);
+		}
 		break;
 	default:
 		rv = XT_CB_PASSTHROUGH;
@@ -2318,20 +2347,46 @@ movetab(struct tab *t, struct karg *args)
 int
 command(struct tab *t, struct karg *args)
 {
-	char			*s = NULL;
+	WebKitWebFrame		*frame;
+	char			*s = NULL, *ss = NULL;
 	GdkColor		color;
+	const gchar		*uri;
+	size_t			sz;
 
 	if (t == NULL || args == NULL)
 		errx(1, "command");
 
-	if (args->i == '/')
+	switch (args->i) {
+	case '/':
 		s = "/";
-	else if (args->i == '?')
+		break;
+	case '?':
 		s = "?";
-	else if (args->i == ':')
+		break;
+	case ':':
 		s = ":";
-	else {
-		warnx("invalid command %c\n", args->i);
+		break;
+	case XT_CMD_OPEN:
+		s = ":open ";
+		break;
+	case XT_CMD_TABNEW:
+		s = ":tabnew ";
+		break;
+	case XT_CMD_OPEN_CURRENT:
+		s = ":open ";
+		/* FALL THROUGH */
+	case XT_CMD_TABNEW_CURRENT:
+		if (!s) /* FALL THROUGH? */
+			s = ":tabnew ";
+		frame = webkit_web_view_get_main_frame(t->wv);
+		uri   = webkit_web_frame_get_uri(frame);
+		sz = sizeof(gchar) * (strlen(s) + strlen(uri));
+		ss = g_malloc(sz);
+		snprintf(ss, sz, "%s%s", s, uri);
+		s = ss;
+		break;
+	default:
+		warnx("command: invalid command %c\n", args->i);
 		return (XT_CB_PASSTHROUGH);
 	}
 
@@ -2343,6 +2398,9 @@ command(struct tab *t, struct karg *args)
 	gtk_widget_show(t->cmd);
 	gtk_widget_grab_focus(GTK_WIDGET(t->cmd));
 	gtk_editable_set_position(GTK_EDITABLE(t->cmd), -1);
+
+	if (ss)
+		g_free(ss);
 
 	return (XT_CB_HANDLED);
 }
@@ -3032,6 +3090,12 @@ struct key {
 	{ 0,			0,	GDK_F6,		focus,		{.i = XT_FOCUS_URI} },
 	{ 0,			0,	GDK_F7,		focus,		{.i = XT_FOCUS_SEARCH} },
 
+	/* command aliases (handy when -S flag is used) */
+	{ 0,			0,	GDK_F9,		command,	{.i = XT_CMD_OPEN} },
+	{ 0,			0,	GDK_F10,	command,	{.i = XT_CMD_OPEN_CURRENT} },
+	{ 0,			0,	GDK_F11,	command,	{.i = XT_CMD_TABNEW} },
+	{ 0,			0,	GDK_F12,	command,	{.i = XT_CMD_TABNEW_CURRENT} },
+
 	/* hinting */
 	{ 0,			0,	GDK_f,		hint,		{.i = 0} },
 
@@ -3072,6 +3136,7 @@ struct key {
 	/* tabs */
 	{ GDK_CONTROL_MASK,	0,	GDK_t,		tabaction,	{.i = XT_TAB_NEW} },
 	{ GDK_CONTROL_MASK,	1,	GDK_w,		tabaction,	{.i = XT_TAB_DELETE} },
+	{ GDK_SHIFT_MASK,	0,	GDK_U,		tabaction,	{.i = XT_TAB_UNDO_CLOSE} },
 	{ GDK_CONTROL_MASK,	0,	GDK_1,		movetab,	{.i = 1} },
 	{ GDK_CONTROL_MASK,	0,	GDK_2,		movetab,	{.i = 2} },
 	{ GDK_CONTROL_MASK,	0,	GDK_3,		movetab,	{.i = 3} },
@@ -4423,13 +4488,43 @@ recalc_tabs(void)
 		t->tab_id = gtk_notebook_page_num(notebook, t->vbox);
 }
 
+int
+undo_close_tab_push(const gchar *uri)
+{
+	struct undo	*u1, *u2;
+
+	u1      = g_malloc(sizeof(struct undo));
+	u1->uri = g_malloc(strlen(uri) * sizeof(gchar));
+	snprintf(u1->uri, strlen(uri), "%s", uri);
+
+	TAILQ_INSERT_HEAD(&undos, u1, entry);
+
+	if (undo_count > XT_MAX_UNDO_CLOSE_TAB) {
+		u2 = TAILQ_LAST(&undos, undo_tailq);
+		TAILQ_REMOVE(&undos, u2, entry);
+		g_free(u2);
+	} else
+		undo_count++;
+
+	return (0);
+}
+
 void
 delete_tab(struct tab *t)
 {
+	WebKitWebFrame		*frame;
+	const gchar		*uri;
+
 	DNPRINTF(XT_D_TAB, "delete_tab: %p\n", t);
 
 	if (t == NULL)
 		return;
+
+	/* Save URI of tab; so we can undo close tab. */
+	frame = webkit_web_view_get_main_frame(t->wv);
+	uri   = webkit_web_frame_get_uri(frame);
+	if (uri)
+		undo_close_tab_push(uri);
 
 	TAILQ_REMOVE(&tabs, t, entry);
 	if (TAILQ_EMPTY(&tabs))
@@ -5018,6 +5113,7 @@ main(int argc, char *argv[])
 	RB_INIT(&downloads);
 	TAILQ_INIT(&mtl);
 	TAILQ_INIT(&aliases);
+	TAILQ_INIT(&undos);
 
 	/* generate session keys for xtp pages */
 	generate_xtp_session_key(&dl_session_key);
