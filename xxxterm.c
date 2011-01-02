@@ -4755,10 +4755,48 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkNotebookPage *nbp, guint pn,
 	}
 }
 
+void
+menuitem_response(struct tab *t)
+{
+	gtk_notebook_set_current_page(notebook, t->tab_id);
+}
+
 gboolean
 arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 {
-	fprintf(stderr, "omgclick\n");
+	GtkWidget		*menu, *menu_items;
+	GdkEventButton		*bevent;
+	WebKitWebFrame		*frame;
+	const gchar		*uri;
+	struct tab		*ti;
+
+	if (event->type == GDK_BUTTON_PRESS) {
+		bevent = (GdkEventButton *) event;
+		menu = gtk_menu_new();
+
+		TAILQ_FOREACH(ti, &tabs, entry) {
+			frame = webkit_web_view_get_main_frame(ti->wv);
+			uri = webkit_web_frame_get_uri(frame);
+			if (uri == NULL)
+				uri = "(untitled)";
+			menu_items = gtk_menu_item_new_with_label(uri);
+			gtk_menu_append(GTK_MENU (menu), menu_items);
+			gtk_widget_show(menu_items);
+
+			gtk_signal_connect_object(GTK_OBJECT(menu_items),
+			    "activate", GTK_SIGNAL_FUNC(menuitem_response),
+			    (gpointer)ti);
+		}
+
+		gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
+		    bevent->button, bevent->time);
+
+		/* unref object so it'll free itself when popped down */
+		g_object_ref_sink(menu);
+		g_object_unref(menu);
+
+		return (TRUE /* eat event */);
+	}
 
 	return (FALSE /* propagate */);
 }
