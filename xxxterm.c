@@ -504,6 +504,7 @@ struct settings {
 
 /* globals */
 extern char		*__progname;
+char			**start_argv;
 struct passwd		*pwd;
 GtkWidget		*main_window;
 GtkNotebook		*notebook;
@@ -3060,6 +3061,13 @@ go_home(struct tab *t, struct karg *args)
 	return (0);
 }
 
+int
+restart(struct tab *t, struct karg *args)
+{
+	execvp(start_argv[0], start_argv);
+	return (0);
+}
+
 /* inherent to GTK not all keys will be caught at all times */
 /* XXX sort key bindings */
 struct key {
@@ -3183,6 +3191,7 @@ struct cmd {
 	{ "hist"	,	0,	xtp_page_hl,		{0} },
 	{ "history"	,	0,	xtp_page_hl,		{0} },
 	{ "home"	,	0,	go_home,		{0} },
+	{ "restart"	,	0,	restart,		{0} },
 
 	{ "1",			0,	move,			{.i = XT_MOVE_TOP} },
 	{ "print",		0,	print_page,		{0} },
@@ -4777,7 +4786,11 @@ arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 		TAILQ_FOREACH(ti, &tabs, entry) {
 			frame = webkit_web_view_get_main_frame(ti->wv);
 			uri = webkit_web_frame_get_uri(frame);
+			/* XXX make sure there is something to print */
+			/* XXX add gui pages in here to look purdy */
 			if (uri == NULL)
+				uri = "(untitled)";
+			if (strlen(uri) == 0)
 				uri = "(untitled)";
 			menu_items = gtk_menu_item_new_with_label(uri);
 			gtk_menu_append(GTK_MENU (menu), menu_items);
@@ -5155,6 +5168,7 @@ main(int argc, char *argv[])
 	char			*env_proxy = NULL;
 	FILE			*f = NULL;
 
+	start_argv = argv;
 	while ((c = getopt(argc, argv, "STVf:tn")) != -1) {
 		switch (c) {
 		case 'S':
