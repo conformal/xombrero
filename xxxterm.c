@@ -3669,6 +3669,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	const gchar		*set = NULL, *uri = NULL, *title = NULL;
 	struct history		*h, find;
 	int			add = 0;
+	const gchar		*s_loading;
 
 	DNPRINTF(XT_D_URL, "notify_load_status_cb: %d\n",
 	    webkit_web_view_get_load_status(wview));
@@ -3755,6 +3756,9 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		gtk_spinner_stop(GTK_SPINNER(t->spinner));
 		gtk_widget_hide(t->spinner);
 #endif
+	s_loading = gtk_label_get_text(GTK_LABEL(t->label));
+	if (!strcmp(s_loading, "Loading"))
+		gtk_label_set_text(GTK_LABEL(t->label), "(untitled)");
 	default:
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 		break;
