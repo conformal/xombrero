@@ -507,6 +507,7 @@ extern char		*__progname;
 struct passwd		*pwd;
 GtkWidget		*main_window;
 GtkNotebook		*notebook;
+GtkWidget		*arrow, *abtn;
 struct tab_list		tabs;
 struct history_list	hl;
 struct download_list	downloads;
@@ -1694,7 +1695,7 @@ help(struct tab *t, struct karg *args)
 	        "url=http://opensource.conformal.com/cgi-bin/man-cgi?xxxterm\">"
 	    "</head>"
 	    "<body>"
-	    "XXXterm man page<a href=\"http://opensource.conformal.com/"
+	    "XXXterm man page <a href=\"http://opensource.conformal.com/"
 	        "cgi-bin/man-cgi?xxxterm\">http://opensource.conformal.com/"
 		"cgi-bin/man-cgi?xxxterm</a>"
 	    "</body>"
@@ -3214,11 +3215,12 @@ struct cmd {
 };
 
 gboolean
-tab_close_cb(GtkWidget *event_box, GdkEventButton *event, struct tab *t)
+tab_close_cb(GtkWidget *btn, GdkEventButton *e, struct tab *t)
 {
 	DNPRINTF(XT_D_TAB, "tab_close_cb: tab %d\n", t->tab_id);
 
-	delete_tab(t);
+	if (e->type == GDK_BUTTON_PRESS && e->button == 1)
+		delete_tab(t);
 
 	return (FALSE);
 }
@@ -4571,7 +4573,7 @@ create_new_tab(char *title, int focus)
 	struct tab		*t, *tt;
 	int			load = 1, id, notfound;
 	char			*newuri = NULL;
-	GtkWidget		*image, *b, *event_box;
+	GtkWidget		*image, *b, *bb;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
@@ -4595,6 +4597,15 @@ create_new_tab(char *title, int focus)
 	t->vbox = gtk_vbox_new(FALSE, 0);
 
 	/* label + button for tab */
+	gtk_rc_parse_string(
+	    "style \"my-button-style\"\n"
+	    "{\n"
+	    "  GtkWidget::focus-padding = 0\n"
+	    "  GtkWidget::focus-line-width = 0\n"
+	    "  xthickness = 0\n"
+	    "  ythickness = 0\n"
+	    "}\n"
+	    "widget \"*.my-close-button\" style \"my-button-style\"");
 	b = gtk_hbox_new(FALSE, 0);
 	t->tab_content = b;
 
@@ -4602,15 +4613,20 @@ create_new_tab(char *title, int focus)
 	t->spinner = gtk_spinner_new ();
 #endif
 	t->label = gtk_label_new(title);
+	bb = gtk_button_new();
+	gtk_button_set_focus_on_click(GTK_BUTTON(bb), FALSE);
 	image = gtk_image_new_from_stock(GTK_STOCK_CLOSE, GTK_ICON_SIZE_MENU);
-	event_box = gtk_event_box_new();
-	gtk_container_add(GTK_CONTAINER(event_box), image);
+	gtk_container_add(GTK_CONTAINER(bb), image);
+	gtk_widget_set_name(bb, "my-close-button");
 	gtk_widget_set_size_request(t->label, 100, -1);
+	gtk_widget_set_size_request(b, 130, -1);
+	gtk_notebook_set_homogeneous_tabs(notebook, TRUE);
+
+	gtk_box_pack_start(GTK_BOX(b), bb, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(b), t->label, FALSE, FALSE, 0);
 #if GTK_CHECK_VERSION(2, 20, 0)
 	gtk_box_pack_start(GTK_BOX(b), t->spinner, FALSE, FALSE, 0);
 #endif
-	gtk_box_pack_start(GTK_BOX(b), t->label, FALSE, FALSE, 0);
-	gtk_box_pack_start(GTK_BOX(b), event_box, FALSE, FALSE, 0);
 
 	/* toolbar */
 	t->toolbar = create_toolbar(t);
@@ -4689,7 +4705,8 @@ create_new_tab(char *title, int focus)
 	    "signal-after::key-press-event", (GCallback)webview_keypress_cb, t,
 	    (char *)NULL);
 
-	g_signal_connect(G_OBJECT(event_box), "button_press_event", G_CALLBACK(tab_close_cb), t);
+	g_signal_connect(G_OBJECT(bb), "button_press_event",
+	    G_CALLBACK(tab_close_cb), t);
 
 	/* hide stuff */
 	gtk_widget_hide(t->cmd);
@@ -4738,6 +4755,14 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkNotebookPage *nbp, guint pn,
 	}
 }
 
+gboolean
+arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
+{
+	fprintf(stderr, "omgclick\n");
+
+	return (FALSE /* propagate */);
+}
+
 void
 create_canvas(void)
 {
@@ -4750,15 +4775,23 @@ create_canvas(void)
 	gtk_notebook_set_scrollable(notebook, TRUE);
 	gtk_widget_set_can_focus(GTK_WIDGET(notebook), FALSE);
 
+	abtn = gtk_button_new();
+	arrow = gtk_arrow_new(GTK_ARROW_DOWN, GTK_SHADOW_NONE);
+	gtk_container_add(GTK_CONTAINER(abtn), arrow);
+	gtk_notebook_set_action_widget(notebook, abtn, GTK_PACK_END);
+
 	gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(notebook), TRUE, TRUE, 0);
 
 	g_object_connect((GObject*)notebook,
 	    "signal::switch-page", (GCallback)notebook_switchpage_cb, NULL,
 	    (char *)NULL);
+	g_signal_connect(G_OBJECT(abtn), "button_press_event",
+	    G_CALLBACK(arrow_cb), NULL);
 
 	main_window = create_window();
 	gtk_container_add(GTK_CONTAINER(main_window), vbox);
 	gtk_window_set_title(GTK_WINDOW(main_window), XT_NAME);
+	gtk_widget_show_all(abtn);
 	gtk_widget_show_all(main_window);
 }
 
