@@ -227,6 +227,7 @@ struct karg {
 #define XT_CONF_FILE		("xxxterm.conf")
 #define XT_FAVS_FILE		("favorites")
 #define XT_SAVED_TABS_FILE	("saved_tabs")
+#define XT_RESTART_TABS_FILE	("restart_tabs")
 #define XT_SOCKET_FILE		("socket")
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
@@ -1317,9 +1318,16 @@ restore_saved_tabs(void)
 	char		*line = NULL;
 	size_t		linelen;
 	int		empty_saved_tabs_file = 1;
+	int		unlink_file = 0;
+	struct stat	sb;
 
 	snprintf(file, sizeof file, "%s/%s/%s",
-	    pwd->pw_dir, XT_DIR, XT_SAVED_TABS_FILE);
+	    pwd->pw_dir, XT_DIR, XT_RESTART_TABS_FILE);
+	if (stat(file, &sb) == -1)
+		snprintf(file, sizeof file, "%s/%s/%s",
+		    pwd->pw_dir, XT_DIR, XT_SAVED_TABS_FILE);
+	else
+		unlink_file = 1;
 
 	if ((f = fopen(file, "r")) == NULL)
 		return (empty_saved_tabs_file);
@@ -1335,13 +1343,15 @@ restore_saved_tabs(void)
 	}
 
 	fclose(f);
-	/*remove(file);*/
+
+	if (unlink_file)
+		unlink(file);
 
 	return (empty_saved_tabs_file);
 }
 
 int
-save_tabs(struct tab *t, struct karg *args)
+save_tabs(struct tab *t, struct karg *a)
 {
 	char			file[PATH_MAX];
 	FILE			*f;
@@ -1349,8 +1359,13 @@ save_tabs(struct tab *t, struct karg *args)
 	WebKitWebFrame		*frame;
 	const gchar		*uri;
 
+	if (a == NULL)
+		return (1);
+	if (a->s == NULL)
+		return (1);
+
 	snprintf(file, sizeof file, "%s/%s/%s",
-	    pwd->pw_dir, XT_DIR, XT_SAVED_TABS_FILE);
+	    pwd->pw_dir, XT_DIR, a->s);
 
 	if ((f = fopen(file, "w")) == NULL) {
 		warn("save_tabs");
@@ -1360,7 +1375,7 @@ save_tabs(struct tab *t, struct karg *args)
 	TAILQ_FOREACH(ti, &tabs, entry) {
 		frame = webkit_web_view_get_main_frame(ti->wv);
 		uri = webkit_web_frame_get_uri(frame);
-		if (uri)
+		if (uri && strlen(uri) > 0)
 			fprintf(f, "%s\n", uri);
 	}
 
@@ -1372,7 +1387,10 @@ save_tabs(struct tab *t, struct karg *args)
 int
 save_tabs_and_quit(struct tab *t, struct karg *args)
 {
-	save_tabs(t, NULL);
+	struct karg		a;
+
+	a.s = XT_SAVED_TABS_FILE;
+	save_tabs(t, &a);
 	quit(t, NULL);
 
 	return (1);
@@ -3064,7 +3082,13 @@ go_home(struct tab *t, struct karg *args)
 int
 restart(struct tab *t, struct karg *args)
 {
+	struct karg		a;
+
+	a.s = XT_RESTART_TABS_FILE;
+	save_tabs(t, &a);
 	execvp(start_argv[0], start_argv);
+	/* NOTREACHED */
+
 	return (0);
 }
 
@@ -3174,9 +3198,9 @@ struct cmd {
 	{ "q!",			0,	quit,			{0} },
 	{ "qa",			0,	quit,			{0} },
 	{ "qa!",		0,	quit,			{0} },
-	{ "w",			0,	save_tabs,		{0} },
-	{ "wq",			0,	save_tabs_and_quit,	{0} },
-	{ "wq!",		0,	save_tabs_and_quit,	{0} },
+	{ "w",			0,	save_tabs,		{.s = XT_SAVED_TABS_FILE} },
+	{ "wq",			0,	save_tabs_and_quit,	{.s = XT_SAVED_TABS_FILE} },
+	{ "wq!",		0,	save_tabs_and_quit,	{.s = XT_SAVED_TABS_FILE} },
 	{ "help",		0,	help,			{0} },
 	{ "about",		0,	about,			{0} },
 	{ "stats",		0,	stats,			{0} },
@@ -5169,6 +5193,7 @@ main(int argc, char *argv[])
 	FILE			*f = NULL;
 
 	start_argv = argv;
+
 	while ((c = getopt(argc, argv, "STVf:tn")) != -1) {
 		switch (c) {
 		case 'S':
