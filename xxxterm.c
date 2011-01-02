@@ -487,6 +487,7 @@ struct settings {
 	{ "enable_socket", XT_S_INT, XT_SF_RESTART , &enable_socket, NULL, NULL },
 	{ "fancy_bar", XT_S_INT, XT_SF_RESTART , &fancy_bar, NULL, NULL },
 	{ "home", XT_S_STR, 0 , NULL, &home, NULL },
+	{ "http_proxy", XT_S_STR, 0 , NULL, &http_proxy, NULL },
 	{ "read_only_cookies", XT_S_INT, 0 , &read_only_cookies, NULL, NULL },
 	{ "refresh_interval", XT_S_INT, 0 , &refresh_interval, NULL, NULL },
 	{ "runtime_settings", XT_S_STR, 0 , NULL, NULL, &s_runtime },
