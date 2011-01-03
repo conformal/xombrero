@@ -135,6 +135,14 @@ u_int32_t		swm_debug = 0
 				    ~(GDK_BUTTON4_MASK) &	\
 				    ~(GDK_BUTTON5_MASK))
 
+char		*icons[] = {
+	"fightsoap16.jpg",
+	"fightsoap32.jpg",
+	"fightsoap48.jpg",
+	"fightsoap64.jpg",
+	"fightsoap128.jpg"
+};
+
 struct tab {
 	TAILQ_ENTRY(tab)	entry;
 	GtkWidget		*vbox;
@@ -384,6 +392,7 @@ int		enable_js_whitelist = 1;
 time_t		session_timeout = 3600; /* cookie session timeout */
 int		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
 char		*ssl_ca_file = NULL;
+char		*resource_dir = NULL;
 gboolean	ssl_strict_certs = FALSE;
 int		append_next = 1; /* append tab after current tab */
 char		*home = NULL;
@@ -490,6 +499,7 @@ struct settings {
 	{ "http_proxy", XT_S_STR, 0 , NULL, &http_proxy, NULL },
 	{ "read_only_cookies", XT_S_INT, 0 , &read_only_cookies, NULL, NULL },
 	{ "refresh_interval", XT_S_INT, 0 , &refresh_interval, NULL, NULL },
+	{ "resource_dir", XT_S_STR, 0 , NULL, &resource_dir, NULL },
 	{ "runtime_settings", XT_S_STR, 0 , NULL, NULL, &s_runtime },
 	{ "search_string", XT_S_STR, 0 , NULL, &search_string, NULL },
 	{ "session_timeout", XT_S_INT, 0 , &session_timeout, NULL, NULL },
@@ -4847,6 +4857,10 @@ void
 create_canvas(void)
 {
 	GtkWidget		*vbox;
+	GList			*l = NULL;
+	GdkPixbuf		*pb;
+	char			file[PATH_MAX];
+	int			i;
 
 	vbox = gtk_vbox_new(FALSE, 0);
 	notebook = GTK_NOTEBOOK(gtk_notebook_new());
@@ -4871,6 +4885,15 @@ create_canvas(void)
 	main_window = create_window();
 	gtk_container_add(GTK_CONTAINER(main_window), vbox);
 	gtk_window_set_title(GTK_WINDOW(main_window), XT_NAME);
+
+	/* icons */
+	for (i = 0; i < LENGTH(icons); i++) {
+		snprintf(file, sizeof file, "%s/%s", resource_dir, icons[i]);
+		pb = gdk_pixbuf_new_from_file(file, NULL);
+		l = g_list_append(l, pb);
+	}
+	gtk_window_set_default_icon_list(l);
+
 	gtk_widget_show_all(abtn);
 	gtk_widget_show_all(main_window);
 }
@@ -5255,6 +5278,7 @@ main(int argc, char *argv[])
 
 	/* set default string settings */
 	home = g_strdup("http://www.peereboom.us");
+	resource_dir = g_strdup("/usr/local/share/xxxterm/");
 
 	/* read config file */
 	if (strlen(conf) == 0)
