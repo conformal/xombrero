@@ -3767,7 +3767,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		gtk_widget_hide(t->spinner);
 #endif
 	s_loading = gtk_label_get_text(GTK_LABEL(t->label));
-	if (!strcmp(s_loading, "Loading"))
+	if (s_loading && !strcmp(s_loading, "Loading"))
 		gtk_label_set_text(GTK_LABEL(t->label), "(untitled)");
 	default:
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
