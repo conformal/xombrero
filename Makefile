@@ -26,7 +26,7 @@ javascript.h: hinting.js input-focus.js
 	perl ${.CURDIR}/js-merge-helper.pl ${.CURDIR}/hinting.js \
 	    ${.CURDIR}/input-focus.js >  ${.CURDIR}/javascript.h
 
-install:
+beforeinstall:
 	mkdir -p ${PREFIX}/share/xxxterm
 	cp ${.CURDIR}/fightsoap16.jpg ${PREFIX}/share/xxxterm
 	cp ${.CURDIR}/fightsoap32.jpg ${PREFIX}/share/xxxterm
