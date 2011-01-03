@@ -4348,15 +4348,20 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 		if (cmds[i].params) {
 			if (!strncmp(s, cmds[i].cmd, strlen(cmds[i].cmd))) {
 				cmds[i].arg.s = g_strdup(s);
-				cmds[i].func(t, &cmds[i].arg);
+				goto execute_command;
 			}
 		} else {
 			if (!strcmp(s, cmds[i].cmd))
-				cmds[i].func(t, &cmds[i].arg);
+				goto execute_command;
 		}
 
 done:
 	gtk_widget_hide(t->cmd);
+	return;
+
+execute_command:
+	gtk_widget_hide(t->cmd);
+	cmds[i].func(t, &cmds[i].arg);
 }
 
 void
@@ -4543,7 +4548,7 @@ undo_close_tab_push(const gchar *uri)
 {
 	struct undo	*u1, *u2;
 
-	u1      = g_malloc(sizeof(struct undo));
+	u1 = g_malloc(sizeof(struct undo));
 	u1->uri = g_malloc(strlen(uri) * sizeof(gchar));
 	snprintf(u1->uri, strlen(uri), "%s", uri);
 
@@ -4573,20 +4578,19 @@ delete_tab(struct tab *t)
 
 	/* Save URI of tab; so we can undo close tab. */
 	frame = webkit_web_view_get_main_frame(t->wv);
-	uri   = webkit_web_frame_get_uri(frame);
-	if (uri)
+	uri = webkit_web_frame_get_uri(frame);
+	if (uri && strlen(uri))
 		undo_close_tab_push(uri);
 
 	TAILQ_REMOVE(&tabs, t, entry);
-	if (TAILQ_EMPTY(&tabs))
-		create_new_tab(NULL, 1);
+	recalc_tabs();
 
 	gtk_widget_destroy(t->vbox);
-
 	g_free(t->user_agent);
 	g_free(t);
 
-	recalc_tabs();
+	if (TAILQ_EMPTY(&tabs))
+		create_new_tab(NULL, 1);
 }
 
 void
