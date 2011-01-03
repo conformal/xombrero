@@ -136,11 +136,11 @@ u_int32_t		swm_debug = 0
 				    ~(GDK_BUTTON5_MASK))
 
 char		*icons[] = {
-	"fightsoap16.jpg",
-	"fightsoap32.jpg",
-	"fightsoap48.jpg",
-	"fightsoap64.jpg",
-	"fightsoap128.jpg"
+	"fightsoap16.png",
+	"fightsoap32.png",
+	"fightsoap48.png",
+	"fightsoap64.png",
+	"fightsoap128.png"
 };
 
 struct tab {
