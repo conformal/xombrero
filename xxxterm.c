@@ -1978,7 +1978,8 @@ cert_cmd(struct tab *t, struct karg *args)
 	tear_down = 1;
 
 	gnutls_certificate_allocate_credentials(&xcred);
-	gnutls_certificate_set_x509_trust_file(xcred, ssl_ca_file, GNUTLS_X509_FMT_PEM);
+	gnutls_certificate_set_x509_trust_file(xcred, ssl_ca_file,
+	    GNUTLS_X509_FMT_PEM);
 	gnutls_init(&gsession, GNUTLS_CLIENT);
 	gnutls_priority_set_direct(gsession, "PERFORMANCE", NULL);
 	gnutls_credentials_set(gsession, GNUTLS_CRD_CERTIFICATE, xcred);
@@ -5383,6 +5384,8 @@ main(int argc, char *argv[])
 	if (stat(work_dir, &sb)) {
 		if (mkdir(work_dir, S_IRWXU) == -1)
 			err(1, "mkdir work_dir");
+		if (stat(work_dir, &sb))
+			err(1, "stat work_dir");
 	}
 	if (S_ISDIR(sb.st_mode) == 0)
 		errx(1, "%s not a dir", work_dir);
@@ -5402,6 +5405,8 @@ main(int argc, char *argv[])
 	if (stat(download_dir, &sb)) {
 		if (mkdir(download_dir, S_IRWXU) == -1)
 			err(1, "mkdir download_dir");
+		if (stat(download_dir, &sb))
+			err(1, "stat download_dir");
 	}
 	if (S_ISDIR(sb.st_mode) == 0)
 		errx(1, "%s not a dir", download_dir);
