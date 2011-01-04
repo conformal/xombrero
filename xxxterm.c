@@ -4576,6 +4576,9 @@ delete_tab(struct tab *t)
 	if (t == NULL)
 		return;
 
+	/* halt all webkit activity */
+	webkit_web_view_stop_loading(t->wv);
+
 	/* Save URI of tab; so we can undo close tab. */
 	frame = webkit_web_view_get_main_frame(t->wv);
 	uri = webkit_web_frame_get_uri(frame);
