@@ -28,11 +28,11 @@ javascript.h: hinting.js input-focus.js
 
 beforeinstall:
 	mkdir -p ${PREFIX}/share/xxxterm
-	cp ${.CURDIR}/fightsoap16.png ${PREFIX}/share/xxxterm
-	cp ${.CURDIR}/fightsoap32.png ${PREFIX}/share/xxxterm
-	cp ${.CURDIR}/fightsoap48.png ${PREFIX}/share/xxxterm
-	cp ${.CURDIR}/fightsoap64.png ${PREFIX}/share/xxxterm
-	cp ${.CURDIR}/fightsoap128.png ${PREFIX}/share/xxxterm
+	cp ${.CURDIR}/xxxtermicon16.png ${PREFIX}/share/xxxterm
+	cp ${.CURDIR}/xxxtermicon32.png ${PREFIX}/share/xxxterm
+	cp ${.CURDIR}/xxxtermicon48.png ${PREFIX}/share/xxxterm
+	cp ${.CURDIR}/xxxtermicon64.png ${PREFIX}/share/xxxterm
+	cp ${.CURDIR}/xxxtermicon128.png ${PREFIX}/share/xxxterm
 
 ${PROG} ${OBJS} beforedepend: javascript.h
 
