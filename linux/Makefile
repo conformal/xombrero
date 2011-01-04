@@ -1,4 +1,4 @@
-# $xxxterm$ 
+# $xxxterm$
 
 LIBS= gtk+-2.0 webkit-1.0 libsoup-2.4
 
