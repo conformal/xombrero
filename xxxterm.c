@@ -394,6 +394,8 @@ int		read_only_cookies = 0; /* enable to not write cookies */
 int		enable_scripts = 0;
 int		enable_plugins = 0;
 int		default_font_size = 12;
+int		window_height = 768;
+int		window_width = 1024;
 unsigned	refresh_interval = 10; /* download refresh interval */
 int		enable_cookie_whitelist = 1;
 int		enable_js_whitelist = 1;
@@ -516,6 +518,8 @@ struct settings {
 	{ "single_instance", XT_S_INT, XT_SF_RESTART , &single_instance, NULL, NULL },
 	{ "ssl_ca_file", XT_S_STR, 0 , NULL, &ssl_ca_file, NULL },
 	{ "ssl_strict_certs", XT_S_INT, 0 , &ssl_strict_certs, NULL, NULL },
+	{ "window_height", XT_S_INT, 0 , &window_height, NULL, NULL },
+	{ "window_width", XT_S_INT, 0 , &window_width, NULL, NULL },
 
 	/* runtime settings */
 	{ "alias", XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_alias },
@@ -4698,7 +4702,7 @@ create_window(void)
 	GtkWidget		*w;
 
 	w = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_window_set_default_size(GTK_WINDOW(w), 1024, 768);
+	gtk_window_set_default_size(GTK_WINDOW(w), window_width, window_height);
 	gtk_widget_set_name(w, "xxxterm");
 	gtk_window_set_wmclass(GTK_WINDOW(w), "xxxterm", "XXXTerm");
 	g_signal_connect(G_OBJECT(w), "delete_event",
