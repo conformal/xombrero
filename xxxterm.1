@@ -266,10 +266,10 @@ Navigation:
 .Pp
 .Bl -tag -width "tabnew, tabedit, tabe [URI]" -offset indent -compact
 .It Cm F5, C-r, C-l
-Refresh page
-.It Cm Backspace
-Previous page
-.It Cm M-Left
+Reload page
+.It Cm C-R
+Reload page without using any cached data
+.It Cm Backspace, M-Left
 Previous page
 .It Cm S-BackSpace, M-Right
 Forward page
@@ -310,9 +310,9 @@ Toggle source view.
 Tab Manipulation:
 .Pp
 .Bl -tag -width "tabnew, tabedit, tabe [URI]" -offset indent -compact
-.It Cm C-T
+.It Cm C-t
 Create new tab with focus in URI entry
-.It Cm C-W
+.It Cm C-w
 Destroy current tab
 .It Cm U
 Undo close tab

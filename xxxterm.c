@@ -221,6 +221,8 @@ struct undo {
         TAILQ_ENTRY(undo)	entry;
         gchar			*uri;
 	GList			*history;
+	int			back; /* Keeps track of how many back
+				       * history items there are. */
 };
 TAILQ_HEAD(undo_tailq, undo);
 
@@ -334,6 +336,7 @@ struct karg {
 #define XT_NAV_BACK		(1)
 #define XT_NAV_FORWARD		(2)
 #define XT_NAV_RELOAD		(3)
+#define XT_NAV_RELOAD_CACHE	(4)
 
 #define XT_FOCUS_INVALID	(0)
 #define XT_FOCUS_URI		(1)
@@ -674,7 +677,7 @@ struct mime_type_list	mtl;
 struct alias_list	aliases;
 
 /* protos */
-void			create_new_tab(char *, GList *, int);
+void			create_new_tab(char *, struct undo *, int);
 void			delete_tab(struct tab *);
 void			adjustfont_webkit(struct tab *, int);
 int			run_script(struct tab *, char *);
@@ -2256,6 +2259,9 @@ navaction(struct tab *t, struct karg *args)
 	case XT_NAV_RELOAD:
 		webkit_web_view_reload(t->wv);
 		break;
+	case XT_NAV_RELOAD_CACHE:
+		webkit_web_view_reload_bypass_cache(t->wv);
+		break;
 	}
 	return (XT_CB_PASSTHROUGH);
 }
@@ -2410,8 +2416,7 @@ tabaction(struct tab *t, struct karg *args)
 		} else {
 			undo_count--;
 			u = TAILQ_FIRST(&undos);
-			DPRINTF("%s: uri: %s", __func__, u->uri);
-			create_new_tab(u->uri, u->history, 1);
+			create_new_tab(u->uri, u, 1);
 
 			TAILQ_REMOVE(&undos, u, entry);
 			g_free(u->uri);
@@ -3203,6 +3208,7 @@ struct key_bindings {
 	{ GDK_MOD1_MASK,	0,	GDK_Right,	navaction,	{.i = XT_NAV_FORWARD} },
 	{ 0,			0,	GDK_F5,		navaction,	{.i = XT_NAV_RELOAD} },
 	{ GDK_CONTROL_MASK,	0,	GDK_r,		navaction,	{.i = XT_NAV_RELOAD} },
+	{ GDK_CONTROL_MASK|GDK_SHIFT_MASK, 0, GDK_R,	navaction,	{.i = XT_NAV_RELOAD_CACHE} },
 	{ GDK_CONTROL_MASK,	0,	GDK_l,		navaction,	{.i = XT_NAV_RELOAD} },
 	{ GDK_MOD1_MASK,	1,	GDK_f,		xtp_page_fl,	{0} },
 
@@ -4600,13 +4606,13 @@ recalc_tabs(void)
 int
 undo_close_tab_save(struct tab *t)
 {
-	int				n;
+	int				m, n;
 	const gchar			*uri;
 	struct undo			*u1, *u2;
 	WebKitWebFrame                  *frame;
 	WebKitWebBackForwardList        *bfl;
-	GList                           *list, *elem;
-	WebKitWebHistoryItem            *hi1, *hi2;
+	GList                           *items;
+	WebKitWebHistoryItem            *item;
 
 	frame = webkit_web_view_get_main_frame(t->wv);
 	uri = webkit_web_frame_get_uri(frame);
@@ -4618,13 +4624,37 @@ undo_close_tab_save(struct tab *t)
 	u1->uri = g_strdup(uri);
 
 	bfl = webkit_web_view_get_back_forward_list(t->wv);
-	n = webkit_web_back_forward_list_get_back_length(bfl);
-	list = webkit_web_back_forward_list_get_back_list_with_limit(bfl, n);
 
-	for (elem = list; elem; elem = elem->next) {
-		hi1 = elem->data;
-		hi2 = webkit_web_history_item_copy(hi1);
-		u1->history = g_list_prepend(u1->history, hi2);
+	m = webkit_web_back_forward_list_get_forward_length(bfl);
+	n = webkit_web_back_forward_list_get_back_length(bfl);
+	u1->back = n;
+
+	/* forward history */
+	items = webkit_web_back_forward_list_get_forward_list_with_limit(bfl, m);
+
+	while (items) {
+		item = items->data;
+		u1->history = g_list_prepend(u1->history,
+		    webkit_web_history_item_copy(item));
+		items = g_list_next(items);
+	}
+
+	/* current item */
+	if (m) {
+		item = webkit_web_back_forward_list_get_current_item(bfl);
+		u1->history = g_list_prepend(u1->history,
+		    webkit_web_history_item_copy(item));
+	}
+
+
+	/* back history */
+	items = webkit_web_back_forward_list_get_back_list_with_limit(bfl, n);
+
+	while (items) {
+		item = items->data;
+		u1->history = g_list_prepend(u1->history,
+		    webkit_web_history_item_copy(item));
+		items = g_list_next(items);
 	}
 
 	TAILQ_INSERT_HEAD(&undos, u1, entry);
@@ -4692,16 +4722,15 @@ append_tab(struct tab *t)
 }
 
 void
-create_new_tab(char *title, GList *history, int focus)
+create_new_tab(char *title, struct undo *u, int focus)
 {
-	struct tab		*t, *tt;
-	int			load = 1, id, notfound;
-	char			*newuri = NULL;
-	GtkWidget		*image, *b, *bb;
-	WebKitWebHistoryItem	*hi;
-	GList			*elem;
-	WebKitWebBackForwardList *bfl;
-
+	struct tab			*t, *tt;
+	int				load = 1, id, notfound;
+	char				*newuri = NULL;
+	GtkWidget			*image, *b, *bb;
+	WebKitWebHistoryItem		*item;
+	GList				*items;
+	WebKitWebBackForwardList	*bfl;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
@@ -4847,21 +4876,28 @@ create_new_tab(char *title, GList *history, int focus)
 		    t->tab_id);
 	}
 
-	/* restore the tab's history */
-	if (history) {
-		for (elem = history; elem; elem = elem->next) {
-			hi  = elem->data;
-			bfl = webkit_web_view_get_back_forward_list(t->wv);
-			webkit_web_back_forward_list_add_item(bfl, hi);
-		}
-		g_list_free(history);
-		g_list_free(elem);
-	}
-
 	if (load)
 		webkit_web_view_load_uri(t->wv, title);
 	else
 		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
+
+	/* restore the tab's history */
+	if (u && u->history) {
+		bfl = webkit_web_view_get_back_forward_list(t->wv);
+
+		items = u->history;
+		while (items) {
+			item = items->data;
+			webkit_web_back_forward_list_add_item(bfl, item);
+			items = g_list_next(items);
+		}
+
+		item = g_list_nth_data(u->history, u->back);
+		webkit_web_view_go_to_back_forward_item(t->wv, item);
+
+		g_list_free(items);
+		g_list_free(u->history);
+	}
 
 	if (newuri)
 		g_free(newuri);
