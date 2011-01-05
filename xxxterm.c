@@ -242,6 +242,7 @@ struct karg {
 #define XT_SAVED_TABS_FILE	("saved_tabs")
 #define XT_RESTART_TABS_FILE	("restart_tabs")
 #define XT_SOCKET_FILE		("socket")
+#define XT_HISTORY_FILE		("history")
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
 #define XT_DOCTYPE		"<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>"
@@ -407,6 +408,7 @@ char		*http_proxy = NULL;
 char		download_dir[PATH_MAX];
 char		runtime_settings[PATH_MAX]; /* override of settings */
 int		allow_volatile_cookies = 0;
+int		save_global_history = 0; /* save global history to disk */
 
 struct settings;
 int		set_download_dir(struct settings *, char *);
@@ -509,6 +511,7 @@ struct settings {
 	{ "runtime_settings", XT_S_STR, 0 , NULL, NULL, &s_runtime },
 	{ "search_string", XT_S_STR, 0 , NULL, &search_string, NULL },
 	{ "session_timeout", XT_S_INT, 0 , &session_timeout, NULL, NULL },
+	{ "save_global_history", XT_S_INT, XT_SF_RESTART , &save_global_history, NULL, NULL },
 	{ "single_instance", XT_S_INT, XT_SF_RESTART , &single_instance, NULL, NULL },
 	{ "ssl_ca_file", XT_S_STR, 0 , NULL, &ssl_ca_file, NULL },
 	{ "ssl_strict_certs", XT_S_INT, 0 , &ssl_strict_certs, NULL, NULL },
@@ -1319,9 +1322,91 @@ hint(struct tab *t, struct karg *args)
 	return (0);
 }
 
+/* Doesn't work fully, due to the following bug:
+ * https://bugs.webkit.org/show_bug.cgi?id=51747
+ */
+int
+restore_global_history(void)
+{
+	char			file[PATH_MAX];
+	FILE			*f;
+	struct history		*h;
+	gchar			*uri;
+	gchar			*title;
+
+	snprintf(file, sizeof file, "%s/%s/%s",
+	    pwd->pw_dir, XT_DIR, XT_HISTORY_FILE);
+
+	if ((f = fopen(file, "r")) == NULL) {
+		warnx("%s: fopen", __func__);
+		return (1);
+	}
+
+	for (;;) {
+		if ((uri = fparseln(f, NULL, NULL, NULL, 0)) == NULL)
+			if (feof(f) || ferror(f))
+				break;
+
+		if ((title = fparseln(f, NULL, NULL, NULL, 0)) == NULL)
+			if (feof(f) || ferror(f)) {
+				free(uri);
+				warnx("%s: broken history file\n", __func__);
+				return (1);
+			}
+
+		if (uri && strlen(uri) && title && strlen(title)) {
+			webkit_web_history_item_new_with_data(uri, title);
+			h = g_malloc(sizeof(struct history));
+			h->uri = g_strdup(uri);
+			h->title = g_strdup(title);
+			RB_INSERT(history_list, &hl, h);
+		} else {
+			warnx("%s: failed to restore history\n", __func__);
+			free(uri);
+			free(title);
+			return (1);
+		}
+
+		free(uri);
+		free(title);
+		uri = NULL;
+		title = NULL;
+	}
+
+	return (0);
+}
+
+int
+save_global_history_to_disk(void)
+{
+	char			file[PATH_MAX];
+	FILE			*f;
+	struct history		*h;
+
+	snprintf(file, sizeof file, "%s/%s/%s",
+	    pwd->pw_dir, XT_DIR, XT_HISTORY_FILE);
+
+	if ((f = fopen(file, "w")) == NULL) {
+		warnx("%s: fopen", __func__);
+		return (1);
+	}
+
+	RB_FOREACH_REVERSE(h, history_list, &hl) {
+		if (h->uri && h->title)
+			fprintf(f, "%s\n%s\n", h->uri, h->title);
+	}
+
+	fclose(f);
+
+	return (0);
+}
+
 int
 quit(struct tab *t, struct karg *args)
 {
+	if (save_global_history)
+		save_global_history_to_disk();
+
 	gtk_main_quit();
 
 	return (1);
@@ -1332,8 +1417,7 @@ restore_saved_tabs(void)
 {
 	char		file[PATH_MAX];
 	FILE		*f;
-	char		*line = NULL;
-	size_t		linelen;
+	char		*uri = NULL;
 	int		empty_saved_tabs_file = 1;
 	int		unlink_file = 0;
 	struct stat	sb;
@@ -1349,14 +1433,18 @@ restore_saved_tabs(void)
 	if ((f = fopen(file, "r")) == NULL)
 		return (empty_saved_tabs_file);
 
-	while (!feof(f)) {
-		line = fparseln(f, &linelen, NULL, NULL, 0);
-		if (line) {
-			create_new_tab(line, NULL, 1);
+	for (;;) {
+		if ((uri = fparseln(f, NULL, NULL, NULL, 0)) == NULL)
+			if (feof(f) || ferror(f))
+				break;
+
+		if (uri && strlen(uri)) {
+			create_new_tab(uri, NULL, 1);
 			empty_saved_tabs_file = 0;
 		}
-		free(line);
-		line = NULL;
+
+		free(uri);
+		uri = NULL;
 	}
 
 	fclose(f);
@@ -2162,7 +2250,7 @@ add_cookie(struct tab *t, struct karg *args)
 		goto done;
 	}
 
-	lt =g_strdup_printf("cookie_wl=%s", dom);
+	lt = g_strdup_printf("cookie_wl=%s", dom);
 
 	while (!feof(f)) {
 		line = fparseln(f, &linelen, NULL, NULL, 0);
@@ -2239,7 +2327,7 @@ add_js(struct tab *t, struct karg *args)
 		goto done;
 	}
 
-	lt =g_strdup_printf("js_wl=%s", dom);
+	lt = g_strdup_printf("js_wl=%s", dom);
 
 	while (!feof(f)) {
 		line = fparseln(f, &linelen, NULL, NULL, 0);
@@ -4741,7 +4829,6 @@ undo_close_tab_save(struct tab *t)
 		    webkit_web_history_item_copy(item));
 	}
 
-
 	/* back history */
 	items = webkit_web_back_forward_list_get_back_list_with_limit(bfl, n);
 
@@ -5565,6 +5652,7 @@ main(int argc, char *argv[])
 	snprintf(file, sizeof file, "%s/cookies.txt", work_dir);
 	setup_cookies(file);
 
+	/* certs */
 	if (ssl_ca_file) {
 		if (stat(ssl_ca_file, &sb)) {
 			warn("no CA file: %s", ssl_ca_file);
@@ -5602,6 +5690,9 @@ main(int argc, char *argv[])
 
 	/* go graphical */
 	create_canvas();
+
+	if (save_global_history)
+		restore_global_history();
 
 	focus = restore_saved_tabs();
 
