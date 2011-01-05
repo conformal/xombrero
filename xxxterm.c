@@ -2558,11 +2558,13 @@ command(struct tab *t, struct karg *args)
 		if (!s) /* FALL THROUGH? */
 			s = ":tabnew ";
 		frame = webkit_web_view_get_main_frame(t->wv);
-		uri   = webkit_web_frame_get_uri(frame);
-		sz = sizeof(gchar) * (strlen(s) + strlen(uri));
-		ss = g_malloc(sz);
-		snprintf(ss, sz, "%s%s", s, uri);
-		s = ss;
+		uri = webkit_web_frame_get_uri(frame);
+		if (uri && strlen(uri)) {
+			sz = sizeof(gchar) * (strlen(s) + strlen(uri));
+			ss = g_malloc(sz);
+			snprintf(ss, sz, "%s%s", s, uri);
+			s = ss;
+		}
 		break;
 	default:
 		warnx("command: invalid command %c\n", args->i);
