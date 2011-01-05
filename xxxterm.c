@@ -1,6 +1,7 @@
 /* $xxxterm$ */
 /*
- * Copyright (c) 2010 Marco Peereboom <marco@peereboom.us>
+ * Copyright (c) 2010, 2011 Marco Peereboom <marco@peereboom.us>
+ * Copyright (c) 2011 Stevan Andjelkovic <stevan@student.chalmers.se>
  * Copyright (c) 2010 Edd Barrett <vext01@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -1788,6 +1789,7 @@ about(struct tab *t, struct karg *args)
 	    "Authors:"
 	    "<ul>"
 	    "<li>Marco Peereboom &lt;marco@peereboom.us&gt;</li>"
+	    "<li>Stevan Andjelkovic &lt;stevan@student.chalmers.se&gt;</li>"
 	    "<li>Edd Barrett &lt;vext01@gmail.com&gt; </li>"
 	    "</ul>"
 	    "Copyrights and licenses can be found on the XXXterm "
