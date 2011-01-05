@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=xxxterm Browswer
+Comment=Minimalist's Web Browser
+Terminal=false
+Type=Application
+Version=1.0
+Icon=${TRUEPREFIX}/share/xxxterm/xxxtermicon64.png
+Exec=${TRUEPREFIX}/bin/xxxterm %u
+StartupNotify=false
+Categories=Application;Network;
+MimeType=text/html;text/xml;application/xhtml+xml;application/vnd.mozilla.xul+xml;text/mml;
