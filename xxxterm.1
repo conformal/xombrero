@@ -207,6 +207,12 @@ If there is a url specified it will be opened in a new tab in the already
 running
 .Nm
 session.
+.It Cm save_global_history
+If set the global history will be saved to ~/.xxxterm/history at quit
+and restored at startup. See the
+.Sx BINDINGS
+section below, for how the global history is accessed. Global history is
+not saved to disk by default.
 .It Cm runtime_settings
 This setting points to a filename in the .xxxterm work directory that contains
 runtime configuration entries.
@@ -447,6 +453,12 @@ user specific settings.
 .Nm
 scratch directory.
 .El
+.Sh BUGS
+When save_global_history is enabled
+.Nm
+is supposed to, in addition to restoring the global history, color the
+visited links accordingly, however due to bug #51747 in WebKit this does
+not happen.
 .Sh HISTORY
 .Nm
 was inspired by vimprobable2 and the bloat in other UNIX web browsers.
