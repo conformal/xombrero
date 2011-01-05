@@ -1878,6 +1878,92 @@ xtp_page_fl(struct tab *t, struct karg *args)
 }
 
 int
+show_ca_certs(struct tab *t, gnutls_x509_crt_t *cert, int num)
+{
+	gnutls_datum_t		cinfo;
+	int			i, rv = 0;
+	char			*tmp, *header, *body, *footer;
+
+	header = g_strdup("<title>CA Certificates</title><html><body>");
+	footer = g_strdup("</body></html>");
+	body = g_strdup("");
+
+	for (i = 0; i < num; i++) {
+		if (gnutls_x509_crt_print(cert[i], GNUTLS_CRT_PRINT_FULL,
+		    &cinfo)) {
+			rv = 1;
+			break;
+		}
+		tmp = body;
+		body = g_strdup_printf("%s<h2>Cert #%d</h2><pre>%s</pre>",
+		    body, i, cinfo.data);
+		g_free(tmp);
+	}
+
+	tmp = g_strdup_printf("%s%s%s", header, body, footer);
+	g_free(header);
+	g_free(body);
+	g_free(footer);
+	webkit_web_view_load_string(t->wv, tmp, NULL, NULL, NULL);
+	g_free(tmp);
+
+	return (rv);
+}
+
+int
+ca_cmd(struct tab *t, struct karg *args)
+{
+	FILE			*f = NULL;
+	int			rv = 1, certs = 0, certs_read;
+	struct stat		sb;
+	gnutls_datum		dt;
+	gnutls_x509_crt_t	*c = NULL;
+	char			*certs_buf = NULL, *s;
+
+	/* yeah yeah stat race */
+	if (stat(ssl_ca_file, &sb)) {
+		warn("no CA file: %s", ssl_ca_file);
+		goto done;
+	}
+
+	if ((f = fopen(ssl_ca_file, "r")) == NULL)
+		return (1);
+
+	certs_buf = g_malloc(sb.st_size + 1);
+	if (fread(certs_buf, 1, sb.st_size, f) != sb.st_size) {
+		warn("certs");
+		goto done;
+	}
+	certs_buf[sb.st_size] = '\0';
+
+	s = certs_buf;
+	while ((s = strstr(s, "BEGIN CERTIFICATE"))) {
+		certs++;
+		s += strlen("BEGIN CERTIFICATE");
+	}
+
+	bzero(&dt, sizeof dt);
+	dt.data = certs_buf;
+	dt.size = sb.st_size;
+	c = g_malloc(sizeof(gnutls_x509_crt_t) * certs);
+	certs_read = gnutls_x509_crt_list_import(c, &certs, &dt, GNUTLS_X509_FMT_PEM, 0);
+	if (certs_read <= 0) {
+		warnx("couldn't read certs");
+		goto done;
+	}
+	show_ca_certs(t, c, certs_read);
+done:
+	if (c)
+		g_free(c);
+	if (certs_buf)
+		g_free(certs_buf);
+	if (f)
+		fclose(f);
+
+	return (rv);
+}
+
+int
 show_certs(struct tab *t, gnutls_session_t gs)
 {
 	gnutls_datum_t		cinfo;
@@ -3283,6 +3369,7 @@ struct cmd {
 	{ "jsadd",		0,	add_js,			{0} },
 	{ "cookieadd",		0,	add_cookie,		{0} },
 	{ "cert",		0,	cert_cmd,			{0} },
+	{ "ca",			0,	ca_cmd,			{0} },
 	{ "dl"		,	0,	xtp_page_dl,		{0} },
 	{ "h"		,	0,	xtp_page_hl,		{0} },
 	{ "hist"	,	0,	xtp_page_hl,		{0} },
