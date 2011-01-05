@@ -4542,6 +4542,7 @@ create_toolbar(struct tab *t)
 		gtk_widget_set_sensitive(GTK_WIDGET(t->backward), FALSE);
 		g_signal_connect(G_OBJECT(t->backward), "clicked",
 		    G_CALLBACK(backward_cb), t);
+		gtk_widget_set_size_request(GTK_WIDGET(t->backward), -1, -1);
 		gtk_box_pack_start(GTK_BOX(b), GTK_WIDGET(t->backward), FALSE,
 		    FALSE, 0);
 
@@ -4551,6 +4552,7 @@ create_toolbar(struct tab *t)
 		gtk_widget_set_sensitive(GTK_WIDGET(t->forward), FALSE);
 		g_signal_connect(G_OBJECT(t->forward), "clicked",
 		    G_CALLBACK(forward_cb), t);
+		gtk_widget_set_size_request(GTK_WIDGET(t->forward), -1, -1);
 		gtk_box_pack_start(GTK_BOX(b), GTK_WIDGET(t->forward), FALSE,
 		    FALSE, 0);
 
@@ -4559,6 +4561,7 @@ create_toolbar(struct tab *t)
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 		g_signal_connect(G_OBJECT(t->stop), "clicked",
 		    G_CALLBACK(stop_cb), t);
+		gtk_widget_set_size_request(GTK_WIDGET(t->stop), -1, -1);
 		gtk_box_pack_start(GTK_BOX(b), GTK_WIDGET(t->stop), FALSE,
 		    FALSE, 0);
 
@@ -4569,6 +4572,7 @@ create_toolbar(struct tab *t)
 		gtk_widget_set_sensitive(GTK_WIDGET(t->js_toggle), TRUE);
 		g_signal_connect(G_OBJECT(t->js_toggle), "clicked",
 		    G_CALLBACK(js_toggle_cb), t);
+		gtk_widget_set_size_request(GTK_WIDGET(t->js_toggle), -1, -1);
 		gtk_box_pack_start(GTK_BOX(b), GTK_WIDGET(t->js_toggle), FALSE,
 		    FALSE, 0);
 	}
@@ -4579,6 +4583,7 @@ create_toolbar(struct tab *t)
 	g_signal_connect(G_OBJECT(t->uri_entry), "key-press-event",
 	    (GCallback)entry_key_cb, t);
 	gtk_box_pack_start(GTK_BOX(b), t->uri_entry, TRUE, TRUE, 0);
+	gtk_widget_set_size_request(GTK_WIDGET(b), -1, 32);
 
 	/* search entry */
 	if (fancy_bar && search_string) {
@@ -4588,6 +4593,7 @@ create_toolbar(struct tab *t)
 		    G_CALLBACK(activate_search_entry_cb), t);
 		g_signal_connect(G_OBJECT(t->search_entry), "key-press-event",
 		    (GCallback)entry_key_cb, t);
+		gtk_widget_set_size_request(t->search_entry, -1, -1);
 		gtk_box_pack_start(GTK_BOX(b), t->search_entry, FALSE, FALSE, 0);
 	}
 
@@ -4773,10 +4779,11 @@ create_new_tab(char *title, struct undo *u, int focus)
 	bb = gtk_button_new();
 	gtk_button_set_focus_on_click(GTK_BUTTON(bb), FALSE);
 	image = gtk_image_new_from_stock(GTK_STOCK_CLOSE, GTK_ICON_SIZE_MENU);
-	gtk_container_add(GTK_CONTAINER(bb), image);
+	gtk_widget_set_size_request(GTK_WIDGET(image), -1, -1);
+	gtk_container_add(GTK_CONTAINER(bb), GTK_WIDGET(image));
 	gtk_widget_set_name(bb, "my-close-button");
-	gtk_widget_set_size_request(t->label, 100, -1);
-	gtk_widget_set_size_request(b, 130, -1);
+	gtk_widget_set_size_request(t->label, 100, 0);
+	gtk_widget_set_size_request(b, 130, 0);
 	gtk_notebook_set_homogeneous_tabs(notebook, TRUE);
 
 	gtk_box_pack_start(GTK_BOX(b), bb, FALSE, FALSE, 0);
@@ -4998,9 +5005,12 @@ create_canvas(void)
 
 	abtn = gtk_button_new();
 	arrow = gtk_arrow_new(GTK_ARROW_DOWN, GTK_SHADOW_NONE);
+	gtk_widget_set_size_request(arrow, -1, 0);
 	gtk_container_add(GTK_CONTAINER(abtn), arrow);
+	gtk_widget_set_size_request(abtn, -1, 20);
 	gtk_notebook_set_action_widget(notebook, abtn, GTK_PACK_END);
 
+	gtk_widget_set_size_request(vbox, -1, 0);
 	gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(notebook), TRUE, TRUE, 0);
 
 	g_object_connect((GObject*)notebook,
