@@ -157,10 +157,10 @@ struct tab {
 	GtkWidget		*toolbar;
 	GtkWidget		*browser_win;
 	GtkWidget		*cmd;
-	GtkToolItem		*backward;
-	GtkToolItem		*forward;
-	GtkToolItem		*stop;
-	GtkToolItem		*js_toggle;
+	GtkWidget		*backward;
+	GtkWidget		*forward;
+	GtkWidget		*stop;
+	GtkWidget		*js_toggle;
 	guint			tab_id;
 	WebKitWebView		*wv;
 
@@ -399,6 +399,7 @@ int		enable_plugins = 0;
 int		default_font_size = 12;
 int		window_height = 768;
 int		window_width = 1024;
+int		icon_size = 2; /* 1 = smallest, 2+ = bigger */
 unsigned	refresh_interval = 10; /* download refresh interval */
 int		enable_cookie_whitelist = 1;
 int		enable_js_whitelist = 1;
@@ -424,6 +425,8 @@ int		add_alias(struct settings *, char *);
 int		add_mime_type(struct settings *, char *);
 int		add_cookie_wl(struct settings *, char *);
 int		add_js_wl(struct settings *, char *);
+void		button_set_stockid(GtkWidget *, char *);
+GtkWidget *	create_button(char *, char *, int);
 
 char		*get_cookie_policy(struct settings *);
 
@@ -511,6 +514,7 @@ struct settings {
 	{ "fancy_bar", XT_S_INT, XT_SF_RESTART , &fancy_bar, NULL, NULL },
 	{ "home", XT_S_STR, 0 , NULL, &home, NULL },
 	{ "http_proxy", XT_S_STR, 0 , NULL, &http_proxy, NULL },
+	{ "icon_size", XT_S_INT, 0 , &icon_size, NULL, NULL },
 	{ "read_only_cookies", XT_S_INT, 0 , &read_only_cookies, NULL, NULL },
 	{ "refresh_interval", XT_S_INT, 0 , &refresh_interval, NULL, NULL },
 	{ "resource_dir", XT_S_STR, 0 , NULL, &resource_dir, NULL },
@@ -1711,15 +1715,13 @@ toggle_js(struct tab *t, struct karg *args)
 		dom_toggle = dom;
 
 	if (es) {
-		gtk_tool_button_set_stock_id( GTK_TOOL_BUTTON(t->js_toggle),
-		    GTK_STOCK_MEDIA_PLAY);
+		button_set_stockid(t->js_toggle, GTK_STOCK_MEDIA_PLAY);
 		wl_add(dom_toggle, &js_wl, 0 /* session */);
 	} else {
 		d = wl_find(dom_toggle, &js_wl);
 		if (d)
 			RB_REMOVE(domain_list, &js_wl, d);
-		gtk_tool_button_set_stock_id( GTK_TOOL_BUTTON(t->js_toggle),
-		    GTK_STOCK_MEDIA_PAUSE);
+		button_set_stockid(t->js_toggle, GTK_STOCK_MEDIA_PAUSE);
 	}
 	g_object_set((GObject *)t->settings,
 	    "enable-scripts", es, (char *)NULL);
@@ -4167,7 +4169,7 @@ check_and_set_js(gchar *uri, struct tab *t)
 	    "enable-scripts", es, (char *)NULL);
 	webkit_web_view_set_settings(t->wv, t->settings);
 
-	gtk_tool_button_set_stock_id(GTK_TOOL_BUTTON(t->js_toggle),
+	button_set_stockid(t->js_toggle,
 	    es ? GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE);
 }
 
@@ -5025,50 +5027,43 @@ create_window(void)
 GtkWidget *
 create_toolbar(struct tab *t)
 {
-	GtkWidget		*toolbar = NULL, *b;
+	GtkWidget		*toolbar = NULL, *b, *eb1;
 
 	b = gtk_hbox_new(FALSE, 0);
 	toolbar = b;
+	gtk_container_set_border_width(GTK_CONTAINER(toolbar), 0);
 
 	if (fancy_bar) {
 		/* backward button */
-		t->backward = gtk_tool_button_new_from_stock(GTK_STOCK_GO_BACK);
-		gtk_widget_set_sensitive(GTK_WIDGET(t->backward), FALSE);
+		t->backward = create_button("go-back", GTK_STOCK_GO_BACK, 0);
+		gtk_widget_set_sensitive(t->backward, FALSE);
 		g_signal_connect(G_OBJECT(t->backward), "clicked",
 		    G_CALLBACK(backward_cb), t);
-		gtk_widget_set_size_request(GTK_WIDGET(t->backward), -1, -1);
-		gtk_box_pack_start(GTK_BOX(b), GTK_WIDGET(t->backward), FALSE,
-		    FALSE, 0);
+		gtk_box_pack_start(GTK_BOX(b), t->backward, FALSE, FALSE, 0);
 
 		/* forward button */
-		t->forward =
-		    gtk_tool_button_new_from_stock(GTK_STOCK_GO_FORWARD);
-		gtk_widget_set_sensitive(GTK_WIDGET(t->forward), FALSE);
+		t->forward = create_button("go-forward",GTK_STOCK_GO_FORWARD, 0);
+		gtk_widget_set_sensitive(t->forward, FALSE);
 		g_signal_connect(G_OBJECT(t->forward), "clicked",
 		    G_CALLBACK(forward_cb), t);
-		gtk_widget_set_size_request(GTK_WIDGET(t->forward), -1, -1);
-		gtk_box_pack_start(GTK_BOX(b), GTK_WIDGET(t->forward), FALSE,
+		gtk_box_pack_start(GTK_BOX(b), t->forward, FALSE,
 		    FALSE, 0);
 
 		/* stop button */
-		t->stop = gtk_tool_button_new_from_stock(GTK_STOCK_STOP);
-		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
+		t->stop = create_button("stop", GTK_STOCK_STOP, 0);
+		gtk_widget_set_sensitive(t->stop, FALSE);
 		g_signal_connect(G_OBJECT(t->stop), "clicked",
 		    G_CALLBACK(stop_cb), t);
-		gtk_widget_set_size_request(GTK_WIDGET(t->stop), -1, -1);
-		gtk_box_pack_start(GTK_BOX(b), GTK_WIDGET(t->stop), FALSE,
+		gtk_box_pack_start(GTK_BOX(b), t->stop, FALSE,
 		    FALSE, 0);
 
 		/* JS button */
-		t->js_toggle =
-		    gtk_tool_button_new_from_stock(enable_scripts ?
-		        GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE);
-		gtk_widget_set_sensitive(GTK_WIDGET(t->js_toggle), TRUE);
+		t->js_toggle = create_button("js-toggle", enable_scripts ?
+		        GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE, 0);
+		gtk_widget_set_sensitive(t->js_toggle, TRUE);
 		g_signal_connect(G_OBJECT(t->js_toggle), "clicked",
 		    G_CALLBACK(js_toggle_cb), t);
-		gtk_widget_set_size_request(GTK_WIDGET(t->js_toggle), -1, -1);
-		gtk_box_pack_start(GTK_BOX(b), GTK_WIDGET(t->js_toggle), FALSE,
-		    FALSE, 0);
+		gtk_box_pack_start(GTK_BOX(b), t->js_toggle, FALSE, FALSE, 0);
 	}
 
 	t->uri_entry = gtk_entry_new();
@@ -5076,11 +5071,14 @@ create_toolbar(struct tab *t)
 	    G_CALLBACK(activate_uri_entry_cb), t);
 	g_signal_connect(G_OBJECT(t->uri_entry), "key-press-event",
 	    (GCallback)entry_key_cb, t);
-	gtk_box_pack_start(GTK_BOX(b), t->uri_entry, TRUE, TRUE, 0);
-	gtk_widget_set_size_request(GTK_WIDGET(b), -1, 32);
+	eb1 = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(eb1), 1);
+	gtk_box_pack_start(GTK_BOX(eb1), t->uri_entry, TRUE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(b), eb1, TRUE, TRUE, 0);
 
 	/* search entry */
 	if (fancy_bar && search_string) {
+		GtkWidget *eb2;
 		t->search_entry = gtk_entry_new();
 		gtk_entry_set_width_chars(GTK_ENTRY(t->search_entry), 30);
 		g_signal_connect(G_OBJECT(t->search_entry), "activate",
@@ -5088,9 +5086,12 @@ create_toolbar(struct tab *t)
 		g_signal_connect(G_OBJECT(t->search_entry), "key-press-event",
 		    (GCallback)entry_key_cb, t);
 		gtk_widget_set_size_request(t->search_entry, -1, -1);
-		gtk_box_pack_start(GTK_BOX(b), t->search_entry, FALSE, FALSE, 0);
+		eb2 = gtk_hbox_new(FALSE, 0);
+		gtk_container_set_border_width(GTK_CONTAINER(eb2), 1);
+		gtk_box_pack_start(GTK_BOX(eb2), t->search_entry, TRUE, TRUE,
+		    0);
+		gtk_box_pack_start(GTK_BOX(b), eb2, FALSE, FALSE, 0);
 	}
-
 	return (toolbar);
 }
 
@@ -5225,7 +5226,7 @@ create_new_tab(char *title, struct undo *u, int focus)
 	struct tab			*t, *tt;
 	int				load = 1, id, notfound;
 	char				*newuri = NULL;
-	GtkWidget			*image, *b, *bb;
+	GtkWidget			*b, *bb;
 	WebKitWebHistoryItem		*item;
 	GList				*items;
 	WebKitWebBackForwardList	*bfl;
@@ -5252,15 +5253,6 @@ create_new_tab(char *title, struct undo *u, int focus)
 	t->vbox = gtk_vbox_new(FALSE, 0);
 
 	/* label + button for tab */
-	gtk_rc_parse_string(
-	    "style \"my-button-style\"\n"
-	    "{\n"
-	    "  GtkWidget::focus-padding = 0\n"
-	    "  GtkWidget::focus-line-width = 0\n"
-	    "  xthickness = 0\n"
-	    "  ythickness = 0\n"
-	    "}\n"
-	    "widget \"*.my-close-button\" style \"my-button-style\"");
 	b = gtk_hbox_new(FALSE, 0);
 	t->tab_content = b;
 
@@ -5268,12 +5260,7 @@ create_new_tab(char *title, struct undo *u, int focus)
 	t->spinner = gtk_spinner_new ();
 #endif
 	t->label = gtk_label_new(title);
-	bb = gtk_button_new();
-	gtk_button_set_focus_on_click(GTK_BUTTON(bb), FALSE);
-	image = gtk_image_new_from_stock(GTK_STOCK_CLOSE, GTK_ICON_SIZE_MENU);
-	gtk_widget_set_size_request(GTK_WIDGET(image), -1, -1);
-	gtk_container_add(GTK_CONTAINER(bb), GTK_WIDGET(image));
-	gtk_widget_set_name(bb, "my-close-button");
+	bb = create_button("my-close-button", GTK_STOCK_CLOSE, 1);
 	gtk_widget_set_size_request(t->label, 100, 0);
 	gtk_widget_set_size_request(b, 130, 0);
 	gtk_notebook_set_homogeneous_tabs(notebook, TRUE);
@@ -5479,6 +5466,55 @@ arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 	return (FALSE /* propagate */);
 }
 
+int
+icon_size_map(int icon_size)
+{
+	if (icon_size <= GTK_ICON_SIZE_INVALID ||
+	    icon_size > GTK_ICON_SIZE_DIALOG)
+		return (GTK_ICON_SIZE_SMALL_TOOLBAR);
+
+	return (icon_size);
+}
+
+GtkWidget *
+create_button(char *name, char *stockid, int size)
+{
+	GtkWidget *button, *image;
+	char *rcstring;
+	int gtk_icon_size;
+	asprintf(&rcstring,
+	    "style \"%s-style\"\n"
+	    "{\n"
+	    "  GtkWidget::focus-padding = 0\n"
+	    "  GtkWidget::focus-line-width = 0\n"
+	    "  xthickness = 0\n"
+	    "  ythickness = 0\n"
+	    "}\n"
+	    "widget \"*.%s\" style \"%s-style\"",name,name,name);
+	gtk_rc_parse_string(rcstring);
+	free(rcstring);
+	button = gtk_button_new();
+	gtk_button_set_focus_on_click(GTK_BUTTON(button), FALSE);
+	gtk_icon_size = icon_size_map(size?size:icon_size);
+
+	image = gtk_image_new_from_stock(stockid, gtk_icon_size);
+	gtk_widget_set_size_request(GTK_WIDGET(image), -1, -1);
+	gtk_container_set_border_width(GTK_CONTAINER(button), 1);
+	gtk_container_add(GTK_CONTAINER(button), GTK_WIDGET(image));
+	gtk_widget_set_name(button, name);
+
+	return button;
+}
+
+void
+button_set_stockid(GtkWidget *button, char *stockid)
+{
+	GtkWidget *image;
+	image = gtk_image_new_from_stock(stockid, icon_size_map(icon_size));
+	gtk_widget_set_size_request(GTK_WIDGET(image), -1, -1);
+	gtk_button_set_image(GTK_BUTTON(button), image);
+}
+
 void
 create_canvas(void)
 {
@@ -5489,21 +5525,28 @@ create_canvas(void)
 	int			i;
 
 	vbox = gtk_vbox_new(FALSE, 0);
+	gtk_box_set_spacing(GTK_BOX(vbox), 0);
 	notebook = GTK_NOTEBOOK(gtk_notebook_new());
 	if (showtabs == 0)
-		gtk_notebook_set_show_tabs(GTK_NOTEBOOK(notebook), FALSE);
+		gtk_notebook_set_show_tabs(notebook, FALSE);
+	else {
+		gtk_notebook_set_tab_hborder(notebook, 0);
+		gtk_notebook_set_tab_vborder(notebook, 0);
+	}
+	gtk_notebook_set_show_border(notebook, FALSE);
 	gtk_notebook_set_scrollable(notebook, TRUE);
 	gtk_widget_set_can_focus(GTK_WIDGET(notebook), FALSE);
 
 	abtn = gtk_button_new();
 	arrow = gtk_arrow_new(GTK_ARROW_DOWN, GTK_SHADOW_NONE);
-	gtk_widget_set_size_request(arrow, -1, 0);
+	gtk_widget_set_size_request(arrow, -1, -1);
 	gtk_container_add(GTK_CONTAINER(abtn), arrow);
 	gtk_widget_set_size_request(abtn, -1, 20);
 	gtk_notebook_set_action_widget(notebook, abtn, GTK_PACK_END);
 
-	gtk_widget_set_size_request(vbox, -1, 0);
+	gtk_widget_set_size_request(GTK_WIDGET(notebook), -1, -1);
 	gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(notebook), TRUE, TRUE, 0);
+	gtk_widget_set_size_request(vbox, -1, -1);
 
 	g_object_connect((GObject*)notebook,
 	    "signal::switch-page", (GCallback)notebook_switchpage_cb, NULL,
