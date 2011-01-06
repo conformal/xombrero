@@ -392,8 +392,13 @@ Save open tabs and quit.
 The tabs will be restored next time
 .Nm
 is started.
-.It Cm cert
+.It Cm cert, cert show
 Download and display certificate(s) of domain on tab.
+.It Cm cert save
+Save certificate into local store.
+Next time the site is visited it is compared against the store.
+If the certificate matches the address bar will be blue, if it doesn't the bar
+will be red.
 .It Cm ca
 Display CA certificate(s).
 .It Cm fav
