@@ -238,6 +238,7 @@ struct karg {
 /* defines */
 #define XT_NAME			("XXXTerm")
 #define XT_DIR			(".xxxterm")
+#define XT_CERT_DIR		("certs/")
 #define XT_CONF_FILE		("xxxterm.conf")
 #define XT_FAVS_FILE		("favorites")
 #define XT_SAVED_TABS_FILE	("saved_tabs")
@@ -675,6 +676,7 @@ char			*cl_session_key;	/* cookie list */
 char			*fl_session_key;	/* favorites list */
 
 char			work_dir[PATH_MAX];
+char			certs_dir[PATH_MAX];
 char			cookie_file[PATH_MAX];
 SoupURI			*proxy_uri = NULL;
 SoupSession		*session;
@@ -1971,26 +1973,45 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	return (failed);
 }
 
-int
-show_ca_certs(struct tab *t, gnutls_x509_crt_t *cert, int num)
+char *
+getparams(char *cmd, char *cmp)
+{
+	char			*rv = NULL;
+
+	if (cmd && cmp) {
+		if (!strncmp(cmd, cmp, strlen(cmp))) {
+			rv = cmd + strlen(cmp);
+			while (*rv == ' ')
+				rv++;
+			if (strlen(rv) == 0)
+				rv = NULL;
+		}
+	}
+
+	return (rv);
+}
+
+void
+show_certs(struct tab *t, gnutls_x509_crt_t *certs,
+    size_t cert_count, char *title)
 {
 	gnutls_datum_t		cinfo;
-	int			i, rv = 0;
 	char			*tmp, *header, *body, *footer;
+	int			i;
 
-	header = g_strdup("<title>CA Certificates</title><html><body>");
+	header = g_strdup_printf("<title>%s</title><html><body>", title);
 	footer = g_strdup("</body></html>");
 	body = g_strdup("");
 
-	for (i = 0; i < num; i++) {
-		if (gnutls_x509_crt_print(cert[i], GNUTLS_CRT_PRINT_FULL,
-		    &cinfo)) {
-			rv = 1;
-			break;
-		}
+	for (i = 0; i < cert_count; i++) {
+		if (gnutls_x509_crt_print(certs[i], GNUTLS_CRT_PRINT_FULL,
+		    &cinfo))
+			return;
+
 		tmp = body;
 		body = g_strdup_printf("%s<h2>Cert #%d</h2><pre>%s</pre>",
 		    body, i, cinfo.data);
+		gnutls_free(cinfo.data);
 		g_free(tmp);
 	}
 
@@ -2000,8 +2021,6 @@ show_ca_certs(struct tab *t, gnutls_x509_crt_t *cert, int num)
 	g_free(footer);
 	webkit_web_view_load_string(t->wv, tmp, NULL, NULL, NULL);
 	g_free(tmp);
-
-	return (rv);
 }
 
 int
@@ -2045,7 +2064,7 @@ ca_cmd(struct tab *t, struct karg *args)
 		warnx("couldn't read certs");
 		goto done;
 	}
-	show_ca_certs(t, c, certs_read);
+	show_certs(t, c, certs_read, "Certificate Authority Certificates");
 done:
 	if (c)
 		g_free(c);
@@ -2058,76 +2077,18 @@ done:
 }
 
 int
-show_certs(struct tab *t, gnutls_session_t gs)
+connect_socket_from_uri(char *uri, char *domain, size_t domain_sz)
 {
-	gnutls_datum_t		cinfo;
-	const gnutls_datum_t	*cl;
-	unsigned int		len;
-	gnutls_x509_crt_t	cert;
-	int			i, rv = 0;
-	char			*tmp, *header, *body, *footer;
-
-	if (gnutls_certificate_type_get(gs) != GNUTLS_CRT_X509)
-		return (1);
-
-	cl = gnutls_certificate_get_peers(gs, &len);
-	if (len == 0)
-		return (1);
-
-	header = g_strdup("<title>Certificate Chain</title><html><body>");
-	footer = g_strdup("</body></html>");
-	body = g_strdup("");
-
-	for (i = 0; i < len; i++) {
-		gnutls_x509_crt_init(&cert);
-		if (gnutls_x509_crt_import(cert, &cl[i],
-		    GNUTLS_X509_FMT_PEM < 0)) {
-			gnutls_x509_crt_deinit(cert);
-			rv = 1;
-			break;
-		}
-		if (gnutls_x509_crt_print(cert, GNUTLS_CRT_PRINT_FULL,
-		    &cinfo)) {
-			gnutls_x509_crt_deinit(cert);
-			rv = 1;
-			break;
-		}
-		tmp = body;
-		body = g_strdup_printf("%s<h2>Cert #%d</h2><pre>%s</pre>",
-		    body, i, cinfo.data);
-		g_free(tmp);
-		gnutls_x509_crt_deinit(cert);
-	}
-
-	tmp = g_strdup_printf("%s%s%s", header, body, footer);
-	g_free(header);
-	g_free(body);
-	g_free(footer);
-	webkit_web_view_load_string(t->wv, tmp, NULL, NULL, NULL);
-	g_free(tmp);
-
-	return (rv);
-}
-
-int
-cert_cmd(struct tab *t, struct karg *args)
-{
-	WebKitWebFrame		*frame;
 	SoupURI			*su;
-	char			*uri, port[8];
-	int			s = -1, on, tear_down = 0;
 	struct addrinfo		hints, *res = NULL, *ai;
+	int			s = -1, on;
+	char			port[8];
 
-	if (t == NULL)
-		return (1);
-
-	frame = webkit_web_view_get_main_frame(t->wv);
-	uri = (char *)webkit_web_frame_get_uri(frame);
-	su =soup_uri_new(uri);
+	su = soup_uri_new(uri);
 	if (su == NULL)
-		return (1);
+		goto done;
 	if (!SOUP_URI_VALID_FOR_HTTP(su))
-		return (1);
+		goto done;
 
 	snprintf(port, sizeof port, "%d", su->port);
 	bzero(&hints, sizeof(struct addrinfo));
@@ -2153,12 +2114,39 @@ cert_cmd(struct tab *t, struct karg *args)
 			goto done;
 	}
 
-	/* go ssl/tls */
+	if (domain)
+		strlcpy(domain, su->host, domain_sz);
+done:
+	if (su)
+		soup_uri_free(su);
+	if (res)
+		freeaddrinfo(res);
+
+	return (s);
+}
+
+int
+stop_tls(gnutls_session_t gsession, gnutls_certificate_credentials_t xcred)
+{
+	if (gsession) {
+		gnutls_bye(gsession, GNUTLS_SHUT_RDWR);
+		gnutls_deinit(gsession);
+	}
+	if (xcred)
+		gnutls_certificate_free_credentials(xcred);
+
+	return (0);
+}
+
+int
+start_tls(int s, gnutls_session_t *gs, gnutls_certificate_credentials_t *xc)
+{
 	gnutls_certificate_credentials_t xcred;
 	gnutls_session_t	gsession;
-	int			rv;
+	int			rv = 1;
 
-	tear_down = 1;
+	if (gs == NULL || xc == NULL)
+		goto done;
 
 	gnutls_certificate_allocate_credentials(&xcred);
 	gnutls_certificate_set_x509_trust_file(xcred, ssl_ca_file,
@@ -2169,6 +2157,7 @@ cert_cmd(struct tab *t, struct karg *args)
 	gnutls_transport_set_ptr(gsession, (gnutls_transport_ptr_t)(long)s);
 	if ((rv = gnutls_handshake(gsession)) < 0) {
 		warnx("gnutls_handshake failed %d", rv);
+		stop_tls(gsession, xcred);
 		goto done;
 	}
 
@@ -2176,21 +2165,214 @@ cert_cmd(struct tab *t, struct karg *args)
 	cred = gnutls_auth_get_type(gsession);
 	if (cred != GNUTLS_CRD_CERTIFICATE) {
 		warnx("invalid credential type");
+		stop_tls(gsession, xcred);
 		goto done;
 	}
-	show_certs(t, gsession);
+
+	*gs = gsession;
+	*xc = xcred;
+	rv = 0;
 done:
+	return (rv);
+}
+
+int
+get_connection_certs(gnutls_session_t gsession, gnutls_x509_crt_t **certs,
+    size_t *cert_count)
+{
+	unsigned int		len;
+	const gnutls_datum_t	*cl;
+	gnutls_x509_crt_t	*all_certs;
+	int			i, rv = 1;
+
+	if (certs == NULL || cert_count == NULL)
+		goto done;
+	if (gnutls_certificate_type_get(gsession) != GNUTLS_CRT_X509)
+		goto done;
+	cl = gnutls_certificate_get_peers(gsession, &len);
+	if (len == 0)
+		goto done;
+
+	all_certs = g_malloc(sizeof(gnutls_x509_crt_t) * len);
+	for (i = 0; i < len; i++) {
+		gnutls_x509_crt_init(&all_certs[i]);
+		if (gnutls_x509_crt_import(all_certs[i], &cl[i],
+		    GNUTLS_X509_FMT_PEM < 0)) {
+			g_free(all_certs);
+			goto done;
+		    }
+	}
+
+	*certs = all_certs;
+	*cert_count = len;
+	rv = 0;
+done:
+	return (rv);
+}
+
+void
+free_connection_certs(gnutls_x509_crt_t *certs, size_t cert_count)
+{
+	int			i;
+
+	for (i = 0; i < cert_count; i++)
+		gnutls_x509_crt_deinit(certs[i]);
+	g_free(certs);
+}
+
+void
+save_certs(struct tab *t, gnutls_x509_crt_t *certs,
+    size_t cert_count, char *domain)
+{
+	size_t			cert_buf_sz;
+	char			cert_buf[64 * 1024], file[PATH_MAX];
+	int			i;
+	FILE			*f;
+
+	if (t == NULL || certs == NULL || cert_count <= 0 || domain == NULL)
+		return;
+
+	snprintf(file, sizeof file, "%s/%s", certs_dir, domain);
+	if ((f = fopen(file, "w")) == NULL) {
+		warn("save_certs");
+		return;
+	}
+
+	for (i = 0; i < cert_count; i++) {
+		cert_buf_sz = sizeof cert_buf;
+		if (gnutls_x509_crt_export(certs[i], GNUTLS_X509_FMT_PEM,
+		    cert_buf, &cert_buf_sz)) {
+			warnx("gnutls_x509_crt_export");
+			break;
+		}
+		if (fwrite(cert_buf, cert_buf_sz, 1, f) != 1) {
+			warn("fwrite certs");
+			break;
+		}
+	}
+
+	fclose(f);
+}
+
+int
+load_compare_cert(struct tab *t, struct karg *args)
+{
+	WebKitWebFrame		*frame;
+	char			*uri, domain[8182], file[PATH_MAX];
+	char			cert_buf[64 * 1024], r_cert_buf[64 * 1024];
+	int			s = -1, rv = 1, i;
+	size_t			cert_count;
+	FILE			*f = NULL;
+	size_t			cert_buf_sz;
+	gnutls_session_t	gsession;
+	gnutls_x509_crt_t	*certs;
+	gnutls_certificate_credentials_t xcred;
+
+	if (t == NULL)
+		return (1);
+
+	frame = webkit_web_view_get_main_frame(t->wv);
+	uri = (char *)webkit_web_frame_get_uri(frame);
+	if ((s = connect_socket_from_uri(uri, domain, sizeof domain)) == -1)
+		return (1);
+
+	/* go ssl/tls */
+	if (start_tls(s, &gsession, &xcred)) {
+		warnx("start_tls");
+		goto done;
+	}
+
+	/* get certs */
+	if (get_connection_certs(gsession, &certs, &cert_count)) {
+		warnx("get_connection_certs");
+		goto done;
+	}
+
+	snprintf(file, sizeof file, "%s/%s", certs_dir, domain);
+	if ((f = fopen(file, "r")) == NULL)
+		goto freeit;
+
+	for (i = 0; i < cert_count; i++) {
+		cert_buf_sz = sizeof cert_buf;
+		if (gnutls_x509_crt_export(certs[i], GNUTLS_X509_FMT_PEM,
+		    cert_buf, &cert_buf_sz)) {
+			warnx("gnutls_x509_crt_export");
+			goto freeit;
+		}
+		if (fread(r_cert_buf, cert_buf_sz, 1, f) != 1) {
+			warn("fread certs");
+			rv = -1; /* critical */
+			goto freeit;
+		}
+		if (bcmp(r_cert_buf, cert_buf, sizeof cert_buf_sz)) {
+			warnx("invalid cert");
+			rv = -1; /* critical */
+			goto freeit;
+		}
+	}
+
+	rv = 0;
+freeit:
+	if (f)
+		fclose(f);
+	free_connection_certs(certs, cert_count);
+done:
+	/* we close the socket first for speed */
 	if (s != -1)
 		close(s);
-	if (tear_down) {
-		gnutls_bye(gsession, GNUTLS_SHUT_RDWR);
-		gnutls_deinit(gsession);
-		gnutls_certificate_free_credentials(xcred);
+	stop_tls(gsession, xcred);
+
+	return (rv);
+}
+
+int
+cert_cmd(struct tab *t, struct karg *args)
+{
+	WebKitWebFrame		*frame;
+	char			*uri, *action, domain[8182];
+	int			s = -1;
+	size_t			cert_count;
+	gnutls_session_t	gsession;
+	gnutls_x509_crt_t	*certs;
+	gnutls_certificate_credentials_t xcred;
+
+	if (t == NULL)
+		return (1);
+
+	if ((action = getparams(args->s, "cert")))
+		;
+	else
+		action = "show";
+
+	frame = webkit_web_view_get_main_frame(t->wv);
+	uri = (char *)webkit_web_frame_get_uri(frame);
+	if ((s = connect_socket_from_uri(uri, domain, sizeof domain)) == -1)
+		return (1);
+
+	/* go ssl/tls */
+	if (start_tls(s, &gsession, &xcred)) {
+		warnx("start_tls");
+		goto done;
 	}
-	if (su)
-		soup_uri_free(su);
-	if (res)
-		freeaddrinfo(res);
+
+	/* get certs */
+	if (get_connection_certs(gsession, &certs, &cert_count)) {
+		warnx("get_connection_certs");
+		goto done;
+	}
+
+	if (!strcmp(action, "show"))
+		show_certs(t, certs, cert_count, "Certificate Chain");
+	else if (!strcmp(action, "save"))
+		save_certs(t, certs, cert_count, domain);
+
+	free_connection_certs(certs, cert_count);
+done:
+	/* we close the socket first for speed */
+	if (s != -1)
+		close(s);
+	stop_tls(gsession, xcred);
+
 	return (0);
 }
 
@@ -2523,24 +2705,6 @@ move(struct tab *t, struct karg *args)
 	DNPRINTF(XT_D_MOVE, "move: new pos %f %f\n", pos, MIN(pos, max));
 
 	return (XT_CB_HANDLED);
-}
-
-char *
-getparams(char *cmd, char *cmp)
-{
-	char			*rv = NULL;
-
-	if (cmd && cmp) {
-		if (!strncmp(cmd, cmp, strlen(cmp))) {
-			rv = cmd + strlen(cmp);
-			while (*rv == ' ')
-				rv++;
-			if (strlen(rv) == 0)
-				rv = NULL;
-		}
-	}
-
-	return (rv);
 }
 
 int
@@ -3462,7 +3626,7 @@ struct cmd {
 	{ "favadd",		0,	add_favorite,		{0} },
 	{ "jsadd",		0,	add_js,			{0} },
 	{ "cookieadd",		0,	add_cookie,		{0} },
-	{ "cert",		0,	cert_cmd,			{0} },
+	{ "cert",		1,	cert_cmd,			{0} },
 	{ "ca",			0,	ca_cmd,			{0} },
 	{ "dl"		,	0,	xtp_page_dl,		{0} },
 	{ "h"		,	0,	xtp_page_hl,		{0} },
@@ -3876,6 +4040,7 @@ show_ca_status(struct tab *t, const char *uri)
 	SoupMessage		*message;
 	GdkColor		color;
 	gchar			*col_str = "white";
+	int			r;
 
 	DNPRINTF(XT_D_URL, "show_ca_status: %d %s %s\n",
 	    ssl_strict_certs, ssl_ca_file, uri);
@@ -3905,7 +4070,13 @@ show_ca_status(struct tab *t, const char *uri)
 		col_str = "green";
 		goto done;
 	} else {
-		col_str = "yellow";
+		r = load_compare_cert(t, NULL);
+		if (r == 0)
+			col_str = "lightblue";
+		else if (r == 1)
+			col_str = "yellow";
+		else
+			col_str = "red";
 		goto done;
 	}
 done:
@@ -5620,6 +5791,23 @@ main(int argc, char *argv[])
 	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
 		warnx("fixing invalid permissions on %s", work_dir);
 		if (chmod(work_dir, S_IRWXU) == -1)
+			err(1, "chmod");
+	}
+
+	/* certs dir */
+	snprintf(certs_dir, sizeof certs_dir, "%s/%s/%s",
+	    pwd->pw_dir, XT_DIR, XT_CERT_DIR);
+	if (stat(certs_dir, &sb)) {
+		if (mkdir(certs_dir, S_IRWXU) == -1)
+			err(1, "mkdir certs_dir");
+		if (stat(certs_dir, &sb))
+			err(1, "stat certs_dir");
+	}
+	if (S_ISDIR(sb.st_mode) == 0)
+		errx(1, "%s not a dir", certs_dir);
+	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
+		warnx("fixing invalid permissions on %s", certs_dir);
+		if (chmod(certs_dir, S_IRWXU) == -1)
 			err(1, "chmod");
 	}
 
