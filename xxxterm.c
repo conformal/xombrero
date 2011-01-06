@@ -2228,6 +2228,7 @@ save_certs(struct tab *t, gnutls_x509_crt_t *certs,
 	char			cert_buf[64 * 1024], file[PATH_MAX];
 	int			i;
 	FILE			*f;
+	GdkColor		color;
 
 	if (t == NULL || certs == NULL || cert_count <= 0 || domain == NULL)
 		return;
@@ -2243,14 +2244,18 @@ save_certs(struct tab *t, gnutls_x509_crt_t *certs,
 		if (gnutls_x509_crt_export(certs[i], GNUTLS_X509_FMT_PEM,
 		    cert_buf, &cert_buf_sz)) {
 			warnx("gnutls_x509_crt_export");
-			break;
+			goto done;
 		}
 		if (fwrite(cert_buf, cert_buf_sz, 1, f) != 1) {
 			warn("fwrite certs");
-			break;
+			goto done;
 		}
 	}
 
+	/* not the best spot but oh well */
+	gdk_color_parse("lightblue", &color);
+	gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
+done:
 	fclose(f);
 }
 
