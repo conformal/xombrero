@@ -354,9 +354,11 @@ struct karg {
 
 #define XT_FONT_SET		(0)
 
-#define XT_WL_TOGGLE		(0)
-#define XT_WL_ENABLE		(1)
-#define XT_WL_DISABLE		(2)
+#define XT_WL_TOGGLE		(1<<0)
+#define XT_WL_ENABLE		(1<<1)
+#define XT_WL_DISABLE		(1<<2)
+#define XT_WL_FQDN		(1<<3) /* default */
+#define XT_WL_TOPLEVEL		(1<<4)
 
 #define XT_CMD_OPEN		(0)
 #define XT_CMD_OPEN_CURRENT	(1)
@@ -1048,7 +1050,7 @@ walk_js_wl(struct settings *s,
 int
 add_js_wl(struct settings *s, char *entry)
 {
-	wl_add(entry, &js_wl, 1 /* not used */);
+	wl_add(entry, &js_wl, 1 /* persistent */);
 	return (0);
 }
 
@@ -1112,6 +1114,30 @@ wl_find_uri(const gchar *s, struct domain_list *wl)
 			g_free(ss);
 			return (r);
 		}
+
+	return (NULL);
+}
+
+char *
+get_toplevel_domain(char *domain)
+{
+	char			*s;
+	int			found = 0;
+
+	if (domain == NULL)
+		return (NULL);
+	if (strlen(domain) < 2)
+		return (NULL);
+
+	s = &domain[strlen(domain) - 1];
+	while (s != domain) {
+		if (*s == '.') {
+			found++;
+			if (found == 2)
+				return (s);
+		}
+		s--;
+	}
 
 	return (NULL);
 }
@@ -1623,11 +1649,11 @@ toggle_cwl(struct tab *t, struct karg *args)
 	else
 		es = 1;
 
-	if (args->i == XT_WL_TOGGLE)
+	if (args->i & XT_WL_TOGGLE)
 		es = !es;
-	else if (args->i == XT_WL_ENABLE && es != 1)
+	else if ((args->i & XT_WL_ENABLE) && es != 1)
 		es = 1;
-	else if (args->i == XT_WL_DISABLE && es != 0)
+	else if ((args->i & XT_WL_DISABLE) && es != 0)
 		es = 0;
 
 	if (es) {
@@ -1647,66 +1673,61 @@ toggle_cwl(struct tab *t, struct karg *args)
 int
 toggle_js(struct tab *t, struct karg *args)
 {
-	int			es, i;
+	int			es;
 	WebKitWebFrame		*frame;
-	const gchar		*s;
-	gchar			*ss;
+	const gchar		*uri;
 	struct domain		*d;
+	char			*dom = NULL, *dom_toggle = NULL;
 
 	if (args == NULL)
 		return (0);
 
 	g_object_get((GObject *)t->settings,
 	    "enable-scripts", &es, (char *)NULL);
-	if (args->i == XT_WL_TOGGLE)
+	if (args->i & XT_WL_TOGGLE)
 		es = !es;
-	else if (args->i == XT_WL_ENABLE && es != 1)
+	else if ((args->i & XT_WL_ENABLE) && es != 1)
 		es = 1;
-	else if (args->i == XT_WL_DISABLE && es != 0)
+	else if ((args->i & XT_WL_DISABLE) && es != 0)
 		es = 0;
 	else
 		return (0);
 
 	frame = webkit_web_view_get_main_frame(t->wv);
-	s = (gchar *)webkit_web_frame_get_uri(frame);
-	/* this code is shared with wl_find_uri, refactor */
-	if (s == NULL)
-		return (NULL);
+	uri = (char *)webkit_web_frame_get_uri(frame);
+	dom = find_domain(uri, 1);
+	if (uri == NULL || dom == NULL) {
+		webkit_web_view_load_string(t->wv,
+		    "<html><body>Can't toggle domain in JavaScript white list</body></html>",
+		    NULL,
+		    NULL,
+		    NULL);
+		goto done;
+	}
 
-	if (!strncmp(s, "http://", strlen("http://")))
-		s = &s[strlen("http://")];
-	else if (!strncmp(s, "https://", strlen("https://")))
-		s = &s[strlen("https://")];
+	if (args->i & XT_WL_TOPLEVEL)
+		dom_toggle = get_toplevel_domain(dom);
+	else
+		dom_toggle = dom;
 
-	if (strlen(s) < 2)
-		return (NULL);
-
-	ss = g_strdup(s);
-	for (i = 0; i < strlen(s) + 1; i++)
-		/* chop string at first slash */
-		if (ss[i] == '/' || ss[i] == '\0') {
-			ss[i] = '\0';
-			if (es) {
-				gtk_tool_button_set_stock_id(
-				    GTK_TOOL_BUTTON(t->js_toggle),
-				    GTK_STOCK_MEDIA_PLAY);
-				wl_add(ss, &js_wl, 0 /* not used */);
-			} else {
-				d = wl_find(ss, &js_wl);
-				if (d)
-					RB_REMOVE(domain_list, &js_wl, d);
-				gtk_tool_button_set_stock_id(
-				    GTK_TOOL_BUTTON(t->js_toggle),
-				    GTK_STOCK_MEDIA_PAUSE);
-			}
-			g_object_set((GObject *)t->settings,
-			    "enable-scripts", es, (char *)NULL);
-			webkit_web_view_set_settings(t->wv, t->settings);
-			webkit_web_view_reload(t->wv);
-			goto done;
-		}
+	if (es) {
+		gtk_tool_button_set_stock_id( GTK_TOOL_BUTTON(t->js_toggle),
+		    GTK_STOCK_MEDIA_PLAY);
+		wl_add(dom_toggle, &js_wl, 0 /* session */);
+	} else {
+		d = wl_find(dom_toggle, &js_wl);
+		if (d)
+			RB_REMOVE(domain_list, &js_wl, d);
+		gtk_tool_button_set_stock_id( GTK_TOOL_BUTTON(t->js_toggle),
+		    GTK_STOCK_MEDIA_PAUSE);
+	}
+	g_object_set((GObject *)t->settings,
+	    "enable-scripts", es, (char *)NULL);
+	webkit_web_view_set_settings(t->wv, t->settings);
+	webkit_web_view_reload(t->wv);
 done:
-	g_free(ss);
+	if (dom)
+		g_free(dom);
 	return (0);
 }
 
@@ -1715,7 +1736,7 @@ js_toggle_cb(GtkWidget *w, struct tab *t)
 {
 	struct karg		a;
 
-	a.i = XT_WL_TOGGLE;
+	a.i = XT_WL_TOGGLE | XT_WL_FQDN;
 	toggle_js(t, &a);
 }
 
@@ -2131,10 +2152,8 @@ done:
 int
 stop_tls(gnutls_session_t gsession, gnutls_certificate_credentials_t xcred)
 {
-	if (gsession) {
-		gnutls_bye(gsession, GNUTLS_SHUT_RDWR);
+	if (gsession)
 		gnutls_deinit(gsession);
-	}
 	if (xcred)
 		gnutls_certificate_free_credentials(xcred);
 
@@ -2491,17 +2510,17 @@ done:
 }
 
 int
-add_js(struct tab *t, struct karg *args)
+save_js(struct tab *t, struct karg *args)
 {
 	char			file[PATH_MAX];
 	FILE			*f;
 	char			*line = NULL, *lt = NULL;
 	size_t			linelen;
 	WebKitWebFrame		*frame;
-	char			*dom = NULL, *uri;
+	char			*dom = NULL, *uri, *dom_save = NULL;
 	struct karg		a;
 
-	if (t == NULL)
+	if (t == NULL || args == NULL)
 		return (1);
 
 	if (runtime_settings[0] == '\0')
@@ -2523,7 +2542,24 @@ add_js(struct tab *t, struct karg *args)
 		goto done;
 	}
 
-	lt = g_strdup_printf("js_wl=%s", dom);
+	if (g_str_has_prefix(args->s, "save d")) {
+		/* save domain */
+		if ((dom_save = get_toplevel_domain(dom)) == NULL) {
+			/* XXX this needs use feedback */
+			warnx("bad bad bad");
+			goto done;
+		}
+	} else if (g_str_has_prefix(args->s, "save f") ||
+	    !strcmp(args->s, "save")) {
+		/* save fqdn */
+		dom_save = dom;
+	} else {
+		/* XXX this needs use feedback */
+		warnx("invalid command");
+		goto done;
+	}
+
+	lt = g_strdup_printf("js_wl=%s", dom_save);
 
 	while (!feof(f)) {
 		line = fparseln(f, &linelen, NULL, NULL, 0);
@@ -2537,7 +2573,8 @@ add_js(struct tab *t, struct karg *args)
 
 	fprintf(f, "%s\n", lt);
 
-	a.i = XT_WL_TOGGLE;
+	/* XXX should we set d->handy to 1 here? */
+	a.i = XT_WL_ENABLE;
 	toggle_js(t, &a);
 done:
 	if (line)
@@ -2547,6 +2584,101 @@ done:
 	if (lt)
 		g_free(lt);
 	fclose(f);
+
+	return (0);
+}
+
+int
+js_show(struct tab *t, char *args)
+{
+	struct domain		*d;
+	char			*tmp, *header, *body, *footer;
+	int			p_js = 0, s_js = 0;
+
+	if (g_str_has_prefix(args, "show a") ||
+	    !strcmp(args, "show")) {
+		/* show all */
+		p_js = 1;
+		s_js = 1;
+	} else if (g_str_has_prefix(args, "show p")) {
+		/* show persistent */
+		p_js = 1;
+	} else if (g_str_has_prefix(args, "show s")) {
+		/* show session */
+		s_js = 1;
+	} else
+		return (1);
+
+	header = g_strdup_printf("<title>%s</title><html><body>",
+	    "JavaScript White List");
+	footer = g_strdup("</body></html>");
+	body = g_strdup("");
+
+	/* p list */
+	if (p_js) {
+		tmp = body;
+		body = g_strdup_printf("%s<h2>Persitent</h2>", body);
+		g_free(tmp);
+		RB_FOREACH_REVERSE(d, domain_list, &js_wl) {
+			if (d->handy == 0)
+				continue;
+			tmp = body;
+			body = g_strdup_printf("%s%s<br>",
+			    body, d->d);
+			g_free(tmp);
+		}
+	}
+
+	/* s list */
+	if (s_js) {
+		tmp = body;
+		body = g_strdup_printf("%s<h2>Session</h2>", body);
+		g_free(tmp);
+		RB_FOREACH_REVERSE(d, domain_list, &js_wl) {
+			if (d->handy == 1)
+				continue;
+			tmp = body;
+			body = g_strdup_printf("%s%s",
+			    body, d->d);
+			g_free(tmp);
+		}
+	}
+
+	tmp = g_strdup_printf("%s%s%s", header, body, footer);
+	g_free(header);
+	g_free(body);
+	g_free(footer);
+	webkit_web_view_load_string(t->wv, tmp, NULL, NULL, NULL);
+	g_free(tmp);
+	return (0);
+}
+
+int
+js_cmd(struct tab *t, struct karg *args)
+{
+	char			*cmd;
+	struct karg		a;
+
+	if ((cmd = getparams(args->s, "js")))
+		;
+	else
+		cmd = "show all";
+
+
+	if (g_str_has_prefix(cmd, "show")) {
+		js_show(t, cmd);
+	} else if (g_str_has_prefix(cmd, "save")) {
+		a.s = cmd;
+		save_js(t, &a);
+	} else if (g_str_has_prefix(cmd, "toggle")) {
+		a.i = XT_WL_TOGGLE;
+		if (g_str_has_prefix(cmd, "toggle d"))
+			a.i |= XT_WL_TOPLEVEL;
+		else
+			a.i |= XT_WL_FQDN;
+		toggle_js(t, &a);
+	} else if (g_str_has_prefix(cmd, "delete")) {
+	}
 
 	return (0);
 }
@@ -3531,8 +3663,8 @@ struct key_bindings {
 	{ GDK_SHIFT_MASK,	0,	GDK_colon,	command,	{.i = ':'} },
 	{ GDK_CONTROL_MASK,	0,	GDK_q,		quit,		{0} },
 	{ GDK_MOD1_MASK,	0,	GDK_q,		restart,	{0} },
-	{ GDK_CONTROL_MASK,	0,	GDK_j,		toggle_js,	{.i = XT_WL_TOGGLE} },
-	{ GDK_MOD1_MASK,	0,	GDK_c,		toggle_cwl,	{.i = XT_WL_TOGGLE} },
+	{ GDK_CONTROL_MASK,	0,	GDK_j,		toggle_js,	{.i = XT_WL_TOGGLE | XT_WL_FQDN} },
+	{ GDK_MOD1_MASK,	0,	GDK_c,		toggle_cwl,	{.i = XT_WL_TOGGLE | XT_WL_FQDN} },
 	{ GDK_CONTROL_MASK,	0,	GDK_s,		toggle_src,	{0} },
 	{ 0,			0,	GDK_y,		yank_uri,	{0} },
 	{ 0,			0,	GDK_p,		paste_uri,	{.i = XT_PASTE_CURRENT_TAB} },
@@ -3632,9 +3764,9 @@ struct cmd {
 	{ "cookies",		0,	xtp_page_cl,		{0} },
 	{ "fav",		0,	xtp_page_fl,		{0} },
 	{ "favadd",		0,	add_favorite,		{0} },
-	{ "jsadd",		0,	add_js,			{0} },
+	{ "js",			2,	js_cmd,			{0} },
 	{ "cookieadd",		0,	add_cookie,		{0} },
-	{ "cert",		1,	cert_cmd,			{0} },
+	{ "cert",		1,	cert_cmd,		{0} },
 	{ "ca",			0,	ca_cmd,			{0} },
 	{ "dl"		,	0,	xtp_page_dl,		{0} },
 	{ "h"		,	0,	xtp_page_hl,		{0} },
