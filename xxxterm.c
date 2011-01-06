@@ -5051,13 +5051,12 @@ delete_tab(struct tab *t)
 
 	undo_close_tab_save(t);
 
-	TAILQ_REMOVE(&tabs, t, entry);
-	recalc_tabs();
-
 	gtk_widget_destroy(t->vbox);
 	g_free(t->user_agent);
 	g_free(t);
 
+	TAILQ_REMOVE(&tabs, t, entry);
+	recalc_tabs();
 	if (TAILQ_EMPTY(&tabs))
 		create_new_tab(NULL, NULL, 1);
 }
