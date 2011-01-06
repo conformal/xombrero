@@ -3016,7 +3016,6 @@ command(struct tab *t, struct karg *args)
 	char			*s = NULL, *ss = NULL;
 	GdkColor		color;
 	const gchar		*uri;
-	size_t			sz;
 
 	if (t == NULL || args == NULL)
 		errx(1, "command");
@@ -3046,9 +3045,7 @@ command(struct tab *t, struct karg *args)
 		frame = webkit_web_view_get_main_frame(t->wv);
 		uri = webkit_web_frame_get_uri(frame);
 		if (uri && strlen(uri)) {
-			sz = sizeof(gchar) * (strlen(s) + strlen(uri));
-			ss = g_malloc(sz);
-			snprintf(ss, sz, "%s%s", s, uri);
+			ss = g_strdup_printf("%s%s", s, uri);
 			s = ss;
 		}
 		break;
