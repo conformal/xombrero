@@ -2084,7 +2084,7 @@ connect_socket_from_uri(char *uri, char *domain, size_t domain_sz)
 	int			s = -1, on;
 	char			port[8];
 
-	if (!g_str_has_prefix(uri, "https://"))
+	if (uri && !g_str_has_prefix(uri, "https://"))
 		goto done;
 
 	su = soup_uri_new(uri);
