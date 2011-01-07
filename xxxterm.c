@@ -3656,6 +3656,11 @@ restart(struct tab *t, struct karg *args)
 {
 	struct karg		a;
 
+	if (save_rejected_cookies) {
+		fflush(r_cookie_f);
+		fclose(r_cookie_f);
+	}
+
 	a.s = XT_RESTART_TABS_FILE;
 	save_tabs(t, &a);
 	execvp(start_argv[0], start_argv);
@@ -6139,6 +6144,11 @@ main(int argc, char *argv[])
 			gdk_input_add(s, GDK_INPUT_READ, socket_watcher, NULL);
 
 	gtk_main();
+
+	if (save_rejected_cookies) {
+		fflush(r_cookie_f);
+		fclose(r_cookie_f);
+	}
 
 	gnutls_global_deinit();
 
