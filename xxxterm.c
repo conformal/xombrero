@@ -1638,7 +1638,8 @@ toggle_cwl(struct tab *t, struct karg *args)
 {
 	WebKitWebFrame		*frame;
 	struct domain		*d;
-	char			*uri, *dom;
+	char			*uri;
+	char			*dom = NULL, *dom_toggle = NULL;
 	int			es;
 
 	if (args == NULL)
@@ -1660,9 +1661,14 @@ toggle_cwl(struct tab *t, struct karg *args)
 	else if ((args->i & XT_WL_DISABLE) && es != 0)
 		es = 0;
 
+	if (args->i & XT_WL_TOPLEVEL)
+		dom_toggle = get_toplevel_domain(dom);
+	else
+		dom_toggle = dom;
+
 	if (es) {
 		/* enable cookies for domain */
-		wl_add(dom, &c_wl, 0);
+		wl_add(dom_toggle, &c_wl, 0);
 	} else {
 		/* disable cookies for domain */
 		RB_REMOVE(domain_list, &c_wl, d);
@@ -2432,86 +2438,6 @@ remove_cookie(int index)
 }
 
 int
-add_cookie(struct tab *t, struct karg *args)
-{
-	char			file[PATH_MAX];
-	FILE			*f;
-	char			*line = NULL, *lt = NULL;
-	size_t			linelen;
-	WebKitWebFrame		*frame;
-	char			*dom = NULL, *uri;
-	struct karg		a;
-	struct domain		*d = NULL;
-	GSList			*cf;
-	SoupCookie		*ci, *c;
-
-	if (t == NULL)
-		return (1);
-
-	if (runtime_settings[0] == '\0')
-		return (1);
-
-	snprintf(file, sizeof file, "%s/%s", work_dir, runtime_settings);
-	if ((f = fopen(file, "r+")) == NULL)
-		return (1);
-
-	frame = webkit_web_view_get_main_frame(t->wv);
-	uri = (char *)webkit_web_frame_get_uri(frame);
-	dom = find_domain(uri, 1);
-	if (uri == NULL || dom == NULL) {
-		webkit_web_view_load_string(t->wv,
-		    "<html><body>Can't add domain to Cookie white list</body></html>",
-		    NULL,
-		    NULL,
-		    NULL);
-		goto done;
-	}
-
-	lt = g_strdup_printf("cookie_wl=%s", dom);
-
-	while (!feof(f)) {
-		line = fparseln(f, &linelen, NULL, NULL, 0);
-		if (line == NULL)
-			continue;
-		if (!strcmp(line, lt))
-			goto done;
-		free(line);
-		line = NULL;
-	}
-
-	fprintf(f, "%s\n", lt);
-
-	a.i = XT_WL_ENABLE;
-	toggle_cwl(t, &a);
-	d = wl_find(dom, &c_wl);
-	if (d)
-		d->handy = 1;
-
-	/* find and add to persistent jar */
-	cf = soup_cookie_jar_all_cookies(s_cookiejar);
-	for (;cf; cf = cf->next) {
-		ci = cf->data;
-		if (!strcmp(dom, ci->domain) ||
-		    !strcmp(&dom[1], ci->domain)) /* deal with leading . */ {
-			c = soup_cookie_copy(ci);
-			_soup_cookie_jar_add_cookie(p_cookiejar, c);
-		}
-	}
-	soup_cookies_free(cf);
-
-done:
-	if (line)
-		free(line);
-	if (dom)
-		g_free(dom);
-	if (lt)
-		g_free(lt);
-	fclose(f);
-
-	return (0);
-}
-
-int
 wl_show(struct tab *t, char *args, char *title, struct domain_list *wl)
 {
 	struct domain		*d;
@@ -2532,7 +2458,8 @@ wl_show(struct tab *t, char *args, char *title, struct domain_list *wl)
 	} else
 		return (1);
 
-	header = g_strdup_printf("<title>%s</title><html><body>", title);
+	header = g_strdup_printf("<title>%s</title><html><body><h1>%s</h1>",
+	    title, title);
 	footer = g_strdup("</body></html>");
 	body = g_strdup("");
 
@@ -2574,37 +2501,7 @@ wl_show(struct tab *t, char *args, char *title, struct domain_list *wl)
 }
 
 int
-cookie_cmd(struct tab *t, struct karg *args)
-{
-	char			*cmd;
-	struct karg		a;
-
-	if ((cmd = getparams(args->s, "cookie")))
-		;
-	else
-		cmd = "show all";
-
-
-	if (g_str_has_prefix(cmd, "show")) {
-		wl_show(t, cmd, "Cookie White List", &c_wl);
-	} else if (g_str_has_prefix(cmd, "save")) {
-		a.s = cmd;
-		//save_js(t, &a);
-	} else if (g_str_has_prefix(cmd, "toggle")) {
-		a.i = XT_WL_TOGGLE;
-		if (g_str_has_prefix(cmd, "toggle d"))
-			a.i |= XT_WL_TOPLEVEL;
-		else
-			a.i |= XT_WL_FQDN;
-		//toggle_js(t, &a);
-	} else if (g_str_has_prefix(cmd, "delete")) {
-	}
-
-	return (0);
-}
-
-int
-save_js(struct tab *t, struct karg *args)
+wl_save(struct tab *t, struct karg *args, int js)
 {
 	char			file[PATH_MAX];
 	FILE			*f;
@@ -2613,6 +2510,10 @@ save_js(struct tab *t, struct karg *args)
 	WebKitWebFrame		*frame;
 	char			*dom = NULL, *uri, *dom_save = NULL;
 	struct karg		a;
+	struct domain		*d;
+	GSList			*cf;
+	SoupCookie		*ci, *c;
+	int			flags;
 
 	if (t == NULL || args == NULL)
 		return (1);
@@ -2643,17 +2544,19 @@ save_js(struct tab *t, struct karg *args)
 			warnx("bad bad bad");
 			goto done;
 		}
+		flags = XT_WL_TOPLEVEL;
 	} else if (g_str_has_prefix(args->s, "save f") ||
 	    !strcmp(args->s, "save")) {
 		/* save fqdn */
 		dom_save = dom;
+		flags = XT_WL_FQDN;
 	} else {
 		/* XXX this needs use feedback */
 		warnx("invalid command");
 		goto done;
 	}
 
-	lt = g_strdup_printf("js_wl=%s", dom_save);
+	lt = g_strdup_printf("%s=%s", js ? "js_wl" : "cookie_wl", dom_save);
 
 	while (!feof(f)) {
 		line = fparseln(f, &linelen, NULL, NULL, 0);
@@ -2667,9 +2570,30 @@ save_js(struct tab *t, struct karg *args)
 
 	fprintf(f, "%s\n", lt);
 
-	/* XXX should we set d->handy to 1 here? */
 	a.i = XT_WL_ENABLE;
-	toggle_js(t, &a);
+	a.i |= flags;
+	if (js) {
+		d = wl_find(dom_save, &js_wl);
+		toggle_js(t, &a);
+	} else {
+		d = wl_find(dom_save, &c_wl);
+		toggle_cwl(t, &a);
+
+		/* find and add to persistent jar */
+		cf = soup_cookie_jar_all_cookies(s_cookiejar);
+		for (;cf; cf = cf->next) {
+			ci = cf->data;
+			if (!strcmp(dom_save, ci->domain) ||
+			    !strcmp(&dom_save[1], ci->domain)) /* deal with leading . */ {
+				c = soup_cookie_copy(ci);
+				_soup_cookie_jar_add_cookie(p_cookiejar, c);
+			}
+		}
+		soup_cookies_free(cf);
+	}
+	if (d)
+		d->handy = 1;
+
 done:
 	if (line)
 		free(line);
@@ -2678,6 +2602,36 @@ done:
 	if (lt)
 		g_free(lt);
 	fclose(f);
+
+	return (0);
+}
+
+int
+cookie_cmd(struct tab *t, struct karg *args)
+{
+	char			*cmd;
+	struct karg		a;
+
+	if ((cmd = getparams(args->s, "cookie")))
+		;
+	else
+		cmd = "show all";
+
+
+	if (g_str_has_prefix(cmd, "show")) {
+		wl_show(t, cmd, "Cookie White List", &c_wl);
+	} else if (g_str_has_prefix(cmd, "save")) {
+		a.s = cmd;
+		wl_save(t, &a, 0);
+	} else if (g_str_has_prefix(cmd, "toggle")) {
+		a.i = XT_WL_TOGGLE;
+		if (g_str_has_prefix(cmd, "toggle d"))
+			a.i |= XT_WL_TOPLEVEL;
+		else
+			a.i |= XT_WL_FQDN;
+		//toggle_js(t, &a);
+	} else if (g_str_has_prefix(cmd, "delete")) {
+	}
 
 	return (0);
 }
@@ -2698,7 +2652,7 @@ js_cmd(struct tab *t, struct karg *args)
 		wl_show(t, cmd, "JavaScript White List", &js_wl);
 	} else if (g_str_has_prefix(cmd, "save")) {
 		a.s = cmd;
-		save_js(t, &a);
+		wl_save(t, &a, 1);
 	} else if (g_str_has_prefix(cmd, "toggle")) {
 		a.i = XT_WL_TOGGLE;
 		if (g_str_has_prefix(cmd, "toggle d"))
