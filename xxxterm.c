@@ -2531,6 +2531,7 @@ wl_save(struct tab *t, struct karg *args, int js)
 	uri = (char *)webkit_web_frame_get_uri(frame);
 	dom = find_domain(uri, 1);
 	if (uri == NULL || dom == NULL) {
+		/* XXX this needs to be generalized */
 		webkit_web_view_load_string(t->wv,
 		    "<html><body>Can't add domain to JavaScript white list</body></html>",
 		    NULL,
@@ -3198,8 +3199,9 @@ xtp_page_cl(struct tab *t, struct karg *args)
 {
 	char			*header, *body, *footer, *page, *tmp;
 	int			i = 1; /* all ids start 1 */
-	GSList			*cf;
+	GSList			*sc, *pc, *pc_start;
 	SoupCookie		*c;
+	char			*type;
 
 	DNPRINTF(XT_D_CMD, "%s", __func__);
 
@@ -3220,6 +3222,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 
 	/* body */
 	body = g_strdup_printf("<div align='center'><table><tr>"
+	    "<th>Type</th>"
 	    "<th>Name</th>"
 	    "<th>Value</th>"
 	    "<th>Domain</th>"
@@ -3229,14 +3232,24 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	    "<th>HTTP_only</th>"
 	    "<th>Remove</th></tr>\n");
 
-	cf = soup_cookie_jar_all_cookies(s_cookiejar);
+	sc = soup_cookie_jar_all_cookies(s_cookiejar);
+	pc = soup_cookie_jar_all_cookies(p_cookiejar);
+	pc_start = pc;
 
-	for (; cf; cf = cf->next) {
-		c = cf->data;
+	for (; sc; sc = sc->next) {
+		c = sc->data;
+
+		type = "Session";
+		for (pc = pc_start; pc; pc = pc->next)
+			if (soup_cookie_equal(pc->data, c)) {
+				type = "Session + Persistent";
+				break;
+			}
 
 		tmp = body;
 		body = g_strdup_printf(
 		    "%s\n<tr>"
+		    "<td style='width: 3%%; text-align: center'>%s</td>"
 		    "<td style='width: 10%%; word-break: break-all'>%s</td>"
 		    "<td style='width: 20%%; word-break: break-all'>%s</td>"
 		    "<td style='width: 10%%; word-break: break-all'>%s</td>"
@@ -3247,6 +3260,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 		    "<td style='width: 3%%; text-align: center'>"
 		    "<a href='%s%d/%s/%d/%d'>X</a></td></tr>\n",
 		    body,
+		    type,
 		    c->name,
 		    c->value,
 		    c->domain,
@@ -3266,7 +3280,9 @@ xtp_page_cl(struct tab *t, struct karg *args)
 		g_free(tmp);
 		i++;
 	}
-	soup_cookies_free(cf);
+
+	soup_cookies_free(sc);
+	soup_cookies_free(pc);
 
 	/* small message if there are none */
 	if (i == 1) {
