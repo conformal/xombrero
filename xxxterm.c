@@ -417,6 +417,7 @@ char		runtime_settings[PATH_MAX]; /* override of settings */
 int		allow_volatile_cookies = 0;
 int		save_global_history = 0; /* save global history to disk */
 char		*user_agent = NULL;
+int		save_rejected_cookies = 0;
 
 struct settings;
 int		set_download_dir(struct settings *, char *);
@@ -523,6 +524,7 @@ struct settings {
 	{ "search_string", XT_S_STR, 0 , NULL, &search_string, NULL },
 	{ "session_timeout", XT_S_INT, 0 , &session_timeout, NULL, NULL },
 	{ "save_global_history", XT_S_INT, XT_SF_RESTART , &save_global_history, NULL, NULL },
+	{ "save_rejected_cookies", XT_S_INT, XT_SF_RESTART , &save_rejected_cookies, NULL, NULL },
 	{ "single_instance", XT_S_INT, XT_SF_RESTART , &single_instance, NULL, NULL },
 	{ "ssl_ca_file", XT_S_STR, 0 , NULL, &ssl_ca_file, NULL },
 	{ "ssl_strict_certs", XT_S_INT, 0 , &ssl_strict_certs, NULL, NULL },
@@ -690,6 +692,7 @@ SoupURI			*proxy_uri = NULL;
 SoupSession		*session;
 SoupCookieJar		*s_cookiejar;
 SoupCookieJar		*p_cookiejar;
+FILE			*r_cookie_f;
 
 struct mime_type_list	mtl;
 struct alias_list	aliases;
@@ -1782,10 +1785,26 @@ focus(struct tab *t, struct karg *args)
 int
 stats(struct tab *t, struct karg *args)
 {
-	char			*stats;
-
+	char			*stats, *s, line[64 * 1024];
+	uint64_t		line_count = 0;
 	if (t == NULL)
 		errx(1, "stats");
+
+	line[0] = '\0';
+	if (save_rejected_cookies) {
+		rewind(r_cookie_f);
+		for (;;) {
+			s = fgets(line, sizeof line, r_cookie_f);
+			if (s == NULL || feof(r_cookie_f) ||
+			    ferror(r_cookie_f))
+				break;
+			line_count++;
+		}
+		/* just in case */
+		fseek(r_cookie_f, 0, SEEK_END);
+		snprintf(line, sizeof line,
+		    "<br>Cookies blocked(*) total: %llu", line_count);
+	}
 
 	stats = g_strdup_printf(XT_DOCTYPE
 	    "<html>"
@@ -1794,12 +1813,13 @@ stats(struct tab *t, struct karg *args)
 	    "</head>"
 	    "<h1>Statistics</h1>"
 	    "<body>"
-	    "Cookies blocked(*) this session: %llu\n"
+	    "Cookies blocked(*) this session: %llu"
+	    "%s"
 	    "<p><small><b>*</b> results vary based on settings"
 	    "</body>"
 	    "</html>",
-	   blocked_cookies
-	    );
+	   blocked_cookies,
+	   line);
 
 	webkit_web_view_load_string(t->wv, stats, NULL, NULL, "");
 	g_free(stats);
@@ -5670,6 +5690,20 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 		DNPRINTF(XT_D_COOKIE,
 		    "soup_cookie_jar_add_cookie: reject %s\n",
 		    cookie->domain);
+		if (save_rejected_cookies) {
+			fseek(r_cookie_f, 0, SEEK_END);
+			fprintf(r_cookie_f, "%s%s\t%s\t%s\t%s\t%lu\t%s\t%s\n",
+			    cookie->http_only ? "#HttpOnly_" : "",
+			    cookie->domain,
+			    *cookie->domain == '.' ? "TRUE" : "FALSE",
+			    cookie->path,
+			    cookie->secure ? "TRUE" : "FALSE",
+			    cookie->expires ?
+			        (gulong)soup_date_to_time_t(cookie->expires) :
+			        0,
+			    cookie->name,
+			    cookie->value);
+		}
 		if (!allow_volatile_cookies)
 			return;
 	}
@@ -5694,8 +5728,10 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 }
 
 void
-setup_cookies(char *file)
+setup_cookies(void)
 {
+	char			file[PATH_MAX];
+
 	set_hook((void *)&_soup_cookie_jar_add_cookie,
 	    "soup_cookie_jar_add_cookie");
 	set_hook((void *)&_soup_cookie_jar_delete_cookie,
@@ -5709,8 +5745,19 @@ setup_cookies(char *file)
 	 * functions.
 	 * do not alter order of these operations.
 	 */
+
+	/* rejected cookies */
+	if (save_rejected_cookies) {
+		snprintf(file, sizeof file, "%s/rejected.txt", work_dir);
+		if ((r_cookie_f = fopen(file, "a+")) == NULL)
+			err(1, "reject cookie file");
+	}
+
+	/* persistent cookies */
+	snprintf(file, sizeof file, "%s/cookies.txt", work_dir);
 	p_cookiejar = soup_cookie_jar_text_new(file, read_only_cookies);
 
+	/* session cookies */
 	s_cookiejar = soup_cookie_jar_new();
 	g_object_set(G_OBJECT(s_cookiejar), SOUP_COOKIE_JAR_ACCEPT_POLICY,
 	    cookie_policy, (void *)NULL);
@@ -6031,8 +6078,7 @@ main(int argc, char *argv[])
 
 	/* cookies */
 	session = webkit_get_default_session();
-	snprintf(file, sizeof file, "%s/cookies.txt", work_dir);
-	setup_cookies(file);
+	setup_cookies();
 
 	/* certs */
 	if (ssl_ca_file) {
