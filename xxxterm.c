@@ -416,6 +416,7 @@ char		download_dir[PATH_MAX];
 char		runtime_settings[PATH_MAX]; /* override of settings */
 int		allow_volatile_cookies = 0;
 int		save_global_history = 0; /* save global history to disk */
+char		*user_agent = NULL;
 
 struct settings;
 int		set_download_dir(struct settings *, char *);
@@ -5599,6 +5600,9 @@ soup_cookie_jar_delete_cookie(SoupCookieJar *jar, SoupCookie *c)
 
 	print_cookie("soup_cookie_jar_delete_cookie", c);
 
+	if (cookies_enabled == 0)
+		return;
+
 	if (jar == NULL || c == NULL)
 		return;
 
@@ -5627,6 +5631,9 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 
 	DNPRINTF(XT_D_COOKIE, "soup_cookie_jar_add_cookie: %p %p %p\n",
 	    jar, p_cookiejar, s_cookiejar);
+
+	if (cookies_enabled == 0)
+		return;
 
 	/* see if we are up and running */
 	if (p_cookiejar == NULL) {
@@ -5668,13 +5675,13 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 void
 setup_cookies(char *file)
 {
-	if (cookies_enabled == 0)
-		return;
-
 	set_hook((void *)&_soup_cookie_jar_add_cookie,
 	    "soup_cookie_jar_add_cookie");
 	set_hook((void *)&_soup_cookie_jar_delete_cookie,
 	    "soup_cookie_jar_delete_cookie");
+
+	if (cookies_enabled == 0)
+		return;
 
 	/*
 	 * the following code is intricate due to overriding several libsoup
