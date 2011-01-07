@@ -526,6 +526,7 @@ struct settings {
 	{ "single_instance", XT_S_INT, XT_SF_RESTART , &single_instance, NULL, NULL },
 	{ "ssl_ca_file", XT_S_STR, 0 , NULL, &ssl_ca_file, NULL },
 	{ "ssl_strict_certs", XT_S_INT, 0 , &ssl_strict_certs, NULL, NULL },
+	{ "user_agent", XT_S_STR, 0 , NULL, &user_agent, NULL },
 	{ "window_height", XT_S_INT, 0 , &window_height, NULL, NULL },
 	{ "window_width", XT_S_INT, 0 , &window_width, NULL, NULL },
 
@@ -4978,10 +4979,14 @@ create_browser(struct tab *t)
 	/* set defaults */
 	t->settings = webkit_web_settings_new();
 
-	g_object_get((GObject *)t->settings, "user-agent", &strval,
-	    (char *)NULL);
-	t->user_agent = g_strdup_printf("%s %s+", strval, version);
-	g_free(strval);
+	if (user_agent == NULL) {
+		g_object_get((GObject *)t->settings, "user-agent", &strval,
+		    (char *)NULL);
+		t->user_agent = g_strdup_printf("%s %s+", strval, version);
+		g_free(strval);
+	} else {
+		t->user_agent = g_strdup(user_agent);
+	}
 
 	setup_webkit(t);
 
