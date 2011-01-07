@@ -692,7 +692,7 @@ SoupURI			*proxy_uri = NULL;
 SoupSession		*session;
 SoupCookieJar		*s_cookiejar;
 SoupCookieJar		*p_cookiejar;
-FILE			*r_cookie_f;
+char			rc_fname[PATH_MAX];
 
 struct mime_type_list	mtl;
 struct alias_list	aliases;
@@ -1787,12 +1787,15 @@ stats(struct tab *t, struct karg *args)
 {
 	char			*stats, *s, line[64 * 1024];
 	uint64_t		line_count = 0;
+	FILE			*r_cookie_f;
+
 	if (t == NULL)
 		errx(1, "stats");
 
 	line[0] = '\0';
 	if (save_rejected_cookies) {
-		rewind(r_cookie_f);
+		if ((r_cookie_f = fopen(rc_fname, "r")) == NULL)
+			err(1, "reject cookie file");
 		for (;;) {
 			s = fgets(line, sizeof line, r_cookie_f);
 			if (s == NULL || feof(r_cookie_f) ||
@@ -1800,8 +1803,7 @@ stats(struct tab *t, struct karg *args)
 				break;
 			line_count++;
 		}
-		/* just in case */
-		fseek(r_cookie_f, 0, SEEK_END);
+		fclose(r_cookie_f);
 		snprintf(line, sizeof line,
 		    "<br>Cookies blocked(*) total: %llu", line_count);
 	}
@@ -3655,11 +3657,6 @@ int
 restart(struct tab *t, struct karg *args)
 {
 	struct karg		a;
-
-	if (save_rejected_cookies) {
-		fflush(r_cookie_f);
-		fclose(r_cookie_f);
-	}
 
 	a.s = XT_RESTART_TABS_FILE;
 	save_tabs(t, &a);
@@ -5674,6 +5671,7 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 {
 	struct domain		*d;
 	SoupCookie		*c;
+	FILE			*r_cookie_f;
 
 	DNPRINTF(XT_D_COOKIE, "soup_cookie_jar_add_cookie: %p %p %p\n",
 	    jar, p_cookiejar, s_cookiejar);
@@ -5696,6 +5694,8 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 		    "soup_cookie_jar_add_cookie: reject %s\n",
 		    cookie->domain);
 		if (save_rejected_cookies) {
+			if ((r_cookie_f = fopen(rc_fname, "a+")) == NULL)
+				err(1, "reject cookie file");
 			fseek(r_cookie_f, 0, SEEK_END);
 			fprintf(r_cookie_f, "%s%s\t%s\t%s\t%s\t%lu\t%s\t%s\n",
 			    cookie->http_only ? "#HttpOnly_" : "",
@@ -5708,6 +5708,8 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 			        0,
 			    cookie->name,
 			    cookie->value);
+			fflush(r_cookie_f);
+			fclose(r_cookie_f);
 		}
 		if (!allow_volatile_cookies)
 			return;
@@ -5752,11 +5754,8 @@ setup_cookies(void)
 	 */
 
 	/* rejected cookies */
-	if (save_rejected_cookies) {
-		snprintf(file, sizeof file, "%s/rejected.txt", work_dir);
-		if ((r_cookie_f = fopen(file, "a+")) == NULL)
-			err(1, "reject cookie file");
-	}
+	if (save_rejected_cookies)
+		snprintf(rc_fname, sizeof file, "%s/rejected.txt", work_dir);
 
 	/* persistent cookies */
 	snprintf(file, sizeof file, "%s/cookies.txt", work_dir);
@@ -6144,11 +6143,6 @@ main(int argc, char *argv[])
 			gdk_input_add(s, GDK_INPUT_READ, socket_watcher, NULL);
 
 	gtk_main();
-
-	if (save_rejected_cookies) {
-		fflush(r_cookie_f);
-		fclose(r_cookie_f);
-	}
 
 	gnutls_global_deinit();
 
