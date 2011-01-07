@@ -409,7 +409,7 @@ Show favorites
 .It Cm favadd
 Add current page to favorites
 .It Cm js
-The js command is used to manipulate the Java Script white lists.
+The js command is used to manipulate the Java Script white list.
 Used by itself it expands to "js show all".
 .It Cm js show all
 Shows all persistent and session entries in the JS white list.
@@ -430,13 +430,28 @@ This action will enable Java Script if it is currently disabled for this entry.
 Toggle Java Script execution for the current FQDN.
 .It Cm js toggle domain
 Toggle Java Script execution for the current top level domain.
-.It Cm cookieadd
-Add current page domain as a cookie white list entry to the runtime
-configuration file.
-This action will also allow cookies if it is currently disallowed for this
-domain.
-If there are volatile session cookies then those will be saved into the
-persistent cookie jar.
+.It Cm cookie
+The cookie command is used to manipulate the cookie white list.
+Used by itself it expands to "cookie show all".
+.It Cm cookie show all
+Shows all persistent and session entries in the cookie white list.
+.It Cm cookie show persistent
+Shows all persistent entries in the cookie white list.
+.It Cm cookie show session
+Shows all session entries in the cookie white list.
+.It Cm cookie save
+.It Cm cookie save fqdn
+Saves the current fully qualified domain name to the persitent white list.
+.It Cm cookie save domain
+Saves the top level domain name to the persitent white list.
+E.g. the www.peereboom.us domain would result in saving .peereboom.us .
+.Pp
+This action will enable cookies if it is currently disabled for this entry.
+.It Cm cookie toggle
+.It Cm cookie toggle fqdn
+Toggle Java Script execution for the current FQDN.
+.It Cm cookie toggle domain
+Toggle cookie support for the current top level domain.
 .It Cm dl
 Show download manager
 .It Cm print
