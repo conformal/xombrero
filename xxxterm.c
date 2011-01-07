@@ -2512,6 +2512,98 @@ done:
 }
 
 int
+wl_show(struct tab *t, char *args, char *title, struct domain_list *wl)
+{
+	struct domain		*d;
+	char			*tmp, *header, *body, *footer;
+	int			p_js = 0, s_js = 0;
+
+	if (g_str_has_prefix(args, "show a") ||
+	    !strcmp(args, "show")) {
+		/* show all */
+		p_js = 1;
+		s_js = 1;
+	} else if (g_str_has_prefix(args, "show p")) {
+		/* show persistent */
+		p_js = 1;
+	} else if (g_str_has_prefix(args, "show s")) {
+		/* show session */
+		s_js = 1;
+	} else
+		return (1);
+
+	header = g_strdup_printf("<title>%s</title><html><body>", title);
+	footer = g_strdup("</body></html>");
+	body = g_strdup("");
+
+	/* p list */
+	if (p_js) {
+		tmp = body;
+		body = g_strdup_printf("%s<h2>Persitent</h2>", body);
+		g_free(tmp);
+		RB_FOREACH_REVERSE(d, domain_list, wl) {
+			if (d->handy == 0)
+				continue;
+			tmp = body;
+			body = g_strdup_printf("%s%s<br>", body, d->d);
+			g_free(tmp);
+		}
+	}
+
+	/* s list */
+	if (s_js) {
+		tmp = body;
+		body = g_strdup_printf("%s<h2>Session</h2>", body);
+		g_free(tmp);
+		RB_FOREACH_REVERSE(d, domain_list, wl) {
+			if (d->handy == 1)
+				continue;
+			tmp = body;
+			body = g_strdup_printf("%s%s", body, d->d);
+			g_free(tmp);
+		}
+	}
+
+	tmp = g_strdup_printf("%s%s%s", header, body, footer);
+	g_free(header);
+	g_free(body);
+	g_free(footer);
+	webkit_web_view_load_string(t->wv, tmp, NULL, NULL, NULL);
+	g_free(tmp);
+	return (0);
+}
+
+int
+cookie_cmd(struct tab *t, struct karg *args)
+{
+	char			*cmd;
+	struct karg		a;
+
+	if ((cmd = getparams(args->s, "cookie")))
+		;
+	else
+		cmd = "show all";
+
+
+	if (g_str_has_prefix(cmd, "show")) {
+		wl_show(t, cmd, "Cookie White List", &c_wl);
+	} else if (g_str_has_prefix(cmd, "save")) {
+		a.s = cmd;
+		//save_js(t, &a);
+	} else if (g_str_has_prefix(cmd, "toggle")) {
+		a.i = XT_WL_TOGGLE;
+		if (g_str_has_prefix(cmd, "toggle d"))
+			a.i |= XT_WL_TOPLEVEL;
+		else
+			a.i |= XT_WL_FQDN;
+		//toggle_js(t, &a);
+	} else if (g_str_has_prefix(cmd, "delete")) {
+	}
+
+	return (0);
+}
+
+int
 save_js(struct tab *t, struct karg *args)
 {
 	char			file[PATH_MAX];
@@ -2591,71 +2683,6 @@ done:
 }
 
 int
-js_show(struct tab *t, char *args)
-{
-	struct domain		*d;
-	char			*tmp, *header, *body, *footer;
-	int			p_js = 0, s_js = 0;
-
-	if (g_str_has_prefix(args, "show a") ||
-	    !strcmp(args, "show")) {
-		/* show all */
-		p_js = 1;
-		s_js = 1;
-	} else if (g_str_has_prefix(args, "show p")) {
-		/* show persistent */
-		p_js = 1;
-	} else if (g_str_has_prefix(args, "show s")) {
-		/* show session */
-		s_js = 1;
-	} else
-		return (1);
-
-	header = g_strdup_printf("<title>%s</title><html><body>",
-	    "JavaScript White List");
-	footer = g_strdup("</body></html>");
-	body = g_strdup("");
-
-	/* p list */
-	if (p_js) {
-		tmp = body;
-		body = g_strdup_printf("%s<h2>Persitent</h2>", body);
-		g_free(tmp);
-		RB_FOREACH_REVERSE(d, domain_list, &js_wl) {
-			if (d->handy == 0)
-				continue;
-			tmp = body;
-			body = g_strdup_printf("%s%s<br>",
-			    body, d->d);
-			g_free(tmp);
-		}
-	}
-
-	/* s list */
-	if (s_js) {
-		tmp = body;
-		body = g_strdup_printf("%s<h2>Session</h2>", body);
-		g_free(tmp);
-		RB_FOREACH_REVERSE(d, domain_list, &js_wl) {
-			if (d->handy == 1)
-				continue;
-			tmp = body;
-			body = g_strdup_printf("%s%s",
-			    body, d->d);
-			g_free(tmp);
-		}
-	}
-
-	tmp = g_strdup_printf("%s%s%s", header, body, footer);
-	g_free(header);
-	g_free(body);
-	g_free(footer);
-	webkit_web_view_load_string(t->wv, tmp, NULL, NULL, NULL);
-	g_free(tmp);
-	return (0);
-}
-
-int
 js_cmd(struct tab *t, struct karg *args)
 {
 	char			*cmd;
@@ -2668,7 +2695,7 @@ js_cmd(struct tab *t, struct karg *args)
 
 
 	if (g_str_has_prefix(cmd, "show")) {
-		js_show(t, cmd);
+		wl_show(t, cmd, "JavaScript White List", &js_wl);
 	} else if (g_str_has_prefix(cmd, "save")) {
 		a.s = cmd;
 		save_js(t, &a);
@@ -3764,7 +3791,7 @@ struct cmd {
 	{ "fav",		0,	xtp_page_fl,		{0} },
 	{ "favadd",		0,	add_favorite,		{0} },
 	{ "js",			2,	js_cmd,			{0} },
-	{ "cookieadd",		0,	add_cookie,		{0} },
+	{ "cookie",		2,	cookie_cmd,		{0} },
 	{ "cert",		1,	cert_cmd,		{0} },
 	{ "ca",			0,	ca_cmd,			{0} },
 	{ "dl"		,	0,	xtp_page_dl,		{0} },
