@@ -2629,7 +2629,7 @@ cookie_cmd(struct tab *t, struct karg *args)
 			a.i |= XT_WL_TOPLEVEL;
 		else
 			a.i |= XT_WL_FQDN;
-		//toggle_js(t, &a);
+		toggle_cwl(t, &a);
 	} else if (g_str_has_prefix(cmd, "delete")) {
 	}
 
