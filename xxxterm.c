@@ -1148,6 +1148,9 @@ get_toplevel_domain(char *domain)
 		s--;
 	}
 
+	if (found)
+		return (domain);
+
 	return (NULL);
 }
 
