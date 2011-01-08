@@ -1,6 +1,7 @@
 .\"	$xxxterm$
 .\"
-.\" Copyright (c) 2010 Marco Peereboom <marco@peereboom.us>
+.\" Copyright (c) 2010, 2011 Marco Peereboom <marco@peereboom.us>
+.\" Copyright (c) 2011 Jason McIntyre <jmc@kerhand.co.uk>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -19,13 +20,12 @@
 .Os
 .Sh NAME
 .Nm xxxterm
-.Nd lightweight web browser with vi key bindings
+.Nd lightweight web browser
 .Sh SYNOPSIS
 .Nm xxxterm
 .Bk -words
-.Op Fl STtV
+.Op Fl nSTtV
 .Op Fl f Ar file
-.Op Fl n
 .Op Ar url ...
 .Ek
 .Sh DESCRIPTION
@@ -34,41 +34,24 @@ is a minimalistic web browser that tries to stay out of the way so that
 valuable screen real estate can be used for much more important stuff.
 It has sane defaults and does not require one to learn a language to do any
 configuration.
-It was written by hackers for hackers and it strives to be small, compact and
-fast.
-.Pp
-When
-.Nm
-starts up, it reads settings from its configuration file,
-.Pa xxxterm.conf .
-See the
-.Sx CONFIGURATION FILES
-section below.
-.Pp
-The following notation is used throughout this page:
-.Pp
-.Bl -tag -width Ds -offset indent -compact
-.It Cm M
-Meta
-.It Cm S
-Shift
-.It Cm C
-Control
-.It Cm M1
-Mouse button 1
-.El
+It was written by hackers for hackers
+and it strives to be small, compact, and fast.
 .Pp
 .Nm
 is very simple in its use.
-Most of the actions are initiated via key or mouse bindings.
-See the
-.Sx BINDINGS
-section below for defaults and customizations.
+Most actions are initiated via key or mouse bindings.
+Key bindings are based on those of the
+.Xr vi 1
+text editor,
+giving web browsing a similar feel to navigating a text document.
+The
+.Sx KEY BINDINGS
+section below documents the various defaults and possible customizations.
 .Pp
 The options are as follows:
 .Bl -tag -width Ds
 .It Fl f Ar file
-Use alternate config file.
+Specify an alternative configuration file.
 .It Fl S
 Disable the toolbar.
 .It Fl T
@@ -78,214 +61,102 @@ Disable tabs.
 .It Fl n
 Open a new tab in a running
 .Nm
-for each specified url.
-This option requires enable_socket to be enabled.
+for each specified URL.
+This option requires
+.Cm enable_socket
+to be enabled.
 .It Fl V
 Display version and exit.
 .El
-.Sh CONFIGURATION FILES
-.Nm
-tries to open the user specific file,
-.Pa ~/.xxxterm.conf .
-If that file is unavailable,
-it then uses built-in defaults.
+.Sh FAST STARTUP
+The following notation is used throughout this page:
 .Pp
-The format of the file is \*(Ltkeyword\*(Gt = \*(Ltsetting\*(Gt.
-For example:
-.Pp
-.Dl http_proxy = http://127.0.0.1:8080
-.Pp
-Enabling or disabling an option is done by using 1 or 0 respectively.
-.Pp
-The file supports the following keywords:
-.Pp
-.Bl -tag -width "title_class_enabledXXX" -offset indent -compact
-.It Cm ctrl_click_focus
-Give focus in newly created tab instead of opening it in the background.
-.It Cm read_only_cookies
-Mark cookies file read-only and discard all cookies once the sessions is
-terminated.
-.It Cm append_next
-When set a new tab is appended after the current tab instead of being appended
-as the last tab.
-.It Cm cookies_enabled
-Enable cookies.
-.It Cm allow_volatile_cookies
-If set cookies are stored in the session cache but will be discarded once
-.Nm
-exits.
-Unfortunately enabling this does allow for some limited tracking on the web.
-.It Cm enable_scripts
-Enable scripts.
-.It Cm enable_plugins
-Enable plugins.
-.It Cm default_font_size
-Set the default browsing font size.
-.It Cm http_proxy
-Proxy server in URI format.
-.It Cm download_dir
-Locations where files are downloaded to.
-This directory must exist and
-.Nm
-validates that during startup.
-.It Cm fancy_bar
-Enables a backward, forward and stop button to the toolbar.
-Additionally if search_string is set it'll enable an entry box for searches.
-.It Cm icon_size
-Permits icon sizes to be changed if fancy_bar is enabled.
-Size 1 is small, 2 is normal, 3 and 4 are progressively larger.
-.It Cm refresh_interval
-Refresh interval while in the download manager.
-Default is 10.
-.It Cm session_timeout
-If this value is greater than 3600 then it is the time added in seconds to a
-session cookie.  If the value is smaller than 3600 then there is no change
-to the expiration of a session cookie.
-.It Cm enable_cookie_white list
-When enabled all cookies must be in the white list or they are rejected.
-.It Cm cookie_wl
-This is a cookie white list item.
-Use multiple times to add multiple entries.
-Valid entries are for example *.moo.com and the equivalent .moo.com.
-A fully qualified host is also valid and is for example www.moo.com.
-.It Cm cookie_policy
-This field delineates the cookie policy.
-Possible values are: no3rdparty, reject 3rd party cookies.
-accept, accept all cookies.
-reject, reject all cookies.
-.It Cm enable_js_whitelist
-When enabled all domains must be in the js white list in order to run javascript.
-NOTE: Make sure enable_scripts is set to 0.
-.It Cm js_wl
-This is a javascript white list item.
-See cookie_wl for semantics and more details.
-.It Cm search_string
-Default search engine string.
-See xxxterm.conf file for details.
-.It Cm mime_type
-Sets an action for a specific or default MIME type.
-For example, to download and view a pdf using kpdf set mime_type =
-application/pdf,kpdf.
-To set a default value use *, for example mime_type = video/*,mplayer.
-Note that the action is only passed the URI and not all applications are
-capable of downloading content and therefore one might have to create a wrapper
-script to download the content first.
-.It Cm alias
-Defines an alias for a given URL, so that the URL is loaded when the alias is
-entered in the address bar.
-If the aliased URL includes a %s format specifier, then any argument given after
-the alias on the address bar is substituted.
-For example, if g,http://www.google.com/search?q=%s is defined as an alias,
-then the URL http://www.google.com/search?q=foo is loaded when navigating to
-"g foo".
-.It Cm ssl_ca_file
-If set to a valid PEM file all server certificates will be validated against it.
-The URL bar will be colored green when the certificate is trusted and yellow when
-untrusted.
-.It Cm window_height
-Set the default height of the browser window.
-.It Cm window_width
-Set the default width of the browser window.
-.Pp
-If ssl_ca_file is not set then the URL bar will color all https connections red.
-.It Cm ssl_strict_certs
-If this value is set connections to untrusted sites will be aborted.
-This value is only used if ssl_ca_file is set.
-.It Cm enable_socket
-When enabled the first instance of
-.Nm
-will create a socket in the ~/.xxxterm directory.
-Using the -n url option on subsequent
-.Nm
-invocations will cause the specified url to be loaded in a new tab.
-Only a user with identical UID and GID can use this option.
-.It Cm resource_dir
-Directory that contains various xxxterm resources such as icons.
-This is OS specific and should be handled by the porter.
-.It Cm single_instance
-If set only one
-.Nm
-will be permitted to run.
-If there is a url specified it will be opened in a new tab in the already
-running
-.Nm
-session.
-.It Cm save_global_history
-If set the global history will be saved to ~/.xxxterm/history at quit
-and restored at startup. See the
-.Sx BINDINGS
-section below, for how the global history is accessed. Global history is
-not saved to disk by default.
-.It Cm runtime_settings
-This setting points to a filename in the .xxxterm work directory that contains
-runtime configuration entries.
-This file is parsed as a normal configuration file and will override settings
-since it is read at a later time.
-One should only use this file to add js_wl, cookie_wl and mime_type entries.
-This file is machine generated and should not be edited by hand.
-.It user_agent
-Set to override the default
-.Nm
-user-agent string.
-.It It save_rejected_cookies
-Saves rejected cookies in cookie format in {work_dir}/rejected.txt.
-All cookies are saved and unlike a cookie jar they are never replaced.
-Make sure there is enough disk space to enable this feature.
+.Bl -tag -width Ds -offset indent -compact
+.It Cm C
+Control
+.It Cm M
+Meta (sometimes marked Alt)
+.It Cm M1
+Mouse button 1
+.It Cm S
+Shift
 .El
 .Pp
+To browse to a specific address,
+either use the mouse to click on the address bar
+or press
+.Cm F6
+to shift the keyboard focus to the address bar.
+The address is then entered manually.
+.Pp
+The mouse can be used to navigate the page in the traditional manner,
+or the keyboard can be used instead.
+For example,
+.Cm PageUp
+and
+.Cm PageDown
+will scroll up and down the page.
+.Pp
+To follow a link,
+either click on it or use the
+.Cm f
+key and have
 .Nm
-overrides http_proxy if it is specified as an environment variable.
-.Sh BINDINGS
+assign numbers to each link on the page;
+entering that number on the keyboard will prompt
 .Nm
-provides many functions (or actions) accessed via key or mouse bindings.
+to follow the link.
+.Sh KEY BINDINGS
+.Nm
+provides many actions accessed via key or mouse bindings.
+Note that WebKit & GTK+ have their own set of key bindings
+that are not overruled and therefore are available as-is.
+.Ss Search Commands
+These commands are used to search for text strings within a web page.
 .Pp
-The current mouse bindings are described below:
-.Pp
-.Bl -tag -width "tabnew, tabedit, tabe [URI]" -offset indent -compact
-.It Cm C-M1
-Open new tab with the clicked link.
-.El
-.Pp
-The default key bindings are described below.
-.Pp
-Search:
-.Pp
-.Bl -tag -width "tabnew, tabedit, tabe [URI]" -offset indent -compact
+.Bl -tag -width Ds -offset indent -compact
 .It Cm /
 Start a search
-.It Cm ?
+.It Cm \&?
 Start a backwards search
 .It Cm n
 Next item matching search
 .It Cm N
 Previous item matching search
 .El
+.Ss Focus Commands
+These commands are used to shift the focus of
+.Nm
+from one area to another.
 .Pp
-Focus:
-.Pp
-.Bl -tag -width "tabnew, tabedit, tabe [URI]" -offset indent -compact
+.Bl -tag -width Ds -offset indent -compact
 .It Cm F6
-Focus on URI entry
+Focus on address bar
 .It Cm F7
 Focus on search entry
 .El
+.Ss Command Aliases
+These commands allow the user to map specific actions to specific keys.
+It can be useful when the
+.Fl S
+option is used.
 .Pp
-Command aliases (useful when -S flag is used):
-.Pp
-.Bl -tag -width "tabnew, tabedit, tabe [URI]" -offset indent -compact
+.Bl -tag -width Ds -offset indent -compact
 .It Cm F9
-Alias for ":open" (See command descriptions below)
+Alias for ":open"
 .It Cm F10
-Alias for ":open <current-uri>"
+Alias for ":open current-uri"
 .It Cm F11
 Alias for ":tabnew"
 .It Cm F12
-Alias for ":tabnew <current-uri>"
+Alias for ":tabnew current-uri"
 .El
+.Ss Navigation Commands
+These commands allow the user to navigate web pages and,
+to some extent,
+control the browser.
 .Pp
-Navigation:
-.Pp
-.Bl -tag -width "tabnew, tabedit, tabe [URI]" -offset indent -compact
+.Bl -tag -width "Space, C-f, PageDownXXX" -offset indent -compact
 .It Cm F5, C-r, C-l
 Reload page
 .It Cm C-R
@@ -323,174 +194,192 @@ Print page
 .It Cm M-h
 Global history
 .It Cm C-j
-Toggle javascript enabled for domain.
+Toggle javascript enabled for domain
 .It Cm C-s
-Toggle source view.
+Toggle source view
 .El
+.Ss Tab Manipulation
+.Nm
+supports tabbed browsing.
+That is, web pages may be opened in separate tabs,
+allowing the user to quickly move from one page to another,
+and back.
+These commands then are used to create, destroy, and move between tabs.
 .Pp
-Tab Manipulation:
-.Pp
-.Bl -tag -width "tabnew, tabedit, tabe [URI]" -offset indent -compact
+.Bl -tag -width "C-plus, C-equalXXX" -offset indent -compact
+.It Cm C-M1
+Open new tab with the clicked link
 .It Cm C-t
-Create new tab with focus in URI entry
+Create new tab with focus in URL entry
 .It Cm C-w
 Destroy current tab
 .It Cm U
 Undo close tab
 .It Cm C-Left
-Go to the previous tab.
+Go to the previous tab
 .It Cm C-Right
-Go to the next tab.
+Go to the next tab
 .It Cm C-[1..0]
-Jump to page N
+Jump to page
+.Ar N
 .It Cm C-minus
-Shrink font size by one point.
+Shrink font size by one point
 .It Cm C-plus, C-equal
-Grow font size by one point.
+Grow font size by one point
 .El
+.Ss Yanking and pasting
+These commands copy and paste text to and from the clipboard.
 .Pp
-Yanking and pasting:
-.Pp
-.Bl -tag -width "tabnew, tabedit, tabe [URI]" -offset indent -compact
-.It Cm y
-Yank the current URI into the clipboard.
+.Bl -tag -width Ds -offset indent -compact
 .It Cm p
-Paste the contents of the clipboard into the address bar.
+Paste the contents of the clipboard into the address bar
 .It Cm P
-Paste the contents of the clipboard into a new tab.
+Paste the contents of the clipboard into a new tab
+.It Cm y
+Yank the current URL into the clipboard
 .El
-.Pp
-Mouse-less browsing (a.k.a. link following):
-.Pp
-.Bl -tag -width "tabnew, tabedit, tabe [URI]" -offset indent -compact
-.It Cm f
-Highlight all links and prefix them with a number.
-Press number to follow link.
+.Ss Hyperlink Following
+This allows the user to follow hyperlinks
+without using a mouse.
+Enter the corresponding number to follow the link.
 Alternatively one can type the name of the link and when there are no more
 possibilities
 .Nm
 will follow the link.
+.Pp
+.Bl -tag -width Ds -offset indent -compact
+.It Cm f
+Highlight all links and prefix them with a number.
 .El
+.Ss Exiting
+Commands to exit the browser.
 .Pp
-Exiting:
-.Pp
-.Bl -tag -width "tabnew, tabedit, tabe [URI]" -offset indent -compact
+.Bl -tag -width Ds -offset indent -compact
 .It Cm C-Q
 Quit
 .El
+.Sh COMMAND MODE
+Command mode works in a similar fashion to the
+.Xr vi 1
+editor;
+it is entered by typing a colon and exited by typing Esc.
+The commands and their descriptions are listed below.
+.Bl -tag -width Ds -offset indent
+.It Cm about , version
+Show the "About" page.
+.It Cm ca
+Display CA certificates.
+.It Cm cert , cert show
+Download and display certificates of domain on tab.
+.It Cm cert save
+Save certificate into a local store.
+The next time the site is visited it is compared against the store.
+If the certificate matches,
+the address bar will be blue;
+if it doesn't the bar will be red.
+.It Cm cookie
+The
+.Cm cookie
+command is used to manipulate the cookie whitelist.
+Used by itself it expands to
+.Cm cookie show all .
+.It Cm cookies
+Show cookie jar contents.
+.It Cm cookie save
+.It Cm cookie save domain
+Save the top level domain name to the persitent whitelist.
+For example,
+the www.peereboom.us domain would result in saving .peereboom.us.
 .Pp
-Note: WebKit & GTK+ have many default key bindings that are not overruled and
-therefore are available as-is.
+This action enables cookies if it is currently disabled for this entry.
+.It Cm cookie save fqdn
+Save the current fully qualified domain name (FQDN)
+to the persitent whitelist.
+.It Cm cookie show all
+Show all persistent and session entries in the cookie whitelist.
+.It Cm cookie show persistent
+Show all persistent entries in the cookie whitelist.
+.It Cm cookie show session
+Show all session entries in the cookie whitelist.
+.It Cm cookie toggle
+.It Cm cookie toggle domain
+Toggle cookie support for the current top level domain.
+.It Cm cookie toggle fqdn
+Toggle Java Script execution for the current FQDN.
+.It Cm dl
+Show download manager.
+.It Cm fav
+Show favorites.
+.It Cm favadd
+Add the current page to favorites.
+.It Cm h , hist , history
+Show global history.
+.It Cm help
+Show help page.
+.It Cm home
+Go to home URL.
+.It Cm js
+The
+.Cm js
+command is used to manipulate the Java Script whitelist.
+Used by itself it expands to
+.Cm js show all .
+.It Cm js save
+.It Cm js save domain
+Saves the top level domain name to the persitent whitelist.
+For example,
+the www.peereboom.us domain would result in saving .peereboom.us.
 .Pp
-Command mode is entered by typing a colon and exited by typing Esc.
-The commands and descriptions are listed below:
-.Pp
-.Bl -tag -width "tabnew, tabedit, tabe [URI]" -offset indent -compact
-.It Cm qa, qa!, q!
+This action enables Java Script if it is currently disabled for this entry.
+.It Cm js save fqdn
+Saves the current FQDN to the persitent whitelist.
+.It Cm js show all
+Shows all persistent and session entries in the JS whitelist.
+.It Cm js show persistent
+Shows all persistent entries in the JS whitelist.
+.It Cm js show session
+Shows all session entries in the JS whitelist.
+.It Cm js toggle
+.It Cm js toggle domain
+Toggle Java Script execution for the current top level domain.
+.It Cm js toggle fqdn
+Toggle Java Script execution for the current FQDN.
+.It Cm open , op , o URL
+Open URL.
+.It Cm print
+Print page.
+.It Cm qa , qa! , q!
 Quit
+.Nm .
+.It Cm quit , q
+Close current tab and quit
 .Nm
+if it is the last tab.
+.It Cm restart
+Restart
+.Nm
+and reload all current tabs.
+.It Cm stats
+Show blocked cookie statistics.
+These statistics vary based on settings and are not persistent.
+.It Cm tabclose , tabc
+Close current tab.
+.It Cm tabnew , tabedit , tabe URL
+Create new tab and optionally open provided URL.
+.It Cm tabnext , tabn
+Go to the next tab.
+.It Cm tabprevious , tabp
+Go to the previous tab.
 .It Cm w
 Save open tabs.
 The tabs will be restored next time
 .Nm
 is started.
-.It Cm restart
-Restart
-.Nm
-and reload all current tabs.
-.It Cm wq, wq!
+.It Cm wq , wq!
 Save open tabs and quit.
 The tabs will be restored next time
 .Nm
 is started.
-.It Cm cert, cert show
-Download and display certificate(s) of domain on tab.
-.It Cm cert save
-Save certificate into local store.
-Next time the site is visited it is compared against the store.
-If the certificate matches the address bar will be blue, if it doesn't the bar
-will be red.
-.It Cm ca
-Display CA certificate(s).
-.It Cm fav
-Show favorites
-.It Cm favadd
-Add current page to favorites
-.It Cm js
-The js command is used to manipulate the Java Script white list.
-Used by itself it expands to "js show all".
-.It Cm js show all
-Shows all persistent and session entries in the JS white list.
-.It Cm js show persistent
-Shows all persistent entries in the JS white list.
-.It Cm js show session
-Shows all session entries in the JS white list.
-.It Cm js save
-.It Cm js save fqdn
-Saves the current fully qualified domain name to the persitent white list.
-.It Cm js save domain
-Saves the top level domain name to the persitent white list.
-E.g. the www.peereboom.us domain would result in saving .peereboom.us .
-.Pp
-This action will enable Java Script if it is currently disabled for this entry.
-.It Cm js toggle
-.It Cm js toggle fqdn
-Toggle Java Script execution for the current FQDN.
-.It Cm js toggle domain
-Toggle Java Script execution for the current top level domain.
-.It Cm cookie
-The cookie command is used to manipulate the cookie white list.
-Used by itself it expands to "cookie show all".
-.It Cm cookie show all
-Shows all persistent and session entries in the cookie white list.
-.It Cm cookie show persistent
-Shows all persistent entries in the cookie white list.
-.It Cm cookie show session
-Shows all session entries in the cookie white list.
-.It Cm cookie save
-.It Cm cookie save fqdn
-Saves the current fully qualified domain name to the persitent white list.
-.It Cm cookie save domain
-Saves the top level domain name to the persitent white list.
-E.g. the www.peereboom.us domain would result in saving .peereboom.us .
-.Pp
-This action will enable cookies if it is currently disabled for this entry.
-.It Cm cookie toggle
-.It Cm cookie toggle fqdn
-Toggle Java Script execution for the current FQDN.
-.It Cm cookie toggle domain
-Toggle cookie support for the current top level domain.
-.It Cm dl
-Show download manager
-.It Cm print
-Print page
-.It Cm h, hist, history
-Global history
-.It Cm help
-Show help page.
-.It Cm home
-Go to home URL.
-.It Cm about, version
-Show about page.
-.It Cm cookies
-Show cookie jar contents.
-.It Cm stats
-Show blocked cookies statistics.
-These statistics vary based on settings and are not persistent.
-.It Cm open, op, o <URI>
-Open URI.
-.It Cm tabnew, tabedit, tabe [URI]
-Create new tab and optionally open provided URI
-.It Cm tabclose, tabc
-Close current tab.
-.It Cm quit, q
-Close current tab and quit
-.Nm
-if it is the last tab.
-.It Cm tabprevious, tabp
-Go to the previous tab.
-.It Cm tabnext, tabn
-Go to the next tab.
 .El
 .Sh FILES
 .Bl -tag -width "/etc/xxxterm.confXXX" -compact
@@ -501,20 +390,201 @@ user specific settings.
 .Nm
 scratch directory.
 .El
-.Sh BUGS
-When save_global_history is enabled
+.Pp
 .Nm
-is supposed to, in addition to restoring the global history, color the
-visited links accordingly, however due to bug #51747 in WebKit this does
-not happen.
+tries to open the user specific file,
+.Pa ~/.xxxterm.conf .
+If that file is unavailable,
+it then uses built-in defaults.
+.Pp
+The format of the file is \*(Ltkeyword\*(Gt = \*(Ltsetting\*(Gt.
+For example:
+.Pp
+.Dl http_proxy = http://127.0.0.1:8080
+.Pp
+Enabling or disabling an option is done by using 1 or 0 respectively.
+.Pp
+The file supports the following keywords:
+.Pp
+.Bl -tag -width "enable_cookie_whitelistXXX" -offset indent -compact
+.It Cm alias
+Defines an alias for a given URL, so that the URL is loaded when the alias is
+entered in the address bar.
+If the aliased URL includes a %s format specifier, then any argument given after
+the alias on the address bar is substituted.
+For example, if g,http://www.google.com/search?q=%s is defined as an alias,
+then the URL http://www.google.com/search?q=foo is loaded when navigating to
+"g foo".
+.It Cm allow_volatile_cookies
+If set cookies are stored in the session cache but will be discarded once
+.Nm
+exits.
+Unfortunately enabling this does allow for some limited tracking on the web.
+.It Cm append_next
+When set a new tab is appended after the current tab instead of being appended
+as the last tab.
+.It Cm cookie_policy
+This field delineates the cookie policy.
+Possible values are: no3rdparty, reject 3rd party cookies.
+accept, accept all cookies.
+reject, reject all cookies.
+.It Cm cookie_wl
+This is a cookie whitelist item.
+Use multiple times to add multiple entries.
+Valid entries are for example *.moo.com and the equivalent .moo.com.
+A fully qualified host is also valid and is for example www.moo.com.
+.It Cm cookies_enabled
+Enable cookies.
+.It Cm ctrl_click_focus
+Give focus in newly created tab instead of opening it in the background.
+.It Cm default_font_size
+Set the default browsing font size.
+.It Cm download_dir
+Locations where files are downloaded to.
+This directory must exist and
+.Nm
+validates that during startup.
+.It Cm enable_cookie_whitelist
+When enabled all cookies must be in the whitelist or they are rejected.
+.It Cm enable_js_whitelist
+When enabled all domains must be in the js whitelist in order to run javascript.
+NOTE: Make sure
+.Cm enable_scripts
+is set to 0.
+.It Cm enable_plugins
+Enable plugins.
+.It Cm enable_scripts
+Enable scripts.
+.It Cm enable_socket
+When enabled the first instance of
+.Nm
+will create a socket in the
+.Pa ~/.xxxterm
+directory.
+Using the -n url option on subsequent
+.Nm
+invocations will cause the specified URL to be loaded in a new tab.
+Only a user with identical UID and GID can use this option.
+.It Cm fancy_bar
+Enables a backward, forward, and stop button to the toolbar.
+Additionally if
+.Cm search_string
+is set it'll enable an entry box for searches.
+.It Cm http_proxy
+Proxy server in URL format.
+.Nm
+overrides
+.Cm http_proxy
+if it is specified as an environment variable.
+.It Cm icon_size
+Permits icon sizes to be changed if
+.Cm fancy_bar
+is enabled.
+Size 1 is small; 2 is normal; 3 and 4 are progressively larger.
+.It Cm js_wl
+This is a javascript whitelist item.
+See
+.Cm cookie_wl
+for semantics and more details.
+.It Cm mime_type
+Sets an action for a specific or default MIME type.
+For example, to download and view a pdf using kpdf set mime_type =
+application/pdf,kpdf.
+To set a default value use *, for example mime_type = video/*,mplayer.
+Note that the action is only passed the URL and not all applications are
+capable of downloading content and therefore one might have to create a wrapper
+script to download the content first.
+.It Cm read_only_cookies
+Mark cookies file read-only and discard all cookies once the session is
+terminated.
+.It Cm refresh_interval
+Refresh interval while in the download manager.
+The default is 10.
+.It Cm resource_dir
+Directory that contains various
+.Nm
+resources such as icons.
+This is OS-specific and should be handled by the porter.
+.It Cm runtime_settings
+This setting points to a filename in the
+.Pa .xxxterm
+work directory that contains
+runtime configuration entries.
+This file is parsed as a normal configuration file and will override settings
+since it is read at a later time.
+One should only use this file to add js_wl, cookie_wl and mime_type entries.
+This file is machine generated and should not be edited by hand.
+.It Cm save_global_history
+If set the global history will be saved to
+.Pa ~/.xxxterm/history
+when quitting
+and restored at startup.
+See the
+.Sx KEY BINDINGS
+section above for how the global history is accessed.
+Global history is not saved to disk by default.
+.It Cm save_rejected_cookies
+Saves rejected cookies in cookie format in {work_dir}/rejected.txt.
+All cookies are saved and unlike a cookie jar they are never replaced.
+Make sure there is enough disk space to enable this feature.
+.It Cm search_string
+Default search engine string.
+See the
+.Pa xxxterm.conf
+file for details.
+.It Cm session_timeout
+If this value is greater than 3600 then it is the time added in seconds to a
+session cookie.
+If the value is smaller than 3600 then there is no change
+to the expiration of a session cookie.
+.It Cm single_instance
+If set only one
+.Nm
+will be permitted to run.
+If there is a URL specified it will be opened in a new tab in the already
+running
+.Nm
+session.
+.It Cm ssl_ca_file
+If set to a valid PEM file
+all server certificates will be validated against it.
+The URL bar will be colored green when the certificate is trusted
+and yellow when untrusted.
+.It Cm ssl_strict_certs
+If this value is set connections to untrusted sites will be aborted.
+This value is only used if
+.Cm ssl_ca_file
+is set.
+.It Cm user_agent
+Set to override the default
+.Nm
+user-agent string.
+.It Cm window_height
+Set the default height of the browser window.
+.It Cm window_width
+Set the default width of the browser window.
+If
+.Cm ssl_ca_file
+is not set then the URL bar will color all HTTPS connections red.
+.El
 .Sh HISTORY
 .Nm
-was inspired by vimprobable2 and the bloat in other UNIX web browsers.
+was inspired by vimprobable2 and the bloat in other
+.Ux
+web browsers.
 .Sh AUTHORS
 .An -nosplit
-.Pp
 .Nm
 was written by
 .An Marco Peereboom Aq marco@peereboom.us ,
+.An Stevan Andjelkovic Aq stevan@student.chalmers.se
 and
-.An Edd Barrett Aq vext01@gmail.com
+.An Edd Barrett Aq vext01@gmail.com .
+.Sh BUGS
+When
+.Cm save_global_history
+is enabled
+.Nm
+is supposed to, in addition to restoring the global history, color the
+visited links accordingly; however due to bug #51747 in WebKit this does
+not happen.
