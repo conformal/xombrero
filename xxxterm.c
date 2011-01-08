@@ -2202,6 +2202,9 @@ start_tls(int s, gnutls_session_t *gs, gnutls_certificate_credentials_t *xc)
 	if (gs == NULL || xc == NULL)
 		goto done;
 
+	bzero(&xcred, sizeof xcred);
+	bzero(&gsession, sizeof gsession);
+
 	gnutls_certificate_allocate_credentials(&xcred);
 	gnutls_certificate_set_x509_trust_file(xcred, ssl_ca_file,
 	    GNUTLS_X509_FMT_PEM);
@@ -5201,16 +5204,16 @@ delete_tab(struct tab *t)
 	if (t == NULL)
 		return;
 
+	TAILQ_REMOVE(&tabs, t, entry);
+
 	/* halt all webkit activity */
 	webkit_web_view_stop_loading(t->wv);
-
 	undo_close_tab_save(t);
 
 	gtk_widget_destroy(t->vbox);
 	g_free(t->user_agent);
 	g_free(t);
 
-	TAILQ_REMOVE(&tabs, t, entry);
 	recalc_tabs();
 	if (TAILQ_EMPTY(&tabs))
 		create_new_tab(NULL, NULL, 1);
