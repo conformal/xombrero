@@ -1794,18 +1794,18 @@ stats(struct tab *t, struct karg *args)
 
 	line[0] = '\0';
 	if (save_rejected_cookies) {
-		if ((r_cookie_f = fopen(rc_fname, "r")) == NULL)
-			err(1, "reject cookie file");
-		for (;;) {
-			s = fgets(line, sizeof line, r_cookie_f);
-			if (s == NULL || feof(r_cookie_f) ||
-			    ferror(r_cookie_f))
-				break;
-			line_count++;
+		if ((r_cookie_f = fopen(rc_fname, "r"))) {
+			for (;;) {
+				s = fgets(line, sizeof line, r_cookie_f);
+				if (s == NULL || feof(r_cookie_f) ||
+				    ferror(r_cookie_f))
+					break;
+				line_count++;
+			}
+			fclose(r_cookie_f);
+			snprintf(line, sizeof line,
+			    "<br>Cookies blocked(*) total: %llu", line_count);
 		}
-		fclose(r_cookie_f);
-		snprintf(line, sizeof line,
-		    "<br>Cookies blocked(*) total: %llu", line_count);
 	}
 
 	stats = g_strdup_printf(XT_DOCTYPE
