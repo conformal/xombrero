@@ -2493,7 +2493,7 @@ wl_show(struct tab *t, char *args, char *title, struct domain_list *wl)
 	/* p list */
 	if (p_js) {
 		tmp = body;
-		body = g_strdup_printf("%s<h2>Persitent</h2>", body);
+		body = g_strdup_printf("%s<h2>Persistent</h2>", body);
 		g_free(tmp);
 		RB_FOREACH_REVERSE(d, domain_list, wl) {
 			if (d->handy == 0)
