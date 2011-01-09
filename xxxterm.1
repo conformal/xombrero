@@ -476,6 +476,11 @@ Proxy server in URL format.
 overrides
 .Cm http_proxy
 if it is specified as an environment variable.
+It must be noted that one MUST use an IP address and not a FQDN.
+.Pp
+I one desires to use a socks proxy then an intermediary tool must be used.
+It has been reported that tsocks works with
+.Nm .
 .It Cm icon_size
 Permits icon sizes to be changed if
 .Cm fancy_bar
