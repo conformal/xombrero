@@ -2217,15 +2217,15 @@ start_tls(int s, gnutls_session_t *gs, gnutls_certificate_credentials_t *xc)
 	gnutls_transport_set_ptr(gsession, (gnutls_transport_ptr_t)(long)s);
 	if ((rv = gnutls_handshake(gsession)) < 0) {
 		warnx("gnutls_handshake failed %d", rv);
-		stop_tls(gsession, xcred);
+		gnutls_certificate_free_credentials(xcred);
 		goto done;
 	}
 
 	gnutls_credentials_type_t cred;
 	cred = gnutls_auth_get_type(gsession);
 	if (cred != GNUTLS_CRD_CERTIFICATE) {
-		warnx("invalid credential type");
-		stop_tls(gsession, xcred);
+		gnutls_deinit(gsession);
+		gnutls_certificate_free_credentials(xcred);
 		goto done;
 	}
 
