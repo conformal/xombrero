@@ -2711,7 +2711,6 @@ js_cmd(struct tab *t, struct karg *args)
 	else
 		cmd = "show all";
 
-
 	if (g_str_has_prefix(cmd, "show")) {
 		wl_show(t, cmd, "JavaScript White List", &js_wl);
 	} else if (g_str_has_prefix(cmd, "save")) {
