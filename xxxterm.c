@@ -40,6 +40,7 @@
 #include <util.h>
 #include <pthread.h>
 #include <dlfcn.h>
+#include <errno.h>
 
 #ifdef __linux__
 #include "linux/tree.h"
@@ -598,8 +599,6 @@ show_oops(struct tab *t, const char *fmt, ...)
 		errx(1, "moo");
 	va_end(ap);
 
-	DNPRINTF(XT_D_CMD,"show_oops(%d, '%s')\n",t->tab_id, msg);
-
 	gtk_entry_set_text(GTK_ENTRY(t->oops), msg);
 	gtk_widget_hide(t->cmd);
 	gtk_widget_show(t->oops);
@@ -774,10 +773,11 @@ generate_xtp_session_key(char **key)
  * return 1 if OK
  */
 int
-validate_xtp_session_key(char *trusted, char *untrusted)
+validate_xtp_session_key(struct tab *t, char *trusted, char *untrusted)
 {
 	if (strcmp(trusted, untrusted) != 0) {
-		warn("%s: xtp session key mismatch possible spoof", __func__);
+		show_oops(t, "%s: xtp session key mismatch possible spoof",
+		    __func__);
 		return (0);
 	}
 
@@ -1447,7 +1447,7 @@ restore_global_history(void)
 }
 
 int
-save_global_history_to_disk(void)
+save_global_history_to_disk(struct tab *t)
 {
 	char			file[PATH_MAX];
 	FILE			*f;
@@ -1457,7 +1457,8 @@ save_global_history_to_disk(void)
 	    pwd->pw_dir, XT_DIR, XT_HISTORY_FILE);
 
 	if ((f = fopen(file, "w")) == NULL) {
-		warnx("%s: fopen", __func__);
+		show_oops(t, "%s: global history file: %s",
+		    __func__, strerror(errno));
 		return (1);
 	}
 
@@ -1475,7 +1476,7 @@ int
 quit(struct tab *t, struct karg *args)
 {
 	if (save_global_history)
-		save_global_history_to_disk();
+		save_global_history_to_disk(t);
 
 	gtk_main_quit();
 
@@ -1543,7 +1544,7 @@ save_tabs(struct tab *t, struct karg *a)
 	    pwd->pw_dir, XT_DIR, a->s);
 
 	if ((f = fopen(file, "w")) == NULL) {
-		warn("save_tabs");
+		show_oops(t, "Can't open save_tabs file: %s", strerror(errno));
 		return (1);
 	}
 
@@ -1740,7 +1741,7 @@ toggle_js(struct tab *t, struct karg *args)
 	uri = (char *)webkit_web_frame_get_uri(frame);
 	dom = find_domain(uri, 1);
 	if (uri == NULL || dom == NULL) {
-		load_webkit_string(t, "<html><body>Can't toggle domain in JavaScript white list</body></html>");
+		show_oops(t, "Can't toggle domain in JavaScript white list");
 		goto done;
 	}
 
@@ -1829,7 +1830,9 @@ stats(struct tab *t, struct karg *args)
 			fclose(r_cookie_f);
 			snprintf(line, sizeof line,
 			    "<br>Cookies blocked(*) total: %llu", line_count);
-		}
+		} else
+			show_oops(t, "Can't open blocked cookies file: %s",
+			    strerror(errno));
 	}
 
 	stats = g_strdup_printf(XT_DOCTYPE
@@ -1961,7 +1964,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	snprintf(file, sizeof file, "%s/%s/%s",
 	    pwd->pw_dir, XT_DIR, XT_FAVS_FILE);
 	if ((f = fopen(file, "r")) == NULL) {
-		warn("favorites");
+		show_oops(t, "Can't open favorites file: %s", strerror(errno));
 		return (1);
 	}
 
@@ -2112,16 +2115,18 @@ ca_cmd(struct tab *t, struct karg *args)
 
 	/* yeah yeah stat race */
 	if (stat(ssl_ca_file, &sb)) {
-		warn("no CA file: %s", ssl_ca_file);
+		show_oops(t, "no CA file: %s", ssl_ca_file);
 		goto done;
 	}
 
-	if ((f = fopen(ssl_ca_file, "r")) == NULL)
+	if ((f = fopen(ssl_ca_file, "r")) == NULL) {
+		show_oops(t, "Can't open CA file: %s", strerror(errno));
 		return (1);
+	}
 
 	certs_buf = g_malloc(sb.st_size + 1);
 	if (fread(certs_buf, 1, sb.st_size, f) != sb.st_size) {
-		warn("certs");
+		show_oops(t, "Can't read CA file: %s", strerror(errno));
 		goto done;
 	}
 	certs_buf[sb.st_size] = '\0';
@@ -2138,7 +2143,7 @@ ca_cmd(struct tab *t, struct karg *args)
 	c = g_malloc(sizeof(gnutls_x509_crt_t) * certs);
 	certs_read = gnutls_x509_crt_list_import(c, &certs, &dt, GNUTLS_X509_FMT_PEM, 0);
 	if (certs_read <= 0) {
-		warnx("couldn't read certs");
+		show_oops(t, "No cert(s) available");
 		goto done;
 	}
 	show_certs(t, c, certs_read, "Certificate Authority Certificates");
@@ -2217,7 +2222,8 @@ stop_tls(gnutls_session_t gsession, gnutls_certificate_credentials_t xcred)
 }
 
 int
-start_tls(int s, gnutls_session_t *gs, gnutls_certificate_credentials_t *xc)
+start_tls(struct tab *t, int s, gnutls_session_t *gs,
+    gnutls_certificate_credentials_t *xc)
 {
 	gnutls_certificate_credentials_t xcred;
 	gnutls_session_t	gsession;
@@ -2237,7 +2243,7 @@ start_tls(int s, gnutls_session_t *gs, gnutls_certificate_credentials_t *xc)
 	gnutls_credentials_set(gsession, GNUTLS_CRD_CERTIFICATE, xcred);
 	gnutls_transport_set_ptr(gsession, (gnutls_transport_ptr_t)(long)s);
 	if ((rv = gnutls_handshake(gsession)) < 0) {
-		warnx("gnutls_handshake failed %d fatal %d %s",
+		show_oops(t, "gnutls_handshake failed %d fatal %d %s",
 		    rv,
 		    gnutls_error_is_fatal(rv),
 		    gnutls_strerror_name(rv));
@@ -2318,7 +2324,8 @@ save_certs(struct tab *t, gnutls_x509_crt_t *certs,
 
 	snprintf(file, sizeof file, "%s/%s", certs_dir, domain);
 	if ((f = fopen(file, "w")) == NULL) {
-		warn("save_certs");
+		show_oops(t, "Can't create cert file %s %s",
+		    file, strerror(errno));
 		return;
 	}
 
@@ -2326,11 +2333,11 @@ save_certs(struct tab *t, gnutls_x509_crt_t *certs,
 		cert_buf_sz = sizeof cert_buf;
 		if (gnutls_x509_crt_export(certs[i], GNUTLS_X509_FMT_PEM,
 		    cert_buf, &cert_buf_sz)) {
-			warnx("gnutls_x509_crt_export");
+			show_oops(t, "gnutls_x509_crt_export failed");
 			goto done;
 		}
 		if (fwrite(cert_buf, cert_buf_sz, 1, f) != 1) {
-			warn("fwrite certs");
+			show_oops(t, "Can't write certs: %s", strerror(errno));
 			goto done;
 		}
 	}
@@ -2365,14 +2372,14 @@ load_compare_cert(struct tab *t, struct karg *args)
 		return (1);
 
 	/* go ssl/tls */
-	if (start_tls(s, &gsession, &xcred)) {
-		warnx("start_tls");
+	if (start_tls(t, s, &gsession, &xcred)) {
+		show_oops(t, "Start TLS failed");
 		goto done;
 	}
 
 	/* get certs */
 	if (get_connection_certs(gsession, &certs, &cert_count)) {
-		warnx("get_connection_certs");
+		show_oops(t, "Can't get connection certificates");
 		goto done;
 	}
 
@@ -2384,16 +2391,13 @@ load_compare_cert(struct tab *t, struct karg *args)
 		cert_buf_sz = sizeof cert_buf;
 		if (gnutls_x509_crt_export(certs[i], GNUTLS_X509_FMT_PEM,
 		    cert_buf, &cert_buf_sz)) {
-			warnx("gnutls_x509_crt_export");
 			goto freeit;
 		}
 		if (fread(r_cert_buf, cert_buf_sz, 1, f) != 1) {
-			warn("fread certs");
 			rv = -1; /* critical */
 			goto freeit;
 		}
 		if (bcmp(r_cert_buf, cert_buf, sizeof cert_buf_sz)) {
-			warnx("invalid cert");
 			rv = -1; /* critical */
 			goto freeit;
 		}
@@ -2438,14 +2442,14 @@ cert_cmd(struct tab *t, struct karg *args)
 		return (1);
 
 	/* go ssl/tls */
-	if (start_tls(s, &gsession, &xcred)) {
-		warnx("start_tls");
+	if (start_tls(t, s, &gsession, &xcred)) {
+		show_oops(t, "Start TLS failed");
 		goto done;
 	}
 
 	/* get certs */
 	if (get_connection_certs(gsession, &certs, &cert_count)) {
-		warnx("get_connection_certs");
+		show_oops(t, "get_connection_certs failed");
 		goto done;
 	}
 
@@ -2453,6 +2457,8 @@ cert_cmd(struct tab *t, struct karg *args)
 		show_certs(t, certs, cert_count, "Certificate Chain");
 	else if (!strcmp(action, "save"))
 		save_certs(t, certs, cert_count, domain);
+	else
+		show_oops(t, "Invalid command: %s", action);
 
 	free_connection_certs(certs, cert_count);
 done:
@@ -2585,16 +2591,15 @@ wl_save(struct tab *t, struct karg *args, int js)
 	uri = (char *)webkit_web_frame_get_uri(frame);
 	dom = find_domain(uri, 1);
 	if (uri == NULL || dom == NULL) {
-		/* XXX this needs to be generalized */
-		load_webkit_string(t, "<html><body>Can't add domain to JavaScript white list</body></html>");
+		show_oops(t, "Can't add domain to %s white list",
+		  js ? "JavaScript" : "cookie");
 		goto done;
 	}
 
 	if (g_str_has_prefix(args->s, "save d")) {
 		/* save domain */
 		if ((dom_save = get_toplevel_domain(dom)) == NULL) {
-			/* XXX this needs use feedback */
-			warnx("bad bad bad");
+			show_oops(t, "invalid domain: %s", dom);
 			goto done;
 		}
 		flags = XT_WL_TOPLEVEL;
@@ -2604,8 +2609,7 @@ wl_save(struct tab *t, struct karg *args, int js)
 		dom_save = dom;
 		flags = XT_WL_FQDN;
 	} else {
-		/* XXX this needs use feedback */
-		warnx("invalid command");
+		show_oops(t, "invalid command: %s", args->s);
 		goto done;
 	}
 
@@ -2685,7 +2689,8 @@ cookie_cmd(struct tab *t, struct karg *args)
 		toggle_cwl(t, &a);
 	} else if (g_str_has_prefix(cmd, "delete")) {
 		show_oops(t, "'cookie delete' currently unimplemented");
-	}
+	} else
+		show_oops(t, "unknown cookie command: %s", cmd);
 
 	return (0);
 }
@@ -2716,7 +2721,8 @@ js_cmd(struct tab *t, struct karg *args)
 		toggle_js(t, &a);
 	} else if (g_str_has_prefix(cmd, "delete")) {
 		show_oops(t, "'js delete' currently unimplemented");
-	}
+	} else
+		show_oops(t, "unknown js command: %s", cmd);
 
 	return (0);
 }
@@ -2736,14 +2742,14 @@ add_favorite(struct tab *t, struct karg *args)
 
 	/* don't allow adding of xtp pages to favorites */
 	if (t->xtp_meaning != XT_XTP_TAB_MEANING_NORMAL) {
-		warn("%s: can't add xtp pages to favorites", __func__);
+		show_oops(t, "%s: can't add xtp pages to favorites", __func__);
 		return (1);
 	}
 
 	snprintf(file, sizeof file, "%s/%s/%s",
 	    pwd->pw_dir, XT_DIR, XT_FAVS_FILE);
 	if ((f = fopen(file, "r+")) == NULL) {
-		warn("favorites");
+		show_oops(t, "Can't open favorites file: %s", strerror(errno));
 		return (1);
 	}
 
@@ -2754,8 +2760,7 @@ add_favorite(struct tab *t, struct karg *args)
 		title = uri;
 
 	if (title == NULL || uri == NULL) {
-		load_webkit_string(t,
-		    "<html><body>can't add page to favorites</body></html>");
+		show_oops(t, "can't add page to favorites");
 		goto done;
 	}
 
@@ -3097,7 +3102,7 @@ command(struct tab *t, struct karg *args)
 		}
 		break;
 	default:
-		warnx("command: invalid command %c\n", args->i);
+		show_oops(t, "command: invalid opcode %d", args->i);
 		return (XT_CB_PASSTHROUGH);
 	}
 
@@ -3121,7 +3126,7 @@ command(struct tab *t, struct karg *args)
  * appended. Old string is freed.
  */
 char *
-xtp_page_dl_row(char *html, struct download *dl)
+xtp_page_dl_row(struct tab *t, char *html, struct download *dl)
 {
 
 	WebKitDownloadStatus	stat;
@@ -3180,7 +3185,7 @@ xtp_page_dl_row(char *html, struct download *dl)
 		status_html = g_strdup_printf("Starting");
 		break;
 	default:
-		warn("%s: unknown download status", __func__);
+		show_oops(t, "%s: unknown download status", __func__);
 	};
 
 	new_html = g_strdup_printf(
@@ -3504,7 +3509,7 @@ xtp_page_dl(struct tab *t, struct karg *args)
 	    XT_XTP_STR, XT_XTP_DL, dl_session_key, XT_XTP_DL_LIST);
 
 	RB_FOREACH_REVERSE(dl, download_list, &downloads) {
-		body = xtp_page_dl_row(body, dl);
+		body = xtp_page_dl_row(t, body, dl);
 		n_dl++;
 	}
 
@@ -3588,10 +3593,8 @@ print_setting(struct settings *s, char *val, void *cb_args)
 	char			*tmp, *color;
 	struct settings_args	*sa = cb_args;
 
-	if (sa == NULL) {
-		warnx("*** %s", s->name);
+	if (sa == NULL)
 		return;
-	}
 
 	if (s->flags & XT_SF_RUNTIME)
 		color = "#22cc22";
@@ -3656,7 +3659,7 @@ set(struct tab *t, struct karg *args)
 
 		load_webkit_string(t, page);
 	} else {
-		fprintf(stderr, "pars %s\n", pars);
+		show_oops(t, "Invalid command: %s", pars);
 	}
 
 	return (XT_CB_PASSTHROUGH);
@@ -3894,7 +3897,7 @@ xtp_handle_dl(struct tab *t, uint8_t cmd, int id)
 		d = RB_FIND(download_list, &downloads, &find);
 
 		if (d == NULL) {
-			warn("%s: no such download", __func__);
+			show_oops(t, "%s: no such download", __func__);
 			return;
 		}
 	}
@@ -3913,7 +3916,7 @@ xtp_handle_dl(struct tab *t, uint8_t cmd, int id)
 		/* Nothing */
 		break;
 	default:
-		warn("%s: unknown command", __func__);
+		show_oops(t, "%s: unknown command", __func__);
 		break;
 	};
 	xtp_page_dl(t, NULL);
@@ -3948,7 +3951,7 @@ xtp_handle_hl(struct tab *t, uint8_t cmd, int id)
 		/* Nothing - just xtp_page_hl() below */
 		break;
 	default:
-		warn("%s: unknown command", __func__);
+		show_oops(t, "%s: unknown command", __func__);
 		break;
 	};
 
@@ -3957,7 +3960,7 @@ xtp_handle_hl(struct tab *t, uint8_t cmd, int id)
 
 /* remove a favorite */
 void
-remove_favorite(int index)
+remove_favorite(struct tab *t, int index)
 {
 	char			file[PATH_MAX], *title, *uri;
 	char			*new_favs, *tmp;
@@ -3970,7 +3973,8 @@ remove_favorite(int index)
 	    pwd->pw_dir, XT_DIR, XT_FAVS_FILE);
 
 	if ((f = fopen(file, "r")) == NULL) {
-		warn("%s: can't open favorites", __func__);
+		show_oops(t, "%s: can't open favorites: %s",
+		    __func__, strerror(errno));
 		return;
 	}
 
@@ -3981,6 +3985,7 @@ remove_favorite(int index)
 		if ((title = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
 			if (feof(f) || ferror(f))
 				break;
+		/* XXX THIS IS NOT THE RIGHT HEURISTIC */
 		if (len == 0) {
 			free(title);
 			title = NULL;
@@ -3989,7 +3994,8 @@ remove_favorite(int index)
 
 		if ((uri = fparseln(f, &len, &lineno, NULL, 0)) == NULL) {
 			if (feof(f) || ferror(f)) {
-				warn("%s: can't parse favorites", __func__);
+				show_oops(t, "%s: can't parse favorites %s",
+				    __func__, strerror(errno));
 				goto clean;
 			}
 		}
@@ -4012,7 +4018,8 @@ remove_favorite(int index)
 
 	/* write back new favorites file */
 	if ((f = fopen(file, "w")) == NULL) {
-		warn("%s: can't open favorites", __func__);
+		show_oops(t, "%s: can't open favorites: %s",
+		    __func__, strerror(errno));
 		goto clean;
 	}
 
@@ -4036,10 +4043,10 @@ xtp_handle_fl(struct tab *t, uint8_t cmd, int arg)
 		/* nothing, just the below call to xtp_page_fl() */
 		break;
 	case XT_XTP_FL_REMOVE:
-		remove_favorite(arg);
+		remove_favorite(t, arg);
 		break;
 	default:
-		warn("%s: invalid favorites command", __func__);
+		show_oops(t, "%s: invalid favorites command", __func__);
 		break;
 	};
 
@@ -4057,7 +4064,7 @@ xtp_handle_cl(struct tab *t, uint8_t cmd, int arg)
 		remove_cookie(arg);
 		break;
 	default:
-		warn("%s: unknown cookie xtp command", __func__);
+		show_oops(t, "%s: unknown cookie xtp command", __func__);
 		break;
 	};
 
@@ -4133,12 +4140,12 @@ parse_xtp_url(struct tab *t, const char *url)
 
 	/* did we find one atall? */
 	if (dsp_match == NULL) {
-		warn("%s: no matching xtp despatch found", __func__);
+		show_oops(t, "%s: no matching xtp despatch found", __func__);
 		goto clean;
 	}
 
 	/* check session key and call despatch function */
-	if (validate_xtp_session_key(*(dsp_match->session_key), tokens[1])) {
+	if (validate_xtp_session_key(t, *(dsp_match->session_key), tokens[1])) {
 		dsp_match->handle_func(t, atoi(tokens[2]), atoi(tokens[3]));
 	}
 
@@ -4194,7 +4201,7 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 		errx(1, "activate_search_entry_cb");
 
 	if (search_string == NULL) {
-		warnx("no search_string");
+		show_oops(t, "no search_string");
 		return;
 	}
 
@@ -4571,7 +4578,7 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download, struct tab *
 
 	if (webkit_download_get_status(wk_download) ==
 	    WEBKIT_DOWNLOAD_STATUS_ERROR) {
-		warn("%s: download failed to start", __func__);
+		show_oops(t, "%s: download failed to start", __func__);
 		ret = FALSE;
 		gtk_label_set_text(GTK_LABEL(t->label), "Download Failed");
 	} else {
@@ -5049,7 +5056,7 @@ stop_cb(GtkWidget *w, struct tab *t)
 
 	frame = webkit_web_view_get_main_frame(t->wv);
 	if (frame == NULL) {
-		warnx("stop_cb: no frame");
+		show_oops(t, "stop_cb: no frame");
 		return;
 	}
 
