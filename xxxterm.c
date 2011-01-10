@@ -157,6 +157,7 @@ struct tab {
 	GtkWidget		*toolbar;
 	GtkWidget		*browser_win;
 	GtkWidget		*cmd;
+	GtkWidget		*oops;
 	GtkWidget		*backward;
 	GtkWidget		*forward;
 	GtkWidget		*stop;
@@ -553,6 +554,30 @@ int			updating_fl_tabs = 0;
 char			*global_search;
 uint64_t		blocked_cookies = 0;
 
+void
+hide_oops(struct tab *t)
+{
+	gtk_widget_hide(t->oops);
+}
+void
+hide_cmd(struct tab *t)
+{
+	gtk_widget_hide(t->cmd);
+}
+void
+show_cmd(struct tab *t)
+{
+	gtk_widget_hide(t->oops);
+	gtk_widget_show(t->cmd);
+}
+void
+show_oops(struct tab *t, char *msg)
+{
+	DNPRINTF(XT_D_CMD,"show_oops(%d, '%s')\n",t->tab_id, msg);
+	gtk_entry_set_text(GTK_ENTRY(t->oops), msg);
+	gtk_widget_hide(t->cmd);
+	gtk_widget_show(t->oops);
+}
 char *
 get_as_string(struct settings *s)
 {
@@ -2638,6 +2663,7 @@ cookie_cmd(struct tab *t, struct karg *args)
 			a.i |= XT_WL_FQDN;
 		toggle_cwl(t, &a);
 	} else if (g_str_has_prefix(cmd, "delete")) {
+		show_oops(t, "'cookie delete' currently unimplemented");
 	}
 
 	return (0);
@@ -2668,6 +2694,7 @@ js_cmd(struct tab *t, struct karg *args)
 			a.i |= XT_WL_FQDN;
 		toggle_js(t, &a);
 	} else if (g_str_has_prefix(cmd, "delete")) {
+		show_oops(t, "'js delete' currently unimplemented");
 	}
 
 	return (0);
@@ -3047,7 +3074,7 @@ command(struct tab *t, struct karg *args)
 	gtk_entry_set_text(GTK_ENTRY(t->cmd), s);
 	gdk_color_parse("white", &color);
 	gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL, &color);
-	gtk_widget_show(t->cmd);
+	show_cmd(t);
 	gtk_widget_grab_focus(GTK_WIDGET(t->cmd));
 	gtk_editable_set_position(GTK_EDITABLE(t->cmd), -1);
 
@@ -4573,6 +4600,11 @@ webview_keypress_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 	DNPRINTF(XT_D_KEY, "webview_keypress_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
 
+	if (w == GTK_WIDGET(t->cmd)) {
+		goto done;
+	}
+	hide_oops(t);
+
 	if (t->hints_on) {
 		/* ESC */
 		if (CLEAN(e->state) == 0 && e->keyval == GDK_Escape) {
@@ -4689,6 +4721,7 @@ anum:
 			return (XT_CB_HANDLED);
 		}
 
+done:
 	return (XT_CB_PASSTHROUGH);
 }
 
@@ -4707,6 +4740,11 @@ cmd_keyrelease_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 
 	DNPRINTF(XT_D_CMD, "cmd_keyrelease_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
+
+	if (w == GTK_ENTRY(t->oops)) {
+		hide_oops(t);
+		goto done;
+	}
 
 	if (c[0] == ':')
 		goto done;
@@ -4778,6 +4816,8 @@ entry_key_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	DNPRINTF(XT_D_CMD, "entry_key_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
 
+	hide_oops(t);
+
 	if (e->keyval == GDK_Escape)
 		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 
@@ -4803,6 +4843,12 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 
 	DNPRINTF(XT_D_CMD, "cmd_keypress_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
+
+	if (w == GTK_ENTRY(t->oops)) {
+		hide_oops(t);
+		rv = XT_CB_PASSTHROUGH;
+		goto done;
+	}
 
 	/* sanity */
 	if (c == NULL)
@@ -4831,7 +4877,7 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 			break;
 		/* FALLTHROUGH */
 	case GDK_Escape:
-		gtk_widget_hide(t->cmd);
+		hide_cmd(t);
 		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 
 		/* cancel search */
@@ -4855,7 +4901,11 @@ cmd_focusout_cb(GtkWidget *w, GdkEventFocus *e, struct tab *t)
 	    t->tab_id, t->focus_wv);
 
 	/* abort command when losing focus */
-	gtk_widget_hide(t->cmd);
+	if (w == GTK_WIDGET(t->cmd)) {
+		hide_cmd(t);
+	} else {
+		hide_oops(t);
+	}
 	if (t->focus_wv)
 		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 	else
@@ -4875,6 +4925,11 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 		errx(1, "cmd_activate_cb");
 
 	DNPRINTF(XT_D_CMD, "cmd_activate_cb: tab %d %s\n", t->tab_id, c);
+
+	if (entry == GTK_ENTRY(t->oops)) {
+		hide_oops(t);
+		return;
+	}
 
 	/* sanity */
 	if (c == NULL)
@@ -4912,14 +4967,13 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 		}
 
 done:
-	gtk_widget_hide(t->cmd);
+	hide_cmd(t);
 	return;
 
 execute_command:
-	gtk_widget_hide(t->cmd);
+	hide_cmd(t);
 	cmds[i].func(t, &cmds[i].arg);
 }
-
 void
 backward_cb(GtkWidget *w, struct tab *t)
 {
@@ -5234,6 +5288,7 @@ create_new_tab(char *title, struct undo *u, int focus)
 	WebKitWebHistoryItem		*item;
 	GList				*items;
 	WebKitWebBackForwardList	*bfl;
+	GdkColor			color;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
@@ -5283,6 +5338,15 @@ create_new_tab(char *title, struct undo *u, int focus)
 	t->browser_win = create_browser(t);
 	gtk_box_pack_start(GTK_BOX(t->vbox), t->browser_win, TRUE, TRUE, 0);
 
+	/* oops message for user feedback */
+	t->oops = gtk_entry_new();
+	gtk_entry_set_inner_border(GTK_ENTRY(t->oops), NULL);
+	gtk_entry_set_has_frame(GTK_ENTRY(t->oops), FALSE);
+	gtk_widget_set_can_focus(GTK_WIDGET(t->oops), FALSE);
+	gdk_color_parse("red", &color);
+	gtk_widget_modify_base(t->oops, GTK_STATE_NORMAL, &color);
+	gtk_box_pack_end(GTK_BOX(t->vbox), t->oops, FALSE, FALSE, 0);
+
 	/* command entry */
 	t->cmd = gtk_entry_new();
 	gtk_entry_set_inner_border(GTK_ENTRY(t->cmd), NULL);
@@ -5331,6 +5395,12 @@ create_new_tab(char *title, struct undo *u, int focus)
 	    "signal::focus-out-event", (GCallback)cmd_focusout_cb, t,
 	    "signal::activate", (GCallback)cmd_activate_cb, t,
 	    (char *)NULL);
+	g_object_connect((GObject*)t->oops,
+	    "signal::key-press-event", (GCallback)cmd_keypress_cb, t,
+	    "signal::key-release-event", (GCallback)cmd_keyrelease_cb, t,
+	    "signal::focus-out-event", (GCallback)cmd_focusout_cb, t,
+	    "signal::activate", (GCallback)cmd_activate_cb, t,
+	    (char *)NULL);
 
 	g_object_connect((GObject*)t->wv,
 	    "signal-after::key-press-event", (GCallback)webview_keypress_cb, t,
@@ -5356,7 +5426,8 @@ create_new_tab(char *title, struct undo *u, int focus)
 	    G_CALLBACK(tab_close_cb), t);
 
 	/* hide stuff */
-	gtk_widget_hide(t->cmd);
+	hide_cmd(t);
+	hide_oops(t);
 	if (showurl == 0)
 		gtk_widget_hide(t->toolbar);
 
@@ -5412,7 +5483,8 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkNotebookPage *nbp, guint pn,
 				uri = XT_NAME;
 			gtk_window_set_title(GTK_WINDOW(main_window), uri);
 
-			gtk_widget_hide(t->cmd);
+			hide_cmd(t);
+			hide_oops(t);
 
 			if (t->focus_wv)
 				gtk_widget_grab_focus(GTK_WIDGET(t->wv));
