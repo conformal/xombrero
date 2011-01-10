@@ -2205,8 +2205,8 @@ start_tls(int s, gnutls_session_t *gs, gnutls_certificate_credentials_t *xc)
 	if (gs == NULL || xc == NULL)
 		goto done;
 
-	bzero(&xcred, sizeof xcred);
-	bzero(&gsession, sizeof gsession);
+	*gs = NULL;
+	*xc = NULL;
 
 	gnutls_certificate_allocate_credentials(&xcred);
 	gnutls_certificate_set_x509_trust_file(xcred, ssl_ca_file,
@@ -2216,16 +2216,18 @@ start_tls(int s, gnutls_session_t *gs, gnutls_certificate_credentials_t *xc)
 	gnutls_credentials_set(gsession, GNUTLS_CRD_CERTIFICATE, xcred);
 	gnutls_transport_set_ptr(gsession, (gnutls_transport_ptr_t)(long)s);
 	if ((rv = gnutls_handshake(gsession)) < 0) {
-		warnx("gnutls_handshake failed %d", rv);
-		gnutls_certificate_free_credentials(xcred);
+		warnx("gnutls_handshake failed %d fatal %d %s",
+		    rv,
+		    gnutls_error_is_fatal(rv),
+		    gnutls_strerror_name(rv));
+		stop_tls(gsession, xcred);
 		goto done;
 	}
 
 	gnutls_credentials_type_t cred;
 	cred = gnutls_auth_get_type(gsession);
 	if (cred != GNUTLS_CRD_CERTIFICATE) {
-		gnutls_deinit(gsession);
-		gnutls_certificate_free_credentials(xcred);
+		stop_tls(gsession, xcred);
 		goto done;
 	}
 
