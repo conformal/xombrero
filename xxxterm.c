@@ -2438,8 +2438,13 @@ cert_cmd(struct tab *t, struct karg *args)
 
 	frame = webkit_web_view_get_main_frame(t->wv);
 	uri = (char *)webkit_web_frame_get_uri(frame);
-	if ((s = connect_socket_from_uri(uri, domain, sizeof domain)) == -1)
+	if (uri && strlen(uri) == 0) {
+		show_oops(t, "Invalid URI");
+	}
+	if ((s = connect_socket_from_uri(uri, domain, sizeof domain)) == -1) {
+		show_oops(t, "Invalid certidicate URI: %s", uri);
 		return (1);
+	}
 
 	/* go ssl/tls */
 	if (start_tls(t, s, &gsession, &xcred)) {
