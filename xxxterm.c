@@ -96,7 +96,7 @@ void		(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 void		(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
 		    SoupCookie *);
 
-/*#define XT_DEBUG*/
+#define XT_DEBUG
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
 #define DNPRINTF(n,x...)	do { if (swm_debug & n) fprintf(stderr, x); } while (0)
@@ -5011,7 +5011,7 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 			if (!strcmp(s, cmds[i].cmd))
 				goto execute_command;
 		}
-
+	show_oops(t, "Invalid command: %s", s);
 done:
 	hide_cmd(t);
 	return;
