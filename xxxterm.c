@@ -165,6 +165,9 @@ struct tab {
 	guint			tab_id;
 	WebKitWebView		*wv;
 
+	WebKitWebHistoryItem	*item;
+	WebKitWebBackForwardList	*bfl;
+
 	/* adjustments for browser */
 	GtkScrollbar		*sb_h;
 	GtkScrollbar		*sb_v;
@@ -553,6 +556,14 @@ int			updating_cl_tabs = 0;
 int			updating_fl_tabs = 0;
 char			*global_search;
 uint64_t		blocked_cookies = 0;
+
+void
+load_webkit_string(struct tab *t, const char *str)
+{
+	/* we set this to indicate we want to manually do navaction */
+	t->item = webkit_web_back_forward_list_get_current_item(t->bfl);
+	webkit_web_view_load_string(t->wv, str, NULL, NULL, NULL);
+}
 
 void
 hide_oops(struct tab *t)
@@ -1714,11 +1725,7 @@ toggle_js(struct tab *t, struct karg *args)
 	uri = (char *)webkit_web_frame_get_uri(frame);
 	dom = find_domain(uri, 1);
 	if (uri == NULL || dom == NULL) {
-		webkit_web_view_load_string(t->wv,
-		    "<html><body>Can't toggle domain in JavaScript white list</body></html>",
-		    NULL,
-		    NULL,
-		    NULL);
+		load_webkit_string(t, "<html><body>Can't toggle domain in JavaScript white list</body></html>");
 		goto done;
 	}
 
@@ -1825,7 +1832,7 @@ stats(struct tab *t, struct karg *args)
 	   blocked_cookies,
 	   line);
 
-	webkit_web_view_load_string(t->wv, stats, NULL, NULL, "");
+	load_webkit_string(t, stats);
 	g_free(stats);
 
 	return (0);
@@ -1860,7 +1867,7 @@ about(struct tab *t, struct karg *args)
 	    version
 	    );
 
-	webkit_web_view_load_string(t->wv, about, NULL, NULL, "");
+	load_webkit_string(t, about);
 	g_free(about);
 
 	return (0);
@@ -1889,7 +1896,7 @@ help(struct tab *t, struct karg *args)
 	    "</html>"
 	    ;
 
-	webkit_web_view_load_string(t->wv, help, NULL, NULL, "");
+	load_webkit_string(t, help);
 
 	return (0);
 }
@@ -2013,7 +2020,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	if (!failed) {
 		html = g_strdup_printf("%s%s</table></div></html>",
 		    header, body);
-		webkit_web_view_load_string(t->wv, html, NULL, NULL, "");
+		load_webkit_string(t, html);
 	}
 
 	update_favorite_tabs(t);
@@ -2074,7 +2081,7 @@ show_certs(struct tab *t, gnutls_x509_crt_t *certs,
 	g_free(header);
 	g_free(body);
 	g_free(footer);
-	webkit_web_view_load_string(t->wv, tmp, NULL, NULL, NULL);
+	load_webkit_string(t, tmp);
 	g_free(tmp);
 }
 
@@ -2475,6 +2482,9 @@ wl_show(struct tab *t, char *args, char *title, struct domain_list *wl)
 	char			*tmp, *header, *body, *footer;
 	int			p_js = 0, s_js = 0;
 
+	/* we set this to indicate we want to manually do navaction */
+	t->item = webkit_web_back_forward_list_get_current_item(t->bfl);
+
 	if (g_str_has_prefix(args, "show a") ||
 	    !strcmp(args, "show")) {
 		/* show all */
@@ -2526,7 +2536,7 @@ wl_show(struct tab *t, char *args, char *title, struct domain_list *wl)
 	g_free(header);
 	g_free(body);
 	g_free(footer);
-	webkit_web_view_load_string(t->wv, tmp, NULL, NULL, NULL);
+	load_webkit_string(t, tmp);
 	g_free(tmp);
 	return (0);
 }
@@ -2561,11 +2571,7 @@ wl_save(struct tab *t, struct karg *args, int js)
 	dom = find_domain(uri, 1);
 	if (uri == NULL || dom == NULL) {
 		/* XXX this needs to be generalized */
-		webkit_web_view_load_string(t->wv,
-		    "<html><body>Can't add domain to JavaScript white list</body></html>",
-		    NULL,
-		    NULL,
-		    NULL);
+		load_webkit_string(t, "<html><body>Can't add domain to JavaScript white list</body></html>");
 		goto done;
 	}
 
@@ -2733,11 +2739,8 @@ add_favorite(struct tab *t, struct karg *args)
 		title = uri;
 
 	if (title == NULL || uri == NULL) {
-		webkit_web_view_load_string(t->wv,
-		    "<html><body>can't add page to favorites</body></html>",
-		    NULL,
-		    NULL,
-		    NULL);
+		load_webkit_string(t,
+		    "<html><body>can't add page to favorites</body></html>");
 		goto done;
 	}
 
@@ -2765,8 +2768,22 @@ done:
 int
 navaction(struct tab *t, struct karg *args)
 {
+	WebKitWebHistoryItem	*item;
+
 	DNPRINTF(XT_D_NAV, "navaction: tab %d opcode %d\n",
 	    t->tab_id, args->i);
+
+	if (t->item) {
+		if (args->i == XT_NAV_BACK)
+			item = webkit_web_back_forward_list_get_current_item(t->bfl);
+		else
+			item = webkit_web_back_forward_list_get_forward_item(t->bfl);
+		if (item == NULL)
+			return (XT_CB_PASSTHROUGH);;
+		webkit_web_view_load_uri(t->wv, webkit_web_history_item_get_uri(item));
+		t->item = NULL;
+		return (XT_CB_PASSTHROUGH);
+	}
 
 	switch (args->i) {
 	case XT_NAV_BACK:
@@ -3332,7 +3349,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	g_free(body);
 	g_free(footer);
 
-	webkit_web_view_load_string(t->wv, page, "text/html", "UTF-8", "");
+	load_webkit_string(t, page);
 	update_cookie_tabs(t);
 
 	g_free(page);
@@ -3411,7 +3428,7 @@ xtp_page_hl(struct tab *t, struct karg *args)
 	g_free(body);
 	g_free(footer);
 
-	webkit_web_view_load_string(t->wv, page, "text/html", "UTF-8", "");
+	load_webkit_string(t, page);
 	g_free(page);
 
 	return (0);
@@ -3503,7 +3520,7 @@ xtp_page_dl(struct tab *t, struct karg *args)
 	g_free(body);
 	g_free(footer);
 
-	webkit_web_view_load_string(t->wv, page, "text/html", "UTF-8", "");
+	load_webkit_string(t, page);
 	g_free(page);
 
 	return (0);
@@ -3622,7 +3639,7 @@ set(struct tab *t, struct karg *args)
 		g_free(body);
 		g_free(footer);
 
-		webkit_web_view_load_string(t->wv, page, "text/html", "UTF-8", "");
+		load_webkit_string(t, page);
 	} else {
 		fprintf(stderr, "pars %s\n", pars);
 	}
@@ -4357,8 +4374,11 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		break;
 	}
 
-	gtk_widget_set_sensitive(GTK_WIDGET(t->backward),
-	    webkit_web_view_can_go_back(wview));
+	if (t->item)
+		gtk_widget_set_sensitive(GTK_WIDGET(t->backward), TRUE);
+	else
+		gtk_widget_set_sensitive(GTK_WIDGET(t->backward),
+		    webkit_web_view_can_go_back(wview));
 
 	gtk_widget_set_sensitive(GTK_WIDGET(t->forward),
 	    webkit_web_view_can_go_forward(wview));
@@ -4977,23 +4997,29 @@ execute_command:
 void
 backward_cb(GtkWidget *w, struct tab *t)
 {
+	struct karg		a;
+
 	if (t == NULL)
 		errx(1, "backward_cb");
 
 	DNPRINTF(XT_D_NAV, "backward_cb: tab %d\n", t->tab_id);
 
-	webkit_web_view_go_back(t->wv);
+	a.i = XT_NAV_BACK;
+	navaction(t, &a);
 }
 
 void
 forward_cb(GtkWidget *w, struct tab *t)
 {
+	struct karg		a;
+
 	if (t == NULL)
 		errx(1, "forward_cb");
 
 	DNPRINTF(XT_D_NAV, "forward_cb: tab %d\n", t->tab_id);
 
-	webkit_web_view_go_forward(t->wv);
+	a.i = XT_NAV_FORWARD;
+	navaction(t, &a);
 }
 
 void
@@ -5168,10 +5194,9 @@ undo_close_tab_save(struct tab *t)
 	int				m, n;
 	const gchar			*uri;
 	struct undo			*u1, *u2;
-	WebKitWebFrame                  *frame;
-	WebKitWebBackForwardList        *bfl;
-	GList                           *items;
-	WebKitWebHistoryItem            *item;
+	WebKitWebFrame			*frame;
+	GList				*items;
+	WebKitWebHistoryItem		*item;
 
 	frame = webkit_web_view_get_main_frame(t->wv);
 	uri = webkit_web_frame_get_uri(frame);
@@ -5182,14 +5207,14 @@ undo_close_tab_save(struct tab *t)
 	u1 = g_malloc0(sizeof(struct undo));
 	u1->uri = g_strdup(uri);
 
-	bfl = webkit_web_view_get_back_forward_list(t->wv);
+	t->bfl = webkit_web_view_get_back_forward_list(t->wv);
 
-	m = webkit_web_back_forward_list_get_forward_length(bfl);
-	n = webkit_web_back_forward_list_get_back_length(bfl);
+	m = webkit_web_back_forward_list_get_forward_length(t->bfl);
+	n = webkit_web_back_forward_list_get_back_length(t->bfl);
 	u1->back = n;
 
 	/* forward history */
-	items = webkit_web_back_forward_list_get_forward_list_with_limit(bfl, m);
+	items = webkit_web_back_forward_list_get_forward_list_with_limit(t->bfl, m);
 
 	while (items) {
 		item = items->data;
@@ -5200,13 +5225,13 @@ undo_close_tab_save(struct tab *t)
 
 	/* current item */
 	if (m) {
-		item = webkit_web_back_forward_list_get_current_item(bfl);
+		item = webkit_web_back_forward_list_get_current_item(t->bfl);
 		u1->history = g_list_prepend(u1->history,
 		    webkit_web_history_item_copy(item));
 	}
 
 	/* back history */
-	items = webkit_web_back_forward_list_get_back_list_with_limit(bfl, n);
+	items = webkit_web_back_forward_list_get_back_list_with_limit(t->bfl, n);
 
 	while (items) {
 		item = items->data;
@@ -5287,7 +5312,6 @@ create_new_tab(char *title, struct undo *u, int focus)
 	GtkWidget			*b, *bb;
 	WebKitWebHistoryItem		*item;
 	GList				*items;
-	WebKitWebBackForwardList	*bfl;
 	GdkColor			color;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
@@ -5442,19 +5466,19 @@ create_new_tab(char *title, struct undo *u, int focus)
 	else
 		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
 
+	t->bfl = webkit_web_view_get_back_forward_list(t->wv);
 	/* restore the tab's history */
 	if (u && u->history) {
-		bfl = webkit_web_view_get_back_forward_list(t->wv);
-
 		items = u->history;
 		while (items) {
 			item = items->data;
-			webkit_web_back_forward_list_add_item(bfl, item);
+			webkit_web_back_forward_list_add_item(t->bfl, item);
 			items = g_list_next(items);
 		}
 
 		item = g_list_nth_data(u->history, u->back);
-		webkit_web_view_go_to_back_forward_item(t->wv, item);
+		if (item)
+			webkit_web_view_go_to_back_forward_item(t->wv, item);
 
 		g_list_free(items);
 		g_list_free(u->history);
