@@ -482,12 +482,6 @@ struct special		s_download_dir = {
 	NULL
 };
 
-struct special		s_runtime = {
-	set_runtime_dir,
-	get_runtime_dir,
-	NULL
-};
-
 struct settings {
 	char		*name;
 	int		type;
@@ -520,7 +514,6 @@ struct settings {
 	{ "read_only_cookies", XT_S_INT, 0 , &read_only_cookies, NULL, NULL },
 	{ "refresh_interval", XT_S_INT, 0 , &refresh_interval, NULL, NULL },
 	{ "resource_dir", XT_S_STR, 0 , NULL, &resource_dir, NULL },
-	{ "runtime_settings", XT_S_STR, 0 , NULL, NULL, &s_runtime },
 	{ "search_string", XT_S_STR, 0 , NULL, &search_string, NULL },
 	{ "session_timeout", XT_S_INT, 0 , &session_timeout, NULL, NULL },
 	{ "save_global_history", XT_S_INT, XT_SF_RESTART , &save_global_history, NULL, NULL },
@@ -648,26 +641,6 @@ set_download_dir(struct settings *s, char *val)
 		    pwd->pw_dir, &val[1]);
 	else
 		strlcpy(download_dir, val, sizeof download_dir);
-
-	return (0);
-}
-
-char *
-get_runtime_dir(struct settings *s)
-{
-	if (runtime_settings[0] == '\0')
-		return (0);
-	return (g_strdup(runtime_settings));
-}
-
-int
-set_runtime_dir(struct settings *s, char *val)
-{
-	if (val[0] == '~')
-		snprintf(runtime_settings, sizeof runtime_settings, "%s/%s",
-		    pwd->pw_dir, &val[1]);
-	else
-		strlcpy(runtime_settings, val, sizeof runtime_settings);
 
 	return (0);
 }
@@ -1171,7 +1144,8 @@ config_parse(char *filename, int runtime)
 		return;
 
 	if (runtime && runtime_settings[0] != '\0') {
-		snprintf(file, sizeof file, "%s/%s", work_dir, runtime_settings);
+		snprintf(file, sizeof file, "%s/%s",
+		    work_dir, runtime_settings);
 		if (stat(file, &sb)) {
 			warnx("runtime file doesn't exist, creating it");
 			if ((f = fopen(file, "w")) == NULL)
@@ -2500,7 +2474,7 @@ wl_show(struct tab *t, char *args, char *title, struct domain_list *wl)
 		tmp = body;
 		body = g_strdup_printf("%s<h2>Persistent</h2>", body);
 		g_free(tmp);
-		RB_FOREACH_REVERSE(d, domain_list, wl) {
+		RB_FOREACH(d, domain_list, wl) {
 			if (d->handy == 0)
 				continue;
 			tmp = body;
@@ -2514,7 +2488,7 @@ wl_show(struct tab *t, char *args, char *title, struct domain_list *wl)
 		tmp = body;
 		body = g_strdup_printf("%s<h2>Session</h2>", body);
 		g_free(tmp);
-		RB_FOREACH_REVERSE(d, domain_list, wl) {
+		RB_FOREACH(d, domain_list, wl) {
 			if (d->handy == 1)
 				continue;
 			tmp = body;
@@ -6018,6 +5992,7 @@ main(int argc, char *argv[])
 	/* set default string settings */
 	home = g_strdup("http://www.peereboom.us");
 	resource_dir = g_strdup("/usr/local/share/xxxterm/");
+	strlcpy(runtime_settings,"runtime", sizeof runtime_settings);
 
 	/* read config file */
 	if (strlen(conf) == 0)
