@@ -570,21 +570,36 @@ hide_oops(struct tab *t)
 {
 	gtk_widget_hide(t->oops);
 }
+
 void
 hide_cmd(struct tab *t)
 {
 	gtk_widget_hide(t->cmd);
 }
+
 void
 show_cmd(struct tab *t)
 {
 	gtk_widget_hide(t->oops);
 	gtk_widget_show(t->cmd);
 }
+
 void
-show_oops(struct tab *t, char *msg)
+show_oops(struct tab *t, const char *fmt, ...)
 {
+	va_list			ap;
+	char			*msg;
+
+	if (fmt == NULL)
+		return;
+
+	va_start(ap, fmt);
+	if (vasprintf(&msg, fmt, ap) == -1)
+		errx(1, "moo");
+	va_end(ap);
+
 	DNPRINTF(XT_D_CMD,"show_oops(%d, '%s')\n",t->tab_id, msg);
+
 	gtk_entry_set_text(GTK_ENTRY(t->oops), msg);
 	gtk_widget_hide(t->cmd);
 	gtk_widget_show(t->oops);
