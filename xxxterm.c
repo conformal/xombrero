@@ -4483,6 +4483,8 @@ load_favicon(struct tab *t)
 	} else {
 		scaled = pixbuf;
 	}
+	if (!scaled)
+		update_favicon(t);
 
 	if (t->icon_pixbuf) {
 		g_object_unref(t->icon_pixbuf);
