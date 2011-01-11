@@ -21,11 +21,9 @@
  * TODO:
  *	inverse color browsing
  *	favs
- *		- add favicon
  *		- store in sqlite
  *	multi letter commands
  *	pre and post counts for commands
- *	fav icon
  *	autocompletion on various inputs
  *	create privacy browsing
  *		- encrypted local data
@@ -163,7 +161,9 @@ struct tab {
 	GtkWidget		*forward;
 	GtkWidget		*stop;
 	GtkWidget		*js_toggle;
+	GdkPixbuf		*icon_pixbuf;
 	guint			tab_id;
+	char			*icon_uri;
 	WebKitWebView		*wv;
 
 	WebKitWebHistoryItem	*item;
@@ -558,7 +558,47 @@ int			updating_cl_tabs = 0;
 int			updating_fl_tabs = 0;
 char			*global_search;
 uint64_t		blocked_cookies = 0;
+char			named_session[PATH_MAX];
+int			notify_icon_loaded_cb(WebKitWebView *, char *,
+			    struct tab *);
+void			update_favicon(struct tab *);
+int			icon_size_map(int);
 
+void
+check_favicon(struct tab *t)
+{
+	const gchar *iconuri = webkit_web_view_get_icon_uri(t->wv);
+	DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d icon uri '%s'\n",
+	    __func__, t->tab_id, iconuri);
+	if (iconuri && strlen(iconuri) > 0) {
+		notify_icon_loaded_cb(t->wv, (char *)iconuri, t);
+	} else {
+		free(t->icon_uri);
+		t->icon_uri = NULL;
+		update_favicon(t);
+	}
+}
+
+void
+update_favicon(struct tab *t)
+{
+	DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d icon uri '%s'\n",
+	    __func__, t->tab_id, t->icon_uri);
+	if (t->icon_uri && strlen(t->icon_uri) > 0 && t->icon_pixbuf) {
+		gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->uri_entry),
+		    GTK_ENTRY_ICON_PRIMARY, t->icon_pixbuf);
+		DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d icon uri '%s'"
+		    " (set)\n", __func__, t->tab_id,
+		    t->icon_uri ? t->icon_uri : "(NULL)");
+	} else {
+		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->uri_entry),
+		    GTK_ENTRY_ICON_PRIMARY, "text-html");
+		DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d icon uri '%s'"
+		    " (!set)\n", __func__, t->tab_id,
+		    (t->icon_uri && strlen(t->icon_uri) > 0) ?
+		    t->icon_uri : "<empty>");
+	}
+}
 void
 load_webkit_string(struct tab *t, const char *str)
 {
@@ -3673,7 +3713,16 @@ set(struct tab *t, struct karg *args)
 int
 session_cmd(struct tab *t, struct karg *args)
 {
-	warnx("session");
+	char			*action = NULL;
+
+	if (t == NULL)
+		return (1);
+
+	if ((action = getparams(args->s, "session")))
+		;
+	else
+		action = "show";
+
 	return (XT_CB_PASSTHROUGH);
 }
 
@@ -4318,6 +4367,95 @@ done:
 }
 
 void
+favicon_download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
+    struct tab *t)
+{
+	WebKitDownloadStatus status = webkit_download_get_status (download);
+	gint width, height;
+	char *file;
+	GdkPixbuf *pixbuf, *scaled;
+
+	switch (status) {
+	case WEBKIT_DOWNLOAD_STATUS_FINISHED:
+		asprintf(&file, "%s/%s/tab-%d.ico", pwd->pw_dir, XT_DIR,
+		   t->tab_id);
+		pixbuf = gdk_pixbuf_new_from_file(file, NULL);
+		g_object_get(pixbuf,
+			"width", &width,
+			"height", &height,
+			(char *)NULL);
+		DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d icon size %dx%d\n",
+		    __func__, t->tab_id, width, height);
+
+		if (width > 16 || height > 16) {
+			scaled = gdk_pixbuf_scale_simple(pixbuf, 16, 16,
+			    GDK_INTERP_BILINEAR);
+			g_object_unref(pixbuf);
+		} else {
+			scaled = pixbuf;
+		}
+
+		if (t->icon_pixbuf) {
+			g_object_unref(t->icon_pixbuf);
+		}
+		t->icon_pixbuf = scaled;
+
+		unlink(file);
+		free(file);
+		update_favicon(t);
+		/* fallthrough */
+	case WEBKIT_DOWNLOAD_STATUS_ERROR:
+	case WEBKIT_DOWNLOAD_STATUS_CANCELLED:
+		g_object_unref(download);
+		break;
+	default:
+		break;
+	}
+}
+
+int
+notify_icon_loaded_cb(WebKitWebView *wv, char *uri, struct tab *t)
+{
+	WebKitNetworkRequest	*request;
+	WebKitDownload		*download;
+	char			*dest_uri;
+
+	if (uri == NULL || t == NULL)
+		errx(1, "%s: invalid pointers", __func__);
+	if (t->icon_uri) {
+		if (!strcmp(t->icon_uri,uri)) {
+			return TRUE;
+		}
+		free(t->icon_uri);
+	}
+
+	asprintf(&t->icon_uri, "%s", uri);
+	DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d icon uri %s "
+	    "(dl!)\n", __func__, t->tab_id, uri);
+
+	request = webkit_network_request_new(t->icon_uri);
+	if (!request) {
+		DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d icon uri %s "
+		    "(request failed)\n", __func__, t->tab_id, uri);
+		return FALSE;
+	}
+	download = webkit_download_new(request);
+	g_object_unref(request);
+
+	asprintf(&dest_uri, "file://%s/%s/tab-%d.ico", pwd->pw_dir, XT_DIR,
+	    t->tab_id);
+
+	webkit_download_set_destination_uri(download, dest_uri);
+	free(dest_uri);
+
+	g_signal_connect(G_OBJECT (download), "notify::status",
+	    G_CALLBACK (favicon_download_status_changed_cb), t);
+
+	webkit_download_start(download);
+	return TRUE;
+}
+
+void
 notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 {
 	WebKitWebFrame		*frame;
@@ -4418,6 +4556,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 		break;
 	}
+	check_favicon(t);
 
 	if (t->item)
 		gtk_widget_set_sensitive(GTK_WIDGET(t->backward), TRUE);
@@ -5148,14 +5287,14 @@ create_toolbar(struct tab *t)
 
 	if (fancy_bar) {
 		/* backward button */
-		t->backward = create_button("go-back", GTK_STOCK_GO_BACK, 0);
+		t->backward = create_button("GoBack", GTK_STOCK_GO_BACK, 0);
 		gtk_widget_set_sensitive(t->backward, FALSE);
 		g_signal_connect(G_OBJECT(t->backward), "clicked",
 		    G_CALLBACK(backward_cb), t);
 		gtk_box_pack_start(GTK_BOX(b), t->backward, FALSE, FALSE, 0);
 
 		/* forward button */
-		t->forward = create_button("go-forward",GTK_STOCK_GO_FORWARD, 0);
+		t->forward = create_button("GoForward",GTK_STOCK_GO_FORWARD, 0);
 		gtk_widget_set_sensitive(t->forward, FALSE);
 		g_signal_connect(G_OBJECT(t->forward), "clicked",
 		    G_CALLBACK(forward_cb), t);
@@ -5163,7 +5302,7 @@ create_toolbar(struct tab *t)
 		    FALSE, 0);
 
 		/* stop button */
-		t->stop = create_button("stop", GTK_STOCK_STOP, 0);
+		t->stop = create_button("Stop", GTK_STOCK_STOP, 0);
 		gtk_widget_set_sensitive(t->stop, FALSE);
 		g_signal_connect(G_OBJECT(t->stop), "clicked",
 		    G_CALLBACK(stop_cb), t);
@@ -5171,7 +5310,7 @@ create_toolbar(struct tab *t)
 		    FALSE, 0);
 
 		/* JS button */
-		t->js_toggle = create_button("js-toggle", enable_scripts ?
+		t->js_toggle = create_button("JS-Toggle", enable_scripts ?
 		        GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE, 0);
 		gtk_widget_set_sensitive(t->js_toggle, TRUE);
 		g_signal_connect(G_OBJECT(t->js_toggle), "clicked",
@@ -5372,7 +5511,7 @@ create_new_tab(char *title, struct undo *u, int focus)
 	t->spinner = gtk_spinner_new ();
 #endif
 	t->label = gtk_label_new(title);
-	bb = create_button("my-close-button", GTK_STOCK_CLOSE, 1);
+	bb = create_button("Close", GTK_STOCK_CLOSE, 1);
 	gtk_widget_set_size_request(t->label, 100, 0);
 	gtk_widget_set_size_request(b, 130, 0);
 	gtk_notebook_set_homogeneous_tabs(notebook, TRUE);
@@ -5466,10 +5605,13 @@ create_new_tab(char *title, struct undo *u, int focus)
 	    "signal::event", (GCallback)webview_event_cb, t,
 	    "signal::load-finished", (GCallback)webview_load_finished_cb, t,
 	    "signal::load-progress-changed", (GCallback)webview_progress_changed_cb, t,
+#if WEBKIT_CHECK_VERSION(1, 1, 18)
+	    "signal::icon-loaded", (GCallback)notify_icon_loaded_cb, t,
+#endif
 	    "signal::button_press_event", (GCallback)wv_button_cb, t,
 	    (char *)NULL);
-	g_signal_connect(t->wv, "notify::load-status",
-	    G_CALLBACK(notify_load_status_cb), t);
+	g_signal_connect(t->wv,
+	    "notify::load-status", G_CALLBACK(notify_load_status_cb), t);
 
 	/* hijack the unused keys as if we were the browser */
 	g_object_connect((GObject*)t->toolbar,
@@ -5493,8 +5635,10 @@ create_new_tab(char *title, struct undo *u, int focus)
 
 	if (load)
 		webkit_web_view_load_uri(t->wv, title);
-	else
+	else {
 		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
+		check_favicon(t);
+	}
 
 	t->bfl = webkit_web_view_get_back_forward_list(t->wv);
 	/* restore the tab's history */
@@ -5632,6 +5776,8 @@ create_button(char *name, char *stockid, int size)
 	gtk_container_set_border_width(GTK_CONTAINER(button), 1);
 	gtk_container_add(GTK_CONTAINER(button), GTK_WIDGET(image));
 	gtk_widget_set_name(button, name);
+	gtk_button_set_relief(GTK_BUTTON(button), GTK_RELIEF_NONE);
+	gtk_widget_set_tooltip_text(button, name);
 
 	return button;
 }
