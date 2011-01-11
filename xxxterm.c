@@ -96,7 +96,7 @@ void		(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 void		(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
 		    SoupCookie *);
 
-#define XT_DEBUG
+/*#define XT_DEBUG*/
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
 #define DNPRINTF(n,x...)	do { if (swm_debug & n) fprintf(stderr, x); } while (0)
@@ -3874,6 +3874,14 @@ struct cmd {
 };
 
 gboolean
+wv_button_cb(GtkWidget *btn, GdkEventButton *e, struct tab *t)
+{
+	hide_oops(t);
+
+	return (FALSE);
+}
+
+gboolean
 tab_close_cb(GtkWidget *btn, GdkEventButton *e, struct tab *t)
 {
 	DNPRINTF(XT_D_TAB, "tab_close_cb: tab %d\n", t->tab_id);
@@ -4631,7 +4639,7 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 }
 
 int
-webview_keypress_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
+wv_keypress_after_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 {
 	int			i;
 	char			s[2], buf[128];
@@ -4641,9 +4649,9 @@ webview_keypress_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 	/* don't use w directly; use t->whatever instead */
 
 	if (t == NULL)
-		errx(1, "webview_keypress_cb");
+		errx(1, "wv_keypress_after_cb");
 
-	DNPRINTF(XT_D_KEY, "webview_keypress_cb: keyval 0x%x mask 0x%x t %p\n",
+	DNPRINTF(XT_D_KEY, "wv_keypress_after_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
 
 	if (w == GTK_WIDGET(t->cmd)) {
@@ -4714,12 +4722,12 @@ webview_keypress_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 		    ((e->keyval >= GDK_0 && e->keyval <= GDK_9) || (e->keyval >= GDK_KP_0 && e->keyval <= GDK_KP_9))) {
 			snprintf(s, sizeof s, "%c", e->keyval);
 			strlcat(t->hint_num, s, sizeof t->hint_num);
-			DNPRINTF(XT_D_JS, "webview_keypress_cb: numerical %s\n",
+			DNPRINTF(XT_D_JS, "wv_keypress_after_cb: numerical %s\n",
 			    t->hint_num);
 num:
 			link = strtonum(t->hint_num, 1, 1000, &errstr);
 			if (errstr) {
-				DNPRINTF(XT_D_JS, "webview_keypress_cb: invalid link number\n");
+				DNPRINTF(XT_D_JS, "wv_keypress_after_cb: invalid link number\n");
 				disable_hints(t);
 			} else {
 				snprintf(buf, sizeof buf, "vimprobable_update_hints(%s)",
@@ -4741,7 +4749,7 @@ num:
 		    ((e->keyval >= GDK_KP_0 && e->keyval <= GDK_KP_9) && (t->hint_mode != XT_HINT_NUMERICAL))))) {
 			snprintf(s, sizeof s, "%c", e->keyval);
 			strlcat(t->hint_buf, s, sizeof t->hint_buf);
-			DNPRINTF(XT_D_JS, "webview_keypress_cb: alphanumerical %s\n",
+			DNPRINTF(XT_D_JS, "wv_keypress_after_cb: alphanumerical %s\n",
 			    t->hint_buf);
 anum:
 			snprintf(buf, sizeof buf, "vimprobable_cleanup()");
@@ -4768,6 +4776,14 @@ anum:
 		}
 
 done:
+	return (XT_CB_PASSTHROUGH);
+}
+
+int
+wv_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
+{
+	hide_oops(t);
+
 	return (XT_CB_PASSTHROUGH);
 }
 
@@ -4947,11 +4963,11 @@ cmd_focusout_cb(GtkWidget *w, GdkEventFocus *e, struct tab *t)
 	    t->tab_id, t->focus_wv);
 
 	/* abort command when losing focus */
-	if (w == GTK_WIDGET(t->cmd)) {
+	if (w == GTK_WIDGET(t->cmd))
 		hide_cmd(t);
-	} else {
+	else
 		hide_oops(t);
-	}
+
 	if (t->focus_wv)
 		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 	else
@@ -5453,7 +5469,8 @@ create_new_tab(char *title, struct undo *u, int focus)
 	    (char *)NULL);
 
 	g_object_connect((GObject*)t->wv,
-	    "signal-after::key-press-event", (GCallback)webview_keypress_cb, t,
+	    "signal::key-press-event", (GCallback)wv_keypress_cb, t,
+	    "signal-after::key-press-event", (GCallback)wv_keypress_after_cb, t,
 	    /* "signal::hovering-over-link", (GCallback)webview_hover_cb, t, */
 	    "signal::download-requested", (GCallback)webview_download_cb, t,
 	    "signal::mime-type-policy-decision-requested", (GCallback)webview_mimetype_cb, t,
@@ -5463,13 +5480,14 @@ create_new_tab(char *title, struct undo *u, int focus)
 	    "signal::event", (GCallback)webview_event_cb, t,
 	    "signal::load-finished", (GCallback)webview_load_finished_cb, t,
 	    "signal::load-progress-changed", (GCallback)webview_progress_changed_cb, t,
+	    "signal::button_press_event", (GCallback)wv_button_cb, t,
 	    (char *)NULL);
 	g_signal_connect(t->wv, "notify::load-status",
 	    G_CALLBACK(notify_load_status_cb), t);
 
 	/* hijack the unused keys as if we were the browser */
 	g_object_connect((GObject*)t->toolbar,
-	    "signal-after::key-press-event", (GCallback)webview_keypress_cb, t,
+	    "signal-after::key-press-event", (GCallback)wv_keypress_after_cb, t,
 	    (char *)NULL);
 
 	g_signal_connect(G_OBJECT(bb), "button_press_event",
