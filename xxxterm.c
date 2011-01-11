@@ -5438,6 +5438,11 @@ create_new_tab(char *title, struct undo *u, int focus)
 	    "signal::activate", (GCallback)cmd_activate_cb, t,
 	    (char *)NULL);
 
+	/* reuse wv_button_cb to hide oops */
+	g_object_connect((GObject*)t->oops,
+	    "signal::button_press_event", (GCallback)wv_button_cb, t,
+	    (char *)NULL);
+
 	g_object_connect((GObject*)t->wv,
 	    "signal::key-press-event", (GCallback)wv_keypress_cb, t,
 	    "signal-after::key-press-event", (GCallback)wv_keypress_after_cb, t,
