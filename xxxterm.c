@@ -247,7 +247,7 @@ struct karg {
 #define XT_SESSIONS_DIR		("sessions/")
 #define XT_CONF_FILE		("xxxterm.conf")
 #define XT_FAVS_FILE		("favorites")
-#define XT_SAVED_TABS_FILE	("saved_tabs")
+#define XT_SAVED_TABS_FILE	("main_session")
 #define XT_RESTART_TABS_FILE	("restart_tabs")
 #define XT_SOCKET_FILE		("socket")
 #define XT_HISTORY_FILE		("history")
@@ -1495,11 +1495,11 @@ restore_saved_tabs(void)
 	int		unlink_file = 0;
 	struct stat	sb;
 
-	snprintf(file, sizeof file, "%s/%s/%s",
-	    pwd->pw_dir, XT_DIR, XT_RESTART_TABS_FILE);
+	snprintf(file, sizeof file, "%s/%s",
+	    sessions_dir, XT_RESTART_TABS_FILE);
 	if (stat(file, &sb) == -1)
-		snprintf(file, sizeof file, "%s/%s/%s",
-		    pwd->pw_dir, XT_DIR, XT_SAVED_TABS_FILE);
+		snprintf(file, sizeof file, "%s/%s",
+		    sessions_dir, XT_SAVED_TABS_FILE);
 	else
 		unlink_file = 1;
 
@@ -1542,8 +1542,7 @@ save_tabs(struct tab *t, struct karg *a)
 	if (a->s == NULL)
 		return (1);
 
-	snprintf(file, sizeof file, "%s/%s/%s",
-	    pwd->pw_dir, XT_DIR, a->s);
+	snprintf(file, sizeof file, "%s/%s", sessions_dir, a->s);
 
 	if ((f = fopen(file, "w")) == NULL) {
 		show_oops(t, "Can't open save_tabs file: %s", strerror(errno));
