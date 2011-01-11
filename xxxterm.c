@@ -574,7 +574,7 @@ check_favicon(struct tab *t)
 	if (iconuri && strlen(iconuri) > 0) {
 		notify_icon_loaded_cb(t->wv, (char *)iconuri, t);
 	} else {
-		free(t->icon_uri);
+		g_free(t->icon_uri);
 		t->icon_uri = NULL;
 		update_favicon(t);
 	}
@@ -4454,17 +4454,16 @@ done:
 void
 load_favicon(struct tab *t)
 {
-	gchar *name_hash;
+	gchar *name_hash, *file;
 	gint width, height;
-	char *file;
 	GdkPixbuf *pixbuf, *scaled;
 
 	name_hash = g_compute_checksum_for_string(G_CHECKSUM_SHA256,
 	    t->icon_uri, -1);
-	asprintf(&file, "%s/%s.ico", cache_dir, name_hash);
+	file = g_strdup_printf("%s/%s.ico", cache_dir, name_hash);
 	g_free(name_hash);
 	pixbuf = gdk_pixbuf_new_from_file(file, NULL);
-	free(file);
+	g_free(file);
 	if (!pixbuf) {
 		update_favicon(t);
 		return;
@@ -4518,8 +4517,7 @@ notify_icon_loaded_cb(WebKitWebView *wv, char *uri, struct tab *t)
 {
 	WebKitNetworkRequest	*request;
 	WebKitDownload		*download;
-	gchar			*name_hash;
-	char			*dest_uri, *file;
+	gchar			*name_hash, *dest_uri, *file;
 	struct stat		sb;
 
 	if (uri == NULL || t == NULL)
@@ -4528,9 +4526,9 @@ notify_icon_loaded_cb(WebKitWebView *wv, char *uri, struct tab *t)
 		if (!strcmp(t->icon_uri,uri)) {
 			return TRUE;
 		}
-		free(t->icon_uri);
+		g_free(t->icon_uri);
 	}
-	asprintf(&t->icon_uri, "%s", uri);
+	t->icon_uri = g_strdup_printf("%s", uri);
 	DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d icon uri %s "
 	    "(dl!)\n", __func__, t->tab_id, uri);
 
@@ -4544,19 +4542,19 @@ notify_icon_loaded_cb(WebKitWebView *wv, char *uri, struct tab *t)
 	g_object_unref(request);
 
 	name_hash = g_compute_checksum_for_string(G_CHECKSUM_SHA256, uri, -1);
-	asprintf(&file, "%s/%s.ico", cache_dir, name_hash);
+	file = g_strdup_printf("%s/%s.ico", cache_dir, name_hash);
 	fflush(stderr);
 	g_free(name_hash);
 	if (!stat(file, &sb)) {
-		free(file);
+		g_free(file);
 		load_favicon(t);
 		return TRUE;
 	}
-	asprintf(&dest_uri, "file://%s", file);
-	free(file);
+	dest_uri = g_strdup_printf("file://%s", file);
+	g_free(file);
 
 	webkit_download_set_destination_uri(download, dest_uri);
-	free(dest_uri);
+	g_free(dest_uri);
 
 	g_signal_connect(G_OBJECT (download), "notify::status",
 	    G_CALLBACK (favicon_download_status_changed_cb), t);
@@ -5864,9 +5862,9 @@ GtkWidget *
 create_button(char *name, char *stockid, int size)
 {
 	GtkWidget *button, *image;
-	char *rcstring;
+	gchar *rcstring;
 	int gtk_icon_size;
-	asprintf(&rcstring,
+	rcstring = g_strdup_printf(
 	    "style \"%s-style\"\n"
 	    "{\n"
 	    "  GtkWidget::focus-padding = 0\n"
@@ -5876,7 +5874,7 @@ create_button(char *name, char *stockid, int size)
 	    "}\n"
 	    "widget \"*.%s\" style \"%s-style\"",name,name,name);
 	gtk_rc_parse_string(rcstring);
-	free(rcstring);
+	g_free(rcstring);
 	button = gtk_button_new();
 	gtk_button_set_focus_on_click(GTK_BUTTON(button), FALSE);
 	gtk_icon_size = icon_size_map(size?size:icon_size);
