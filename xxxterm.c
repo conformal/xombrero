@@ -1526,46 +1526,64 @@ quit(struct tab *t, struct karg *args)
 }
 
 int
-restore_saved_tabs(void)
+open_tabs(struct tab *t, struct karg *a)
 {
 	char		file[PATH_MAX];
-	FILE		*f;
+	FILE		*f = NULL;
 	char		*uri = NULL;
-	int		empty_saved_tabs_file = 1;
-	int		unlink_file = 0;
-	struct stat	sb;
+	int		rv = 1;
 
-	snprintf(file, sizeof file, "%s/%s",
-	    sessions_dir, XT_RESTART_TABS_FILE);
-	if (stat(file, &sb) == -1)
-		snprintf(file, sizeof file, "%s/%s",
-		    sessions_dir, XT_SAVED_TABS_FILE);
-	else
-		unlink_file = 1;
+	if (a == NULL)
+		goto done;
+
+	snprintf(file, sizeof file, "%s/%s", sessions_dir, a->s);
 
 	if ((f = fopen(file, "r")) == NULL)
-		return (empty_saved_tabs_file);
+		goto done;
 
 	for (;;) {
 		if ((uri = fparseln(f, NULL, NULL, NULL, 0)) == NULL)
 			if (feof(f) || ferror(f))
 				break;
 
-		if (uri && strlen(uri)) {
+		if (uri && strlen(uri))
 			create_new_tab(uri, NULL, 1);
-			empty_saved_tabs_file = 0;
-		}
 
 		free(uri);
 		uri = NULL;
 	}
 
-	fclose(f);
+	rv = 0;
+done:
+	if (f)
+		fclose(f);
+
+	return (rv);
+}
+
+int
+restore_saved_tabs(void)
+{
+	char		file[PATH_MAX];
+	int		unlink_file = 0;
+	struct stat	sb;
+	struct karg	a;
+
+	snprintf(file, sizeof file, "%s/%s",
+	    sessions_dir, XT_RESTART_TABS_FILE);
+	if (stat(file, &sb) == -1)
+		a.s = XT_SAVED_TABS_FILE;
+	else {
+		unlink_file = 1;
+		a.s = XT_RESTART_TABS_FILE;
+	}
+
+	open_tabs(NULL, &a);
 
 	if (unlink_file)
 		unlink(file);
 
-	return (empty_saved_tabs_file);
+	return (1);
 }
 
 int
@@ -1583,7 +1601,7 @@ save_tabs(struct tab *t, struct karg *a)
 		return (1);
 
 	snprintf(file, sizeof file, "%s/%s", sessions_dir, a->s);
-warnx("save_tabs %s", file);
+
 	if ((f = fopen(file, "w")) == NULL) {
 		show_oops(t, "Can't open save_tabs file: %s", strerror(errno));
 		return (1);
@@ -3725,6 +3743,30 @@ session_save(struct tab *t, char *filename, char **ret)
 
 	a.s = f;
 	save_tabs(t, &a);
+	strlcpy(named_session, f, sizeof named_session);
+
+	*ret = f;
+	rv = 0;
+done:
+	return (rv);
+}
+
+int
+session_open(struct tab *t, char *filename, char **ret)
+{
+	struct karg		a;
+	char			*f = filename;
+	int			rv = 1;
+
+	f += strlen("open");
+	while (*f == ' ' && *f != '\0')
+		f++;
+	if (strlen(f) == 0)
+		goto done;
+
+	a.s = f;
+	open_tabs(t, &a);
+	strlcpy(named_session, f, sizeof named_session);
 
 	*ret = f;
 	rv = 0;
@@ -3752,6 +3794,12 @@ session_cmd(struct tab *t, struct karg *args)
 	else if (g_str_has_prefix(action, "save ")) {
 		if (session_save(t, action, &filename)) {
 			show_oops(t, "Can't save session: %s",
+			    filename ? filename : "INVALID");
+			goto done;
+		}
+	} else if (g_str_has_prefix(action, "open ")) {
+		if (session_open(t, action, &filename)) {
+			show_oops(t, "Can't open session: %s",
 			    filename ? filename : "INVALID");
 			goto done;
 		}
@@ -6224,7 +6272,7 @@ void
 usage(void)
 {
 	fprintf(stderr,
-	    "%s [-nSTVt][-f file] url ...\n", __progname);
+	    "%s [-nSTVt][-f file][-s session] url ...\n", __progname);
 	exit(0);
 }
 
@@ -6237,10 +6285,13 @@ main(int argc, char *argv[])
 	char			file[PATH_MAX];
 	char			*env_proxy = NULL;
 	FILE			*f = NULL;
+	struct karg		a;
 
 	start_argv = argv;
 
-	while ((c = getopt(argc, argv, "STVf:tn")) != -1) {
+	strlcpy(named_session, XT_SAVED_TABS_FILE, sizeof named_session);
+
+	while ((c = getopt(argc, argv, "STVf:s:tn")) != -1) {
 		switch (c) {
 		case 'S':
 			showurl = 0;
@@ -6253,6 +6304,9 @@ main(int argc, char *argv[])
 			break;
 		case 'f':
 			strlcpy(conf, optarg, sizeof(conf));
+			break;
+		case 's':
+			strlcpy(named_session, optarg, sizeof(named_session));
 			break;
 		case 't':
 			tabless = 1;
@@ -6432,7 +6486,12 @@ main(int argc, char *argv[])
 	if (save_global_history)
 		restore_global_history();
 
-	focus = restore_saved_tabs();
+	if (!strcmp(named_session, XT_SAVED_TABS_FILE))
+		focus = restore_saved_tabs();
+	else {
+		a.s = named_session;
+		focus = open_tabs(NULL, &a);
+	}
 
 	while (argc) {
 		create_new_tab(argv[0], NULL, focus);
