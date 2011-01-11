@@ -4946,6 +4946,9 @@ cmd_focusout_cb(GtkWidget *w, GdkEventFocus *e, struct tab *t)
 	DNPRINTF(XT_D_CMD, "cmd_focusout_cb: tab %d focus_wv %d\n",
 	    t->tab_id, t->focus_wv);
 
+	hide_cmd(t);
+	hide_oops(t);
+
 	if (t->focus_wv)
 		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 	else
@@ -5429,12 +5432,6 @@ create_new_tab(char *title, struct undo *u, int focus)
 	gtk_notebook_set_tab_reorderable(notebook, t->vbox, TRUE);
 
 	g_object_connect((GObject*)t->cmd,
-	    "signal::key-press-event", (GCallback)cmd_keypress_cb, t,
-	    "signal::key-release-event", (GCallback)cmd_keyrelease_cb, t,
-	    "signal::focus-out-event", (GCallback)cmd_focusout_cb, t,
-	    "signal::activate", (GCallback)cmd_activate_cb, t,
-	    (char *)NULL);
-	g_object_connect((GObject*)t->oops,
 	    "signal::key-press-event", (GCallback)cmd_keypress_cb, t,
 	    "signal::key-release-event", (GCallback)cmd_keyrelease_cb, t,
 	    "signal::focus-out-event", (GCallback)cmd_focusout_cb, t,
