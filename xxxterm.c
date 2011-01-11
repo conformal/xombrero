@@ -4654,11 +4654,6 @@ wv_keypress_after_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 	DNPRINTF(XT_D_KEY, "wv_keypress_after_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
 
-	if (w == GTK_WIDGET(t->cmd)) {
-		goto done;
-	}
-	hide_oops(t);
-
 	if (t->hints_on) {
 		/* ESC */
 		if (CLEAN(e->state) == 0 && e->keyval == GDK_Escape) {
@@ -4775,7 +4770,7 @@ anum:
 			return (XT_CB_HANDLED);
 		}
 
-done:
+
 	return (XT_CB_PASSTHROUGH);
 }
 
@@ -4802,11 +4797,6 @@ cmd_keyrelease_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 
 	DNPRINTF(XT_D_CMD, "cmd_keyrelease_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
-
-	if (w == GTK_ENTRY(t->oops)) {
-		hide_oops(t);
-		goto done;
-	}
 
 	if (c[0] == ':')
 		goto done;
@@ -4906,12 +4896,6 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	DNPRINTF(XT_D_CMD, "cmd_keypress_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
 
-	if (w == GTK_ENTRY(t->oops)) {
-		hide_oops(t);
-		rv = XT_CB_PASSTHROUGH;
-		goto done;
-	}
-
 	/* sanity */
 	if (c == NULL)
 		e->keyval = GDK_Escape;
@@ -4962,12 +4946,6 @@ cmd_focusout_cb(GtkWidget *w, GdkEventFocus *e, struct tab *t)
 	DNPRINTF(XT_D_CMD, "cmd_focusout_cb: tab %d focus_wv %d\n",
 	    t->tab_id, t->focus_wv);
 
-	/* abort command when losing focus */
-	if (w == GTK_WIDGET(t->cmd))
-		hide_cmd(t);
-	else
-		hide_oops(t);
-
 	if (t->focus_wv)
 		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 	else
@@ -4987,11 +4965,6 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 		errx(1, "cmd_activate_cb");
 
 	DNPRINTF(XT_D_CMD, "cmd_activate_cb: tab %d %s\n", t->tab_id, c);
-
-	if (entry == GTK_ENTRY(t->oops)) {
-		hide_oops(t);
-		return;
-	}
 
 	/* sanity */
 	if (c == NULL)
