@@ -244,6 +244,7 @@ struct karg {
 #define XT_NAME			("XXXTerm")
 #define XT_DIR			(".xxxterm")
 #define XT_CERT_DIR		("certs/")
+#define XT_SESSIONS_DIR		("sessions/")
 #define XT_CONF_FILE		("xxxterm.conf")
 #define XT_FAVS_FILE		("favorites")
 #define XT_SAVED_TABS_FILE	("saved_tabs")
@@ -710,6 +711,7 @@ char			*fl_session_key;	/* favorites list */
 
 char			work_dir[PATH_MAX];
 char			certs_dir[PATH_MAX];
+char			sessions_dir[PATH_MAX];
 char			cookie_file[PATH_MAX];
 SoupURI			*proxy_uri = NULL;
 SoupSession		*session;
@@ -3669,6 +3671,13 @@ set(struct tab *t, struct karg *args)
 	return (XT_CB_PASSTHROUGH);
 }
 
+int
+session_cmd(struct tab *t, struct karg *args)
+{
+	warnx("session");
+	return (XT_CB_PASSTHROUGH);
+}
+
 /*
  * Make a hardcopy of the page
  */
@@ -3871,6 +3880,9 @@ struct cmd {
 
 	/* settings */
 	{ "set",		1,	set,			{0} },
+
+	/* sessions */
+	{ "session",		1,	session_cmd,		{0} },
 };
 
 gboolean
@@ -6148,6 +6160,22 @@ main(int argc, char *argv[])
 			err(1, "chmod");
 	}
 
+	/* sessions dir */
+	snprintf(sessions_dir, sizeof sessions_dir, "%s/%s/%s",
+	    pwd->pw_dir, XT_DIR, XT_SESSIONS_DIR);
+	if (stat(sessions_dir, &sb)) {
+		if (mkdir(sessions_dir, S_IRWXU) == -1)
+			err(1, "mkdir sessions_dir");
+		if (stat(sessions_dir, &sb))
+			err(1, "stat sessions_dir");
+	}
+	if (S_ISDIR(sb.st_mode) == 0)
+		errx(1, "%s not a dir", sessions_dir);
+	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
+		warnx("fixing invalid permissions on %s", sessions_dir);
+		if (chmod(sessions_dir, S_IRWXU) == -1)
+			err(1, "chmod");
+	}
 	/* runtime settings that can override config file */
 	if (runtime_settings[0] != '\0')
 		config_parse(runtime_settings, 1);
