@@ -6136,10 +6136,6 @@ send_url_to_socket(char *url)
 	int			s, len, rv = -1;
 	struct sockaddr_un	sa;
 
-	pwd = getpwuid(getuid());
-	if (pwd == NULL)
-		errx(1, "invalid user %d", getuid());
-
 	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
 		warnx("send_url_to_socket: socket");
 		return (-1);
