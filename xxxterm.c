@@ -1583,7 +1583,7 @@ save_tabs(struct tab *t, struct karg *a)
 		return (1);
 
 	snprintf(file, sizeof file, "%s/%s", sessions_dir, a->s);
-
+warnx("save_tabs %s", file);
 	if ((f = fopen(file, "w")) == NULL) {
 		show_oops(t, "Can't open save_tabs file: %s", strerror(errno));
 		return (1);
@@ -3711,9 +3711,32 @@ set(struct tab *t, struct karg *args)
 }
 
 int
+session_save(struct tab *t, char *filename, char **ret)
+{
+	struct karg		a;
+	char			*f = filename;
+	int			rv = 1;
+
+	f += strlen("save");
+	while (*f == ' ' && *f != '\0')
+		f++;
+	if (strlen(f) == 0)
+		goto done;
+
+	a.s = f;
+	save_tabs(t, &a);
+
+	*ret = f;
+	rv = 0;
+done:
+	return (rv);
+}
+
+int
 session_cmd(struct tab *t, struct karg *args)
 {
 	char			*action = NULL;
+	char			*filename = NULL;
 
 	if (t == NULL)
 		return (1);
@@ -3723,6 +3746,18 @@ session_cmd(struct tab *t, struct karg *args)
 	else
 		action = "show";
 
+	if (!strcmp(action, "show"))
+		show_oops(t, "Current session: %s", named_session[0] == '\0' ? 
+		    XT_SAVED_TABS_FILE : named_session);
+	else if (g_str_has_prefix(action, "save ")) {
+		if (session_save(t, action, &filename)) {
+			show_oops(t, "Can't save session: %s",
+			    filename ? filename : "INVALID");
+			goto done;
+		}
+	} else
+		show_oops(t, "Invalid command: %s", action);
+done:
 	return (XT_CB_PASSTHROUGH);
 }
 
