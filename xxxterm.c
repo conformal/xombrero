@@ -243,6 +243,7 @@ struct karg {
 /* defines */
 #define XT_NAME			("XXXTerm")
 #define XT_DIR			(".xxxterm")
+#define XT_CACHE_DIR		("cache")
 #define XT_CERT_DIR		("certs/")
 #define XT_SESSIONS_DIR		("sessions/")
 #define XT_CONF_FILE		("xxxterm.conf")
@@ -751,6 +752,7 @@ char			*fl_session_key;	/* favorites list */
 
 char			work_dir[PATH_MAX];
 char			certs_dir[PATH_MAX];
+char			cache_dir[PATH_MAX];
 char			sessions_dir[PATH_MAX];
 char			cookie_file[PATH_MAX];
 SoupURI			*proxy_uri = NULL;
@@ -4450,42 +4452,55 @@ done:
 }
 
 void
-favicon_download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
-    struct tab *t)
+load_favicon(struct tab *t)
 {
-	WebKitDownloadStatus status = webkit_download_get_status (download);
+	gchar *name_hash;
 	gint width, height;
 	char *file;
 	GdkPixbuf *pixbuf, *scaled;
 
+	name_hash = g_compute_checksum_for_string(G_CHECKSUM_SHA256,
+	    t->icon_uri, -1);
+	asprintf(&file, "%s/%s.ico", cache_dir, name_hash);
+	g_free(name_hash);
+	pixbuf = gdk_pixbuf_new_from_file(file, NULL);
+	free(file);
+	if (!pixbuf) {
+		update_favicon(t);
+		return;
+	}
+	g_object_get(pixbuf,
+		"width", &width,
+		"height", &height,
+		(char *)NULL);
+	DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d icon size %dx%d\n",
+	    __func__, t->tab_id, width, height);
+
+	if (width > 16 || height > 16) {
+		scaled = gdk_pixbuf_scale_simple(pixbuf, 16, 16,
+		    GDK_INTERP_BILINEAR);
+		g_object_unref(pixbuf);
+	} else {
+		scaled = pixbuf;
+	}
+
+	if (t->icon_pixbuf) {
+		g_object_unref(t->icon_pixbuf);
+	}
+	t->icon_pixbuf = scaled;
+
+	update_favicon(t);
+}
+
+void
+favicon_download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
+    struct tab *t)
+{
+	WebKitDownloadStatus status = webkit_download_get_status (download);
+
 	switch (status) {
 	case WEBKIT_DOWNLOAD_STATUS_FINISHED:
-		asprintf(&file, "%s/%s/tab-%d.ico", pwd->pw_dir, XT_DIR,
-		   t->tab_id);
-		pixbuf = gdk_pixbuf_new_from_file(file, NULL);
-		g_object_get(pixbuf,
-			"width", &width,
-			"height", &height,
-			(char *)NULL);
-		DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d icon size %dx%d\n",
-		    __func__, t->tab_id, width, height);
-
-		if (width > 16 || height > 16) {
-			scaled = gdk_pixbuf_scale_simple(pixbuf, 16, 16,
-			    GDK_INTERP_BILINEAR);
-			g_object_unref(pixbuf);
-		} else {
-			scaled = pixbuf;
-		}
-
-		if (t->icon_pixbuf) {
-			g_object_unref(t->icon_pixbuf);
-		}
-		t->icon_pixbuf = scaled;
-
-		unlink(file);
-		free(file);
-		update_favicon(t);
+		load_favicon(t);
 		/* fallthrough */
 	case WEBKIT_DOWNLOAD_STATUS_ERROR:
 	case WEBKIT_DOWNLOAD_STATUS_CANCELLED:
@@ -4501,7 +4516,9 @@ notify_icon_loaded_cb(WebKitWebView *wv, char *uri, struct tab *t)
 {
 	WebKitNetworkRequest	*request;
 	WebKitDownload		*download;
-	char			*dest_uri;
+	gchar			*name_hash;
+	char			*dest_uri, *file;
+	struct stat		sb;
 
 	if (uri == NULL || t == NULL)
 		errx(1, "%s: invalid pointers", __func__);
@@ -4511,7 +4528,6 @@ notify_icon_loaded_cb(WebKitWebView *wv, char *uri, struct tab *t)
 		}
 		free(t->icon_uri);
 	}
-
 	asprintf(&t->icon_uri, "%s", uri);
 	DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d icon uri %s "
 	    "(dl!)\n", __func__, t->tab_id, uri);
@@ -4525,8 +4541,17 @@ notify_icon_loaded_cb(WebKitWebView *wv, char *uri, struct tab *t)
 	download = webkit_download_new(request);
 	g_object_unref(request);
 
-	asprintf(&dest_uri, "file://%s/%s/tab-%d.ico", pwd->pw_dir, XT_DIR,
-	    t->tab_id);
+	name_hash = g_compute_checksum_for_string(G_CHECKSUM_SHA256, uri, -1);
+	asprintf(&file, "%s/%s.ico", cache_dir, name_hash);
+	fflush(stderr);
+	g_free(name_hash);
+	if (!stat(file, &sb)) {
+		free(file);
+		load_favicon(t);
+		return TRUE;
+	}
+	asprintf(&dest_uri, "file://%s", file);
+	free(file);
 
 	webkit_download_set_destination_uri(download, dest_uri);
 	free(dest_uri);
@@ -6370,6 +6395,23 @@ main(int argc, char *argv[])
 	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
 		warnx("fixing invalid permissions on %s", work_dir);
 		if (chmod(work_dir, S_IRWXU) == -1)
+			err(1, "chmod");
+	}
+
+	/* icon cache dir */
+	snprintf(cache_dir, sizeof cache_dir, "%s/%s/%s",
+	    pwd->pw_dir, XT_DIR, XT_CACHE_DIR);
+	if (stat(cache_dir, &sb)) {
+		if (mkdir(cache_dir, S_IRWXU) == -1)
+			err(1, "mkdir cache_dir");
+		if (stat(cache_dir, &sb))
+			err(1, "stat cache_dir");
+	}
+	if (S_ISDIR(sb.st_mode) == 0)
+		errx(1, "%s not a dir", cache_dir);
+	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
+		warnx("fixing invalid permissions on %s", cache_dir);
+		if (chmod(cache_dir, S_IRWXU) == -1)
 			err(1, "chmod");
 	}
 
