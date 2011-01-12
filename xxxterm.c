@@ -164,6 +164,7 @@ struct tab {
 	GdkPixbuf		*icon_pixbuf;
 	guint			tab_id;
 	char			*icon_uri;
+	WebKitDownload		*icon_download;
 	WebKitWebView		*wv;
 
 	WebKitWebHistoryItem	*item;
@@ -4504,8 +4505,9 @@ favicon_download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
 		load_favicon(t);
 		/* fallthrough */
 	case WEBKIT_DOWNLOAD_STATUS_ERROR:
+		webkit_download_cancel(t->icon_download); /* just incase */
 	case WEBKIT_DOWNLOAD_STATUS_CANCELLED:
-		g_object_unref(download);
+		g_object_unref(t->icon_download);
 		break;
 	default:
 		break;
@@ -4516,7 +4518,6 @@ int
 notify_icon_loaded_cb(WebKitWebView *wv, char *uri, struct tab *t)
 {
 	WebKitNetworkRequest	*request;
-	WebKitDownload		*download;
 	gchar			*name_hash, *dest_uri, *file;
 	struct stat		sb;
 
@@ -4532,13 +4533,18 @@ notify_icon_loaded_cb(WebKitWebView *wv, char *uri, struct tab *t)
 	DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d icon uri %s "
 	    "(dl!)\n", __func__, t->tab_id, uri);
 
+	if (t->icon_download && G_IS_OBJECT(t->icon_download)
+	    && WEBKIT_IS_DOWNLOAD(t->icon_download)) {
+		webkit_download_cancel(t->icon_download);
+		g_object_unref(t->icon_download);
+	}
 	request = webkit_network_request_new(t->icon_uri);
 	if (!request) {
 		DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d icon uri %s "
-		    "(request failed)\n", __func__, t->tab_id, uri);
+	    	"(request failed)\n", __func__, t->tab_id, uri);
 		return FALSE;
 	}
-	download = webkit_download_new(request);
+	t->icon_download = webkit_download_new(request);
 	g_object_unref(request);
 
 	name_hash = g_compute_checksum_for_string(G_CHECKSUM_SHA256, uri, -1);
@@ -4553,13 +4559,13 @@ notify_icon_loaded_cb(WebKitWebView *wv, char *uri, struct tab *t)
 	dest_uri = g_strdup_printf("file://%s", file);
 	g_free(file);
 
-	webkit_download_set_destination_uri(download, dest_uri);
+	webkit_download_set_destination_uri(t->icon_download, dest_uri);
 	g_free(dest_uri);
 
-	g_signal_connect(G_OBJECT (download), "notify::status",
+	g_signal_connect(G_OBJECT (t->icon_download), "notify::status",
 	    G_CALLBACK (favicon_download_status_changed_cb), t);
 
-	webkit_download_start(download);
+	webkit_download_start(t->icon_download);
 	return TRUE;
 }
 
@@ -5542,6 +5548,11 @@ delete_tab(struct tab *t)
 
 	/* halt all webkit activity */
 	webkit_web_view_stop_loading(t->wv);
+	if (t->icon_download && G_IS_OBJECT(t->icon_download) &&
+	    WEBKIT_IS_DOWNLOAD(t->icon_download)) {
+		webkit_download_cancel(t->icon_download);
+		g_object_unref(t->icon_download);
+	}
 	undo_close_tab_save(t);
 
 	gtk_widget_destroy(t->vbox);
