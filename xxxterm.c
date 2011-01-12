@@ -399,8 +399,8 @@ struct alias {
 TAILQ_HEAD(alias_list, alias);
 
 /* settings that require restart */
-int		showtabs = 1;	/* show tabs on notebook */
-int		showurl = 1;	/* show url toolbar on notebook */
+int		show_tabs = 1;	/* show tabs on notebook */
+int		show_url = 1;	/* show url toolbar on notebook */
 int		tabless = 0;	/* allow only 1 tab */
 int		enable_socket = 0;
 int		single_instance = 0; /* only allow one xxxterm to run */
@@ -535,8 +535,8 @@ struct settings {
 	{ "save_global_history", XT_S_INT, XT_SF_RESTART , &save_global_history, NULL, NULL },
 	{ "save_rejected_cookies", XT_S_INT, XT_SF_RESTART , &save_rejected_cookies, NULL, NULL },
 	{ "single_instance", XT_S_INT, XT_SF_RESTART , &single_instance, NULL, NULL },
-	{ "show_tabs", XT_S_INT, 0, &showtabs, NULL, NULL },
-	{ "show_url", XT_S_INT, 0, &showurl, NULL, NULL },
+	{ "show_tabs", XT_S_INT, 0, &show_tabs, NULL, NULL },
+	{ "show_url", XT_S_INT, 0, &show_url, NULL, NULL },
 	{ "ssl_ca_file", XT_S_STR, 0 , NULL, &ssl_ca_file, NULL },
 	{ "ssl_strict_certs", XT_S_INT, 0 , &ssl_strict_certs, NULL, NULL },
 	{ "user_agent", XT_S_STR, 0 , NULL, &user_agent, NULL },
@@ -1834,7 +1834,10 @@ int
 focus(struct tab *t, struct karg *args)
 {
 	if (t == NULL || args == NULL)
-		errx(1, "focus");
+		return (1);
+
+	if (show_url == 0)
+		return (0);
 
 	if (args->i == XT_FOCUS_URI)
 		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
@@ -2948,7 +2951,7 @@ url_set_visibility(void)
 {
 	struct tab *t;
 	TAILQ_FOREACH(t, &tabs, entry) {
-		if (showurl == 0)
+		if (show_url == 0)
 			gtk_widget_hide(t->toolbar);
 		else
 			gtk_widget_show(t->toolbar);
@@ -2958,7 +2961,7 @@ url_set_visibility(void)
 void
 notebook_tab_set_visibility(GtkNotebook *notebook)
 {
-	if (showtabs == 0)
+	if (show_tabs == 0)
 		gtk_notebook_set_show_tabs(notebook, FALSE);
 	else
 		gtk_notebook_set_show_tabs(notebook, TRUE);
@@ -2971,10 +2974,10 @@ fullscreen(struct tab *t, struct karg *args)
 	if (t == NULL)
 		return (XT_CB_PASSTHROUGH);
 
-	if (showurl == 0)
-		showurl = showtabs = 1;
+	if (show_url == 0)
+		show_url = show_tabs = 1;
 	else
-		showurl = showtabs = 0;
+		show_url = show_tabs = 0;
 
 	url_set_visibility();
 	notebook_tab_set_visibility(notebook);
@@ -2994,14 +2997,14 @@ urlaction(struct tab *t, struct karg *args)
 
 	switch (args->i) {
 	case XT_URL_SHOW:
-		if (showurl == 0) {
-			showurl = 1;
+		if (show_url == 0) {
+			show_url = 1;
 			url_set_visibility();
 		}
 		break;
 	case XT_URL_HIDE:
-		if (showurl == 1) {
-			showurl = 0;
+		if (show_url == 1) {
+			show_url = 0;
 			url_set_visibility();
 		}
 		break;
@@ -3056,14 +3059,14 @@ tabaction(struct tab *t, struct karg *args)
 			g_free(newuri);
 		break;
 	case XT_TAB_SHOW:
-		if (showtabs == 0) {
-			showtabs = 1;
+		if (show_tabs == 0) {
+			show_tabs = 1;
 			notebook_tab_set_visibility(notebook);
 		}
 		break;
 	case XT_TAB_HIDE:
-		if (showtabs == 1) {
-			showtabs = 0;
+		if (show_tabs == 1) {
+			show_tabs = 0;
 			notebook_tab_set_visibility(notebook);
 		}
 		break;
@@ -5338,7 +5341,7 @@ cmd_focusout_cb(GtkWidget *w, GdkEventFocus *e, struct tab *t)
 	hide_cmd(t);
 	hide_oops(t);
 
-	if (t->focus_wv)
+	if (show_url == 0 || t->focus_wv)
 		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 	else
 		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
@@ -5878,8 +5881,12 @@ create_new_tab(char *title, struct undo *u, int focus)
 
 	if (load)
 		webkit_web_view_load_uri(t->wv, title);
-	else
-		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
+	else {
+		if (show_url == 1)
+			gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
+		else
+			gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+	}
 
 	t->bfl = webkit_web_view_get_back_forward_list(t->wv);
 	/* restore the tab's history */
@@ -6445,10 +6452,10 @@ main(int argc, char *argv[])
 	while ((c = getopt(argc, argv, "STVf:s:tn")) != -1) {
 		switch (c) {
 		case 'S':
-			showurl = 0;
+			show_url = 0;
 			break;
 		case 'T':
-			showtabs = 0;
+			show_tabs = 0;
 			break;
 		case 'V':
 			errx(0 , "Version: %s", version);
