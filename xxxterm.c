@@ -367,6 +367,9 @@ struct karg {
 
 #define XT_FONT_SET		(0)
 
+#define XT_URL_SHOW		(1)
+#define XT_URL_HIDE		(2)
+
 #define XT_WL_TOGGLE		(1<<0)
 #define XT_WL_ENABLE		(1<<1)
 #define XT_WL_DISABLE		(1<<2)
@@ -2941,6 +2944,45 @@ move(struct tab *t, struct karg *args)
 }
 
 void
+url_set_visibility(void)
+{
+	struct tab *t;
+	TAILQ_FOREACH(t, &tabs, entry) {
+		if (showurl == 0)
+			gtk_widget_hide(t->toolbar);
+		else
+			gtk_widget_show(t->toolbar);
+	}
+}
+
+int
+urlaction(struct tab *t, struct karg *args)
+{
+	int			rv = XT_CB_HANDLED;
+
+	DNPRINTF(XT_D_TAB, "urlaction: %p %d %d\n", t, args->i, t->focus_wv);
+
+	if (t == NULL)
+		return (XT_CB_PASSTHROUGH);
+
+	switch (args->i) {
+	case XT_URL_SHOW:
+		if (showurl == 0) {
+			showurl = 1;
+			url_set_visibility();
+		}
+		break;
+	case XT_URL_HIDE:
+		if (showurl == 1) {
+			showurl = 0;
+			url_set_visibility();
+		}
+		break;
+	}
+	return (rv);
+}
+
+void
 notebook_tab_set_visibility(GtkNotebook *notebook)
 {
 	if (showtabs == 0)
@@ -3980,6 +4022,10 @@ struct cmd {
 	{ "history"	,	0,	xtp_page_hl,		{0} },
 	{ "home"	,	0,	go_home,		{0} },
 	{ "restart"	,	0,	restart,		{0} },
+	{ "urlhide",		0,	urlaction,		{.i = XT_URL_HIDE} },
+	{ "urlh",		0,	urlaction,		{.i = XT_URL_HIDE} },
+	{ "urlshow",		0,	urlaction,		{.i = XT_URL_SHOW} },
+	{ "urls",		0,	urlaction,		{.i = XT_URL_SHOW} },
 
 	{ "1",			0,	move,			{.i = XT_MOVE_TOP} },
 	{ "print",		0,	print_page,		{0} },
@@ -5806,8 +5852,7 @@ create_new_tab(char *title, struct undo *u, int focus)
 	/* hide stuff */
 	hide_cmd(t);
 	hide_oops(t);
-	if (showurl == 0)
-		gtk_widget_hide(t->toolbar);
+	url_set_visibility();
 
 	if (focus) {
 		gtk_notebook_set_current_page(notebook, t->tab_id);
