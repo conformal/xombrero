@@ -4635,11 +4635,9 @@ favicon_download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
 		DNPRINTF(XT_D_DOWNLOAD, "%s: setting icon to %s\n",
 		    __func__, t->icon_dest_uri);
 		set_favicon_from_file(t, t->icon_dest_uri);
-		g_free(t->icon_dest_uri);
 		/* these will be freed post callback */
 		t->icon_request = NULL;
 		t->icon_download = NULL;
-		t->icon_dest_uri = NULL;
 		break;
 	default:
 		break;
