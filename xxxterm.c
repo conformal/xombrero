@@ -1264,7 +1264,7 @@ config_parse(char *filename, int runtime)
 					errx(1, "invalid value for %s", var);
 				handled = 1;
 				break;
-			} else {
+			} else
 				switch (rs[i].type) {
 				case XT_S_INT:
 					p = rs[i].ival;
@@ -1285,7 +1285,6 @@ config_parse(char *filename, int runtime)
 				default:
 					errx(1, "invalid type for %s", var);
 				}
-			}
 			break;
 		}
 		if (handled == 0)
@@ -1523,9 +1522,8 @@ open_tabs(struct tab *t, struct karg *a)
 			if (feof(f) || ferror(f))
 				break;
 
-		if (uri && strlen(uri)) {
+		if (uri && strlen(uri))
 			create_new_tab(uri, NULL, 1);
-		}
 
 		free(uri);
 		uri = NULL;
@@ -1738,13 +1736,12 @@ toggle_cwl(struct tab *t, struct karg *args)
 	else
 		dom_toggle = dom;
 
-	if (es) {
+	if (es)
 		/* enable cookies for domain */
 		wl_add(dom_toggle, &c_wl, 0);
-	} else {
+	else
 		/* disable cookies for domain */
 		RB_REMOVE(domain_list, &c_wl, d);
-	}
 
 	webkit_web_view_reload(t->wv);
 
@@ -2478,6 +2475,7 @@ cert_cmd(struct tab *t, struct karg *args)
 	uri = (char *)webkit_web_frame_get_uri(frame);
 	if (uri && strlen(uri) == 0) {
 		show_oops(t, "Invalid URI");
+		return (1);
 	}
 	if ((s = connect_socket_from_uri(uri, domain, sizeof domain)) == -1) {
 		show_oops(t, "Invalid certidicate URI: %s", uri);
@@ -2955,6 +2953,33 @@ url_set_visibility(void)
 	}
 }
 
+void
+notebook_tab_set_visibility(GtkNotebook *notebook)
+{
+	if (showtabs == 0)
+		gtk_notebook_set_show_tabs(notebook, FALSE);
+	else
+		gtk_notebook_set_show_tabs(notebook, TRUE);
+}
+
+int
+fullscreen(struct tab *t, struct karg *args)
+{
+	DNPRINTF(XT_D_TAB, "urlaction: %p %d %d\n", t, args->i, t->focus_wv);
+	if (t == NULL)
+		return (XT_CB_PASSTHROUGH);
+
+	if (showurl == 0)
+		showurl = showtabs = 1;
+	else
+		showurl = showtabs = 0;
+
+	url_set_visibility();
+	notebook_tab_set_visibility(notebook);
+
+	return (XT_CB_HANDLED);
+}
+
 int
 urlaction(struct tab *t, struct karg *args)
 {
@@ -2980,16 +3005,6 @@ urlaction(struct tab *t, struct karg *args)
 		break;
 	}
 	return (rv);
-}
-
-void
-notebook_tab_set_visibility(GtkNotebook *notebook)
-{
-	if (showtabs == 0)
-		gtk_notebook_set_show_tabs(notebook, FALSE);
-	else {
-		gtk_notebook_set_show_tabs(notebook, TRUE);
-	}
 }
 
 int
@@ -3117,20 +3132,18 @@ movetab(struct tab *t, struct karg *args)
 		case XT_TAB_NEXT:
 			/* if at the last page, loop around to the first */
 			if (gtk_notebook_get_current_page(notebook) ==
-			    gtk_notebook_get_n_pages(notebook) - 1) {
+			    gtk_notebook_get_n_pages(notebook) - 1)
 				gtk_notebook_set_current_page(notebook, 0);
-			} else {
+			else
 				gtk_notebook_next_page(notebook);
-			}
 			break;
 		case XT_TAB_PREV:
 			/* if at the first page, loop around to the last */
-			if (gtk_notebook_current_page(notebook) == 0) {
+			if (gtk_notebook_current_page(notebook) == 0)
 				gtk_notebook_set_current_page(notebook,
 							      gtk_notebook_get_n_pages(notebook) - 1);
-			} else {
+			else
 				gtk_notebook_prev_page(notebook);
-			}
 			break;
 		case XT_TAB_FIRST:
 			gtk_notebook_set_current_page(notebook, 0);
@@ -3761,9 +3774,8 @@ set(struct tab *t, struct karg *args)
 		g_free(footer);
 
 		load_webkit_string(t, page);
-	} else {
+	} else
 		show_oops(t, "Invalid command: %s", pars);
-	}
 
 	return (XT_CB_PASSTHROUGH);
 }
@@ -4059,6 +4071,8 @@ struct cmd {
 
 	/* settings */
 	{ "set",		1,	set,			{0} },
+	{ "fullscreen",		0,	fullscreen,		{0} },
+	{ "f",			0,	fullscreen,		{0} },
 
 	/* sessions */
 	{ "session",		1,	session_cmd,		{0} },
