@@ -1556,8 +1556,9 @@ open_tabs(struct tab *t, struct karg *a)
 			if (feof(f) || ferror(f))
 				break;
 
-		if (uri && strlen(uri))
+		if (uri && strlen(uri)) {
 			create_new_tab(uri, NULL, 1);
+		}
 
 		free(uri);
 		uri = NULL;
@@ -1578,6 +1579,7 @@ restore_saved_tabs(void)
 	int		unlink_file = 0;
 	struct stat	sb;
 	struct karg	a;
+	int		rv = 0;
 
 	snprintf(file, sizeof file, "%s/%s",
 	    sessions_dir, XT_RESTART_TABS_FILE);
@@ -1588,12 +1590,12 @@ restore_saved_tabs(void)
 		a.s = XT_RESTART_TABS_FILE;
 	}
 
-	open_tabs(NULL, &a);
+	rv = open_tabs(NULL, &a);
 
 	if (unlink_file)
 		unlink(file);
 
-	return (1);
+	return (rv);
 }
 
 int
@@ -6322,7 +6324,7 @@ int
 main(int argc, char *argv[])
 {
 	struct stat		sb;
-	int			c, focus = 1, s, optn = 0;
+	int			c, s, optn = 0, focus = 1;
 	char			conf[PATH_MAX] = { '\0' };
 	char			file[PATH_MAX];
 	char			*env_proxy = NULL;
@@ -6546,10 +6548,10 @@ main(int argc, char *argv[])
 		restore_global_history();
 
 	if (!strcmp(named_session, XT_SAVED_TABS_FILE))
-		focus = restore_saved_tabs();
+		restore_saved_tabs();
 	else {
 		a.s = named_session;
-		focus = open_tabs(NULL, &a);
+		open_tabs(NULL, &a);
 	}
 
 	while (argc) {
@@ -6559,7 +6561,8 @@ main(int argc, char *argv[])
 		argc--;
 		argv++;
 	}
-	if (focus == 1)
+
+	if (TAILQ_EMPTY(&tabs))
 		create_new_tab(home, NULL, 1);
 
 	if (enable_socket)
