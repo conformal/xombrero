@@ -2949,11 +2949,13 @@ move(struct tab *t, struct karg *args)
 void
 url_set_visibility(void)
 {
-	struct tab *t;
+	struct tab		*t;
+
 	TAILQ_FOREACH(t, &tabs, entry) {
-		if (show_url == 0)
+		if (show_url == 0) {
 			gtk_widget_hide(t->toolbar);
-		else
+			gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+		} else
 			gtk_widget_show(t->toolbar);
 	}
 }
@@ -2971,6 +2973,7 @@ int
 fullscreen(struct tab *t, struct karg *args)
 {
 	DNPRINTF(XT_D_TAB, "urlaction: %p %d %d\n", t, args->i, t->focus_wv);
+
 	if (t == NULL)
 		return (XT_CB_PASSTHROUGH);
 
