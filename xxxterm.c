@@ -345,6 +345,8 @@ struct karg {
 #define XT_TAB_DELQUIT		(3)
 #define XT_TAB_OPEN		(4)
 #define XT_TAB_UNDO_CLOSE	(5)
+#define XT_TAB_SHOW		(6)
+#define XT_TAB_HIDE		(7)
 
 #define XT_NAV_INVALID		(0)
 #define XT_NAV_BACK		(1)
@@ -2938,6 +2940,16 @@ move(struct tab *t, struct karg *args)
 	return (XT_CB_HANDLED);
 }
 
+void
+notebook_tab_set_visibility(GtkNotebook *notebook)
+{
+	if (showtabs == 0)
+		gtk_notebook_set_show_tabs(notebook, FALSE);
+	else {
+		gtk_notebook_set_show_tabs(notebook, TRUE);
+	}
+}
+
 int
 tabaction(struct tab *t, struct karg *args)
 {
@@ -2983,6 +2995,18 @@ tabaction(struct tab *t, struct karg *args)
 		webkit_web_view_load_uri(t->wv, url);
 		if (newuri)
 			g_free(newuri);
+		break;
+	case XT_TAB_SHOW:
+		if (showtabs == 0) {
+			showtabs = 1;
+			notebook_tab_set_visibility(notebook);
+		}
+		break;
+	case XT_TAB_HIDE:
+		if (showtabs == 1) {
+			showtabs = 0;
+			notebook_tab_set_visibility(notebook);
+		}
 		break;
 	case XT_TAB_UNDO_CLOSE:
 		if (undo_count == 0) {
@@ -3969,6 +3993,10 @@ struct cmd {
 	{ "tabe",		1,	tabaction,		{.i = XT_TAB_NEW} },
 	{ "tabclose",		0,	tabaction,		{.i = XT_TAB_DELETE} },
 	{ "tabc",		0,	tabaction,		{.i = XT_TAB_DELETE} },
+	{ "tabshow",		1,	tabaction,		{.i = XT_TAB_SHOW} },
+	{ "tabs",		1,	tabaction,		{.i = XT_TAB_SHOW} },
+	{ "tabhide",		1,	tabaction,		{.i = XT_TAB_HIDE} },
+	{ "tabh",		1,	tabaction,		{.i = XT_TAB_HIDE} },
 	{ "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT} },
 	{ "q",			0,	tabaction,		{.i = XT_TAB_DELQUIT} },
 	/* XXX add count to these commands */
@@ -5955,15 +5983,11 @@ create_canvas(void)
 	vbox = gtk_vbox_new(FALSE, 0);
 	gtk_box_set_spacing(GTK_BOX(vbox), 0);
 	notebook = GTK_NOTEBOOK(gtk_notebook_new());
-	if (showtabs == 0)
-		gtk_notebook_set_show_tabs(notebook, FALSE);
-	else {
-		gtk_notebook_set_tab_hborder(notebook, 0);
-		gtk_notebook_set_tab_vborder(notebook, 0);
-	}
-	gtk_notebook_set_show_border(notebook, FALSE);
+	gtk_notebook_set_tab_hborder(notebook, 0);
+	gtk_notebook_set_tab_vborder(notebook, 0);
 	gtk_notebook_set_scrollable(notebook, TRUE);
-	gtk_notebook_set_homogeneous_tabs(notebook, TRUE);
+	notebook_tab_set_visibility(notebook);
+	gtk_notebook_set_show_border(notebook, FALSE);
 	gtk_widget_set_can_focus(GTK_WIDGET(notebook), FALSE);
 
 	abtn = gtk_button_new();
