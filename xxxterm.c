@@ -4555,9 +4555,13 @@ notify_icon_loaded_cb(WebKitWebView *wv, char *uri, struct tab *t)
 	snprintf(file, sizeof file, "%s/%s.ico", cache_dir, name_hash);
 	g_free(name_hash);
 	if (!stat(file, &sb)) {
-		/* XXX make sure the icon is not 0 length */
-		load_favicon(t);
-		return (TRUE);
+		if (sb.st_size > 0) {
+			load_favicon(t);
+			return (TRUE);
+		}
+
+		/* corrupt icon so trash it */
+		unlink(file);
 	}
 
 	dest_uri = g_strdup_printf("file://%s", file);
