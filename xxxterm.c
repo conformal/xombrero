@@ -903,14 +903,15 @@ match_alias(char *url_in)
 {
 	struct alias		*a;
 	char			*arg;
-	char			*url_out = NULL;
+	char			*url_out = NULL, *search;
 
-	arg = url_in;
+	search = g_strdup(url_in);
+	arg = search;
 	if (strsep(&arg, " \t") == NULL)
 		errx(1, "match_alias: NULL URL");
 
 	TAILQ_FOREACH(a, &aliases, entry) {
-		if (!strcmp(url_in, a->a_name))
+		if (!strcmp(search, a->a_name))
 			break;
 	}
 
@@ -922,6 +923,8 @@ match_alias(char *url_in)
 		else
 			url_out = g_strdup(a->a_uri);
 	}
+
+	g_free(search);
 
 	return (url_out);
 }
