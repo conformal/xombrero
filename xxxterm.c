@@ -3,6 +3,7 @@
  * Copyright (c) 2010, 2011 Marco Peereboom <marco@peereboom.us>
  * Copyright (c) 2011 Stevan Andjelkovic <stevan@student.chalmers.se>
  * Copyright (c) 2010 Edd Barrett <vext01@gmail.com>
+ * Copyright (c) 2011 Todd T. Fries <todd@fries.net>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1917,6 +1918,7 @@ about(struct tab *t, struct karg *args)
 	    "<li>Marco Peereboom &lt;marco@peereboom.us&gt;</li>"
 	    "<li>Stevan Andjelkovic &lt;stevan@student.chalmers.se&gt;</li>"
 	    "<li>Edd Barrett &lt;vext01@gmail.com&gt; </li>"
+	    "<li>Todd T. Fries &lt;todd@fries.net&gt; </li>"
 	    "</ul>"
 	    "Copyrights and licenses can be found on the XXXterm "
 	    "<a href=\"http://opensource.conformal.com/wiki/XXXTerm\">website</a>"
