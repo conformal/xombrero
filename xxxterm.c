@@ -535,6 +535,8 @@ struct settings {
 	{ "save_global_history", XT_S_INT, XT_SF_RESTART , &save_global_history, NULL, NULL },
 	{ "save_rejected_cookies", XT_S_INT, XT_SF_RESTART , &save_rejected_cookies, NULL, NULL },
 	{ "single_instance", XT_S_INT, XT_SF_RESTART , &single_instance, NULL, NULL },
+	{ "show_tabs", XT_S_INT, 0, &showtabs, NULL, NULL },
+	{ "show_url", XT_S_INT, 0, &showurl, NULL, NULL },
 	{ "ssl_ca_file", XT_S_STR, 0 , NULL, &ssl_ca_file, NULL },
 	{ "ssl_strict_certs", XT_S_INT, 0 , &ssl_strict_certs, NULL, NULL },
 	{ "user_agent", XT_S_STR, 0 , NULL, &user_agent, NULL },
