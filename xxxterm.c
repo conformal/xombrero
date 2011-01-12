@@ -5645,7 +5645,6 @@ create_new_tab(char *title, struct undo *u, int focus)
 	bb = create_button("Close", GTK_STOCK_CLOSE, 1);
 	gtk_widget_set_size_request(t->label, 100, 0);
 	gtk_widget_set_size_request(b, 130, 0);
-	gtk_notebook_set_homogeneous_tabs(notebook, TRUE);
 
 	gtk_box_pack_start(GTK_BOX(b), bb, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(b), t->label, FALSE, FALSE, 0);
@@ -5942,6 +5941,7 @@ create_canvas(void)
 	}
 	gtk_notebook_set_show_border(notebook, FALSE);
 	gtk_notebook_set_scrollable(notebook, TRUE);
+	gtk_notebook_set_homogeneous_tabs(notebook, TRUE);
 	gtk_widget_set_can_focus(GTK_WIDGET(notebook), FALSE);
 
 	abtn = gtk_button_new();
