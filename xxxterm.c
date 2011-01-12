@@ -4505,9 +4505,9 @@ favicon_download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
 	switch (status) {
 	case WEBKIT_DOWNLOAD_STATUS_FINISHED:
 		load_favicon(t);
-		/* FALLTHROUGH */
+		g_object_unref(t->icon_download);
+		break;
 	case WEBKIT_DOWNLOAD_STATUS_ERROR:
-		webkit_download_cancel(t->icon_download); /* just incase */
 	case WEBKIT_DOWNLOAD_STATUS_CANCELLED:
 		g_object_unref(t->icon_download);
 		break;
