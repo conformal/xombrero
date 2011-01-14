@@ -4522,13 +4522,13 @@ done:
 }
 
 void
-abort_and_free_favicon(struct tab *t)
+free_favicon(struct tab *t)
 {
 	DNPRINTF(XT_D_DOWNLOAD, "%s: down %p req %p pix %p\n",
 	    __func__, t->icon_download, t->icon_request, t->icon_pixbuf);
 	if (t->icon_download) {
-		webkit_download_cancel(t->icon_download);
-		g_object_unref(t->icon_download);
+		/* XXX for now to catch missed calls */
+		abort();
 	}
 	if (t->icon_request)
 		g_object_unref(t->icon_request);
@@ -4539,8 +4539,20 @@ abort_and_free_favicon(struct tab *t)
 
 	t->icon_pixbuf = NULL;
 	t->icon_request = NULL;
-	t->icon_download = NULL;
 	t->icon_dest_uri = NULL;
+}
+
+void
+abort_favicon_download(struct tab *t)
+{
+	DNPRINTF(XT_D_DOWNLOAD, "%s: down %p\n", __func__, t->icon_download);
+
+	if (t->icon_download) {
+		webkit_download_cancel(t->icon_download);
+		g_object_unref(t->icon_download);
+		t->icon_download = NULL;
+	} else
+		free_favicon(t);
 
 	gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->uri_entry),
 	    GTK_ENTRY_ICON_PRIMARY, "text-html");
@@ -4629,6 +4641,9 @@ favicon_download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_CANCELLED:
 		/* 2 */
+		DNPRINTF(XT_D_DOWNLOAD, "%s: freeing favicon %d\n",
+		    __func__, t->tab_id);
+		free_favicon(t);
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_FINISHED:
 		/* 3 */
@@ -4717,7 +4732,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 	switch (webkit_web_view_get_load_status(wview)) {
 	case WEBKIT_LOAD_PROVISIONAL:
-		abort_and_free_favicon(t);
+		abort_favicon_download(t);
 #if GTK_CHECK_VERSION(2, 20, 0)
 		gtk_widget_show(t->spinner);
 		gtk_spinner_start(GTK_SPINNER(t->spinner));
@@ -5452,7 +5467,7 @@ stop_cb(GtkWidget *w, struct tab *t)
 	}
 
 	webkit_web_frame_stop_loading(frame);
-	abort_and_free_favicon(t);
+	abort_favicon_download(t);
 }
 
 void
@@ -5683,7 +5698,7 @@ delete_tab(struct tab *t)
 	TAILQ_REMOVE(&tabs, t, entry);
 
 	/* halt all webkit activity */
-	abort_and_free_favicon(t);
+	abort_favicon_download(t);
 	webkit_web_view_stop_loading(t->wv);
 	undo_close_tab_save(t);
 
