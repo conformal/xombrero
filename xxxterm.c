@@ -1523,7 +1523,6 @@ open_tabs(struct tab *t, struct karg *a)
 		goto done;
 
 	snprintf(file, sizeof file, "%s/%s", sessions_dir, a->s);
-
 	if ((f = fopen(file, "r")) == NULL)
 		goto done;
 
@@ -3840,6 +3839,8 @@ session_save(struct tab *t, char *filename, char **ret)
 		goto done;
 
 	*ret = f;
+	if (f[0] == '.' || f[0] == '/')
+		goto done;
 
 	a.s = f;
 	if (save_tabs(t, &a))
@@ -3865,6 +3866,8 @@ session_open(struct tab *t, char *filename, char **ret)
 		goto done;
 
 	*ret = f;
+	if (f[0] == '.' || f[0] == '/')
+		goto done;
 
 	a.s = f;
 	a.i = XT_SES_CLOSETABS;
@@ -3892,6 +3895,8 @@ session_delete(struct tab *t, char *filename, char **ret)
 		goto done;
 
 	*ret = f;
+	if (f[0] == '.' || f[0] == '/')
+		goto done;
 
 	snprintf(file, sizeof file, "%s/%s", sessions_dir, f);
 	if (unlink(file))
