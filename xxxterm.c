@@ -382,6 +382,9 @@ struct karg {
 #define XT_CMD_TABNEW		(2)
 #define XT_CMD_TABNEW_CURRENT	(3)
 
+#define XT_SES_DONOTHING	(0)
+#define XT_SES_CLOSETABS	(1)
+
 /* mime types */
 struct mime_type {
 	char			*mt_type;
@@ -1511,6 +1514,7 @@ open_tabs(struct tab *t, struct karg *a)
 	FILE		*f = NULL;
 	char		*uri = NULL;
 	int		rv = 1;
+	struct tab	*ti, *tt;
 
 	if (a == NULL)
 		goto done;
@@ -1519,6 +1523,8 @@ open_tabs(struct tab *t, struct karg *a)
 
 	if ((f = fopen(file, "r")) == NULL)
 		goto done;
+
+	ti = TAILQ_LAST(&tabs, tab_list);
 
 	for (;;) {
 		if ((uri = fparseln(f, NULL, NULL, NULL, 0)) == NULL)
@@ -1530,6 +1536,19 @@ open_tabs(struct tab *t, struct karg *a)
 
 		free(uri);
 		uri = NULL;
+	}
+
+	/* close open tabs */
+	if (a->i == XT_SES_CLOSETABS && ti != NULL) {
+		for (;;) {
+			tt = TAILQ_FIRST(&tabs);
+			if (tt != ti) {
+				delete_tab(tt);
+				continue;
+			}
+			delete_tab(tt);
+			break;
+		}
 	}
 
 	rv = 0;
@@ -1558,6 +1577,7 @@ restore_saved_tabs(void)
 		a.s = XT_RESTART_TABS_FILE;
 	}
 
+	a.i = XT_SES_DONOTHING;
 	rv = open_tabs(NULL, &a);
 
 	if (unlink_file)
@@ -1578,10 +1598,11 @@ save_tabs(struct tab *t, struct karg *a)
 	if (a == NULL)
 		return (1);
 	if (a->s == NULL)
-		return (1);
-
-	snprintf(file, sizeof file, "%s/%s", sessions_dir, a->s);
-
+		snprintf(file, sizeof file, "%s/%s",
+		    sessions_dir, named_session);
+	else
+		snprintf(file, sizeof file, "%s/%s", sessions_dir, a->s);
+warnx("save_tabs: %s", file);
 	if ((f = fopen(file, "w")) == NULL) {
 		show_oops(t, "Can't open save_tabs file: %s", strerror(errno));
 		return (1);
@@ -1604,7 +1625,7 @@ save_tabs_and_quit(struct tab *t, struct karg *args)
 {
 	struct karg		a;
 
-	a.s = XT_SAVED_TABS_FILE;
+	a.s = NULL;
 	save_tabs(t, &a);
 	quit(t, NULL);
 
@@ -3827,6 +3848,7 @@ session_open(struct tab *t, char *filename, char **ret)
 		goto done;
 
 	a.s = f;
+	a.i = XT_SES_CLOSETABS;
 	open_tabs(t, &a);
 	strlcpy(named_session, f, sizeof named_session);
 
@@ -4024,9 +4046,9 @@ struct cmd {
 	{ "q!",			0,	quit,			{0} },
 	{ "qa",			0,	quit,			{0} },
 	{ "qa!",		0,	quit,			{0} },
-	{ "w",			0,	save_tabs,		{.s = XT_SAVED_TABS_FILE} },
-	{ "wq",			0,	save_tabs_and_quit,	{.s = XT_SAVED_TABS_FILE} },
-	{ "wq!",		0,	save_tabs_and_quit,	{.s = XT_SAVED_TABS_FILE} },
+	{ "w",			0,	save_tabs,		{0} },
+	{ "wq",			0,	save_tabs_and_quit,	{0} },
+	{ "wq!",		0,	save_tabs_and_quit,	{0} },
 	{ "help",		0,	help,			{0} },
 	{ "about",		0,	about,			{0} },
 	{ "stats",		0,	stats,			{0} },
@@ -6683,6 +6705,7 @@ main(int argc, char *argv[])
 		restore_saved_tabs();
 	else {
 		a.s = named_session;
+		a.i = XT_SES_DONOTHING;
 		open_tabs(NULL, &a);
 	}
 
