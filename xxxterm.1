@@ -361,6 +361,20 @@ if it is the last tab.
 Restart
 .Nm
 and reload all current tabs.
+.It Cm session , Cm session show
+Display the current session name.
+By default the session name is main_session.
+To create a new session use the
+.Cm session save
+command.
+A session is defined as the lifetime of the browser window.
+.It Cm session open <session_name>
+Open session_name and close all currently open tabs.
+Going forward this session is named session_name.
+.It Cm session save <session_name>
+Save current tabs to session_name session.
+This will close the current session and going forward this session is named
+session_name.
 .It Cm stats
 Show blocked cookie statistics.
 These statistics vary based on settings and are not persistent.
@@ -381,15 +395,17 @@ Hide url entry and toolbar.
 .It Cm urlshow , urls
 Show url entry and toolbar.
 .It Cm w
-Save open tabs.
+Save open tabs to current session.
 The tabs will be restored next time
 .Nm
-is started.
+the session is opened.
+See the session command for additional details.
 .It Cm wq , wq!
 Save open tabs and quit.
 The tabs will be restored next time
 .Nm
-is started.
+the session is opened.
+See the session command for additional details.
 .El
 .Sh FILES
 .Bl -tag -width "/etc/xxxterm.confXXX" -compact
@@ -538,6 +554,13 @@ Default search engine string.
 See the
 .Pa xxxterm.conf
 file for details.
+.It Cm session_autosave
+Enable session auto-saving when changing state (e.g. adding or removing a tab).
+The session name is what is currently in use and is described in the
+.Cm session save
+and
+.Cm session open
+commands.
 .It Cm session_timeout
 If this value is greater than 3600 then it is the time added in seconds to a
 session cookie.

@@ -438,6 +438,7 @@ int		allow_volatile_cookies = 0;
 int		save_global_history = 0; /* save global history to disk */
 char		*user_agent = NULL;
 int		save_rejected_cookies = 0;
+time_t		session_autosave = 0;
 
 struct settings;
 int		set_download_dir(struct settings *, char *);
@@ -535,9 +536,10 @@ struct settings {
 	{ "refresh_interval", XT_S_INT, 0 , &refresh_interval, NULL, NULL },
 	{ "resource_dir", XT_S_STR, 0 , NULL, &resource_dir, NULL },
 	{ "search_string", XT_S_STR, 0 , NULL, &search_string, NULL },
-	{ "session_timeout", XT_S_INT, 0 , &session_timeout, NULL, NULL },
 	{ "save_global_history", XT_S_INT, XT_SF_RESTART , &save_global_history, NULL, NULL },
 	{ "save_rejected_cookies", XT_S_INT, XT_SF_RESTART , &save_rejected_cookies, NULL, NULL },
+	{ "session_timeout", XT_S_INT, 0 , &session_timeout, NULL, NULL },
+	{ "session_autosave", XT_S_INT, 0 , &session_autosave, NULL, NULL },
 	{ "single_instance", XT_S_INT, XT_SF_RESTART , &single_instance, NULL, NULL },
 	{ "show_tabs", XT_S_INT, 0, &show_tabs, NULL, NULL },
 	{ "show_url", XT_S_INT, 0, &show_url, NULL, NULL },
@@ -1602,7 +1604,7 @@ save_tabs(struct tab *t, struct karg *a)
 		    sessions_dir, named_session);
 	else
 		snprintf(file, sizeof file, "%s/%s", sessions_dir, a->s);
-warnx("save_tabs: %s", file);
+
 	if ((f = fopen(file, "w")) == NULL) {
 		show_oops(t, "Can't open save_tabs file: %s", strerror(errno));
 		return (1);
@@ -4745,6 +4747,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	struct history		*h, find;
 	int			add = 0;
 	const gchar		*s_loading;
+	struct karg		a;
 
 	DNPRINTF(XT_D_URL, "notify_load_status_cb: %d\n",
 	    webkit_web_view_get_load_status(wview));
@@ -4784,6 +4787,12 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		}
 
 		show_ca_status(t, uri);
+
+		/* we know enough to autosave the session */
+		if (session_autosave) {
+			a.s = NULL;
+			save_tabs(t, &a);
+		}
 		break;
 
 	case WEBKIT_LOAD_FIRST_VISUALLY_NON_EMPTY_LAYOUT:
@@ -5712,6 +5721,8 @@ undo_close_tab_save(struct tab *t)
 void
 delete_tab(struct tab *t)
 {
+	struct karg		a;
+
 	DNPRINTF(XT_D_TAB, "delete_tab: %p\n", t);
 
 	if (t == NULL)
@@ -5731,6 +5742,13 @@ delete_tab(struct tab *t)
 	recalc_tabs();
 	if (TAILQ_EMPTY(&tabs))
 		create_new_tab(NULL, NULL, 1);
+
+
+	/* recreate session */
+	if (session_autosave) {
+		a.s = NULL;
+		save_tabs(t, &a);
+	}
 }
 
 void
