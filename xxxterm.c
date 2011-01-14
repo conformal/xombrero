@@ -257,6 +257,7 @@ struct karg {
 #define XT_RESTART_TABS_FILE	("restart_tabs")
 #define XT_SOCKET_FILE		("socket")
 #define XT_HISTORY_FILE		("history")
+#define XT_SAVE_SESSION_ID	("SESSION_NAME=")
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
 #define XT_DOCTYPE		"<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>"
@@ -1533,6 +1534,14 @@ open_tabs(struct tab *t, struct karg *a)
 			if (feof(f) || ferror(f))
 				break;
 
+		/* retrieve session name */
+		if (uri && g_str_has_prefix(uri, XT_SAVE_SESSION_ID)) {
+			strlcpy(named_session,
+			    &uri[strlen(XT_SAVE_SESSION_ID)],
+			    sizeof named_session);
+			continue;
+		}
+
 		if (uri && strlen(uri))
 			create_new_tab(uri, NULL, 1);
 
@@ -1610,6 +1619,10 @@ save_tabs(struct tab *t, struct karg *a)
 		return (1);
 	}
 
+	/* save session name */
+	fprintf(f, "%s%s\n", XT_SAVE_SESSION_ID, named_session);
+
+	/* save tabs */
 	TAILQ_FOREACH(ti, &tabs, entry) {
 		frame = webkit_web_view_get_main_frame(ti->wv);
 		uri = webkit_web_frame_get_uri(frame);
