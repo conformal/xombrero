@@ -368,6 +368,10 @@ To create a new session use the
 .Cm session save
 command.
 A session is defined as the lifetime of the browser window.
+.It Cm session delete <session_name>
+Delete session session_name from persistent storage.
+If session_name is the current session then the session will revert to
+main_session.
 .It Cm session open <session_name>
 Open session_name and close all currently open tabs.
 Going forward this session is named session_name.

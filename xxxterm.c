@@ -3826,11 +3826,13 @@ session_save(struct tab *t, char *filename, char **ret)
 	if (strlen(f) == 0)
 		goto done;
 
+	*ret = f;
+
 	a.s = f;
-	save_tabs(t, &a);
+	if (save_tabs(t, &a))
+		goto done;
 	strlcpy(named_session, f, sizeof named_session);
 
-	*ret = f;
 	rv = 0;
 done:
 	return (rv);
@@ -3849,12 +3851,43 @@ session_open(struct tab *t, char *filename, char **ret)
 	if (strlen(f) == 0)
 		goto done;
 
+	*ret = f;
+
 	a.s = f;
 	a.i = XT_SES_CLOSETABS;
-	open_tabs(t, &a);
+	if (open_tabs(t, &a))
+		goto done;
+
 	strlcpy(named_session, f, sizeof named_session);
 
+	rv = 0;
+done:
+	return (rv);
+}
+
+int
+session_delete(struct tab *t, char *filename, char **ret)
+{
+	char			file[PATH_MAX];
+	char			*f = filename;
+	int			rv = 1;
+
+	f += strlen("delete");
+	while (*f == ' ' && *f != '\0')
+		f++;
+	if (strlen(f) == 0)
+		goto done;
+
 	*ret = f;
+
+	snprintf(file, sizeof file, "%s/%s", sessions_dir, f);
+	if (unlink(file))
+		goto done;
+
+	if (!strcmp(f, named_session))
+		strlcpy(named_session, XT_SAVED_TABS_FILE,
+		    sizeof named_session);
+
 	rv = 0;
 done:
 	return (rv);
@@ -3886,6 +3919,12 @@ session_cmd(struct tab *t, struct karg *args)
 	} else if (g_str_has_prefix(action, "open ")) {
 		if (session_open(t, action, &filename)) {
 			show_oops(t, "Can't open session: %s",
+			    filename ? filename : "INVALID");
+			goto done;
+		}
+	} else if (g_str_has_prefix(action, "delete ")) {
+		if (session_delete(t, action, &filename)) {
+			show_oops(t, "Can't delete session: %s",
 			    filename ? filename : "INVALID");
 			goto done;
 		}
