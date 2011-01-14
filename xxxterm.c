@@ -4589,10 +4589,7 @@ free_favicon(struct tab *t)
 {
 	DNPRINTF(XT_D_DOWNLOAD, "%s: down %p req %p pix %p\n",
 	    __func__, t->icon_download, t->icon_request, t->icon_pixbuf);
-	if (t->icon_download) {
-		/* XXX for now to catch missed calls */
-		abort();
-	}
+
 	if (t->icon_request)
 		g_object_unref(t->icon_request);
 	if (t->icon_pixbuf)
