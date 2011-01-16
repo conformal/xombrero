@@ -41,13 +41,19 @@
 #include <dlfcn.h>
 #include <errno.h>
 
+#include <sys/types.h>
 #ifdef __linux__
-#include "linux/tree.h"
+        #include "linux/tree.h"
+        #include "linux/util.h"
 #else
-#include <sys/tree.h>
+        #ifdef __FreeBSD__
+                #include <libutil.h>
+        #else
+                #include <util.h>
+        #endif
+        #include <sys/tree.h>
 #endif
 #include <sys/queue.h>
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/un.h>
