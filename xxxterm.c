@@ -1604,6 +1604,8 @@ save_tabs(struct tab *t, struct karg *a)
 	struct tab		*ti;
 	WebKitWebFrame		*frame;
 	const gchar		*uri;
+	int			len = 0, i;
+	gchar			**arr = NULL;
 
 	if (a == NULL)
 		return (1);
@@ -1621,14 +1623,24 @@ save_tabs(struct tab *t, struct karg *a)
 	/* save session name */
 	fprintf(f, "%s%s\n", XT_SAVE_SESSION_ID, named_session);
 
-	/* save tabs */
+	/* save tabs, in the order they are arranged in the notebook */
+	TAILQ_FOREACH(ti, &tabs, entry)
+		len++;
+
+	arr = g_malloc0(len * sizeof(gchar *));
+
 	TAILQ_FOREACH(ti, &tabs, entry) {
 		frame = webkit_web_view_get_main_frame(ti->wv);
 		uri = webkit_web_frame_get_uri(frame);
 		if (uri && strlen(uri) > 0)
-			fprintf(f, "%s\n", uri);
+			arr[gtk_notebook_page_num(notebook, ti->vbox)] = (gchar *)uri;
 	}
 
+	for (i = 0; i < len; i++)
+		if (arr[i])
+			fprintf(f, "%s\n", arr[i]);
+
+	g_free(arr);
 	fclose(f);
 
 	return (0);
@@ -3926,7 +3938,7 @@ session_cmd(struct tab *t, struct karg *args)
 		action = "show";
 
 	if (!strcmp(action, "show"))
-		show_oops(t, "Current session: %s", named_session[0] == '\0' ? 
+		show_oops(t, "Current session: %s", named_session[0] == '\0' ?
 		    XT_SAVED_TABS_FILE : named_session);
 	else if (g_str_has_prefix(action, "save ")) {
 		if (session_save(t, action, &filename)) {
