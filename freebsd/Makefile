@@ -2,7 +2,7 @@
 
 LIBS= gtk+-2.0 webkit-1.0 libsoup-2.4
 
-LDADD= -llibutil
+LDADD= -lutil
 GTK_CFLAGS!= pkg-config --cflags $(LIBS)
 GTK_LDFLAGS!= pkg-config --libs $(LIBS)
 CFLAGS+= $(GTK_CFLAGS) -Wall -pthread
@@ -24,7 +24,7 @@ javascript.h: ../js-merge-helper.pl ../hinting.js
 xxxterm.o: javascript.h
 
 xxxterm: ../xxxterm.o freebsd.o
-	$(CC) $(LDFLAGS) -o $@ $+ $(LDADD)
+	$(CC) $(LDFLAGS) -o $@ $+ $(LDADD) ../xxxterm.o freebsd.o
 
 install: all
 	install -m 755 -d $(DESTDIR)$(BINDIR)
