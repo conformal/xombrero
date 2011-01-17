@@ -4643,11 +4643,9 @@ abort_favicon_download(struct tab *t)
 {
 	DNPRINTF(XT_D_DOWNLOAD, "%s: down %p\n", __func__, t->icon_download);
 
-	if (t->icon_download) {
+	if (t->icon_download)
 		webkit_download_cancel(t->icon_download);
-		g_object_unref(t->icon_download);
-		t->icon_download = NULL;
-	} else
+	else
 		free_favicon(t);
 
 	gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->uri_entry),
@@ -4717,7 +4715,7 @@ void
 favicon_download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
     struct tab *t)
 {
-	WebKitDownloadStatus	status = webkit_download_get_status (download);
+	WebKitDownloadStatus	status = webkit_download_get_status(download);
 
 	if (t == NULL)
 		return;
@@ -4728,6 +4726,8 @@ favicon_download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
 	switch (status) {
 	case WEBKIT_DOWNLOAD_STATUS_ERROR:
 		/* -1 */
+		t->icon_download = NULL;
+		free_favicon(t);
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_CREATED:
 		/* 0 */
@@ -4739,6 +4739,7 @@ favicon_download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
 		/* 2 */
 		DNPRINTF(XT_D_DOWNLOAD, "%s: freeing favicon %d\n",
 		    __func__, t->tab_id);
+		t->icon_download = NULL;
 		free_favicon(t);
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_FINISHED:
