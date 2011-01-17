@@ -622,10 +622,7 @@ and
 .Cm session open
 commands.
 .It Cm session_timeout
-If this value is greater than 3600 then it is the time added in seconds to a
-session cookie.
-If the value is smaller than 3600 then there is no change
-to the expiration of a session cookie.
+This value is the time that is added in seconds to a session cookie.
 .It Cm show_tabs
 Enable or disable showing tabs.
 .It Cm show_url
@@ -643,6 +640,10 @@ If set to a valid PEM file
 all server certificates will be validated against it.
 The URL bar will be colored green when the certificate is trusted
 and yellow when untrusted.
+.Pp
+If
+.Cm ssl_ca_file
+is not set then the URL bar will color all HTTPS connections red.
 .It Cm ssl_strict_certs
 If this value is set connections to untrusted sites will be aborted.
 This value is only used if
@@ -656,9 +657,6 @@ user-agent string.
 Set the default height of the browser window.
 .It Cm window_width
 Set the default width of the browser window.
-If
-.Cm ssl_ca_file
-is not set then the URL bar will color all HTTPS connections red.
 .El
 .Sh HISTORY
 .Nm
