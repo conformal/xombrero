@@ -194,7 +194,7 @@ Print page
 .It Cm M-h
 Global history
 .It Cm C-j
-Toggle javascript enabled for FQDN.
+Toggle Java Script enabled for FQDN.
 .It Cm C-s
 Toggle source view
 .It Cm M-c
@@ -421,19 +421,21 @@ When properly enabled these whitelists require either the FQDN or top level
 domain to exist in the whitelists in order to allow cookies to be stored or
 Java Script to execute.
 Both Java Script and cookies have two whitelists associated with them.
-The whitelists  are called session and persistent.
+The whitelists are called session and persistent.
 Items in the session whitelists are only allowed for the lifetime of the
-browser application.
+.Nm
+instance.
 Items in the persistent whitelists are stored on disk and are restored
-upon restarting
+upon restarting.
 .Pp
-Setting up the whitelists is a little tricky due to intricacies of webkit.
+Setting up the whitelists is a little tricky due to intricacies of WebKit.
 In fact the semantics are different for cookies and Java Script.
 .Pp
 Cookie whitelist requires the following configuration to be set:
 .Bl -tag -width "enable_cookie_whitelistXXX" -offset indent -compact
+.Pp
 .It Cm cookies_enabled
-This is a webkit setting and must be set to
+This is a WebKit setting and must be set to
 .Pa 1 (ENABLED)
 in order to be able to use a
 cookie whitelist.
@@ -448,8 +450,9 @@ cookie whitelist.
 .Pp
 Java Script whitelist requires the following configuration to be set:
 .Bl -tag -width "enable_js_whitelistXXX" -offset indent -compact
+.Pp
 .It Cm enable_scripts
-This is a webkit setting and must be set to
+This is a WebKit setting and must be set to
 .Pa 0 (DISABLED)
 in order to be able to use a
 Java Script whitelist.
@@ -533,7 +536,7 @@ validates that during startup.
 .It Cm enable_cookie_whitelist
 When enabled all cookies must be in the whitelist or they are rejected.
 .It Cm enable_js_whitelist
-When enabled all domains must be in the js whitelist in order to run javascript.
+When enabled all domains must be in the js whitelist in order to run Java Script.
 NOTE: Make sure
 .Cm enable_scripts
 is set to 0.
@@ -573,7 +576,7 @@ Permits icon sizes to be changed if
 is enabled.
 Size 1 is small; 2 is normal; 3 through 6 are progressively larger.
 .It Cm js_wl
-This is a javascript whitelist item.
+This is a Java Script whitelist item.
 See
 .Cm cookie_wl
 for semantics and more details.
