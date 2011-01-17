@@ -194,9 +194,11 @@ Print page
 .It Cm M-h
 Global history
 .It Cm C-j
-Toggle javascript enabled for domain
+Toggle javascript enabled for FQDN.
 .It Cm C-s
 Toggle source view
+.It Cm M-c
+Toggle cookie enabled for FQDN.
 .El
 .Ss Tab Manipulation
 .Nm
@@ -285,26 +287,26 @@ Used by itself it expands to
 .Cm cookie show all .
 .It Cm cookies
 Show cookie jar contents.
-.It Cm cookie save
+.It Cm cookie save, cookie save fqdn
+Save the current fully qualified domain name (FQDN)
+to the persistent whitelist.
+For example,
+the www.peereboom.us domain would result in saving .www.peereboom.us.
 .It Cm cookie save domain
-Save the top level domain name to the persitent whitelist.
+Save the top level domain name to the persistent whitelist.
 For example,
 the www.peereboom.us domain would result in saving .peereboom.us.
 .Pp
 This action enables cookies if it is currently disabled for this entry.
-.It Cm cookie save fqdn
-Save the current fully qualified domain name (FQDN)
-to the persitent whitelist.
 .It Cm cookie show all
 Show all persistent and session entries in the cookie whitelist.
 .It Cm cookie show persistent
 Show all persistent entries in the cookie whitelist.
 .It Cm cookie show session
 Show all session entries in the cookie whitelist.
-.It Cm cookie toggle
 .It Cm cookie toggle domain
 Toggle cookie support for the current top level domain.
-.It Cm cookie toggle fqdn
+.It Cm cookie toggle, cookie toggle fqdn
 Toggle Java Script execution for the current FQDN.
 .It Cm dl
 Show download manager.
@@ -326,26 +328,26 @@ The
 command is used to manipulate the Java Script whitelist.
 Used by itself it expands to
 .Cm js show all .
-.It Cm js save
+.It Cm js save, save fqdn
+Saves the FQDN to the persistent whitelist.
+For example,
+the www.peereboom.us domain would result in saving .www.peereboom.us.
 .It Cm js save domain
-Saves the top level domain name to the persitent whitelist.
+Saves the top level domain name to the persistent whitelist.
 For example,
 the www.peereboom.us domain would result in saving .peereboom.us.
 .Pp
 This action enables Java Script if it is currently disabled for this entry.
-.It Cm js save fqdn
-Saves the current FQDN to the persitent whitelist.
 .It Cm js show all
 Shows all persistent and session entries in the JS whitelist.
 .It Cm js show persistent
 Shows all persistent entries in the JS whitelist.
 .It Cm js show session
 Shows all session entries in the JS whitelist.
-.It Cm js toggle
+.It Cm js toggle, js toggle fqdn
+Toggle Java Script execution for the current FQDN.
 .It Cm js toggle domain
 Toggle Java Script execution for the current top level domain.
-.It Cm js toggle fqdn
-Toggle Java Script execution for the current FQDN.
 .It Cm open , op , o URL
 Open URL.
 .It Cm print
