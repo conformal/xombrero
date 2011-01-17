@@ -369,7 +369,7 @@ By default the session name is main_session.
 To create a new session use the
 .Cm session save
 command.
-A session is defined as the lifetime of the browser window.
+A session is defined as the lifetime of the browser application.
 .It Cm session delete <session_name>
 Delete session session_name from persistent storage.
 If session_name is the current session then the session will revert to
@@ -413,6 +413,60 @@ The tabs will be restored next time
 the session is opened.
 See the session command for additional details.
 .El
+.Sh WHITELISTS
+.Nm
+has a number of whitelists to control blocking cookies and Java Script
+execution for FQDNs or domains.
+When properly enabled these whitelists require either the FQDN or top level
+domain to exist in the whitelists in order to allow cookies to be stored or
+Java Script to execute.
+Both Java Script and cookies have two whitelists associated with them.
+The whitelists  are called session and persistent.
+Items in the session whitelists are only allowed for the lifetime of the
+browser application.
+Items in the persistent whitelists are stored on disk and are restored
+upon restarting
+.Pp
+Setting up the whitelists is a little tricky due to intricacies of webkit.
+In fact the semantics are different for cookies and Java Script.
+.Pp
+Cookie whitelist requires the following configuration to be set:
+.Bl -tag -width "enable_cookie_whitelistXXX" -offset indent -compact
+.It Cm cookies_enabled
+This is a webkit setting and must be set to
+.Pa 1 (ENABLED)
+in order to be able to use a
+cookie whitelist.
+.It Cm enable_cookie_whitelist
+This needs to be set to
+.Pa 1
+to enable the cookie whitelist functionality.
+.It Cm cookie_wl
+These entries in the configuration file are the actual domains names in the
+cookie whitelist.
+.El
+.Pp
+Java Script whitelist requires the following configuration to be set:
+.Bl -tag -width "enable_js_whitelistXXX" -offset indent -compact
+.It Cm enable_scripts
+This is a webkit setting and must be set to
+.Pa 0 (DISABLED)
+in order to be able to use a
+Java Script whitelist.
+.It Cm enable_js_whitelist
+This needs to be set to
+.Pa 1
+to enable the Java Script whitelist functionality.
+.It Cm js_wl
+These entries in the configuration file are the actual domains names in the
+Java Script whitelist.
+.El
+.Pp
+See the
+.Pa FILES
+section for additional configuration file entries and details
+that alter runtime behavior.
+.PP
 .Sh FILES
 .Bl -tag -width "/etc/xxxterm.confXXX" -compact
 .It Pa ~/.xxxterm.conf
