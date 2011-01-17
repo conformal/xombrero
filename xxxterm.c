@@ -42,16 +42,16 @@
 #include <errno.h>
 
 #include <sys/types.h>
-#ifdef __linux__
-        #include "linux/tree.h"
-        #include "linux/util.h"
-#else
-        #ifdef __FreeBSD__
-                #include <libutil.h>
-        #else
-                #include <util.h>
-        #endif
-        #include <sys/tree.h>
+#if defined(__linux__)
+	#include "linux/util.h"
+	#include "linux/tree.h"
+#elif defined(__FreeBSD__)
+	#include <libutil.h>
+	#include "freebsd/util.h"
+	#include <sys/tree.h>
+#else /* OpenBSD */
+	#include <util.h>
+	#include <sys/tree.h>
 #endif
 #include <sys/queue.h>
 #include <sys/stat.h>
