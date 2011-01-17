@@ -13,18 +13,20 @@ BINDIR?= $(PREFIX)/bin
 LIBDIR?= $(PREFIX)/lib
 MANDIR?= $(PREFIX)/share/man
 
-CC?= gcc
+CC?= cc
 
-all: javascript.h xxxterm
+all: ../javascript.h xxxterm
 
-javascript.h: ../js-merge-helper.pl ../hinting.js
+../javascript.h: ../js-merge-helper.pl ../hinting.js
 	perl ../js-merge-helper.pl ../hinting.js \
-		../input-focus.js > javascript.h
+		../input-focus.js > ../javascript.h
 
-xxxterm.o: javascript.h
+xxxterm.o: ../xxxterm.o
 
-xxxterm: ../xxxterm.o freebsd.o
-	$(CC) $(LDFLAGS) -o $@ $+ $(LDADD) ../xxxterm.o freebsd.o
+../xxxterm.o: ../javascript.h
+
+xxxterm: xxxterm.o freebsd.o
+	$(CC) $(LDFLAGS) -o $@ *.o $+ $(LDADD)
 
 install: all
 	install -m 755 -d $(DESTDIR)$(BINDIR)
