@@ -1816,7 +1816,7 @@ toggle_js(struct tab *t, struct karg *args)
 	if (args == NULL)
 		return (0);
 
-	g_object_get((GObject *)t->settings,
+	g_object_get(G_OBJECT(t->settings),
 	    "enable-scripts", &es, (char *)NULL);
 	if (args->i & XT_WL_TOGGLE)
 		es = !es;
@@ -1849,7 +1849,7 @@ toggle_js(struct tab *t, struct karg *args)
 			RB_REMOVE(domain_list, &js_wl, d);
 		button_set_stockid(t->js_toggle, GTK_STOCK_MEDIA_PAUSE);
 	}
-	g_object_set((GObject *)t->settings,
+	g_object_set(G_OBJECT(t->settings),
 	    "enable-scripts", es, (char *)NULL);
 	webkit_web_view_set_settings(t->wv, t->settings);
 	webkit_web_view_reload(t->wv);
@@ -4560,7 +4560,7 @@ check_and_set_js(gchar *uri, struct tab *t)
 	DNPRINTF(XT_D_JS, "check_and_set_js: %s %s\n",
 	    es ? "enable" : "disable", uri);
 
-	g_object_set((GObject *)t->settings,
+	g_object_set(G_OBJECT(t->settings),
 	    "enable-scripts", es, (char *)NULL);
 	webkit_web_view_set_settings(t->wv, t->settings);
 
@@ -5580,11 +5580,11 @@ stop_cb(GtkWidget *w, struct tab *t)
 void
 setup_webkit(struct tab *t)
 {
-	g_object_set((GObject *)t->settings,
+	g_object_set(G_OBJECT(t->settings),
 	    "user-agent", t->user_agent, (char *)NULL);
-	g_object_set((GObject *)t->settings,
+	g_object_set(G_OBJECT(t->settings),
 	    "enable-scripts", enable_scripts, (char *)NULL);
-	g_object_set((GObject *)t->settings,
+	g_object_set(G_OBJECT(t->settings),
 	    "enable-plugins", enable_plugins, (char *)NULL);
 	adjustfont_webkit(t, XT_FONT_SET);
 
@@ -5616,7 +5616,7 @@ create_browser(struct tab *t)
 	t->settings = webkit_web_settings_new();
 
 	if (user_agent == NULL) {
-		g_object_get((GObject *)t->settings, "user-agent", &strval,
+		g_object_get(G_OBJECT(t->settings), "user-agent", &strval,
 		    (char *)NULL);
 		t->user_agent = g_strdup_printf("%s %s+", strval, version);
 		g_free(strval);
@@ -5837,9 +5837,9 @@ adjustfont_webkit(struct tab *t, int adjust)
 		t->font_size = default_font_size;
 
 	t->font_size += adjust;
-	g_object_set((GObject *)t->settings, "default-font-size",
+	g_object_set(G_OBJECT(t->settings), "default-font-size",
 	    t->font_size, (char *)NULL);
-	g_object_get((GObject *)t->settings, "default-font-size",
+	g_object_get(G_OBJECT(t->settings), "default-font-size",
 	    &t->font_size, (char *)NULL);
 }
 
@@ -5962,7 +5962,7 @@ create_new_tab(char *title, struct undo *u, int focus)
 	/* make notebook tabs reorderable */
 	gtk_notebook_set_tab_reorderable(notebook, t->vbox, TRUE);
 
-	g_object_connect((GObject*)t->cmd,
+	g_object_connect(G_OBJECT(t->cmd),
 	    "signal::key-press-event", (GCallback)cmd_keypress_cb, t,
 	    "signal::key-release-event", (GCallback)cmd_keyrelease_cb, t,
 	    "signal::focus-out-event", (GCallback)cmd_focusout_cb, t,
@@ -5970,11 +5970,11 @@ create_new_tab(char *title, struct undo *u, int focus)
 	    (char *)NULL);
 
 	/* reuse wv_button_cb to hide oops */
-	g_object_connect((GObject*)t->oops,
+	g_object_connect(G_OBJECT(t->oops),
 	    "signal::button_press_event", (GCallback)wv_button_cb, t,
 	    (char *)NULL);
 
-	g_object_connect((GObject*)t->wv,
+	g_object_connect(G_OBJECT(t->wv),
 	    "signal::key-press-event", (GCallback)wv_keypress_cb, t,
 	    "signal-after::key-press-event", (GCallback)wv_keypress_after_cb, t,
 	    /* "signal::hovering-over-link", (GCallback)webview_hover_cb, t, */
@@ -5995,7 +5995,7 @@ create_new_tab(char *title, struct undo *u, int focus)
 	    "notify::load-status", G_CALLBACK(notify_load_status_cb), t);
 
 	/* hijack the unused keys as if we were the browser */
-	g_object_connect((GObject*)t->toolbar,
+	g_object_connect(G_OBJECT(t->toolbar),
 	    "signal-after::key-press-event", (GCallback)wv_keypress_after_cb, t,
 	    (char *)NULL);
 
@@ -6203,7 +6203,7 @@ create_canvas(void)
 	gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(notebook), TRUE, TRUE, 0);
 	gtk_widget_set_size_request(vbox, -1, -1);
 
-	g_object_connect((GObject*)notebook,
+	g_object_connect(G_OBJECT(notebook),
 	    "signal::switch-page", (GCallback)notebook_switchpage_cb, NULL,
 	    (char *)NULL);
 	g_signal_connect(G_OBJECT(abtn), "button_press_event",
