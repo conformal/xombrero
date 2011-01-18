@@ -36,7 +36,6 @@
 #include <pwd.h>
 #include <string.h>
 #include <unistd.h>
-#include <util.h>
 #include <pthread.h>
 #include <dlfcn.h>
 #include <errno.h>
