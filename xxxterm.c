@@ -413,6 +413,7 @@ int		show_tabs = 1;	/* show tabs on notebook */
 int		show_url = 1;	/* show url toolbar on notebook */
 int		tabless = 0;	/* allow only 1 tab */
 int		enable_socket = 0;
+int		socket_fd = -1;
 int		single_instance = 0; /* only allow one xxxterm to run */
 int		fancy_bar = 1;	/* fancy toolbar */
 
@@ -4008,6 +4009,9 @@ restart(struct tab *t, struct karg *args)
 
 	a.s = XT_RESTART_TABS_FILE;
 	save_tabs(t, &a);
+
+	if (enable_socket && socket_fd != -1)
+		close(socket_fd);
 	execvp(start_argv[0], start_argv);
 	/* NOTREACHED */
 
@@ -6775,8 +6779,10 @@ main(int argc, char *argv[])
 		create_new_tab(home, NULL, 1);
 
 	if (enable_socket)
-		if ((s = build_socket()) != -1)
+		if ((s = build_socket()) != -1) {
+			socket_fd = s;
 			gdk_input_add(s, GDK_INPUT_READ, socket_watcher, NULL);
+		}
 
 	gtk_main();
 
