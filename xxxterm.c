@@ -6561,6 +6561,30 @@ done:
 }
 
 void
+create_dir(char **pathptr, int size, const char *dirname, const char *name)
+{
+	struct stat	sb;
+	char 		*path = pathptr;
+
+	if (path[0] == '\0')
+		snprintf(path, size, "%s/%s", pwd->pw_dir,
+		    XT_DIR);
+	if (stat(path, &sb)) {
+		if (mkdir(path, S_IRWXU) == -1)
+			err(1, "mkdir %s(%s)", name, path);
+		if (stat(path, &sb))
+			err(1, "stat %s(%s)", name, path);
+	}
+	if (S_ISDIR(sb.st_mode) == 0)
+		errx(1, "%s(%s) not a dir", name, path);
+	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
+		warnx("fixing invalid permissions on %s(%s)", name, path);
+		if (chmod(path, S_IRWXU) == -1)
+			err(1, "chmod");
+	}
+}
+
+void
 usage(void)
 {
 	fprintf(stderr,
@@ -6654,91 +6678,27 @@ main(int argc, char *argv[])
 	config_parse(conf, 0);
 
 	/* working directory */
-	snprintf(work_dir, sizeof work_dir, "%s/%s", pwd->pw_dir, XT_DIR);
-	if (stat(work_dir, &sb)) {
-		if (mkdir(work_dir, S_IRWXU) == -1)
-			err(1, "mkdir work_dir");
-		if (stat(work_dir, &sb))
-			err(1, "stat work_dir");
-	}
-	if (S_ISDIR(sb.st_mode) == 0)
-		errx(1, "%s not a dir", work_dir);
-	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
-		warnx("fixing invalid permissions on %s", work_dir);
-		if (chmod(work_dir, S_IRWXU) == -1)
-			err(1, "chmod");
-	}
+	create_dir(&work_dir, sizeof work_dir, XT_DIR, "work_dir");
 
 	/* icon cache dir */
-	snprintf(cache_dir, sizeof cache_dir, "%s/%s/%s",
-	    pwd->pw_dir, XT_DIR, XT_CACHE_DIR);
-	if (stat(cache_dir, &sb)) {
-		if (mkdir(cache_dir, S_IRWXU) == -1)
-			err(1, "mkdir cache_dir");
-		if (stat(cache_dir, &sb))
-			err(1, "stat cache_dir");
-	}
-	if (S_ISDIR(sb.st_mode) == 0)
-		errx(1, "%s not a dir", cache_dir);
-	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
-		warnx("fixing invalid permissions on %s", cache_dir);
-		if (chmod(cache_dir, S_IRWXU) == -1)
-			err(1, "chmod");
-	}
+	create_dir(&cache_dir, sizeof cache_dir, XT_CACHE_DIR, "cache_dir");
 
 	/* certs dir */
-	snprintf(certs_dir, sizeof certs_dir, "%s/%s/%s",
-	    pwd->pw_dir, XT_DIR, XT_CERT_DIR);
-	if (stat(certs_dir, &sb)) {
-		if (mkdir(certs_dir, S_IRWXU) == -1)
-			err(1, "mkdir certs_dir");
-		if (stat(certs_dir, &sb))
-			err(1, "stat certs_dir");
-	}
-	if (S_ISDIR(sb.st_mode) == 0)
-		errx(1, "%s not a dir", certs_dir);
-	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
-		warnx("fixing invalid permissions on %s", certs_dir);
-		if (chmod(certs_dir, S_IRWXU) == -1)
-			err(1, "chmod");
-	}
+	create_dir(&certs_dir, sizeof certs_dir, XT_CERT_DIR, "certs_dir");
 
 	/* sessions dir */
-	snprintf(sessions_dir, sizeof sessions_dir, "%s/%s/%s",
-	    pwd->pw_dir, XT_DIR, XT_SESSIONS_DIR);
-	if (stat(sessions_dir, &sb)) {
-		if (mkdir(sessions_dir, S_IRWXU) == -1)
-			err(1, "mkdir sessions_dir");
-		if (stat(sessions_dir, &sb))
-			err(1, "stat sessions_dir");
-	}
-	if (S_ISDIR(sb.st_mode) == 0)
-		errx(1, "%s not a dir", sessions_dir);
-	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
-		warnx("fixing invalid permissions on %s", sessions_dir);
-		if (chmod(sessions_dir, S_IRWXU) == -1)
-			err(1, "chmod");
-	}
+	create_dir(&sessions_dir, sizeof sessions_dir, XT_SESSIONS_DIR,
+	    "sessions_dir");
+
 	/* runtime settings that can override config file */
 	if (runtime_settings[0] != '\0')
 		config_parse(runtime_settings, 1);
 
 	/* download dir */
 	if (!strcmp(download_dir, pwd->pw_dir))
-		strlcat(download_dir, "/downloads", sizeof download_dir);
-	if (stat(download_dir, &sb)) {
-		if (mkdir(download_dir, S_IRWXU) == -1)
-			err(1, "mkdir download_dir");
-		if (stat(download_dir, &sb))
-			err(1, "stat download_dir");
-	}
-	if (S_ISDIR(sb.st_mode) == 0)
-		errx(1, "%s not a dir", download_dir);
-	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
-		warnx("fixing invalid permissions on %s", download_dir);
-		if (chmod(download_dir, S_IRWXU) == -1)
-			err(1, "chmod");
-	}
+		download_dir[0] = '\0';
+	create_dir(&download_dir, sizeof download_dir, "downloads",
+	    "download_dir");
 
 	/* favorites file */
 	snprintf(file, sizeof file, "%s/%s", work_dir, XT_FAVS_FILE);
