@@ -11,7 +11,7 @@ LDFLAGS+= $(GTK_LDFLAGS) -pthread
 PREFIX?= /usr/local
 BINDIR?= $(PREFIX)/bin
 LIBDIR?= $(PREFIX)/lib
-MANDIR?= $(PREFIX)/share/man
+MANDIR?= $(PREFIX)/man
 
 CC?= cc
 
