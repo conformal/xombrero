@@ -39,8 +39,10 @@
 #include <pthread.h>
 #include <dlfcn.h>
 #include <errno.h>
+#include <signal.h>
 
 #include <sys/types.h>
+#include <sys/wait.h>
 #if defined(__linux__)
 	#include "linux/util.h"
 	#include "linux/tree.h"
@@ -585,6 +587,43 @@ uint64_t		blocked_cookies = 0;
 char			named_session[PATH_MAX];
 void			update_favicon(struct tab *);
 int			icon_size_map(int);
+
+void
+sigchild(int sig)
+{
+	int			saved_errno, status;
+	pid_t			pid;
+
+	saved_errno = errno;
+
+	while ((pid = waitpid(WAIT_ANY, &status, WNOHANG)) != 0) {
+		if (pid == -1) {
+			if (errno == EINTR)
+				continue;
+			if (errno != ECHILD) {
+				/*
+				clog_warn("sigchild: waitpid:");
+				*/
+			}
+			break;
+		}
+
+		if (WIFEXITED(status)) {
+			if (WEXITSTATUS(status) != 0) {
+				/*
+				clog_warnx("sigchild: child exit status: %d",
+				    WEXITSTATUS(status));
+				*/
+			}
+		} else {
+			/*
+			clog_warnx("sigchild: child is terminated abnormally");
+			*/
+		}
+	}
+
+	errno = saved_errno;
+}
 
 void
 load_webkit_string(struct tab *t, const char *str)
@@ -6578,6 +6617,7 @@ main(int argc, char *argv[])
 	char			*env_proxy = NULL;
 	FILE			*f = NULL;
 	struct karg		a;
+	struct sigaction	sact;
 
 	start_argv = argv;
 
@@ -6635,11 +6675,17 @@ main(int argc, char *argv[])
 	if (!g_thread_supported())
 		g_thread_init(NULL);
 
+	/* signals */
+	bzero(&sact, sizeof(sact));
+	sigemptyset(&sact.sa_mask);
+	sact.sa_handler = sigchild;
+	sact.sa_flags = SA_NOCLDSTOP;
+	sigaction(SIGCHLD, &sact, NULL);
+
+	/* set download dir */
 	pwd = getpwuid(getuid());
 	if (pwd == NULL)
 		errx(1, "invalid user %d", getuid());
-
-	/* set download dir */
 	strlcpy(download_dir, pwd->pw_dir, sizeof download_dir);
 
 	/* set default string settings */
