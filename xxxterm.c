@@ -190,7 +190,7 @@ struct tab {
 	/* flags */
 	int			focus_wv;
 	int			ctrl_click;
-	gchar			*hover;
+	gchar			*cmd_store;
 	int			xtp_meaning; /* identifies dls/favorites */
 
 	/* hints */
@@ -389,6 +389,11 @@ struct karg {
 #define XT_CMD_OPEN_CURRENT	(1)
 #define XT_CMD_TABNEW		(2)
 #define XT_CMD_TABNEW_CURRENT	(3)
+
+#define XT_SETCMD_NOSTORE	(0)
+#define XT_SETCMD_LINK		(1)
+#define XT_SETCMD_CMD		(2)
+#define XT_SETCMD_URI		(3)
 
 #define XT_SES_DONOTHING	(0)
 #define XT_SES_CLOSETABS	(1)
@@ -634,6 +639,43 @@ load_webkit_string(struct tab *t, const char *str)
 }
 
 void
+set_cmd(struct tab *t, gchar *s, int store)
+{
+	gchar *type = NULL;
+
+	if (s == NULL)
+		return;
+
+	switch (store) {
+	case XT_SETCMD_LINK:
+		type = g_strdup_printf("Link: <%s>", s);
+		if (!t->cmd_store)
+			t->cmd_store = strdup(gtk_entry_get_text(GTK_ENTRY(t->cmd)));
+		s = type;
+		break;
+	case XT_SETCMD_URI:
+		type = g_strdup_printf("URI: <%s>", s);
+		if (!t->cmd_store) {
+			t->cmd_store = g_strdup(type);
+		}
+		s = type;
+		/* fallthrough */
+	case XT_SETCMD_CMD:
+		if (!t->cmd_store)
+			t->cmd_store = strdup(s);
+		break;
+	case XT_SETCMD_NOSTORE:
+		/* fallthrough */
+	default:
+		break;
+	}
+	gtk_entry_set_text(GTK_ENTRY(t->cmd), s);
+	gtk_widget_show(t->cmd);
+	if (type)
+		g_free(type);
+}
+
+void
 hide_oops(struct tab *t)
 {
 	gtk_widget_hide(t->oops);
@@ -642,7 +684,9 @@ hide_oops(struct tab *t)
 void
 hide_cmd(struct tab *t)
 {
-	gtk_widget_hide(t->cmd);
+	set_cmd(t, (char *)t->cmd_store, 0);
+	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+	/* gtk_widget_hide(t->cmd); */
 }
 
 void
@@ -3325,7 +3369,7 @@ command(struct tab *t, struct karg *args)
 
 	DNPRINTF(XT_D_CMD, "command: type %s\n", s);
 
-	gtk_entry_set_text(GTK_ENTRY(t->cmd), s);
+	set_cmd(t, s, XT_SETCMD_CMD);
 	gdk_color_parse("white", &color);
 	gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL, &color);
 	show_cmd(t);
@@ -4692,6 +4736,8 @@ abort_favicon_download(struct tab *t)
 
 	gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->uri_entry),
 	    GTK_ENTRY_ICON_PRIMARY, "text-html");
+	gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->cmd),
+	    GTK_ENTRY_ICON_PRIMARY, "text-html");
 }
 
 void
@@ -4727,6 +4773,8 @@ set_favicon_from_file(struct tab *t, char *file)
 	if (pixbuf == NULL) {
 		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->uri_entry),
 		    GTK_ENTRY_ICON_PRIMARY, "text-html");
+		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->cmd),
+		    GTK_ENTRY_ICON_PRIMARY, "text-html");
 		return;
 	}
 
@@ -4750,6 +4798,8 @@ set_favicon_from_file(struct tab *t, char *file)
 
 	t->icon_pixbuf = scaled;
 	gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->uri_entry),
+	    GTK_ENTRY_ICON_PRIMARY, t->icon_pixbuf);
+	gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->cmd),
 	    GTK_ENTRY_ICON_PRIMARY, t->icon_pixbuf);
 }
 
@@ -4891,8 +4941,14 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	case WEBKIT_LOAD_COMMITTED:
 		frame = webkit_web_view_get_main_frame(wview);
 		uri = webkit_web_frame_get_uri(frame);
-		if (uri)
+		if (uri) {
 			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
+			if (t->cmd_store) {
+				g_free(t->cmd_store);
+				t->cmd_store = NULL;
+			}
+			set_cmd(t, (char *)uri, XT_SETCMD_URI);
+		}
 
 		/* check if js white listing is enabled */
 		if (enable_js_whitelist) {
@@ -4984,6 +5040,8 @@ void
 webview_progress_changed_cb(WebKitWebView *wv, int progress, struct tab *t)
 {
 	gtk_entry_set_progress_fraction(GTK_ENTRY(t->uri_entry),
+	    progress == 100 ? 0 : (double)progress / 100);
+	gtk_entry_set_progress_fraction(GTK_ENTRY(t->cmd),
 	    progress == 100 ? 0 : (double)progress / 100);
 }
 
@@ -5173,7 +5231,6 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download, struct tab *
 	return (ret); /* start download */
 }
 
-/* XXX currently unused */
 void
 webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 {
@@ -5183,14 +5240,13 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 		errx(1, "webview_hover_cb");
 
 	if (uri) {
-		if (t->hover) {
-			g_free(t->hover);
-			t->hover = NULL;
+		set_cmd(t, uri, XT_SETCMD_LINK);
+	} else {
+		if (t->cmd_store) {
+			set_cmd(t, t->cmd_store, XT_SETCMD_NOSTORE);
+		} else {
+			hide_cmd(t);
 		}
-		t->hover = g_strdup(uri);
-	} else if (t->hover) {
-		g_free(t->hover);
-		t->hover = NULL;
 	}
 }
 
@@ -5735,10 +5791,6 @@ create_toolbar(struct tab *t)
 	gtk_box_pack_start(GTK_BOX(eb1), t->uri_entry, TRUE, TRUE, 0);
 	gtk_box_pack_start(GTK_BOX(b), eb1, TRUE, TRUE, 0);
 
-	/* set empty favicon */
-	gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->uri_entry),
-	    GTK_ENTRY_ICON_PRIMARY, "text-html");
-
 	/* search entry */
 	if (fancy_bar && search_string) {
 		GtkWidget *eb2;
@@ -5968,6 +6020,12 @@ create_new_tab(char *title, struct undo *u, int focus)
 	/* xtp meaning is normal by default */
 	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
 
+	/* set empty favicon */
+	gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->uri_entry),
+	    GTK_ENTRY_ICON_PRIMARY, "text-html");
+	gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->cmd),
+	    GTK_ENTRY_ICON_PRIMARY, "text-html");
+
 	/* and show it all */
 	gtk_widget_show_all(b);
 	gtk_widget_show_all(t->vbox);
@@ -6016,7 +6074,7 @@ create_new_tab(char *title, struct undo *u, int focus)
 	g_object_connect(G_OBJECT(t->wv),
 	    "signal::key-press-event", (GCallback)wv_keypress_cb, t,
 	    "signal-after::key-press-event", (GCallback)wv_keypress_after_cb, t,
-	    /* "signal::hovering-over-link", (GCallback)webview_hover_cb, t, */
+	    "signal::hovering-over-link", (GCallback)webview_hover_cb, t,
 	    "signal::download-requested", (GCallback)webview_download_cb, t,
 	    "signal::mime-type-policy-decision-requested", (GCallback)webview_mimetype_cb, t,
 	    "signal::navigation-policy-decision-requested", (GCallback)webview_npd_cb, t,
