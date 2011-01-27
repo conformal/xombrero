@@ -40,6 +40,7 @@
 #include <dlfcn.h>
 #include <errno.h>
 #include <signal.h>
+#include <libgen.h>
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -270,11 +271,28 @@ struct karg {
 #define XT_DOCTYPE		"<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>"
 #define XT_HTML_TAG		"<html xmlns='http://www.w3.org/1999/xhtml'>"
 #define XT_DLMAN_REFRESH	"10"
-#define XT_PAGE_STYLE		"<style type='text/css'>\n" \
-				"td {overflow: hidden;}\n"  \
-				"th {background-color: #cccccc}"  \
-				"table {width: 90%%; border: 1px black"    \
-				" solid; table-layout: fixed}\n</style>\n\n"
+#define XT_PAGE_STYLE		"<style type='text/css'>\n"		\
+				"td {overflow: hidden;"			\
+				"  padding: 2px 2px 2px 2px;"		\
+				"  border: 1px solid black}\n"		\
+				"tr:hover {background: #ffff99 ;}\n"	\
+				"th {background-color: #cccccc;"	\
+				"  border: 1px solid black}"		\
+				"table {border-spacing: 0; "		\
+				"  width: 90%%; border: 1px black"	\
+				" solid; table-layout: fixed}\n"	\
+				".progress-outer{"			\
+				"  border: 1px solid black;"		\
+				"  height: 8px;"			\
+				"  width: 90%%;}"			\
+				".progress-inner{"			\
+				"  float: left;"			\
+				"  height: 8px;"			\
+				"  background: green;}"			\
+				".dlstatus{"				\
+				"  font-size: small;"			\
+				"  text-align: center;}"		\
+				"</style>\n\n"
 #define XT_MAX_URL_LENGTH	(4096) /* 1 page is atomic, don't make bigger */
 #define XT_MAX_UNDO_CLOSE_TAB	(32)
 
@@ -3423,8 +3441,14 @@ xtp_page_dl_row(struct tab *t, char *html, struct download *dl)
 		fmt_scaled(
 		    webkit_download_get_total_size(dl->download), tot_sz);
 
-		status_html = g_strdup_printf("%s of %s (%.2f%%)", cur_sz,
-		    tot_sz, progress);
+		status_html = g_strdup_printf(
+		    "<div style='width: 100%%' align='center'>"
+		    "<div class='progress-outer'>"
+		    "<div class='progress-inner' style='width: %.2f%%'>"
+		    "</div></div></div>"
+		    "<div class='dlstatus'>%s of %s (%.2f%%)</div>",
+		    progress, cur_sz, tot_sz, progress);
+
 		cmd_html = g_strdup_printf("<a href='%s%d/%d'>Cancel</a>",
 		    xtp_prefix, XT_XTP_DL_CANCEL, dl->id);
 
@@ -3452,7 +3476,7 @@ xtp_page_dl_row(struct tab *t, char *html, struct download *dl)
 	new_html = g_strdup_printf(
 	    "%s\n<tr><td>%s</td><td>%s</td>"
 	    "<td style='text-align:center'>%s</td></tr>\n",
-	    html, webkit_download_get_uri(dl->download),
+	    html, basename(webkit_download_get_uri(dl->download)),
 	    status_html, cmd_html);
 	g_free(html);
 
@@ -4110,6 +4134,7 @@ struct key_bindings {
 	int		(*func)(struct tab *, struct karg *);
 	struct karg	arg;
 } keys[] = {
+	{ MOD1,	0,	GDK_j,		xtp_page_cl,	{0} },
 	{ MOD1,	0,	GDK_d,		xtp_page_dl,	{0} },
 	{ MOD1,	0,	GDK_h,		xtp_page_hl,	{0} },
 	{ CTRL,	0,	GDK_p,		print_page,	{0}},
