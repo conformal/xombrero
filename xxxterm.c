@@ -295,6 +295,7 @@ struct karg {
 				"</style>\n\n"
 #define XT_MAX_URL_LENGTH	(4096) /* 1 page is atomic, don't make bigger */
 #define XT_MAX_UNDO_CLOSE_TAB	(32)
+#define XT_RESERVED_CHARS	"$&+,/:;=?@ \"<>#%%{}|^~[]`"
 
 /* file sizes */
 #define SZ_KB		((uint64_t) 1024)
@@ -4631,6 +4632,7 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 {
 	const gchar		*search = gtk_entry_get_text(GTK_ENTRY(entry));
 	char			*newuri = NULL;
+	gchar			*enc_search;
 
 	DNPRINTF(XT_D_URL, "activate_search_entry_cb: %s\n", search);
 
@@ -4642,7 +4644,9 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 		return;
 	}
 
-	newuri = g_strdup_printf(search_string, search);
+	enc_search = soup_uri_encode(search, XT_RESERVED_CHARS);
+	newuri = g_strdup_printf(search_string, enc_search);
+	g_free(enc_search);
 
 	webkit_web_view_load_uri(t->wv, newuri);
 	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
