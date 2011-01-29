@@ -6253,7 +6253,7 @@ create_canvas(void)
 	gtk_widget_set_size_request(arrow, -1, -1);
 	gtk_container_add(GTK_CONTAINER(abtn), arrow);
 	gtk_widget_set_size_request(abtn, -1, 20);
-	// gtk_notebook_set_action_widget(notebook, abtn, GTK_PACK_END);
+	gtk_notebook_set_action_widget(notebook, abtn, GTK_PACK_END);
 
 	gtk_widget_set_size_request(GTK_WIDGET(notebook), -1, -1);
 	gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(notebook), TRUE, TRUE, 0);
