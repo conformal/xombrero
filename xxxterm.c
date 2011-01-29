@@ -942,7 +942,7 @@ match_alias(char *url_in)
 {
 	struct alias		*a;
 	char			*arg;
-	char			*url_out = NULL, *search;
+	char			*url_out = NULL, *search, *enc_arg;
 
 	search = g_strdup(url_in);
 	arg = search;
@@ -957,9 +957,11 @@ match_alias(char *url_in)
 	if (a != NULL) {
 		DNPRINTF(XT_D_URL, "match_alias: matched alias %s\n",
 			a->a_name);
-		if (arg != NULL)
-			url_out = g_strdup_printf(a->a_uri, arg);
-		else
+		if (arg != NULL) {
+			enc_arg = soup_uri_encode(arg, XT_RESERVED_CHARS);
+			url_out = g_strdup_printf(a->a_uri, enc_arg);
+			g_free(enc_arg);
+		} else
 			url_out = g_strdup(a->a_uri);
 	}
 
@@ -987,6 +989,22 @@ guess_url_type(char *url_in)
 	DNPRINTF(XT_D_URL, "guess_url_type: guessed %s\n", url_out);
 
 	return (url_out);
+}
+
+void
+load_uri(WebKitWebView *wv, gchar *uri)
+{
+	gchar		*newuri = NULL;
+
+	if (valid_url_type(uri)) {
+		newuri = guess_url_type(uri);
+		uri = newuri;
+	}
+
+	webkit_web_view_load_uri(wv, uri);
+
+	if (newuri)
+		g_free(newuri);
 }
 
 int
@@ -1756,10 +1774,10 @@ paste_uri_cb(GtkClipboard *clipboard, const gchar *text, gpointer data)
 
 	switch(pap->i) {
 	case XT_PASTE_CURRENT_TAB:
-		webkit_web_view_load_uri(pap->t->wv, text);
+		load_uri(pap->t->wv, (gchar *)text);
 		break;
 	case XT_PASTE_NEW_TAB:
-		create_new_tab((char *)text, NULL, 1);
+		create_new_tab((gchar *)text, NULL, 1);
 		break;
 	}
 
@@ -3131,7 +3149,7 @@ int
 tabaction(struct tab *t, struct karg *args)
 {
 	int			rv = XT_CB_HANDLED;
-	char			*url = NULL, *newuri = NULL;
+	char			*url = NULL;
 	struct undo		*u;
 
 	DNPRINTF(XT_D_TAB, "tabaction: %p %d %d\n", t, args->i, t->focus_wv);
@@ -3164,14 +3182,7 @@ tabaction(struct tab *t, struct karg *args)
 			rv = XT_CB_PASSTHROUGH;
 			goto done;
 		}
-
-		if (valid_url_type(url)) {
-			newuri = guess_url_type(url);
-			url = newuri;
-		}
-		webkit_web_view_load_uri(t->wv, url);
-		if (newuri)
-			g_free(newuri);
+		load_uri(t->wv, url);
 		break;
 	case XT_TAB_SHOW:
 		if (show_tabs == 0) {
@@ -4056,12 +4067,7 @@ print_page(struct tab *t, struct karg *args)
 int
 go_home(struct tab *t, struct karg *args)
 {
-	char			*newuri;
-
-	newuri = guess_url_type((char *)home);
-	webkit_web_view_load_uri(t->wv, newuri);
-	free(newuri);
-
+	load_uri(t->wv, home);
 	return (0);
 }
 
@@ -4556,7 +4562,6 @@ void
 activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 {
 	const gchar		*uri = gtk_entry_get_text(GTK_ENTRY(entry));
-	char			*newuri = NULL;
 
 	DNPRINTF(XT_D_URL, "activate_uri_entry_cb: %s\n", uri);
 
@@ -4570,17 +4575,9 @@ activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 
 	/* if xxxt:// treat specially */
 	if (!parse_xtp_url(t, uri)) {
-		if (valid_url_type((char *)uri)) {
-			newuri = guess_url_type((char *)uri);
-			uri = newuri;
-		}
-
-		webkit_web_view_load_uri(t->wv, uri);
+		load_uri(t->wv, (gchar *)uri);
 		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 	}
-
-	if (newuri)
-		g_free(newuri);
 }
 
 void
@@ -5926,7 +5923,6 @@ create_new_tab(char *title, struct undo *u, int focus)
 {
 	struct tab			*t, *tt;
 	int				load = 1, id, notfound;
-	char				*newuri = NULL;
 	GtkWidget			*b, *bb;
 	WebKitWebHistoryItem		*item;
 	GList				*items;
@@ -5944,11 +5940,6 @@ create_new_tab(char *title, struct undo *u, int focus)
 	if (title == NULL) {
 		title = "(untitled)";
 		load = 0;
-	} else {
-		if (valid_url_type(title)) {
-			newuri = guess_url_type(title);
-			title = newuri;
-		}
 	}
 
 	t->vbox = gtk_vbox_new(FALSE, 0);
@@ -6082,7 +6073,7 @@ create_new_tab(char *title, struct undo *u, int focus)
 	}
 
 	if (load)
-		webkit_web_view_load_uri(t->wv, title);
+		load_uri(t->wv, title);
 	else {
 		if (show_url == 1)
 			gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
@@ -6107,9 +6098,6 @@ create_new_tab(char *title, struct undo *u, int focus)
 		g_list_free(items);
 		g_list_free(u->history);
 	}
-
-	if (newuri)
-		g_free(newuri);
 }
 
 void
@@ -6265,7 +6253,7 @@ create_canvas(void)
 	gtk_widget_set_size_request(arrow, -1, -1);
 	gtk_container_add(GTK_CONTAINER(abtn), arrow);
 	gtk_widget_set_size_request(abtn, -1, 20);
-	gtk_notebook_set_action_widget(notebook, abtn, GTK_PACK_END);
+	// gtk_notebook_set_action_widget(notebook, abtn, GTK_PACK_END);
 
 	gtk_widget_set_size_request(GTK_WIDGET(notebook), -1, -1);
 	gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(notebook), TRUE, TRUE, 0);
