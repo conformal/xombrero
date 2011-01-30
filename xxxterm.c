@@ -6229,7 +6229,8 @@ create_new_tab(char *title, struct undo *u, int focus)
 
 		g_list_free(items);
 		g_list_free(u->history);
-	}
+	} else
+		webkit_web_back_forward_list_clear(t->bfl);
 }
 
 void
