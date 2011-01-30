@@ -164,6 +164,7 @@ struct tab {
 	GtkWidget		*search_entry;
 	GtkWidget		*toolbar;
 	GtkWidget		*browser_win;
+	GtkWidget		*statusbar;
 	GtkWidget		*cmd;
 	GtkWidget		*oops;
 	GtkWidget		*backward;
@@ -173,7 +174,7 @@ struct tab {
 	guint			tab_id;
 	WebKitWebView		*wv;
 
-	WebKitWebHistoryItem	*item;
+	WebKitWebHistoryItem		*item;
 	WebKitWebBackForwardList	*bfl;
 
 	/* favicon */
@@ -191,7 +192,7 @@ struct tab {
 	/* flags */
 	int			focus_wv;
 	int			ctrl_click;
-	gchar			*hover;
+	gchar			*status;
 	int			xtp_meaning; /* identifies dls/favorites */
 
 	/* hints */
@@ -398,6 +399,9 @@ struct karg {
 #define XT_URL_SHOW		(1)
 #define XT_URL_HIDE		(2)
 
+#define XT_STATUSBAR_SHOW	(1)
+#define XT_STATUSBAR_HIDE	(2)
+
 #define XT_WL_TOGGLE		(1<<0)
 #define XT_WL_ENABLE		(1<<1)
 #define XT_WL_DISABLE		(1<<2)
@@ -408,6 +412,10 @@ struct karg {
 #define XT_CMD_OPEN_CURRENT	(1)
 #define XT_CMD_TABNEW		(2)
 #define XT_CMD_TABNEW_CURRENT	(3)
+
+#define XT_STATUS_NOTHING	(0)
+#define XT_STATUS_LINK		(1)
+#define XT_STATUS_URI		(2)
 
 #define XT_SES_DONOTHING	(0)
 #define XT_SES_CLOSETABS	(1)
@@ -430,14 +438,15 @@ struct alias {
 TAILQ_HEAD(alias_list, alias);
 
 /* settings that require restart */
-int		show_tabs = 1;	/* show tabs on notebook */
-int		show_url = 1;	/* show url toolbar on notebook */
 int		tabless = 0;	/* allow only 1 tab */
 int		enable_socket = 0;
 int		single_instance = 0; /* only allow one xxxterm to run */
 int		fancy_bar = 1;	/* fancy toolbar */
 
 /* runtime settings */
+int		show_tabs = 1;	/* show tabs on notebook */
+int		show_url = 1;	/* show url toolbar on notebook */
+int		show_statusbar = 0; /* vimperator style status bar */
 int		ctrl_click_focus = 0; /* ctrl click gets focus */
 int		cookies_enabled = 1; /* enable cookies */
 int		read_only_cookies = 0; /* enable to not write cookies */
@@ -570,6 +579,7 @@ struct settings {
 	{ "single_instance", XT_S_INT, XT_SF_RESTART , &single_instance, NULL, NULL },
 	{ "show_tabs", XT_S_INT, 0, &show_tabs, NULL, NULL },
 	{ "show_url", XT_S_INT, 0, &show_url, NULL, NULL },
+	{ "show_statusbar", XT_S_INT, 0, &show_statusbar, NULL, NULL },
 	{ "ssl_ca_file", XT_S_STR, 0 , NULL, &ssl_ca_file, NULL },
 	{ "ssl_strict_certs", XT_S_INT, 0 , &ssl_strict_certs, NULL, NULL },
 	{ "user_agent", XT_S_STR, 0 , NULL, &user_agent, NULL },
@@ -650,6 +660,40 @@ load_webkit_string(struct tab *t, const char *str)
 	/* we set this to indicate we want to manually do navaction */
 	t->item = webkit_web_back_forward_list_get_current_item(t->bfl);
 	webkit_web_view_load_string(t->wv, str, NULL, NULL, NULL);
+}
+
+void
+set_status(struct tab *t, gchar *s, int status)
+{
+	gchar *type = NULL;
+
+	if (s == NULL)
+		return;
+
+	switch (status) {
+	case XT_STATUS_LINK:
+		type = g_strdup_printf("Link: %s", s);
+		if (!t->status)
+			t->status = strdup(gtk_entry_get_text(GTK_ENTRY(t->statusbar)));
+		s = type;
+		break;
+	case XT_STATUS_URI:
+		type = g_strdup_printf("%s", s);
+		if (!t->status) {
+			t->status = g_strdup(type);
+		}
+		s = type;
+		if (!t->status)
+			t->status = strdup(s);
+		break;
+	case XT_STATUS_NOTHING:
+		/* FALL THROUGH */
+	default:
+		break;
+	}
+	gtk_entry_set_text(GTK_ENTRY(t->statusbar), s);
+	if (type)
+		g_free(type);
 }
 
 void
@@ -974,11 +1018,20 @@ char *
 guess_url_type(char *url_in)
 {
 	struct stat		sb;
-	char			*url_out = NULL;
+	char			*url_out = NULL, *enc_search = NULL;
 
 	url_out = match_alias(url_in);
 	if (url_out != NULL)
 		return (url_out);
+
+	/* If the string isn't a path to a local file and there is no dot in the
+	   string, assume the user wants to search for the string. */
+	if (stat(url_in, &sb) != 0 && strchr(url_in, '.') == NULL) {
+		enc_search = soup_uri_encode(url_in, XT_RESERVED_CHARS);
+		url_out = g_strdup_printf(search_string, enc_search);
+		g_free(enc_search);
+		return (url_out);
+	}
 
 	/* XXX not sure about this heuristic */
 	if (stat(url_in, &sb) == 0)
@@ -995,6 +1048,9 @@ void
 load_uri(WebKitWebView *wv, gchar *uri)
 {
 	gchar		*newuri = NULL;
+
+	if (uri == NULL || !strlen(uri))
+		errx(1, "load_uri");
 
 	if (valid_url_type(uri)) {
 		newuri = guess_url_type(uri);
@@ -1767,7 +1823,7 @@ paste_uri_cb(GtkClipboard *clipboard, const gchar *text, gpointer data)
 {
 	struct paste_args	*pap;
 
-	if (data == NULL)
+	if (data == NULL || text == NULL || !strlen(text))
 		return;
 
 	pap = (struct paste_args *)data;
@@ -2515,6 +2571,9 @@ save_certs(struct tab *t, gnutls_x509_crt_t *certs,
 	/* not the best spot but oh well */
 	gdk_color_parse("lightblue", &color);
 	gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
+	gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL, &color);
+	gdk_color_parse("black", &color);
+	gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL, &color);
 done:
 	fclose(f);
 }
@@ -3099,10 +3158,24 @@ notebook_tab_set_visibility(GtkNotebook *notebook)
 		gtk_notebook_set_show_tabs(notebook, TRUE);
 }
 
+void
+statusbar_set_visibility(void)
+{
+	struct tab		*t;
+
+	TAILQ_FOREACH(t, &tabs, entry) {
+		if (show_statusbar == 0) {
+			gtk_widget_hide(t->statusbar);
+			gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+		} else
+			gtk_widget_show(t->statusbar);
+	}
+}
+
 int
 fullscreen(struct tab *t, struct karg *args)
 {
-	DNPRINTF(XT_D_TAB, "urlaction: %p %d %d\n", t, args->i, t->focus_wv);
+	DNPRINTF(XT_D_TAB, "%s: %p %d %d\n", __func__, t, args->i, t->focus_wv);
 
 	if (t == NULL)
 		return (XT_CB_PASSTHROUGH);
@@ -3119,11 +3192,38 @@ fullscreen(struct tab *t, struct karg *args)
 }
 
 int
+statusaction(struct tab *t, struct karg *args)
+{
+	int			rv = XT_CB_HANDLED;
+
+	DNPRINTF(XT_D_TAB, "%s: %p %d %d\n", __func__, t, args->i, t->focus_wv);
+
+	if (t == NULL)
+		return (XT_CB_PASSTHROUGH);
+
+	switch (args->i) {
+	case XT_STATUSBAR_SHOW:
+		if (show_statusbar == 0) {
+			show_statusbar = 1;
+			statusbar_set_visibility();
+		}
+		break;
+	case XT_STATUSBAR_HIDE:
+		if (show_statusbar == 1) {
+			show_statusbar = 0;
+			statusbar_set_visibility();
+		}
+		break;
+	}
+	return (rv);
+}
+
+int
 urlaction(struct tab *t, struct karg *args)
 {
 	int			rv = XT_CB_HANDLED;
 
-	DNPRINTF(XT_D_TAB, "urlaction: %p %d %d\n", t, args->i, t->focus_wv);
+	DNPRINTF(XT_D_TAB, "%s: %p %d %d\n", __func__, t, args->i, t->focus_wv);
 
 	if (t == NULL)
 		return (XT_CB_PASSTHROUGH);
@@ -4221,6 +4321,10 @@ struct cmd {
 	{ "urlh",		0,	urlaction,		{.i = XT_URL_HIDE} },
 	{ "urlshow",		0,	urlaction,		{.i = XT_URL_SHOW} },
 	{ "urls",		0,	urlaction,		{.i = XT_URL_SHOW} },
+	{ "statusbarhide",	0,	statusaction,		{.i = XT_STATUSBAR_HIDE} },
+	{ "statush",		0,	statusaction,		{.i = XT_STATUSBAR_HIDE} },
+	{ "statusbarshow",	0,	statusaction,		{.i = XT_STATUSBAR_SHOW} },
+	{ "statuss",		0,	statusaction,		{.i = XT_STATUSBAR_SHOW} },
 
 	{ "1",			0,	move,			{.i = XT_MOVE_TOP} },
 	{ "print",		0,	print_page,		{0} },
@@ -4685,6 +4789,16 @@ done:
 	if (col_str) {
 		gdk_color_parse(col_str, &color);
 		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
+
+		if (!strcmp(col_str, "white")) {
+			gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL, &color);
+			gdk_color_parse("black", &color);
+			gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL, &color);
+		} else {
+			gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL, &color);
+			gdk_color_parse("black", &color);
+			gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL, &color);
+		}
 	}
 }
 
@@ -4917,8 +5031,15 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	case WEBKIT_LOAD_COMMITTED:
 		frame = webkit_web_view_get_main_frame(wview);
 		uri = webkit_web_frame_get_uri(frame);
-		if (uri)
+		if (uri) {
 			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
+
+			if (t->status) {
+				g_free(t->status);
+				t->status = NULL;
+			}
+			set_status(t, (char *)uri, XT_STATUS_URI);
+		}
 
 		/* check if js white listing is enabled */
 		if (enable_js_whitelist) {
@@ -5199,7 +5320,6 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download, struct tab *
 	return (ret); /* start download */
 }
 
-/* XXX currently unused */
 void
 webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 {
@@ -5208,16 +5328,11 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 	if (t == NULL)
 		errx(1, "webview_hover_cb");
 
-	if (uri) {
-		if (t->hover) {
-			g_free(t->hover);
-			t->hover = NULL;
-		}
-		t->hover = g_strdup(uri);
-	} else if (t->hover) {
-		g_free(t->hover);
-		t->hover = NULL;
-	}
+	if (uri)
+		set_status(t, uri, XT_STATUS_LINK);
+	else
+		if (t->status)
+	 		set_status(t, t->status, XT_STATUS_NOTHING);
 }
 
 int
@@ -5927,6 +6042,7 @@ create_new_tab(char *title, struct undo *u, int focus)
 	WebKitWebHistoryItem		*item;
 	GList				*items;
 	GdkColor			color;
+	PangoFontDescription		*fd = NULL;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
@@ -5985,6 +6101,21 @@ create_new_tab(char *title, struct undo *u, int focus)
 	gtk_entry_set_has_frame(GTK_ENTRY(t->cmd), FALSE);
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->cmd, FALSE, FALSE, 0);
 
+	/* status bar */
+	t->statusbar = gtk_entry_new();
+	gtk_entry_set_inner_border(GTK_ENTRY(t->statusbar), NULL);
+	gtk_entry_set_has_frame(GTK_ENTRY(t->statusbar), FALSE);
+	gtk_widget_set_can_focus(GTK_WIDGET(t->statusbar), FALSE);
+	gdk_color_parse("black", &color);
+	gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL, &color);
+	gdk_color_parse("white", &color);
+	gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL, &color);
+	fd = GTK_WIDGET(t->statusbar)->style->font_desc;
+	pango_font_description_set_weight(fd, PANGO_WEIGHT_SEMIBOLD);
+	pango_font_description_set_absolute_size(fd, 10 * PANGO_SCALE); /* 10 px font */
+	gtk_widget_modify_font(t->statusbar, fd);
+	gtk_box_pack_end(GTK_BOX(t->vbox), t->statusbar, FALSE, FALSE, 0);
+
 	/* xtp meaning is normal by default */
 	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
 
@@ -6036,7 +6167,7 @@ create_new_tab(char *title, struct undo *u, int focus)
 	g_object_connect(G_OBJECT(t->wv),
 	    "signal::key-press-event", (GCallback)wv_keypress_cb, t,
 	    "signal-after::key-press-event", (GCallback)wv_keypress_after_cb, t,
-	    /* "signal::hovering-over-link", (GCallback)webview_hover_cb, t, */
+	    "signal::hovering-over-link", (GCallback)webview_hover_cb, t,
 	    "signal::download-requested", (GCallback)webview_download_cb, t,
 	    "signal::mime-type-policy-decision-requested", (GCallback)webview_mimetype_cb, t,
 	    "signal::navigation-policy-decision-requested", (GCallback)webview_npd_cb, t,
@@ -6065,6 +6196,7 @@ create_new_tab(char *title, struct undo *u, int focus)
 	hide_cmd(t);
 	hide_oops(t);
 	url_set_visibility();
+	statusbar_set_visibility();
 
 	if (focus) {
 		gtk_notebook_set_current_page(notebook, t->tab_id);
