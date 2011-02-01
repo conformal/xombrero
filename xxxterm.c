@@ -3186,7 +3186,7 @@ statusbar_set_visibility(void)
 int
 fullscreen(struct tab *t, struct karg *args)
 {
-	DNPRINTF(XT_D_TAB, "%s: %p %d %d\n", __func__, t, args->i, t->focus_wv);
+	DNPRINTF(XT_D_TAB, "%s: %p %d\n", __func__, t, args->i);
 
 	if (t == NULL)
 		return (XT_CB_PASSTHROUGH);
@@ -3207,7 +3207,7 @@ statusaction(struct tab *t, struct karg *args)
 {
 	int			rv = XT_CB_HANDLED;
 
-	DNPRINTF(XT_D_TAB, "%s: %p %d %d\n", __func__, t, args->i, t->focus_wv);
+	DNPRINTF(XT_D_TAB, "%s: %p %d\n", __func__, t, args->i);
 
 	if (t == NULL)
 		return (XT_CB_PASSTHROUGH);
@@ -3234,7 +3234,7 @@ urlaction(struct tab *t, struct karg *args)
 {
 	int			rv = XT_CB_HANDLED;
 
-	DNPRINTF(XT_D_TAB, "%s: %p %d %d\n", __func__, t, args->i, t->focus_wv);
+	DNPRINTF(XT_D_TAB, "%s: %p %d\n", __func__, t, args->i);
 
 	if (t == NULL)
 		return (XT_CB_PASSTHROUGH);
@@ -3263,7 +3263,7 @@ tabaction(struct tab *t, struct karg *args)
 	char			*url = NULL;
 	struct undo		*u;
 
-	DNPRINTF(XT_D_TAB, "tabaction: %p %d %d\n", t, args->i, t->focus_wv);
+	DNPRINTF(XT_D_TAB, "tabaction: %p %d\n", t, args->i);
 
 	if (t == NULL)
 		return (XT_CB_PASSTHROUGH);
@@ -5033,11 +5033,6 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		gtk_label_set_text(GTK_LABEL(t->label), "Loading");
 
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), TRUE);
-		t->focus_wv = 1;
-
-		/* take focus if we are visible */
-		if (gtk_notebook_get_current_page(notebook) == t->tab_id)
-			focus_webview(t);
 
 		break;
 
@@ -5136,6 +5131,11 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 	gtk_widget_set_sensitive(GTK_WIDGET(t->forward),
 	    webkit_web_view_can_go_forward(wview));
+
+	/* take focus if we are visible */
+	t->focus_wv = 1;
+	focus_webview(t);
+
 }
 
 void
@@ -5585,8 +5585,10 @@ entry_key_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 
 	hide_oops(t);
 
-	if (e->keyval == GDK_Escape)
-		focus_webview(t);
+	if (e->keyval == GDK_Escape) {
+		/* don't use focus_webview(t) because we want to type :cmds */
+		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+	}
 
 	for (i = 0; i < LENGTH(keys); i++)
 		if (e->keyval == keys[i].key &&
@@ -5658,8 +5660,7 @@ cmd_focusout_cb(GtkWidget *w, GdkEventFocus *e, struct tab *t)
 	if (t == NULL)
 		errx(1, "cmd_focusout_cb");
 
-	DNPRINTF(XT_D_CMD, "cmd_focusout_cb: tab %d focus_wv %d\n",
-	    t->tab_id, t->focus_wv);
+	DNPRINTF(XT_D_CMD, "cmd_focusout_cb: tab %d\n", t->tab_id);
 
 	hide_cmd(t);
 	hide_oops(t);
