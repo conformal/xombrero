@@ -475,6 +475,7 @@ int		save_global_history = 0; /* save global history to disk */
 char		*user_agent = NULL;
 int		save_rejected_cookies = 0;
 time_t		session_autosave = 0;
+int		guess_search = 0;
 
 struct settings;
 int		set_download_dir(struct settings *, char *);
@@ -579,6 +580,7 @@ struct settings {
 	{ "single_instance", XT_S_INT, XT_SF_RESTART , &single_instance, NULL, NULL },
 	{ "show_tabs", XT_S_INT, 0, &show_tabs, NULL, NULL },
 	{ "show_url", XT_S_INT, 0, &show_url, NULL, NULL },
+	{ "guess_search", XT_S_INT, 0, &guess_search, NULL, NULL },
 	{ "show_statusbar", XT_S_INT, 0, &show_statusbar, NULL, NULL },
 	{ "ssl_ca_file", XT_S_STR, 0 , NULL, &ssl_ca_file, NULL },
 	{ "ssl_strict_certs", XT_S_INT, 0 , &ssl_strict_certs, NULL, NULL },
@@ -1024,13 +1026,23 @@ guess_url_type(char *url_in)
 	if (url_out != NULL)
 		return (url_out);
 
-	/* If the string isn't a path to a local file and there is no dot in the
-	   string, assume the user wants to search for the string. */
-	if (stat(url_in, &sb) != 0 && strchr(url_in, '.') == NULL) {
-		enc_search = soup_uri_encode(url_in, XT_RESERVED_CHARS);
-		url_out = g_strdup_printf(search_string, enc_search);
-		g_free(enc_search);
-		return (url_out);
+	if (guess_search) {
+
+		/* If there is no dot nor slash in the string and it isn't a
+		 * path to a local file and doesn't resolves to an IP, assume
+		 * that the user wants to search for the string.
+		 */
+
+		if (strchr(url_in, '.') == NULL &&
+		    strchr(url_in, '/') == NULL &&
+		    stat(url_in, &sb) != 0 &&
+		    gethostbyname(url_in) == NULL) {
+
+			enc_search = soup_uri_encode(url_in, XT_RESERVED_CHARS);
+			url_out = g_strdup_printf(search_string, enc_search);
+			g_free(enc_search);
+			return (url_out);
+		}
 	}
 
 	/* XXX not sure about this heuristic */

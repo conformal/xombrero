@@ -639,6 +639,14 @@ Enable or disable showing tabs.
 Enable or disable showing the url and toolbar.
 .It Cm show_statusbar
 Enable or disable showing the status bar.
+.It Cm guess_search
+When enabled
+.Nm
+will try to guess if the string you entered, in the URI entry widget or
+the command widget, is term you want to search for using search_string
+(see above). If the string does not contain a dot nor a slash, is not a
+path to a local file and does not resolves to an IP then it is assumed
+to be a search term.
 .It Cm single_instance
 If set only one
 .Nm
