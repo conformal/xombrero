@@ -4321,9 +4321,9 @@ struct cmd {
 	{ "urlh",		0,	urlaction,		{.i = XT_URL_HIDE} },
 	{ "urlshow",		0,	urlaction,		{.i = XT_URL_SHOW} },
 	{ "urls",		0,	urlaction,		{.i = XT_URL_SHOW} },
-	{ "statusbarhide",	0,	statusaction,		{.i = XT_STATUSBAR_HIDE} },
+	{ "statushide",		0,	statusaction,		{.i = XT_STATUSBAR_HIDE} },
 	{ "statush",		0,	statusaction,		{.i = XT_STATUSBAR_HIDE} },
-	{ "statusbarshow",	0,	statusaction,		{.i = XT_STATUSBAR_SHOW} },
+	{ "statusshow", 	0,	statusaction,		{.i = XT_STATUSBAR_SHOW} },
 	{ "statuss",		0,	statusaction,		{.i = XT_STATUSBAR_SHOW} },
 
 	{ "1",			0,	move,			{.i = XT_MOVE_TOP} },
