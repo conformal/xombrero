@@ -519,6 +519,36 @@ Unfortunately enabling this does allow for some limited tracking on the web.
 .It Cm append_next
 When set a new tab is appended after the current tab instead of being appended
 as the last tab.
+.It Cm browser_mode
+The
+.Nm
+browser has 2 default operating modes: 
+.Pa normal
+(the default) or
+.Pa whitelist.
+In the
+.Pa normal
+mode the browser allows all cookies and Java Script as any other browser
+would.
+This means that all cookies are saved to persistent storage and that all
+Java Script runs.
+.Pp
+On the other hand, using the
+.Pa whitelist
+mode enables whitelists.
+This requires the user to add all the required
+.Pa cookie_wl
+and
+.Pa js_wl
+items.
+If a domain does not appear in the whitelists
+.Nm
+disallows cookies and Java Script execution.
+.Pp
+This setting must be the first entry in
+.Pa ~/.xxxterm.conf
+because it sets advanced settings that can be overridden later in the file.
+See the default config file for more details.
 .It Cm cookie_policy
 This field delineates the cookie policy.
 Possible values are: no3rdparty, reject 3rd party cookies.
