@@ -103,6 +103,7 @@ void		(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 void		(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
 		    SoupCookie *);
 
+#define XT_DEBUG
 /*#define XT_DEBUG*/
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
@@ -1027,7 +1028,6 @@ guess_url_type(char *url_in)
 		return (url_out);
 
 	if (guess_search) {
-
 		/* If there is no dot nor slash in the string and it isn't a
 		 * path to a local file and doesn't resolves to an IP, assume
 		 * that the user wants to search for the string.
@@ -6522,7 +6522,7 @@ soup_cookie_jar_delete_cookie(SoupCookieJar *jar, SoupCookie *c)
 void
 soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 {
-	struct domain		*d;
+	struct domain		*d = NULL;
 	SoupCookie		*c;
 	FILE			*r_cookie_f;
 
@@ -6541,7 +6541,8 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 	if (jar == p_cookiejar)
 		return;
 
-	if ((d = wl_find(cookie->domain, &c_wl)) == NULL) {
+	if (enable_cookie_whitelist &&
+	    (d = wl_find(cookie->domain, &c_wl)) == NULL) {
 		blocked_cookies++;
 		DNPRINTF(XT_D_COOKIE,
 		    "soup_cookie_jar_add_cookie: reject %s\n",
