@@ -1062,7 +1062,7 @@ load_uri(WebKitWebView *wv, gchar *uri)
 	gchar		*newuri = NULL;
 
 	if (uri == NULL || !strlen(uri))
-		errx(1, "load_uri");
+		return;
 
 	if (valid_url_type(uri)) {
 		newuri = guess_url_type(uri);
