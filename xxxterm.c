@@ -674,7 +674,7 @@ set_status(struct tab *t, gchar *s, int status)
 	case XT_STATUS_LINK:
 		type = g_strdup_printf("Link: %s", s);
 		if (!t->status)
-			t->status = strdup(gtk_entry_get_text(GTK_ENTRY(t->statusbar)));
+			t->status = g_strdup(gtk_entry_get_text(GTK_ENTRY(t->statusbar)));
 		s = type;
 		break;
 	case XT_STATUS_URI:
@@ -684,7 +684,7 @@ set_status(struct tab *t, gchar *s, int status)
 		}
 		s = type;
 		if (!t->status)
-			t->status = strdup(s);
+			t->status = g_strdup(s);
 		break;
 	case XT_STATUS_NOTHING:
 		/* FALL THROUGH */
@@ -2015,6 +2015,17 @@ toggle_src(struct tab *t, struct karg *args)
 	return (0);
 }
 
+void
+focus_webview(struct tab *t)
+{
+	if (t == NULL)
+		return;
+
+	/* only grab focus if we are visible */
+	if (gtk_notebook_get_current_page(notebook) == t->tab_id)
+		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+}
+
 int
 focus(struct tab *t, struct karg *args)
 {
@@ -3143,7 +3154,7 @@ url_set_visibility(void)
 	TAILQ_FOREACH(t, &tabs, entry) {
 		if (show_url == 0) {
 			gtk_widget_hide(t->toolbar);
-			gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+			focus_webview(t);
 		} else
 			gtk_widget_show(t->toolbar);
 	}
@@ -3166,7 +3177,7 @@ statusbar_set_visibility(void)
 	TAILQ_FOREACH(t, &tabs, entry) {
 		if (show_statusbar == 0) {
 			gtk_widget_hide(t->statusbar);
-			gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+			focus_webview(t);
 		} else
 			gtk_widget_show(t->statusbar);
 	}
@@ -3372,7 +3383,7 @@ movetab(struct tab *t, struct karg *args)
 			/* if at the first page, loop around to the last */
 			if (gtk_notebook_current_page(notebook) == 0)
 				gtk_notebook_set_current_page(notebook,
-							      gtk_notebook_get_n_pages(notebook) - 1);
+				    gtk_notebook_get_n_pages(notebook) - 1);
 			else
 				gtk_notebook_prev_page(notebook);
 			break;
@@ -3401,7 +3412,7 @@ movetab(struct tab *t, struct karg *args)
 			gtk_notebook_set_current_page(notebook, x);
 			DNPRINTF(XT_D_TAB, "movetab: going to %d\n", x);
 			if (tt->focus_wv)
-				gtk_widget_grab_focus(GTK_WIDGET(tt->wv));
+				focus_webview(tt);
 		}
 	}
 
@@ -4680,7 +4691,7 @@ activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 	/* if xxxt:// treat specially */
 	if (!parse_xtp_url(t, uri)) {
 		load_uri(t->wv, (gchar *)uri);
-		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+		focus_webview(t);
 	}
 }
 
@@ -4706,7 +4717,7 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 	g_free(enc_search);
 
 	webkit_web_view_load_uri(t->wv, newuri);
-	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+	focus_webview(t);
 
 	if (newuri)
 		g_free(newuri);
@@ -5010,8 +5021,10 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	if (t == NULL)
 		errx(1, "notify_load_status_cb");
 
+
 	switch (webkit_web_view_get_load_status(wview)) {
 	case WEBKIT_LOAD_PROVISIONAL:
+		/* 0 */
 		abort_favicon_download(t);
 #if GTK_CHECK_VERSION(2, 20, 0)
 		gtk_widget_show(t->spinner);
@@ -5024,11 +5037,12 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 		/* take focus if we are visible */
 		if (gtk_notebook_get_current_page(notebook) == t->tab_id)
-			gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+			focus_webview(t);
 
 		break;
 
 	case WEBKIT_LOAD_COMMITTED:
+		/* 1 */
 		frame = webkit_web_view_get_main_frame(wview);
 		uri = webkit_web_frame_get_uri(frame);
 		if (uri) {
@@ -5058,6 +5072,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		break;
 
 	case WEBKIT_LOAD_FIRST_VISUALLY_NON_EMPTY_LAYOUT:
+		/* 3 */
 		title = webkit_web_view_get_title(wview);
 		frame = webkit_web_view_get_main_frame(wview);
 		uri = webkit_web_frame_get_uri(frame);
@@ -5096,16 +5111,18 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		break;
 
 	case WEBKIT_LOAD_FINISHED:
+		/* 2 */
 #if WEBKIT_CHECK_VERSION(1, 1, 18)
 	case WEBKIT_LOAD_FAILED:
+		/* 4 */
 #endif
 #if GTK_CHECK_VERSION(2, 20, 0)
 		gtk_spinner_stop(GTK_SPINNER(t->spinner));
 		gtk_widget_hide(t->spinner);
 #endif
-	s_loading = gtk_label_get_text(GTK_LABEL(t->label));
-	if (s_loading && !strcmp(s_loading, "Loading"))
-		gtk_label_set_text(GTK_LABEL(t->label), "(untitled)");
+		s_loading = gtk_label_get_text(GTK_LABEL(t->label));
+		if (s_loading && !strcmp(s_loading, "Loading"))
+			gtk_label_set_text(GTK_LABEL(t->label), "(untitled)");
 	default:
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 		break;
@@ -5257,7 +5274,7 @@ webview_mimetype_cb(WebKitWebView *wv, WebKitWebFrame *frame,
 
 	if (run_mimehandler(t, mime_type, request) == 0) {
 		webkit_web_policy_decision_ignore(decision);
-		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+		focus_webview(t);
 		return (TRUE);
 	}
 
@@ -5330,9 +5347,10 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 
 	if (uri)
 		set_status(t, uri, XT_STATUS_LINK);
-	else
+	else {
 		if (t->status)
-	 		set_status(t, t->status, XT_STATUS_NOTHING);
+			set_status(t, t->status, XT_STATUS_NOTHING);
+	}
 }
 
 int
@@ -5568,7 +5586,7 @@ entry_key_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	hide_oops(t);
 
 	if (e->keyval == GDK_Escape)
-		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+		focus_webview(t);
 
 	for (i = 0; i < LENGTH(keys); i++)
 		if (e->keyval == keys[i].key &&
@@ -5621,7 +5639,7 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		/* FALLTHROUGH */
 	case GDK_Escape:
 		hide_cmd(t);
-		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+		focus_webview(t);
 
 		/* cancel search */
 		if (c[0] == '/' || c[0] == '?')
@@ -5647,7 +5665,7 @@ cmd_focusout_cb(GtkWidget *w, GdkEventFocus *e, struct tab *t)
 	hide_oops(t);
 
 	if (show_url == 0 || t->focus_wv)
-		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+		focus_webview(t);
 	else
 		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
 
@@ -6210,7 +6228,7 @@ create_new_tab(char *title, struct undo *u, int focus)
 		if (show_url == 1)
 			gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
 		else
-			gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+			focus_webview(t);
 	}
 
 	t->bfl = webkit_web_view_get_back_forward_list(t->wv);
@@ -6256,7 +6274,7 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkNotebookPage *nbp, guint pn,
 			hide_oops(t);
 
 			if (t->focus_wv)
-				gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+				focus_webview(t);
 		}
 	}
 }
