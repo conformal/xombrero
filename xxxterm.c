@@ -103,7 +103,6 @@ void		(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 void		(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
 		    SoupCookie *);
 
-#define XT_DEBUG
 /*#define XT_DEBUG*/
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
@@ -421,6 +420,9 @@ struct karg {
 #define XT_SES_DONOTHING	(0)
 #define XT_SES_CLOSETABS	(1)
 
+#define XT_COOKIE_NORMAL	(0)
+#define XT_COOKIE_WHITELIST	(1)
+
 /* mime types */
 struct mime_type {
 	char			*mt_type;
@@ -443,6 +445,7 @@ int		tabless = 0;	/* allow only 1 tab */
 int		enable_socket = 0;
 int		single_instance = 0; /* only allow one xxxterm to run */
 int		fancy_bar = 1;	/* fancy toolbar */
+int		browser_mode = XT_COOKIE_NORMAL;
 
 /* runtime settings */
 int		show_tabs = 1;	/* show tabs on notebook */
@@ -451,17 +454,17 @@ int		show_statusbar = 0; /* vimperator style status bar */
 int		ctrl_click_focus = 0; /* ctrl click gets focus */
 int		cookies_enabled = 1; /* enable cookies */
 int		read_only_cookies = 0; /* enable to not write cookies */
-int		enable_scripts = 0;
+int		enable_scripts = 1;
 int		enable_plugins = 0;
 int		default_font_size = 12;
 int		window_height = 768;
 int		window_width = 1024;
 int		icon_size = 2; /* 1 = smallest, 2+ = bigger */
 unsigned	refresh_interval = 10; /* download refresh interval */
-int		enable_cookie_whitelist = 1;
-int		enable_js_whitelist = 1;
+int		enable_cookie_whitelist = 0;
+int		enable_js_whitelist = 0;
 time_t		session_timeout = 3600; /* cookie session timeout */
-int		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
+int		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_ALWAYS;
 char		*ssl_ca_file = NULL;
 char		*resource_dir = NULL;
 gboolean	ssl_strict_certs = FALSE;
@@ -481,6 +484,7 @@ int		guess_search = 0;
 struct settings;
 int		set_download_dir(struct settings *, char *);
 int		set_runtime_dir(struct settings *, char *);
+int		set_browser_mode(struct settings *, char *);
 int		set_cookie_policy(struct settings *, char *);
 int		add_alias(struct settings *, char *);
 int		add_mime_type(struct settings *, char *);
@@ -489,6 +493,7 @@ int		add_js_wl(struct settings *, char *);
 void		button_set_stockid(GtkWidget *, char *);
 GtkWidget *	create_button(char *, char *, int);
 
+char		*get_browser_mode(struct settings *);
 char		*get_cookie_policy(struct settings *);
 
 char		*get_download_dir(struct settings *);
@@ -503,6 +508,12 @@ struct special {
 	int		(*set)(struct settings *, char *);
 	char		*(*get)(struct settings *);
 	void		(*walk)(struct settings *, void (*cb)(struct settings *, char *, void *), void *);
+};
+
+struct special		s_browser_mode = {
+	set_browser_mode,
+	get_browser_mode,
+	NULL
 };
 
 struct special		s_cookie = {
@@ -556,8 +567,9 @@ struct settings {
 } rs[] = {
 	{ "append_next", XT_S_INT, 0 , &append_next, NULL, NULL },
 	{ "allow_volatile_cookies", XT_S_INT, 0 , &allow_volatile_cookies, NULL, NULL },
-	{ "cookies_enabled", XT_S_INT, 0 , &cookies_enabled, NULL, NULL },
+	{ "browser_mode", XT_S_INT, 0 , NULL, NULL, &s_browser_mode },
 	{ "cookie_policy", XT_S_INT, 0 , NULL, NULL, &s_cookie },
+	{ "cookies_enabled", XT_S_INT, 0 , &cookies_enabled, NULL, NULL },
 	{ "ctrl_click_focus", XT_S_INT, 0 , &ctrl_click_focus, NULL, NULL },
 	{ "default_font_size", XT_S_INT, 0 , &default_font_size, NULL, NULL },
 	{ "download_dir", XT_S_STR, 0 , NULL, NULL, &s_download_dir },
@@ -774,6 +786,52 @@ settings_walk(void (*cb)(struct settings *, char *, void *), void *cb_args)
 			g_free(s);
 		}
 	}
+}
+
+int
+set_browser_mode(struct settings *s, char *val)
+{
+	if (!strcmp(val, "whitelist")) {
+		browser_mode = XT_COOKIE_WHITELIST;
+		allow_volatile_cookies	= 0;
+		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
+		cookies_enabled = 1;
+		enable_cookie_whitelist = 1;
+		read_only_cookies = 0;
+		save_rejected_cookies = 0;
+		session_timeout = 3600;
+		enable_scripts = 0;
+		enable_js_whitelist = 1;
+	} else if (!strcmp(val, "normal")) {
+		browser_mode = XT_COOKIE_NORMAL;
+		allow_volatile_cookies = 0;
+		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_ALWAYS;
+		cookies_enabled = 1;
+		enable_cookie_whitelist = 0;
+		read_only_cookies = 0;
+		save_rejected_cookies = 0;
+		session_timeout = 3600;
+		enable_scripts = 1;
+		enable_js_whitelist = 0;
+	} else
+		return (1);
+
+	return (0);
+}
+
+char *
+get_browser_mode(struct settings *s)
+{
+	char			*r = NULL;
+
+	if (browser_mode == XT_COOKIE_WHITELIST)
+		r = g_strdup("whitelist");
+	else if (browser_mode == XT_COOKIE_NORMAL)
+		r = g_strdup("normal");
+	else
+		return (NULL);
+
+	return (r);
 }
 
 int
@@ -6576,7 +6634,7 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 	}
 
 	/* see if we are white listed for persistence */
-	if (d && d->handy) {
+	if ((d && d->handy) || (enable_cookie_whitelist == 0)) {
 		/* add to persistent jar */
 		c = soup_cookie_copy(cookie);
 		print_cookie("soup_cookie_jar_add_cookie p_cookiejar", c);
@@ -6872,6 +6930,7 @@ main(int argc, char *argv[])
 
 	/* set default string settings */
 	home = g_strdup("http://www.peereboom.us");
+	search_string = g_strdup("https://ssl.scroogle.org/cgi-bin/nbbwssl.cgi?Gw=%s");
 	resource_dir = g_strdup("/usr/local/share/xxxterm/");
 	strlcpy(runtime_settings,"runtime", sizeof runtime_settings);
 
