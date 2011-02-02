@@ -741,13 +741,43 @@ show_oops(struct tab *t, const char *fmt, ...)
 
 	va_start(ap, fmt);
 	if (vasprintf(&msg, fmt, ap) == -1)
-		errx(1, "moo");
+		errx(1, "show_oops failed");
 	va_end(ap);
 
 	gtk_entry_set_text(GTK_ENTRY(t->oops), msg);
 	gtk_widget_hide(t->cmd);
 	gtk_widget_show(t->oops);
 }
+
+/* XXX collapse with show_oops */
+void
+show_oops_s(const char *fmt, ...)
+{
+	va_list			ap;
+	char			*msg;
+	struct tab		*ti, *t = NULL;
+
+	if (fmt == NULL)
+		return;
+
+	TAILQ_FOREACH(ti, &tabs, entry)
+		if (ti->tab_id == gtk_notebook_current_page(notebook)) {
+			t = ti;
+			break;
+		}
+	if (t == NULL)
+		return;
+
+	va_start(ap, fmt);
+	if (vasprintf(&msg, fmt, ap) == -1)
+		errx(1, "show_oops_s failed");
+	va_end(ap);
+
+	gtk_entry_set_text(GTK_ENTRY(t->oops), msg);
+	gtk_widget_hide(t->cmd);
+	gtk_widget_show(t->oops);
+}
+
 char *
 get_as_string(struct settings *s)
 {
@@ -1032,8 +1062,10 @@ walk_alias(struct settings *s,
 	struct alias		*a;
 	char			*str;
 
-	if (s == NULL || cb == NULL)
-		errx(1, "walk_alias");
+	if (s == NULL || cb == NULL) {
+		show_oops_s("walk_alias invalid parameters");
+		return;
+	}
 
 	TAILQ_FOREACH(a, &aliases, entry) {
 		str = g_strdup_printf("%s --> %s", a->a_name, a->a_uri);
@@ -1051,8 +1083,10 @@ match_alias(char *url_in)
 
 	search = g_strdup(url_in);
 	arg = search;
-	if (strsep(&arg, " \t") == NULL)
-		errx(1, "match_alias: NULL URL");
+	if (strsep(&arg, " \t") == NULL) {
+		show_oops_s("match_alias: NULL URL");
+		goto done;
+	}
 
 	TAILQ_FOREACH(a, &aliases, entry) {
 		if (!strcmp(search, a->a_name))
@@ -1061,7 +1095,7 @@ match_alias(char *url_in)
 
 	if (a != NULL) {
 		DNPRINTF(XT_D_URL, "match_alias: matched alias %s\n",
-			a->a_name);
+		    a->a_name);
 		if (arg != NULL) {
 			enc_arg = soup_uri_encode(arg, XT_RESERVED_CHARS);
 			url_out = g_strdup_printf(a->a_uri, enc_arg);
@@ -1069,9 +1103,8 @@ match_alias(char *url_in)
 		} else
 			url_out = g_strdup(a->a_uri);
 	}
-
+done:
 	g_free(search);
-
 	return (url_out);
 }
 
@@ -1138,19 +1171,24 @@ int
 add_alias(struct settings *s, char *line)
 {
 	char			*l, *alias;
-	struct alias		*a;
+	struct alias		*a = NULL;
 
-	if (line == NULL)
-		errx(1, "add_alias");
+	if (s == NULL || line == NULL) {
+		show_oops_s("add_alias invalid parameters");
+		return (1);
+	}
+
 	l = line;
-
 	a = g_malloc(sizeof(*a));
 
-	if ((alias = strsep(&l, " \t,")) == NULL || l == NULL)
-		errx(1, "add_alias: incomplete alias definition");
-
-	if (strlen(alias) == 0 || strlen(l) == 0)
-		errx(1, "add_alias: invalid alias definition");
+	if ((alias = strsep(&l, " \t,")) == NULL || l == NULL) {
+		show_oops_s("add_alias: incomplete alias definition");
+		goto bad;
+	}
+	if (strlen(alias) == 0 || strlen(l) == 0) {
+		show_oops_s("add_alias: invalid alias definition");
+		goto bad;
+	}
 
 	a->a_name = g_strdup(alias);
 	a->a_uri = g_strdup(l);
@@ -1160,34 +1198,43 @@ add_alias(struct settings *s, char *line)
 	TAILQ_INSERT_TAIL(&aliases, a, entry);
 
 	return (0);
+bad:
+	if (a)
+		g_free(a);
+	return (1);
 }
 
 int
 add_mime_type(struct settings *s, char *line)
 {
 	char			*mime_type;
-	char			*l = NULL;
-	struct mime_type	*m;
+	char			*l;
+	struct mime_type	*m = NULL;
 
 	/* XXX this could be smarter */
 
-	if (line == NULL)
-		errx(1, "add_mime_type");
-	l = line;
+	if (line == NULL) {
+		show_oops_s("add_mime_type invalid parameters");
+		return (1);
+	}
 
+	l = line;
 	m = g_malloc(sizeof(*m));
 
-	if ((mime_type = strsep(&l, " \t,")) == NULL || l == NULL)
-		errx(1, "add_mime_type: invalid mime_type");
-
+	if ((mime_type = strsep(&l, " \t,")) == NULL || l == NULL) {
+		show_oops_s("add_mime_type: invalid mime_type");
+		goto bad;
+	}
 	if (mime_type[strlen(mime_type) - 1] == '*') {
 		mime_type[strlen(mime_type) - 1] = '\0';
 		m->mt_default = 1;
 	} else
 		m->mt_default = 0;
 
-	if (strlen(mime_type) == 0 || strlen(l) == 0)
-		errx(1, "add_mime_type: invalid mime_type");
+	if (strlen(mime_type) == 0 || strlen(l) == 0) {
+		show_oops_s("add_mime_type: invalid mime_type");
+		goto bad;
+	}
 
 	m->mt_type = g_strdup(mime_type);
 	m->mt_action = g_strdup(l);
@@ -1198,6 +1245,10 @@ add_mime_type(struct settings *s, char *line)
 	TAILQ_INSERT_TAIL(&mtl, m, entry);
 
 	return (0);
+bad:
+	if (m)
+		g_free(m);
+	return (1);
 }
 
 struct mime_type *
@@ -1230,7 +1281,7 @@ walk_mime_type(struct settings *s,
 	char			*str;
 
 	if (s == NULL || cb == NULL)
-		errx(1, "walk_mime_type");
+		show_oops_s("walk_mime_type invalid parameters");
 
 	TAILQ_FOREACH(m, &mtl, entry) {
 		str = g_strdup_printf("%s%s --> %s",
@@ -1297,7 +1348,7 @@ walk_cookie_wl(struct settings *s,
 	struct domain		*d;
 
 	if (s == NULL || cb == NULL)
-		errx(1, "walk_cookie_wl");
+		show_oops_s("walk_cookie_wl invalid parameters");
 
 	RB_FOREACH_REVERSE(d, domain_list, &c_wl)
 		cb(s, d->d, cb_args);
@@ -1310,7 +1361,7 @@ walk_js_wl(struct settings *s,
 	struct domain		*d;
 
 	if (s == NULL || cb == NULL)
-		errx(1, "walk_js_wl");
+		show_oops_s("walk_js_wl invalid parameters");
 
 	RB_FOREACH_REVERSE(d, domain_list, &js_wl)
 		cb(s, d->d, cb_args);
@@ -2123,7 +2174,7 @@ stats(struct tab *t, struct karg *args)
 	FILE			*r_cookie_f;
 
 	if (t == NULL)
-		errx(1, "stats");
+		show_oops_s("stats invalid parameters");
 
 	line[0] = '\0';
 	if (save_rejected_cookies) {
@@ -2170,7 +2221,7 @@ about(struct tab *t, struct karg *args)
 	char			*about;
 
 	if (t == NULL)
-		errx(1, "about");
+		show_oops_s("about invalid parameters");
 
 	about = g_strdup_printf(XT_DOCTYPE
 	    "<html>"
@@ -2206,7 +2257,7 @@ help(struct tab *t, struct karg *args)
 	char			*help;
 
 	if (t == NULL)
-		errx(1, "help");
+		show_oops_s("help invalid parameters");
 
 	help = XT_DOCTYPE
 	    "<html>"
@@ -2302,8 +2353,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 
 		if ((uri = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
 			if (feof(f) || ferror(f)) {
-				errx(0, "%s: can't parse favorites\n",
-				    __func__);
+				show_oops(t, "favorites file corrupt");
 				failed = 1;
 				break;
 			}
@@ -3412,8 +3462,10 @@ done:
 int
 resizetab(struct tab *t, struct karg *args)
 {
-	if (t == NULL || args == NULL)
-		errx(1, "resizetab");
+	if (t == NULL || args == NULL) {
+		show_oops_s("resizetab invalid parameters");
+		return (XT_CB_PASSTHROUGH);
+	}
 
 	DNPRINTF(XT_D_TAB, "resizetab: tab %d %d\n",
 	    t->tab_id, args->i);
@@ -3429,8 +3481,10 @@ movetab(struct tab *t, struct karg *args)
 	struct tab		*tt;
 	int			x;
 
-	if (t == NULL || args == NULL)
-		errx(1, "movetab");
+	if (t == NULL || args == NULL) {
+		show_oops_s("movetab invalid parameters");
+		return (XT_CB_PASSTHROUGH);
+	}
 
 	DNPRINTF(XT_D_TAB, "movetab: tab %d opcode %d\n",
 	    t->tab_id, args->i);
@@ -3500,8 +3554,10 @@ command(struct tab *t, struct karg *args)
 	GdkColor		color;
 	const gchar		*uri;
 
-	if (t == NULL || args == NULL)
-		errx(1, "command");
+	if (t == NULL || args == NULL) {
+		show_oops_s("command invalid parameters");
+		return (XT_CB_PASSTHROUGH);
+	}
 
 	switch (args->i) {
 	case '/':
@@ -3710,9 +3766,10 @@ xtp_page_cl(struct tab *t, struct karg *args)
 
 	DNPRINTF(XT_D_CMD, "%s", __func__);
 
-	if (t == NULL)
-		errx(1, "%s: null tab", __func__);
-
+	if (t == NULL) {
+		show_oops_s("%s invalid parameters", __func__);
+		return (1);
+	}
 	/* mark this tab as cookie jar */
 	t->xtp_meaning = XT_XTP_TAB_MEANING_CL;
 
@@ -3823,8 +3880,10 @@ xtp_page_hl(struct tab *t, struct karg *args)
 
 	DNPRINTF(XT_D_CMD, "%s", __func__);
 
-	if (t == NULL)
-		errx(1, "%s: null tab", __func__);
+	if (t == NULL) {
+		show_oops_s("%s invalid parameters", __func__);
+		return (1);
+	}
 
 	/* mark this tab as history manager */
 	t->xtp_meaning = XT_XTP_TAB_MEANING_HL;
@@ -3904,9 +3963,10 @@ xtp_page_dl(struct tab *t, struct karg *args)
 
 	DNPRINTF(XT_D_DOWNLOAD, "%s", __func__);
 
-	if (t == NULL)
-		errx(1, "%s: null tab", __func__);
-
+	if (t == NULL) {
+		show_oops_s("%s invalid parameters", __func__);
+		return (1);
+	}
 	/* mark as a download manager tab */
 	t->xtp_meaning = XT_XTP_TAB_MEANING_DL;
 
@@ -3988,8 +4048,10 @@ search(struct tab *t, struct karg *args)
 {
 	gboolean		d;
 
-	if (t == NULL || args == NULL)
-		errx(1, "search");
+	if (t == NULL || args == NULL) {
+		show_oops_s("search invalid parameters");
+		return (1);
+	}
 	if (t->search_text == NULL) {
 		if (global_search == NULL)
 			return (XT_CB_PASSTHROUGH);
@@ -4753,11 +4815,15 @@ activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 
 	DNPRINTF(XT_D_URL, "activate_uri_entry_cb: %s\n", uri);
 
-	if (t == NULL)
-		errx(1, "activate_uri_entry_cb");
+	if (t == NULL) {
+		show_oops_s("activate_uri_entry_cb invalid parameters");
+		return;
+	}
 
-	if (uri == NULL)
-		errx(1, "uri");
+	if (uri == NULL) {
+		show_oops(t, "activate_uri_entry_cb no uri");
+		return;
+	}
 
 	uri += strspn(uri, "\t ");
 
@@ -4777,8 +4843,10 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 
 	DNPRINTF(XT_D_URL, "activate_search_entry_cb: %s\n", search);
 
-	if (t == NULL)
-		errx(1, "activate_search_entry_cb");
+	if (t == NULL) {
+		show_oops_s("activate_search_entry_cb invalid parameters");
+		return;
+	}
 
 	if (search_string == NULL) {
 		show_oops(t, "no search_string");
@@ -5095,9 +5163,10 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	DNPRINTF(XT_D_URL, "notify_load_status_cb: %d\n",
 	    webkit_web_view_get_load_status(wview));
 
-	if (t == NULL)
-		errx(1, "notify_load_status_cb");
-
+	if (t == NULL) {
+		show_oops_s("notify_load_status_cb invalid paramters");
+		return;
+	}
 
 	switch (webkit_web_view_get_load_status(wview)) {
 	case WEBKIT_LOAD_PROVISIONAL:
@@ -5234,8 +5303,10 @@ webview_nw_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 {
 	char			*uri;
 
-	if (t == NULL)
-		errx(1, "webview_nw_cb");
+	if (t == NULL) {
+		show_oops_s("webview_nw_cb invalid paramters");
+		return (FALSE);
+	}
 
 	DNPRINTF(XT_D_NAV, "webview_nw_cb: %s\n",
 	    webkit_network_request_get_uri(request));
@@ -5255,8 +5326,10 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 {
 	char			*uri;
 
-	if (t == NULL)
-		errx(1, "webview_npd_cb");
+	if (t == NULL) {
+		show_oops_s("webview_npd_cb invalid parameters");
+		return (FALSE);
+	}
 
 	DNPRINTF(XT_D_NAV, "webview_npd_cb: ctrl_click %d %s\n",
 	    t->ctrl_click,
@@ -5278,9 +5351,6 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 WebKitWebView *
 webview_cwv_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 {
-	if (t == NULL)
-		errx(1, "webview_cwv_cb");
-
 	DNPRINTF(XT_D_NAV, "webview_cwv_cb: %s\n",
 	    webkit_web_view_get_uri(wv));
 
@@ -5319,7 +5389,7 @@ run_mimehandler(struct tab *t, char *mime_type, WebKitNetworkRequest *request)
 
 	switch (fork()) {
 	case -1:
-		err(1, "fork");
+		show_oops(t, "can't fork mime handler");
 		/* NOTREACHED */
 	case 0:
 		break;
@@ -5342,8 +5412,10 @@ webview_mimetype_cb(WebKitWebView *wv, WebKitWebFrame *frame,
     WebKitNetworkRequest *request, char *mime_type,
     WebKitWebPolicyDecision *decision, struct tab *t)
 {
-	if (t == NULL)
-		errx(1, "webview_mimetype_cb");
+	if (t == NULL) {
+		show_oops_s("webview_mimetype_cb invalid parameters");
+		return (FALSE);
+	}
 
 	DNPRINTF(XT_D_DOWNLOAD, "webview_mimetype_cb: tab %d mime %s\n",
 	    t->tab_id, mime_type);
@@ -5371,8 +5443,10 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download,
 	struct download		*download_entry;
 	int			ret = TRUE;
 
-	if (wk_download == NULL || t == NULL)
-		errx(1, "%s: invalid pointers", __func__);
+	if (wk_download == NULL || t == NULL) {
+		show_oops_s("%s invalid parameters", __func__);
+		return (FALSE);
+	}
 
 	filename = webkit_download_get_suggested_filename(wk_download);
 	if (filename == NULL)
@@ -5419,8 +5493,10 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 {
 	DNPRINTF(XT_D_KEY, "webview_hover_cb: %s %s\n", title, uri);
 
-	if (t == NULL)
-		errx(1, "webview_hover_cb");
+	if (t == NULL) {
+		show_oops_s("webview_hover_cb");
+		return;
+	}
 
 	if (uri)
 		set_status(t, uri, XT_STATUS_LINK);
@@ -5440,8 +5516,10 @@ wv_keypress_after_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 
 	/* don't use w directly; use t->whatever instead */
 
-	if (t == NULL)
-		errx(1, "wv_keypress_after_cb");
+	if (t == NULL) {
+		show_oops_s("wv_keypress_after_cb");
+		return (XT_CB_PASSTHROUGH);
+	}
 
 	DNPRINTF(XT_D_KEY, "wv_keypress_after_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
@@ -5584,8 +5662,10 @@ cmd_keyrelease_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	DNPRINTF(XT_D_CMD, "cmd_keyrelease_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
 
-	if (t == NULL)
-		errx(1, "cmd_keyrelease_cb");
+	if (t == NULL) {
+		show_oops_s("cmd_keyrelease_cb invalid parameters");
+		return (XT_CB_PASSTHROUGH);
+	}
 
 	DNPRINTF(XT_D_CMD, "cmd_keyrelease_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
@@ -5654,8 +5734,10 @@ entry_key_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 {
 	int			i;
 
-	if (t == NULL)
-		errx(1, "entry_key_cb");
+	if (t == NULL) {
+		show_oops_s("entry_key_cb invalid parameters");
+		return (XT_CB_PASSTHROUGH);
+	}
 
 	DNPRINTF(XT_D_CMD, "entry_key_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
@@ -5684,8 +5766,10 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	int			rv = XT_CB_HANDLED;
 	const gchar		*c = gtk_entry_get_text(w);
 
-	if (t == NULL)
-		errx(1, "cmd_keypress_cb");
+	if (t == NULL) {
+		show_oops_s("cmd_keypress_cb parameters");
+		return (XT_CB_PASSTHROUGH);
+	}
 
 	DNPRINTF(XT_D_CMD, "cmd_keypress_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
@@ -5734,9 +5818,10 @@ done:
 int
 cmd_focusout_cb(GtkWidget *w, GdkEventFocus *e, struct tab *t)
 {
-	if (t == NULL)
-		errx(1, "cmd_focusout_cb");
-
+	if (t == NULL) {
+		show_oops_s("cmd_focusout_cb invalid parameters");
+		return (XT_CB_PASSTHROUGH);
+	}
 	DNPRINTF(XT_D_CMD, "cmd_focusout_cb: tab %d\n", t->tab_id);
 
 	hide_cmd(t);
@@ -5757,8 +5842,10 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 	char			*s;
 	const gchar		*c = gtk_entry_get_text(entry);
 
-	if (t == NULL)
-		errx(1, "cmd_activate_cb");
+	if (t == NULL) {
+		show_oops_s("cmd_activate_cb invalid parameters");
+		return;
+	}
 
 	DNPRINTF(XT_D_CMD, "cmd_activate_cb: tab %d %s\n", t->tab_id, c);
 
@@ -5810,8 +5897,10 @@ backward_cb(GtkWidget *w, struct tab *t)
 {
 	struct karg		a;
 
-	if (t == NULL)
-		errx(1, "backward_cb");
+	if (t == NULL) {
+		show_oops_s("backward_cb invalid parameters");
+		return;
+	}
 
 	DNPRINTF(XT_D_NAV, "backward_cb: tab %d\n", t->tab_id);
 
@@ -5824,8 +5913,10 @@ forward_cb(GtkWidget *w, struct tab *t)
 {
 	struct karg		a;
 
-	if (t == NULL)
-		errx(1, "forward_cb");
+	if (t == NULL) {
+		show_oops_s("forward_cb invalid parameters");
+		return;
+	}
 
 	DNPRINTF(XT_D_NAV, "forward_cb: tab %d\n", t->tab_id);
 
@@ -5838,8 +5929,10 @@ stop_cb(GtkWidget *w, struct tab *t)
 {
 	WebKitWebFrame		*frame;
 
-	if (t == NULL)
-		errx(1, "stop_cb");
+	if (t == NULL) {
+		show_oops_s("stop_cb invalid parameters");
+		return;
+	}
 
 	DNPRINTF(XT_D_NAV, "stop_cb: tab %d\n", t->tab_id);
 
@@ -5873,8 +5966,10 @@ create_browser(struct tab *t)
 	GtkWidget		*w;
 	gchar			*strval;
 
-	if (t == NULL)
-		errx(1, "create_browser");
+	if (t == NULL) {
+		show_oops_s("create_browser invalid parameters");
+		return (NULL);
+	}
 
 	t->sb_h = GTK_SCROLLBAR(gtk_hscrollbar_new(NULL));
 	t->sb_v = GTK_SCROLLBAR(gtk_vscrollbar_new(NULL));
@@ -6106,8 +6201,10 @@ delete_tab(struct tab *t)
 void
 adjustfont_webkit(struct tab *t, int adjust)
 {
-	if (t == NULL)
-		errx(1, "adjustfont_webkit");
+	if (t == NULL) {
+		show_oops_s("adjustfont_webkit invalid parameters");
+		return;
+	}
 
 	if (adjust == XT_FONT_SET)
 		t->font_size = default_font_size;
@@ -6614,7 +6711,7 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 		    cookie->domain);
 		if (save_rejected_cookies) {
 			if ((r_cookie_f = fopen(rc_fname, "a+")) == NULL)
-				err(1, "reject cookie file");
+				show_oops_s("can't open reject cookie file");
 			fseek(r_cookie_f, 0, SEEK_END);
 			fprintf(r_cookie_f, "%s%s\t%s\t%s\t%s\t%lu\t%s\t%s\n",
 			    cookie->http_only ? "#HttpOnly_" : "",
