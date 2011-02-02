@@ -41,6 +41,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <libgen.h>
+#include <ctype.h>
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -1154,6 +1155,13 @@ load_uri(WebKitWebView *wv, gchar *uri)
 	gchar		*newuri = NULL;
 
 	if (uri == NULL || !strlen(uri))
+		return;
+
+	/* Strip leading spaces. */
+	while(*uri && isspace(*uri))
+		uri++;
+
+	if (!strlen(uri))
 		return;
 
 	if (valid_url_type(uri)) {
