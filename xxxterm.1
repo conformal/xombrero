@@ -262,7 +262,7 @@ Highlight all links and prefix them with a number.
 Commands to exit the browser.
 .Pp
 .Bl -tag -width Ds -offset indent -compact
-.It Cm C-Q
+.It Cm C-q
 Quit
 .El
 .Sh COMMAND MODE
@@ -389,6 +389,10 @@ session_name.
 .It Cm stats
 Show blocked cookie statistics.
 These statistics vary based on settings and are not persistent.
+.It Cm statushide , statush
+Hide status bar.
+.It Cm statusshow , statuss
+Show status bar.
 .It Cm tabclose , tabc
 Close current tab.
 .It Cm tabhide , tabh
@@ -405,10 +409,6 @@ Show tabs.
 Hide url entry and tool bar.
 .It Cm urlshow , urls
 Show url entry and tool bar.
-.It Cm statushide , statush
-Hide status bar.
-.It Cm statusshow , statuss
-Show status bar.
 .It Cm w
 Save open tabs to current session.
 The tabs will be restored next time
@@ -522,7 +522,7 @@ as the last tab.
 .It Cm browser_mode
 The
 .Nm
-browser has 2 default operating modes: 
+browser has 2 default operating modes:
 .Pa normal
 (the default) or
 .Pa whitelist.
@@ -596,6 +596,14 @@ Enables a backward, forward, and stop button to the toolbar.
 Additionally if
 .Cm search_string
 is set it'll enable an entry box for searches.
+.It Cm guess_search
+When enabled
+.Nm
+will try to guess if the string you entered, in the URI entry widget or
+the command widget, is term you want to search for using search_string
+(see above). If the string does not contain a dot nor a slash, is not a
+path to a local file and does not resolves to an IP then it is assumed
+to be a search term.
 .It Cm home
 Homepage in URL format.
 .It Cm http_proxy
@@ -671,14 +679,6 @@ Enable or disable showing tabs.
 Enable or disable showing the url and toolbar.
 .It Cm show_statusbar
 Enable or disable showing the status bar.
-.It Cm guess_search
-When enabled
-.Nm
-will try to guess if the string you entered, in the URI entry widget or
-the command widget, is term you want to search for using search_string
-(see above). If the string does not contain a dot nor a slash, is not a
-path to a local file and does not resolves to an IP then it is assumed
-to be a search term.
 .It Cm single_instance
 If set only one
 .Nm
