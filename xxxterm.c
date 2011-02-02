@@ -1086,7 +1086,8 @@ guess_url_type(char *url_in)
 		return (url_out);
 
 	if (guess_search) {
-		/* If there is no dot nor slash in the string and it isn't a
+		/*
+		 * If there is no dot nor slash in the string and it isn't a
 		 * path to a local file and doesn't resolves to an IP, assume
 		 * that the user wants to search for the string.
 		 */
@@ -1626,7 +1627,8 @@ hint(struct tab *t, struct karg *args)
 	return (0);
 }
 
-/* Doesn't work fully, due to the following bug:
+/*
+ * Doesn't work fully, due to the following bug:
  * https://bugs.webkit.org/show_bug.cgi?id=51747
  */
 int
@@ -2448,7 +2450,8 @@ ca_cmd(struct tab *t, struct karg *args)
 	dt.data = certs_buf;
 	dt.size = sb.st_size;
 	c = g_malloc(sizeof(gnutls_x509_crt_t) * certs);
-	certs_read = gnutls_x509_crt_list_import(c, &certs, &dt, GNUTLS_X509_FMT_PEM, 0);
+	certs_read = gnutls_x509_crt_list_import(c, &certs, &dt,
+	    GNUTLS_X509_FMT_PEM, 0);
 	if (certs_read <= 0) {
 		show_oops(t, "No cert(s) available");
 		goto done;
@@ -4872,13 +4875,17 @@ done:
 		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
 
 		if (!strcmp(col_str, "white")) {
-			gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL, &color);
+			gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL,
+			    &color);
 			gdk_color_parse("black", &color);
-			gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL, &color);
+			gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL,
+			    &color);
 		} else {
-			gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL, &color);
+			gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL,
+			    &color);
 			gdk_color_parse("black", &color);
-			gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL, &color);
+			gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL,
+			    &color);
 		}
 	}
 }
@@ -5205,7 +5212,6 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	/* take focus if we are visible */
 	t->focus_wv = 1;
 	focus_webview(t);
-
 }
 
 void
@@ -5357,7 +5363,8 @@ webview_mimetype_cb(WebKitWebView *wv, WebKitWebFrame *frame,
 }
 
 int
-webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download, struct tab *t)
+webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download,
+    struct tab *t)
 {
 	const gchar		*filename;
 	char			*uri = NULL;
