@@ -4356,8 +4356,8 @@ struct key_bindings {
 	{ MOD1,	0,	GDK_h,		xtp_page_hl,	{0} },
 	{ CTRL,	0,	GDK_p,		print_page,	{0}},
 	{ 0,	0,	GDK_slash,	command,	{.i = '/'} },
-	{ SHFT,	0,	GDK_question,	command,	{.i = '?'} },
-	{ SHFT,	0,	GDK_colon,	command,	{.i = ':'} },
+	{ 0,	0,	GDK_question,	command,	{.i = '?'} },
+	{ 0,	0,	GDK_colon,	command,	{.i = ':'} },
 	{ CTRL,	0,	GDK_q,		quit,		{0} },
 	{ MOD1,	0,	GDK_q,		restart,	{0} },
 	{ CTRL,	0,	GDK_j,		toggle_js,	{.i = XT_WL_TOGGLE | XT_WL_FQDN} },
@@ -4365,11 +4365,11 @@ struct key_bindings {
 	{ CTRL,	0,	GDK_s,		toggle_src,	{0} },
 	{ 0,	0,	GDK_y,		yank_uri,	{0} },
 	{ 0,	0,	GDK_p,		paste_uri,	{.i = XT_PASTE_CURRENT_TAB} },
-	{ SHFT,	0,	GDK_P,		paste_uri,	{.i = XT_PASTE_NEW_TAB} },
+	{ 0,	0,	GDK_P,		paste_uri,	{.i = XT_PASTE_NEW_TAB} },
 
 	/* search */
 	{ 0,	0,	GDK_n,		search,		{.i = XT_SEARCH_NEXT} },
-	{ SHFT,	0,	GDK_N,		search,		{.i = XT_SEARCH_PREV} },
+	{ 0,	0,	GDK_N,		search,		{.i = XT_SEARCH_PREV} },
 
 	/* focus */
 	{ 0,	0,	GDK_F6,		focus,		{.i = XT_FOCUS_URI} },
@@ -4391,7 +4391,7 @@ struct key_bindings {
 	{ MOD1,	0,	GDK_Right,	navaction,	{.i = XT_NAV_FORWARD} },
 	{ 0,	0,	GDK_F5,		navaction,	{.i = XT_NAV_RELOAD} },
 	{ CTRL,	0,	GDK_r,		navaction,	{.i = XT_NAV_RELOAD} },
-	{ CTRL|SHFT, 0,	GDK_R,		navaction,	{.i = XT_NAV_RELOAD_CACHE} },
+	{ CTRL, 0,	GDK_R,		navaction,	{.i = XT_NAV_RELOAD_CACHE} },
 	{ CTRL,	0,	GDK_l,		navaction,	{.i = XT_NAV_RELOAD} },
 	{ MOD1,	1,	GDK_f,		xtp_page_fl,	{0} },
 
@@ -4400,7 +4400,7 @@ struct key_bindings {
 	{ 0,	0,	GDK_Down,	move,		{.i = XT_MOVE_DOWN} },
 	{ 0,	0,	GDK_Up,		move,		{.i = XT_MOVE_UP} },
 	{ 0,	0,	GDK_k,		move,		{.i = XT_MOVE_UP} },
-	{ SHFT,	0,	GDK_G,		move,		{.i = XT_MOVE_BOTTOM} },
+	{ 0,	0,	GDK_G,		move,		{.i = XT_MOVE_BOTTOM} },
 	{ 0,	0,	GDK_End,	move,		{.i = XT_MOVE_BOTTOM} },
 	{ 0,	0,	GDK_Home,	move,		{.i = XT_MOVE_TOP} },
 	{ 0,	0,	GDK_g,		move,		{.i = XT_MOVE_TOP} }, /* XXX make this work */
@@ -4416,7 +4416,7 @@ struct key_bindings {
 	{ 0,	0,	GDK_Right,	move,		{.i = XT_MOVE_RIGHT} },
 	{ 0,	0,	GDK_Left,	move,		{.i = XT_MOVE_LEFT} },
 	{ 0,	0,	GDK_h,		move,		{.i = XT_MOVE_LEFT} },
-	{ SHFT,	0,	GDK_dollar,	move,		{.i = XT_MOVE_FARRIGHT} },
+	{ 0,	0,	GDK_dollar,	move,		{.i = XT_MOVE_FARRIGHT} },
 	{ 0,	0,	GDK_0,		move,		{.i = XT_MOVE_FARLEFT} },
 
 	/* tabs */
@@ -4433,12 +4433,12 @@ struct key_bindings {
 	{ CTRL,	0,	GDK_8,		movetab,	{.i = 8} },
 	{ CTRL,	0,	GDK_9,		movetab,	{.i = 9} },
 	{ CTRL,	0,	GDK_0,		movetab,	{.i = 10} },
-	{ CTRL|SHFT, 0,	GDK_less,	movetab,	{.i = XT_TAB_FIRST} },
-	{ CTRL|SHFT, 0,	GDK_greater,	movetab,	{.i = XT_TAB_LAST} },
+	{ CTRL, 0,	GDK_less,	movetab,	{.i = XT_TAB_FIRST} },
+	{ CTRL, 0,	GDK_greater,	movetab,	{.i = XT_TAB_LAST} },
 	{ CTRL,	0,	GDK_Left,	movetab,	{.i = XT_TAB_PREV} },
 	{ CTRL,	0,	GDK_Right,	movetab,	{.i = XT_TAB_NEXT} },
 	{ CTRL,	0,	GDK_minus,	resizetab,	{.i = -1} },
-	{ CTRL|SHFT, 0,	GDK_plus,	resizetab,	{.i = 1} },
+	{ CTRL, 0,	GDK_plus,	resizetab,	{.i = 1} },
 	{ CTRL,	0,	GDK_equal,	resizetab,	{.i = 1} },
 };
 
@@ -5642,10 +5642,17 @@ anum:
 	}
 
 	for (i = 0; i < LENGTH(keys); i++)
-		if (e->keyval == keys[i].key && CLEAN(e->state) ==
-		    keys[i].mask) {
-			keys[i].func(t, &keys[i].arg);
-			return (XT_CB_HANDLED);
+		 if (e->keyval == keys[i].key){
+			if(keys[i].mask==0){
+				if((e->state & (CTRL|MOD1)) == 0){
+					keys[i].func(t, &keys[i].arg);
+					return (XT_CB_HANDLED);
+				}
+			}
+			else if ((e->state & keys[i].mask) == keys[i].mask) {
+				keys[i].func(t, &keys[i].arg);
+				return (XT_CB_HANDLED);
+			}
 		}
 
 
@@ -5758,11 +5765,17 @@ entry_key_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	}
 
 	for (i = 0; i < LENGTH(keys); i++)
-		if (e->keyval == keys[i].key &&
-		    CLEAN(e->state) == keys[i].mask &&
-		    keys[i].use_in_entry) {
-			keys[i].func(t, &keys[i].arg);
-			return (XT_CB_HANDLED);
+		if (e->keyval == keys[i].key && keys[i].use_in_entry){
+			if(keys[i].mask==0){
+				if((e->state & (CTRL|MOD1)) == 0){
+					keys[i].func(t, &keys[i].arg);
+					return (XT_CB_HANDLED);
+				}
+			}
+			else if ((e->state & keys[i].mask) == keys[i].mask) {
+				keys[i].func(t, &keys[i].arg);
+				return (XT_CB_HANDLED);
+			}
 		}
 
 	return (XT_CB_PASSTHROUGH);
