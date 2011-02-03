@@ -506,6 +506,7 @@ char		*get_runtime_dir(struct settings *);
 void		walk_alias(struct settings *, void (*)(struct settings *, char *, void *), void *);
 void		walk_cookie_wl(struct settings *, void (*)(struct settings *, char *, void *), void *);
 void		walk_js_wl(struct settings *, void (*)(struct settings *, char *, void *), void *);
+void		walk_kb(struct settings *, void (*)(struct settings *, char *, void *), void *);
 void		walk_mime_type(struct settings *, void (*)(struct settings *, char *, void *), void *);
 
 struct special {
@@ -547,7 +548,7 @@ struct special		s_js = {
 struct special		s_kb = {
 	add_kb,
 	NULL,
-	NULL//walk_kb
+	walk_kb
 };
 
 struct special		s_cookie_wl = {
@@ -1366,8 +1367,10 @@ walk_cookie_wl(struct settings *s,
 {
 	struct domain		*d;
 
-	if (s == NULL || cb == NULL)
+	if (s == NULL || cb == NULL) {
 		show_oops_s("walk_cookie_wl invalid parameters");
+		return;
+	}
 
 	RB_FOREACH_REVERSE(d, domain_list, &c_wl)
 		cb(s, d->d, cb_args);
@@ -1379,8 +1382,10 @@ walk_js_wl(struct settings *s,
 {
 	struct domain		*d;
 
-	if (s == NULL || cb == NULL)
+	if (s == NULL || cb == NULL) {
 		show_oops_s("walk_js_wl invalid parameters");
+		return;
+	}
 
 	RB_FOREACH_REVERSE(d, domain_list, &js_wl)
 		cb(s, d->d, cb_args);
@@ -4456,6 +4461,45 @@ struct key_binding {
 };
 TAILQ_HEAD(keybinding_list, key_binding);
 
+void
+walk_kb(struct settings *s,
+    void (*cb)(struct settings *, char *, void *), void *cb_args)
+{
+	struct key_binding	*k;
+	char			str[1024];
+
+	if (s == NULL || cb == NULL) {
+		show_oops_s("walk_kb invalid parameters");
+		return;
+	}
+
+	TAILQ_FOREACH(k, &kbl, entry) {
+		if (k->name == NULL)
+			continue;
+		str[0] = '\0';
+
+		strlcat(str, k->name, sizeof str);
+		strlcat(str, ",", sizeof str);
+
+		if (k->mask & GDK_SHIFT_MASK)
+			strlcat(str, "S+", sizeof str);
+		if (k->mask & GDK_CONTROL_MASK)
+			strlcat(str, "C+", sizeof str);
+		if (k->mask & GDK_MOD1_MASK)
+			strlcat(str, "M1+", sizeof str);
+		if (k->mask & GDK_MOD2_MASK)
+			strlcat(str, "M2+", sizeof str);
+		if (k->mask & GDK_MOD3_MASK)
+			strlcat(str, "M3+", sizeof str);
+		if (k->mask & GDK_MOD4_MASK)
+			strlcat(str, "M4+", sizeof str);
+		if (k->mask & GDK_MOD5_MASK)
+			strlcat(str, "M5+", sizeof str);
+
+		strlcat(str, gdk_keyval_name(k->key), sizeof str);
+		cb(s, str, cb_args);
+	}
+}
 void
 init_keybindings(void)
 {
