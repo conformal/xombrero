@@ -104,6 +104,7 @@ void		(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 void		(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
 		    SoupCookie *);
 
+#define XT_DEBUG
 /*#define XT_DEBUG*/
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
@@ -493,6 +494,7 @@ int		add_alias(struct settings *, char *);
 int		add_mime_type(struct settings *, char *);
 int		add_cookie_wl(struct settings *, char *);
 int		add_js_wl(struct settings *, char *);
+int		add_kb(struct settings *, char *);
 void		button_set_stockid(GtkWidget *, char *);
 GtkWidget *	create_button(char *, char *, int);
 
@@ -541,6 +543,12 @@ struct special		s_js = {
 	add_js_wl,
 	NULL,
 	walk_js_wl
+};
+
+struct special		s_kb = {
+	add_kb,
+	NULL,
+	NULL//walk_kb
 };
 
 struct special		s_cookie_wl = {
@@ -608,6 +616,7 @@ struct settings {
 	{ "alias",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_alias },
 	{ "cookie_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_cookie_wl },
 	{ "js_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_js },
+	{ "keybinding",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_kb },
 	{ "mime_type",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_mime },
 };
 
@@ -4373,11 +4382,11 @@ struct key_binding {
 	{ "pasteurinew",	0,	0,	GDK_P,		paste_uri,	{.i = XT_PASTE_NEW_TAB} },
 
 	/* search */
-	{ NULL,			0,	0,	GDK_n,		search,		{.i = XT_SEARCH_NEXT} },
-	{ NULL,			0,	0,	GDK_N,		search,		{.i = XT_SEARCH_PREV} },
+	{ "searchnext",		0,	0,	GDK_n,		search,		{.i = XT_SEARCH_NEXT} },
+	{ "searchprev",		0,	0,	GDK_N,		search,		{.i = XT_SEARCH_PREV} },
 
 	/* focus */
-	{ "focusaddres",	0,	0,	GDK_F6,		focus,		{.i = XT_FOCUS_URI} },
+	{ "focusaddress",	0,	0,	GDK_F6,		focus,		{.i = XT_FOCUS_URI} },
 	{ "focussearch",	0,	0,	GDK_F7,		focus,		{.i = XT_FOCUS_SEARCH} },
 
 	/* command aliases (handy when -S flag is used) */
@@ -4427,7 +4436,7 @@ struct key_binding {
 	/* tabs */
 	{ "tabnew",		CTRL,	0,	GDK_t,		tabaction,	{.i = XT_TAB_NEW} },
 	{ "tabclose",		CTRL,	1,	GDK_w,		tabaction,	{.i = XT_TAB_DELETE} },
-	{ "tabundoclose",	SHFT,	0,	GDK_U,		tabaction,	{.i = XT_TAB_UNDO_CLOSE} },
+	{ "tabundoclose",	0,	0,	GDK_U,		tabaction,	{.i = XT_TAB_UNDO_CLOSE} },
 	{ "tabgoto1",		CTRL,	0,	GDK_1,		movetab,	{.i = 1} },
 	{ "tabgoto2",		CTRL,	0,	GDK_2,		movetab,	{.i = 2} },
 	{ "tabgoto3",		CTRL,	0,	GDK_3,		movetab,	{.i = 3} },
@@ -4448,7 +4457,7 @@ struct key_binding {
 };
 TAILQ_HEAD(keybinding_list, key_binding);
 
-int
+void
 init_keybindings(void)
 {
 	int			i;
@@ -4464,11 +4473,124 @@ init_keybindings(void)
 		bcopy(&keys[i].arg, &k->arg, sizeof k->arg);
 		TAILQ_INSERT_HEAD(&kbl, k, entry);
 
-		DNPRINTF(XT_D_KEYBINDING, "init_keybindings:	added: %s\n",
+		DNPRINTF(XT_D_KEYBINDING, "init_keybindings: added: %s\n",
 		    k->name ? k->name : "unnamed key");
 	}
+}
+
+void
+keybinding_clearall(void)
+{
+	struct key_binding	*k, *next;
+
+	for (k = TAILQ_FIRST(&kbl); k != TAILQ_LAST(&kbl, keybinding_list);
+	    k = next) {
+		next = TAILQ_NEXT(k, entry);
+		if (k->name == NULL)
+			continue;
+
+		DNPRINTF(XT_D_KEYBINDING, "keybinding_clearall: %s\n",
+		    k->name ? k->name : "unnamed key");
+		TAILQ_REMOVE(&kbl, k, entry);
+		g_free(k);
+	}
+}
+
+int
+keybinding_add(char *kb, struct key_binding *orig)
+{
+	struct key_binding	*k;
+	char			*name, *value, *s;
+	guint			keyval, mask = 0;
+	int			i;
+
+	DNPRINTF(XT_D_KEYBINDING, "keybinding_add: %s\n", kb);
+
+	s = strstr(kb, ",");
+	if (s == NULL)
+		return (1);
+	*s = '\0';
+
+	name = kb;
+	value = s + 1;
+
+	/* find modifier keys */
+	if (strstr(value, "S+"))
+		mask |= GDK_SHIFT_MASK;
+	if (strstr(value, "C+"))
+		mask |= GDK_CONTROL_MASK;
+	if (strstr(value, "M1+"))
+		mask |= GDK_MOD1_MASK;
+	if (strstr(value, "M2+"))
+		mask |= GDK_MOD2_MASK;
+	if (strstr(value, "M3+"))
+		mask |= GDK_MOD3_MASK;
+	if (strstr(value, "M4+"))
+		mask |= GDK_MOD4_MASK;
+	if (strstr(value, "M5+"))
+		mask |= GDK_MOD5_MASK;
+
+	/* find keyname */
+	for (i = strlen(value) - 1; i > 0; i--)
+		if (value[i] == '+')
+			value = &value[i + 1];
+
+	/* validate keyname */
+	keyval = gdk_keyval_from_name(value);
+	if (keyval == GDK_VoidSymbol) {
+		warnx("invalid keybinding name %s", value);
+		return (1);
+	}
+
+	/* add keyname */
+	k = g_malloc0(sizeof *k);
+	k->name = name;
+	k->mask = mask;
+	k->use_in_entry = orig->use_in_entry;
+	k->key = keyval;
+	k->func = orig->func;
+	bcopy(&orig->arg, &k->arg, sizeof k->arg);
+
+	DNPRINTF(XT_D_KEYBINDING, "keybinding_add: %s 0x%x %d 0x%x\n",
+	    k->name,
+	    k->mask,
+	    k->use_in_entry,
+	    k->key);
+	DNPRINTF(XT_D_KEYBINDING, "keybinding_add: adding: %s %s\n",
+	    name, gdk_keyval_name(keyval));
+
+	TAILQ_INSERT_HEAD(&kbl, k, entry);
 
 	return (0);
+}
+
+int
+add_kb(struct settings *s, char *entry)
+{
+	int			i;
+
+	DNPRINTF(XT_D_KEYBINDING, "add_kb: %s\n", entry);
+
+	/* clearall is special */
+	if (!strcmp(entry, "clearall")) {
+		keybinding_clearall();
+		return (0);
+	}
+
+	/* make sure it is a valid keybinding */
+	for (i = 0; i < LENGTH(keys); i++)
+		if (keys[i].name && !strncmp(entry, keys[i].name,
+		    strlen(keys[i].name))) {
+			DNPRINTF(XT_D_KEYBINDING, "%s 0x%x %d 0x%x\n",
+			    keys[i].name,
+			    keys[i].mask,
+			    keys[i].use_in_entry,
+			    keys[i].key);
+
+			return (keybinding_add(entry, &keys[i]));
+			}
+
+	return (1);
 }
 
 struct cmd {
@@ -7011,6 +7133,7 @@ main(int argc, char *argv[])
 	struct karg		a;
 	struct sigaction	sact;
 
+swm_debug = XT_D_KEYBINDING;
 	start_argv = argv;
 
 	strlcpy(named_session, XT_SAVED_TABS_FILE, sizeof named_session);
