@@ -104,7 +104,6 @@ void		(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 void		(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
 		    SoupCookie *);
 
-#define XT_DEBUG
 /*#define XT_DEBUG*/
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
@@ -7133,7 +7132,6 @@ main(int argc, char *argv[])
 	struct karg		a;
 	struct sigaction	sact;
 
-swm_debug = XT_D_KEYBINDING;
 	start_argv = argv;
 
 	strlcpy(named_session, XT_SAVED_TABS_FILE, sizeof named_session);
