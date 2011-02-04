@@ -2948,7 +2948,7 @@ wl_show(struct tab *t, char *args, char *title, struct domain_list *wl)
 			if (d->handy == 1)
 				continue;
 			tmp = body;
-			body = g_strdup_printf("%s%s", body, d->d);
+			body = g_strdup_printf("%s%s<br>", body, d->d);
 			g_free(tmp);
 		}
 	}
