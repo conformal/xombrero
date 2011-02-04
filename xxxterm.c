@@ -6274,7 +6274,7 @@ create_toolbar(struct tab *t)
 	g_signal_connect(G_OBJECT(t->uri_entry), "activate",
 	    G_CALLBACK(activate_uri_entry_cb), t);
 	g_signal_connect(G_OBJECT(t->uri_entry), "key-press-event",
-	    (GCallback)entry_key_cb, t);
+	    G_CALLBACK(entry_key_cb), t);
 	eb1 = gtk_hbox_new(FALSE, 0);
 	gtk_container_set_border_width(GTK_CONTAINER(eb1), 1);
 	gtk_box_pack_start(GTK_BOX(eb1), t->uri_entry, TRUE, TRUE, 0);
@@ -6292,7 +6292,7 @@ create_toolbar(struct tab *t)
 		g_signal_connect(G_OBJECT(t->search_entry), "activate",
 		    G_CALLBACK(activate_search_entry_cb), t);
 		g_signal_connect(G_OBJECT(t->search_entry), "key-press-event",
-		    (GCallback)entry_key_cb, t);
+		    G_CALLBACK(entry_key_cb), t);
 		gtk_widget_set_size_request(t->search_entry, -1, -1);
 		eb2 = gtk_hbox_new(FALSE, 0);
 		gtk_container_set_border_width(GTK_CONTAINER(eb2), 1);
@@ -6559,40 +6559,40 @@ create_new_tab(char *title, struct undo *u, int focus)
 	gtk_notebook_set_tab_reorderable(notebook, t->vbox, TRUE);
 
 	g_object_connect(G_OBJECT(t->cmd),
-	    "signal::key-press-event", (GCallback)cmd_keypress_cb, t,
-	    "signal::key-release-event", (GCallback)cmd_keyrelease_cb, t,
-	    "signal::focus-out-event", (GCallback)cmd_focusout_cb, t,
-	    "signal::activate", (GCallback)cmd_activate_cb, t,
+	    "signal::key-press-event", G_CALLBACK(cmd_keypress_cb), t,
+	    "signal::key-release-event", G_CALLBACK(cmd_keyrelease_cb), t,
+	    "signal::focus-out-event", G_CALLBACK(cmd_focusout_cb), t,
+	    "signal::activate", G_CALLBACK(cmd_activate_cb), t,
 	    (char *)NULL);
 
 	/* reuse wv_button_cb to hide oops */
 	g_object_connect(G_OBJECT(t->oops),
-	    "signal::button_press_event", (GCallback)wv_button_cb, t,
+	    "signal::button_press_event", G_CALLBACK(wv_button_cb), t,
 	    (char *)NULL);
 
 	g_object_connect(G_OBJECT(t->wv),
-	    "signal::key-press-event", (GCallback)wv_keypress_cb, t,
-	    "signal-after::key-press-event", (GCallback)wv_keypress_after_cb, t,
-	    "signal::hovering-over-link", (GCallback)webview_hover_cb, t,
-	    "signal::download-requested", (GCallback)webview_download_cb, t,
-	    "signal::mime-type-policy-decision-requested", (GCallback)webview_mimetype_cb, t,
-	    "signal::navigation-policy-decision-requested", (GCallback)webview_npd_cb, t,
-	    "signal::new-window-policy-decision-requested", (GCallback)webview_nw_cb, t,
-	    "signal::create-web-view", (GCallback)webview_cwv_cb, t,
-	    "signal::event", (GCallback)webview_event_cb, t,
-	    "signal::load-finished", (GCallback)webview_load_finished_cb, t,
-	    "signal::load-progress-changed", (GCallback)webview_progress_changed_cb, t,
+	    "signal::key-press-event", G_CALLBACK(wv_keypress_cb), t,
+	    "signal-after::key-press-event", G_CALLBACK(wv_keypress_after_cb), t,
+	    "signal::hovering-over-link", G_CALLBACK(webview_hover_cb), t,
+	    "signal::download-requested", G_CALLBACK(webview_download_cb), t,
+	    "signal::mime-type-policy-decision-requested", G_CALLBACK(webview_mimetype_cb), t,
+	    "signal::navigation-policy-decision-requested", G_CALLBACK(webview_npd_cb), t,
+	    "signal::new-window-policy-decision-requested", G_CALLBACK(webview_nw_cb), t,
+	    "signal::create-web-view", G_CALLBACK(webview_cwv_cb), t,
+	    "signal::event", G_CALLBACK(webview_event_cb), t,
+	    "signal::load-finished", G_CALLBACK(webview_load_finished_cb), t,
+	    "signal::load-progress-changed", G_CALLBACK(webview_progress_changed_cb), t,
 #if WEBKIT_CHECK_VERSION(1, 1, 18)
-	    "signal::icon-loaded", (GCallback)notify_icon_loaded_cb, t,
+	    "signal::icon-loaded", G_CALLBACK(notify_icon_loaded_cb), t,
 #endif
-	    "signal::button_press_event", (GCallback)wv_button_cb, t,
+	    "signal::button_press_event", G_CALLBACK(wv_button_cb), t,
 	    (char *)NULL);
 	g_signal_connect(t->wv,
 	    "notify::load-status", G_CALLBACK(notify_load_status_cb), t);
 
 	/* hijack the unused keys as if we were the browser */
 	g_object_connect(G_OBJECT(t->toolbar),
-	    "signal-after::key-press-event", (GCallback)wv_keypress_after_cb, t,
+	    "signal-after::key-press-event", G_CALLBACK(wv_keypress_after_cb), t,
 	    (char *)NULL);
 
 	g_signal_connect(G_OBJECT(bb), "button_press_event",
@@ -6799,7 +6799,7 @@ create_canvas(void)
 	gtk_widget_set_size_request(vbox, -1, -1);
 
 	g_object_connect(G_OBJECT(notebook),
-	    "signal::switch-page", (GCallback)notebook_switchpage_cb, NULL,
+	    "signal::switch-page", G_CALLBACK(notebook_switchpage_cb), NULL,
 	    (char *)NULL);
 	g_signal_connect(G_OBJECT(abtn), "button_press_event",
 	    G_CALLBACK(arrow_cb), NULL);
