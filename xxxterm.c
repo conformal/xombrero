@@ -418,6 +418,7 @@ struct karg {
 #define XT_STATUS_NOTHING	(0)
 #define XT_STATUS_LINK		(1)
 #define XT_STATUS_URI		(2)
+#define XT_STATUS_LOADING	(3)
 
 #define XT_SES_DONOTHING	(0)
 #define XT_SES_CLOSETABS	(1)
@@ -699,6 +700,11 @@ set_status(struct tab *t, gchar *s, int status)
 		return;
 
 	switch (status) {
+	case XT_STATUS_LOADING:
+		gtk_entry_set_text(GTK_ENTRY(t->uri_entry), s);
+		type = g_strdup_printf("Loading: %s", s);
+		s = type;
+		break;
 	case XT_STATUS_LINK:
 		type = g_strdup_printf("Link: %s", s);
 		if (!t->status)
@@ -1162,7 +1168,7 @@ guess_url_type(char *url_in)
 }
 
 void
-load_uri(WebKitWebView *wv, gchar *uri)
+load_uri(struct tab *t, gchar *uri)
 {
 	gchar		*newuri = NULL;
 
@@ -1181,7 +1187,8 @@ load_uri(WebKitWebView *wv, gchar *uri)
 		uri = newuri;
 	}
 
-	webkit_web_view_load_uri(wv, uri);
+	set_status(t, (char *)uri, XT_STATUS_LOADING);
+	webkit_web_view_load_uri(t->wv, uri);
 
 	if (newuri)
 		g_free(newuri);
@@ -1977,7 +1984,7 @@ paste_uri_cb(GtkClipboard *clipboard, const gchar *text, gpointer data)
 
 	switch(pap->i) {
 	case XT_PASTE_CURRENT_TAB:
-		load_uri(pap->t->wv, (gchar *)text);
+		load_uri(pap->t, (gchar *)text);
 		break;
 	case XT_PASTE_NEW_TAB:
 		create_new_tab((gchar *)text, NULL, 1);
@@ -3440,7 +3447,7 @@ tabaction(struct tab *t, struct karg *args)
 			rv = XT_CB_PASSTHROUGH;
 			goto done;
 		}
-		load_uri(t->wv, url);
+		load_uri(t, url);
 		break;
 	case XT_TAB_SHOW:
 		if (show_tabs == 0) {
@@ -4337,7 +4344,7 @@ print_page(struct tab *t, struct karg *args)
 int
 go_home(struct tab *t, struct karg *args)
 {
-	load_uri(t->wv, home);
+	load_uri(t, home);
 	return (0);
 }
 
@@ -5031,7 +5038,7 @@ activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 
 	/* if xxxt:// treat specially */
 	if (!parse_xtp_url(t, uri)) {
-		load_uri(t->wv, (gchar *)uri);
+		load_uri(t, (gchar *)uri);
 		focus_webview(t);
 	}
 }
@@ -5395,7 +5402,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 				g_free(t->status);
 				t->status = NULL;
 			}
-			set_status(t, (char *)uri, XT_STATUS_URI);
+			set_status(t, (char *)uri, XT_STATUS_LOADING);
 		}
 
 		/* check if js white listing is enabled */
@@ -5455,6 +5462,9 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 	case WEBKIT_LOAD_FINISHED:
 		/* 2 */
+		frame = webkit_web_view_get_main_frame(wview);
+		uri = webkit_web_frame_get_uri(frame);
+		set_status(t, (char *)uri, XT_STATUS_URI);
 #if WEBKIT_CHECK_VERSION(1, 1, 18)
 	case WEBKIT_LOAD_FAILED:
 		/* 4 */
@@ -6610,9 +6620,10 @@ create_new_tab(char *title, struct undo *u, int focus)
 		    t->tab_id);
 	}
 
-	if (load)
-		load_uri(t->wv, title);
-	else {
+	if (load) {
+		gtk_entry_set_text(GTK_ENTRY(t->uri_entry), title);
+		load_uri(t, title);
+	} else {
 		if (show_url == 1)
 			gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
 		else
