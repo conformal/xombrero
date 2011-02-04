@@ -6923,8 +6923,10 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 		    "soup_cookie_jar_add_cookie: reject %s\n",
 		    cookie->domain);
 		if (save_rejected_cookies) {
-			if ((r_cookie_f = fopen(rc_fname, "a+")) == NULL)
+			if ((r_cookie_f = fopen(rc_fname, "a+")) == NULL) {
 				show_oops_s("can't open reject cookie file");
+				return;
+			}
 			fseek(r_cookie_f, 0, SEEK_END);
 			fprintf(r_cookie_f, "%s%s\t%s\t%s\t%s\t%lu\t%s\t%s\n",
 			    cookie->http_only ? "#HttpOnly_" : "",
