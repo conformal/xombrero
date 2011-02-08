@@ -282,8 +282,8 @@ struct karg {
 				"th {background-color: #cccccc;"	\
 				"  border: 1px solid black}"		\
 				"table {border-spacing: 0; "		\
-				"  width: 90%%; border: 1px black"	\
-				" solid; table-layout: fixed}\n"	\
+				"  width: 90%%;"			\
+				"  border: 1px black solid;}\n"		\
 				".progress-outer{"			\
 				"  border: 1px solid black;"		\
 				"  height: 8px;"			\
@@ -3793,7 +3793,8 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	int			i = 1; /* all ids start 1 */
 	GSList			*sc, *pc, *pc_start;
 	SoupCookie		*c;
-	char			*type;
+	char			*type, *table_headers;
+	char			*last_domain = strdup("");
 
 	DNPRINTF(XT_D_CMD, "%s", __func__);
 
@@ -3813,24 +3814,42 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	  "\n<head><title>Cookie Jar</title>\n" XT_PAGE_STYLE
 	  "</head><body><h1>Cookie Jar</h1>\n");
 
-	/* body */
-	body = g_strdup_printf("<div align='center'><table><tr>"
+	/* table headers */
+	table_headers = g_strdup_printf("<div align='center'><table><tr>"
 	    "<th>Type</th>"
 	    "<th>Name</th>"
 	    "<th>Value</th>"
-	    "<th>Domain</th>"
 	    "<th>Path</th>"
 	    "<th>Expires</th>"
 	    "<th>Secure</th>"
-	    "<th>HTTP_only</th>"
-	    "<th>Remove</th></tr>\n");
+	    "<th>HTTP<br />only</th>"
+	    "<th>Rm</th></tr>\n");
 
 	sc = soup_cookie_jar_all_cookies(s_cookiejar);
 	pc = soup_cookie_jar_all_cookies(p_cookiejar);
 	pc_start = pc;
 
+	body = NULL;
 	for (; sc; sc = sc->next) {
 		c = sc->data;
+
+                if (strcmp(last_domain, c->domain) != 0) {
+                        /* new domain */
+                        free(last_domain);
+                        last_domain = strdup(c->domain);
+
+                        if (body != NULL) {
+                                tmp = body;
+                                body = g_strdup_printf("%s</table></div>"
+                                    "<h2>%s</h2>%s\n",
+                                    body, c->domain, table_headers);
+                                g_free(tmp);
+                        } else {
+                                /* first domain */
+                                body = g_strdup_printf("<h2>%s</h2>%s\n",
+                                    c->domain, table_headers);
+                        }
+                }
 
 		type = "Session";
 		for (pc = pc_start; pc; pc = pc->next)
@@ -3842,24 +3861,24 @@ xtp_page_cl(struct tab *t, struct karg *args)
 		tmp = body;
 		body = g_strdup_printf(
 		    "%s\n<tr>"
-		    "<td style='width: 3%%; text-align: center'>%s</td>"
-		    "<td style='width: 10%%; word-break: break-all'>%s</td>"
-		    "<td style='width: 20%%; word-break: break-all'>%s</td>"
-		    "<td style='width: 10%%; word-break: break-all'>%s</td>"
-		    "<td style='width: 8%%; word-break: break-all'>%s</td>"
-		    "<td style='width: 12%%; word-break: break-all'>%s</td>"
-		    "<td style='width: 3%%; text-align: center'>%d</td>"
-		    "<td style='width: 3%%; text-align: center'>%d</td>"
-		    "<td style='width: 3%%; text-align: center'>"
+		    "<td style='width: text-align: center'>%s</td>"
+		    "<td style='width: 1px'>%s</td>"
+		    "<td style='width=70%%;overflow: visible'>"
+		    "  <textarea rows='4'>%s</textarea>"
+		    "</td>"
+		    "<td>%s</td>"
+		    "<td>%s</td>"
+		    "<td style='width: 1px; text-align: center'>%d</td>"
+		    "<td style='width: 1px; text-align: center'>%d</td>"
+		    "<td style='width: 1px; text-align: center'>"
 		    "<a href='%s%d/%s/%d/%d'>X</a></td></tr>\n",
 		    body,
 		    type,
 		    c->name,
 		    c->value,
-		    c->domain,
 		    c->path,
 		    c->expires ?
-		        soup_date_to_string(c->expires, SOUP_DATE_HTTP) : "",
+		        soup_date_to_string(c->expires, SOUP_DATE_COOKIE) : "",
 		    c->secure,
 		    c->http_only,
 
@@ -3879,10 +3898,8 @@ xtp_page_cl(struct tab *t, struct karg *args)
 
 	/* small message if there are none */
 	if (i == 1) {
-		tmp = body;
 		body = g_strdup_printf("%s\n<tr><td style='text-align:center'"
-		    "colspan='8'>No Cookies</td></tr>\n", body);
-		g_free(tmp);
+		    "colspan='8'>No Cookies</td></tr>\n", table_headers);
 	}
 
 	/* footer */
@@ -3893,6 +3910,8 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	g_free(header);
 	g_free(body);
 	g_free(footer);
+	g_free(table_headers);
+	g_free(last_domain);
 
 	load_webkit_string(t, page);
 	update_cookie_tabs(t);
