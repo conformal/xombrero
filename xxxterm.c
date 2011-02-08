@@ -3337,6 +3337,30 @@ statusbar_set_visibility(void)
 	}
 }
 
+void
+url_set(struct tab *t, int enable_url_entry)
+{
+	GdkPixbuf	*pixbuf;
+	int 		progress;
+
+	show_url = enable_url_entry;
+
+	if (enable_url_entry) {
+		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->statusbar),
+		    GTK_ENTRY_ICON_PRIMARY, NULL);
+		gtk_entry_set_progress_fraction(GTK_ENTRY(t->statusbar), 0);
+	} else {
+		pixbuf = gtk_entry_get_icon_pixbuf(GTK_ENTRY(t->uri_entry),
+		    GTK_ENTRY_ICON_PRIMARY);
+		progress =
+		    gtk_entry_get_progress_fraction(GTK_ENTRY(t->uri_entry));
+		gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->statusbar),
+		    GTK_ENTRY_ICON_PRIMARY, pixbuf);
+		gtk_entry_set_progress_fraction(GTK_ENTRY(t->statusbar),
+		    progress);
+	}
+}
+
 int
 fullscreen(struct tab *t, struct karg *args)
 {
@@ -3345,10 +3369,13 @@ fullscreen(struct tab *t, struct karg *args)
 	if (t == NULL)
 		return (XT_CB_PASSTHROUGH);
 
-	if (show_url == 0)
-		show_url = show_tabs = 1;
-	else
-		show_url = show_tabs = 0;
+	if (show_url == 0) {
+		url_set(t, 1);
+		show_tabs = 1;
+	} else {
+		url_set(t, 0);
+		show_tabs = 0;
+	}
 
 	url_set_visibility();
 	notebook_tab_set_visibility(notebook);
@@ -3396,13 +3423,13 @@ urlaction(struct tab *t, struct karg *args)
 	switch (args->i) {
 	case XT_URL_SHOW:
 		if (show_url == 0) {
-			show_url = 1;
+			url_set(t, 1);
 			url_set_visibility();
 		}
 		break;
 	case XT_URL_HIDE:
 		if (show_url == 1) {
-			show_url = 0;
+			url_set(t, 0);
 			url_set_visibility();
 		}
 		break;
@@ -5205,6 +5232,35 @@ free_favicon(struct tab *t)
 }
 
 void
+xt_icon_from_name(struct tab *t, gchar *name)
+{
+	gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->uri_entry),
+	    GTK_ENTRY_ICON_PRIMARY, "text-html");
+	if (show_url == 0) {
+		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->statusbar),
+		    GTK_ENTRY_ICON_PRIMARY, "text-html");
+	} else {
+		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->statusbar),
+		    GTK_ENTRY_ICON_PRIMARY, NULL);
+	}
+	return;
+}
+
+void
+xt_icon_from_pixbuf(struct tab *t, GdkPixbuf *pixbuf)
+{
+	gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->uri_entry),
+	    GTK_ENTRY_ICON_PRIMARY, pixbuf);
+	if (show_url == 0) {
+		gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->statusbar),
+		    GTK_ENTRY_ICON_PRIMARY, pixbuf);
+	} else {
+		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->statusbar),
+		    GTK_ENTRY_ICON_PRIMARY, NULL);
+	}
+}
+
+void
 abort_favicon_download(struct tab *t)
 {
 	DNPRINTF(XT_D_DOWNLOAD, "%s: down %p\n", __func__, t->icon_download);
@@ -5214,8 +5270,7 @@ abort_favicon_download(struct tab *t)
 	else
 		free_favicon(t);
 
-	gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->uri_entry),
-	    GTK_ENTRY_ICON_PRIMARY, "text-html");
+	xt_icon_from_name(t, "text-html");
 }
 
 void
@@ -5249,8 +5304,7 @@ set_favicon_from_file(struct tab *t, char *file)
 
 	pixbuf = gdk_pixbuf_new_from_file(file, NULL);
 	if (pixbuf == NULL) {
-		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->uri_entry),
-		    GTK_ENTRY_ICON_PRIMARY, "text-html");
+		xt_icon_from_name(t, "text-html");
 		return;
 	}
 
@@ -5273,8 +5327,7 @@ set_favicon_from_file(struct tab *t, char *file)
 	}
 
 	t->icon_pixbuf = scaled;
-	gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->uri_entry),
-	    GTK_ENTRY_ICON_PRIMARY, t->icon_pixbuf);
+	xt_icon_from_pixbuf(t, t->icon_pixbuf);
 }
 
 void
@@ -5525,6 +5578,10 @@ webview_progress_changed_cb(WebKitWebView *wv, int progress, struct tab *t)
 {
 	gtk_entry_set_progress_fraction(GTK_ENTRY(t->uri_entry),
 	    progress == 100 ? 0 : (double)progress / 100);
+	if (show_url == 0) {
+		gtk_entry_set_progress_fraction(GTK_ENTRY(t->statusbar),
+		    progress == 100 ? 0 : (double)progress / 100);
+	}
 }
 
 int
@@ -6309,10 +6366,6 @@ create_toolbar(struct tab *t)
 	gtk_box_pack_start(GTK_BOX(eb1), t->uri_entry, TRUE, TRUE, 0);
 	gtk_box_pack_start(GTK_BOX(b), eb1, TRUE, TRUE, 0);
 
-	/* set empty favicon */
-	gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->uri_entry),
-	    GTK_ENTRY_ICON_PRIMARY, "text-html");
-
 	/* search entry */
 	if (fancy_bar && search_string) {
 		GtkWidget *eb2;
@@ -6553,6 +6606,9 @@ create_new_tab(char *title, struct undo *u, int focus)
 
 	/* xtp meaning is normal by default */
 	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
+
+	/* set empty favicon */
+	xt_icon_from_name(t, "text-html");
 
 	/* and show it all */
 	gtk_widget_show_all(b);
