@@ -1194,6 +1194,21 @@ load_uri(struct tab *t, gchar *uri)
 		g_free(newuri);
 }
 
+const gchar *
+get_uri(WebKitWebView *wv)
+{
+	WebKitWebFrame		*frame;
+	const gchar		*uri;
+
+	frame = webkit_web_view_get_main_frame(wv);
+	uri = webkit_web_frame_get_uri(frame);
+
+	if (uri && strlen(uri) > 0)
+		return (uri);
+	else
+		return (NULL);
+}
+
 int
 add_alias(struct settings *s, char *line)
 {
@@ -1544,7 +1559,7 @@ config_parse(char *filename, int runtime)
 		}
 
 		if ((var = strsep(&cp, WS)) == NULL || cp == NULL)
-			break;
+			errx(1, "invalid config file entry: %s", line);
 
 		cp += (long)strspn(cp, WS);
 
@@ -1893,10 +1908,9 @@ save_tabs(struct tab *t, struct karg *a)
 	char			file[PATH_MAX];
 	FILE			*f;
 	struct tab		*ti;
-	WebKitWebFrame		*frame;
 	const gchar		*uri;
 	int			len = 0, i;
-	gchar			**arr = NULL;
+	const gchar		**arr = NULL;
 
 	if (a == NULL)
 		return (1);
@@ -1921,10 +1935,8 @@ save_tabs(struct tab *t, struct karg *a)
 	arr = g_malloc0(len * sizeof(gchar *));
 
 	TAILQ_FOREACH(ti, &tabs, entry) {
-		frame = webkit_web_view_get_main_frame(ti->wv);
-		uri = webkit_web_frame_get_uri(frame);
-		if (uri && strlen(uri) > 0)
-			arr[gtk_notebook_page_num(notebook, ti->vbox)] = (gchar *)uri;
+		if ((uri = get_uri(ti->wv)) != NULL)
+			arr[gtk_notebook_page_num(notebook, ti->vbox)] = uri;
 	}
 
 	for (i = 0; i < len; i++)
@@ -1952,13 +1964,10 @@ save_tabs_and_quit(struct tab *t, struct karg *args)
 int
 yank_uri(struct tab *t, struct karg *args)
 {
-	WebKitWebFrame		*frame;
 	const gchar		*uri;
 	GtkClipboard		*clipboard;
 
-	frame = webkit_web_view_get_main_frame(t->wv);
-	uri = webkit_web_frame_get_uri(frame);
-	if (!uri)
+	if ((uri = get_uri(t->wv)) == NULL)
 		return (1);
 
 	clipboard = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
@@ -2012,7 +2021,7 @@ paste_uri(struct tab *t, struct karg *args)
 }
 
 char *
-find_domain(const char *s, int add_dot)
+find_domain(const gchar *s, int add_dot)
 {
 	int			i;
 	char			*r = NULL, *ss = NULL;
@@ -2047,17 +2056,17 @@ find_domain(const char *s, int add_dot)
 int
 toggle_cwl(struct tab *t, struct karg *args)
 {
-	WebKitWebFrame		*frame;
 	struct domain		*d;
-	char			*uri;
+	const gchar		*uri;
 	char			*dom = NULL, *dom_toggle = NULL;
 	int			es;
 
 	if (args == NULL)
-		return (0);
+		return (1);
 
-	frame = webkit_web_view_get_main_frame(t->wv);
-	uri = (char *)webkit_web_frame_get_uri(frame);
+	if ((uri = get_uri(t->wv)) == NULL)
+		return (1);
+
 	dom = find_domain(uri, 1);
 	d = wl_find(dom, &c_wl);
 	if (d == NULL)
@@ -2094,13 +2103,12 @@ int
 toggle_js(struct tab *t, struct karg *args)
 {
 	int			es;
-	WebKitWebFrame		*frame;
 	const gchar		*uri;
 	struct domain		*d;
 	char			*dom = NULL, *dom_toggle = NULL;
 
 	if (args == NULL)
-		return (0);
+		return (1);
 
 	g_object_get(G_OBJECT(t->settings),
 	    "enable-scripts", &es, (char *)NULL);
@@ -2111,10 +2119,11 @@ toggle_js(struct tab *t, struct karg *args)
 	else if ((args->i & XT_WL_DISABLE) && es != 0)
 		es = 0;
 	else
-		return (0);
+		return (1);
 
-	frame = webkit_web_view_get_main_frame(t->wv);
-	uri = (char *)webkit_web_frame_get_uri(frame);
+	if ((uri = get_uri(t->wv)) == NULL)
+		return (1);
+
 	dom = find_domain(uri, 1);
 	if (uri == NULL || dom == NULL) {
 		show_oops(t, "Can't toggle domain in JavaScript white list");
@@ -2550,7 +2559,7 @@ done:
 }
 
 int
-connect_socket_from_uri(char *uri, char *domain, size_t domain_sz)
+connect_socket_from_uri(const gchar *uri, char *domain, size_t domain_sz)
 {
 	SoupURI			*su = NULL;
 	struct addrinfo		hints, *res = NULL, *ai;
@@ -2746,8 +2755,8 @@ done:
 int
 load_compare_cert(struct tab *t, struct karg *args)
 {
-	WebKitWebFrame		*frame;
-	char			*uri, domain[8182], file[PATH_MAX];
+	const gchar		*uri;
+	char			domain[8182], file[PATH_MAX];
 	char			cert_buf[64 * 1024], r_cert_buf[64 * 1024];
 	int			s = -1, rv = 1, i;
 	size_t			cert_count;
@@ -2760,8 +2769,9 @@ load_compare_cert(struct tab *t, struct karg *args)
 	if (t == NULL)
 		return (1);
 
-	frame = webkit_web_view_get_main_frame(t->wv);
-	uri = (char *)webkit_web_frame_get_uri(frame);
+	if ((uri = get_uri(t->wv)) == NULL)
+		return (1);
+
 	if ((s = connect_socket_from_uri(uri, domain, sizeof domain)) == -1)
 		return (1);
 
@@ -2814,8 +2824,8 @@ done:
 int
 cert_cmd(struct tab *t, struct karg *args)
 {
-	WebKitWebFrame		*frame;
-	char			*uri, *action, domain[8182];
+	const gchar		*uri;
+	char			*action, domain[8182];
 	int			s = -1;
 	size_t			cert_count;
 	gnutls_session_t	gsession;
@@ -2830,12 +2840,11 @@ cert_cmd(struct tab *t, struct karg *args)
 	else
 		action = "show";
 
-	frame = webkit_web_view_get_main_frame(t->wv);
-	uri = (char *)webkit_web_frame_get_uri(frame);
-	if (uri && strlen(uri) == 0) {
+	if ((uri = get_uri(t->wv)) == NULL) {
 		show_oops(t, "Invalid URI");
 		return (1);
 	}
+
 	if ((s = connect_socket_from_uri(uri, domain, sizeof domain)) == -1) {
 		show_oops(t, "Invalid certidicate URI: %s", uri);
 		return (1);
@@ -2969,8 +2978,8 @@ wl_save(struct tab *t, struct karg *args, int js)
 	FILE			*f;
 	char			*line = NULL, *lt = NULL;
 	size_t			linelen;
-	WebKitWebFrame		*frame;
-	char			*dom = NULL, *uri, *dom_save = NULL;
+	const gchar		*uri;
+	char			*dom = NULL, *dom_save = NULL;
 	struct karg		a;
 	struct domain		*d;
 	GSList			*cf;
@@ -2987,8 +2996,7 @@ wl_save(struct tab *t, struct karg *args, int js)
 	if ((f = fopen(file, "r+")) == NULL)
 		return (1);
 
-	frame = webkit_web_view_get_main_frame(t->wv);
-	uri = (char *)webkit_web_frame_get_uri(frame);
+	uri = get_uri(t->wv);
 	dom = find_domain(uri, 1);
 	if (uri == NULL || dom == NULL) {
 		show_oops(t, "Can't add domain to %s white list",
@@ -3133,7 +3141,6 @@ add_favorite(struct tab *t, struct karg *args)
 	FILE			*f;
 	char			*line = NULL;
 	size_t			urilen, linelen;
-	WebKitWebFrame		*frame;
 	const gchar		*uri, *title;
 
 	if (t == NULL)
@@ -3153,8 +3160,8 @@ add_favorite(struct tab *t, struct karg *args)
 	}
 
 	title = webkit_web_view_get_title(t->wv);
-	frame = webkit_web_view_get_main_frame(t->wv);
-	uri = webkit_web_frame_get_uri(frame);
+	uri = get_uri(t->wv);
+
 	if (title == NULL)
 		title = uri;
 
@@ -3165,10 +3172,14 @@ add_favorite(struct tab *t, struct karg *args)
 
 	urilen = strlen(uri);
 
-	while (!feof(f)) {
-		line = fparseln(f, &linelen, NULL, NULL, 0);
+	for (;;) {
+		if ((line = fparseln(f, &linelen, NULL, NULL, 0)) == NULL)
+			if (feof(f) || ferror(f))
+				break;
+
 		if (linelen == urilen && !strcmp(line, uri))
 			goto done;
+
 		free(line);
 		line = NULL;
 	}
@@ -3198,7 +3209,7 @@ navaction(struct tab *t, struct karg *args)
 		else
 			item = webkit_web_back_forward_list_get_forward_item(t->bfl);
 		if (item == NULL)
-			return (XT_CB_PASSTHROUGH);;
+			return (XT_CB_PASSTHROUGH);
 		webkit_web_view_load_uri(t->wv, webkit_web_history_item_get_uri(item));
 		t->item = NULL;
 		return (XT_CB_PASSTHROUGH);
@@ -3607,7 +3618,6 @@ movetab(struct tab *t, struct karg *args)
 int
 command(struct tab *t, struct karg *args)
 {
-	WebKitWebFrame		*frame;
 	char			*s = NULL, *ss = NULL;
 	GdkColor		color;
 	const gchar		*uri;
@@ -3639,9 +3649,7 @@ command(struct tab *t, struct karg *args)
 	case XT_CMD_TABNEW_CURRENT:
 		if (!s) /* FALL THROUGH? */
 			s = ":tabnew ";
-		frame = webkit_web_view_get_main_frame(t->wv);
-		uri = webkit_web_frame_get_uri(frame);
-		if (uri && strlen(uri)) {
+		if ((uri = get_uri(t->wv)) != NULL) {
 			ss = g_strdup_printf("%s%s", s, uri);
 			s = ss;
 		}
@@ -4447,10 +4455,10 @@ struct key_binding {
 	{ "focussearch",	0,	0,	GDK_F7,		focus,		{.i = XT_FOCUS_SEARCH} },
 
 	/* command aliases (handy when -S flag is used) */
-	{ NULL,	0,		0,	GDK_F9,		command,	{.i = XT_CMD_OPEN} },
-	{ NULL,	0,		0,	GDK_F10,	command,	{.i = XT_CMD_OPEN_CURRENT} },
-	{ NULL,	0,		0,	GDK_F11,	command,	{.i = XT_CMD_TABNEW} },
-	{ NULL,	0,		0,	GDK_F12,	command,	{.i = XT_CMD_TABNEW_CURRENT} },
+	{ NULL,			0,	0,	GDK_F9,		command,	{.i = XT_CMD_OPEN} },
+	{ NULL,			0,	0,	GDK_F10,	command,	{.i = XT_CMD_OPEN_CURRENT} },
+	{ NULL,			0,	0,	GDK_F11,	command,	{.i = XT_CMD_TABNEW} },
+	{ NULL,			0,	0,	GDK_F12,	command,	{.i = XT_CMD_TABNEW_CURRENT} },
 
 	/* hinting */
 	{ "hinting",		0,	0,	GDK_f,		hint,		{.i = 0} },
@@ -5120,7 +5128,7 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 }
 
 void
-check_and_set_js(gchar *uri, struct tab *t)
+check_and_set_js(const gchar *uri, struct tab *t)
 {
 	struct domain		*d = NULL;
 	int			es = 0;
@@ -5434,7 +5442,6 @@ notify_icon_loaded_cb(WebKitWebView *wv, gchar *uri, struct tab *t)
 void
 notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 {
-	WebKitWebFrame		*frame;
 	const gchar		*set = NULL, *uri = NULL, *title = NULL;
 	struct history		*h, find;
 	int			add = 0;
@@ -5465,9 +5472,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 	case WEBKIT_LOAD_COMMITTED:
 		/* 1 */
-		frame = webkit_web_view_get_main_frame(wview);
-		uri = webkit_web_frame_get_uri(frame);
-		if (uri) {
+		if ((uri = get_uri(wview)) != NULL) {
 			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
 
 			if (t->status) {
@@ -5479,9 +5484,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 		/* check if js white listing is enabled */
 		if (enable_js_whitelist) {
-			frame = webkit_web_view_get_main_frame(wview);
-			uri = webkit_web_frame_get_uri(frame);
-			check_and_set_js((gchar *)uri, t);
+			uri = get_uri(wview);
+			check_and_set_js(uri, t);
 		}
 
 		show_ca_status(t, uri);
@@ -5496,8 +5500,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	case WEBKIT_LOAD_FIRST_VISUALLY_NON_EMPTY_LAYOUT:
 		/* 3 */
 		title = webkit_web_view_get_title(wview);
-		frame = webkit_web_view_get_main_frame(wview);
-		uri = webkit_web_frame_get_uri(frame);
+		uri = get_uri(wview);
 		if (title)
 			set = title;
 		else if (uri)
@@ -5534,8 +5537,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 	case WEBKIT_LOAD_FINISHED:
 		/* 2 */
-		frame = webkit_web_view_get_main_frame(wview);
-		uri = webkit_web_frame_get_uri(frame);
+		uri = get_uri(wview);
 		set_status(t, (char *)uri, XT_STATUS_URI);
 #if WEBKIT_CHECK_VERSION(1, 1, 18)
 	case WEBKIT_LOAD_FAILED:
@@ -5922,9 +5924,9 @@ anum:
 
 	struct key_binding	*k;
 	TAILQ_FOREACH(k, &kbl, entry)
-		 if (e->keyval == k->key){
-			if(k->mask == 0){
-				if((e->state & (CTRL|MOD1)) == 0){
+		if (e->keyval == k->key) {
+			if (k->mask == 0) {
+				if ((e->state & (CTRL | MOD1)) == 0) {
 					k->func(t, &k->arg);
 					return (XT_CB_HANDLED);
 				}
@@ -6043,9 +6045,9 @@ entry_key_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 
 	struct key_binding	*k;
 	TAILQ_FOREACH(k, &kbl, entry)
-		if (e->keyval == k->key && k->use_in_entry){
-			if(k->mask==0){
-				if((e->state & (CTRL|MOD1)) == 0){
+		if (e->keyval == k->key && k->use_in_entry) {
+			if (k->mask == 0) {
+				if ((e->state & (CTRL | MOD1)) == 0) {
 					k->func(t, &k->arg);
 					return (XT_CB_HANDLED);
 				}
@@ -6400,14 +6402,10 @@ undo_close_tab_save(struct tab *t)
 	int				m, n;
 	const gchar			*uri;
 	struct undo			*u1, *u2;
-	WebKitWebFrame			*frame;
 	GList				*items;
 	WebKitWebHistoryItem		*item;
 
-	frame = webkit_web_view_get_main_frame(t->wv);
-	uri = webkit_web_frame_get_uri(frame);
-
-	if (uri && !strlen(uri))
+	if ((uri = get_uri(t->wv)) == NULL)
 		return (1);
 
 	u1 = g_malloc0(sizeof(struct undo));
@@ -6764,7 +6762,6 @@ arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 {
 	GtkWidget		*menu, *menu_items;
 	GdkEventButton		*bevent;
-	WebKitWebFrame		*frame;
 	const gchar		*uri;
 	struct tab		*ti;
 
@@ -6773,13 +6770,9 @@ arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 		menu = gtk_menu_new();
 
 		TAILQ_FOREACH(ti, &tabs, entry) {
-			frame = webkit_web_view_get_main_frame(ti->wv);
-			uri = webkit_web_frame_get_uri(frame);
-			/* XXX make sure there is something to print */
-			/* XXX add gui pages in here to look purdy */
-			if (uri == NULL)
-				uri = "(untitled)";
-			if (strlen(uri) == 0)
+			if ((uri = get_uri(ti->wv)) == NULL)
+				/* XXX make sure there is something to print */
+				/* XXX add gui pages in here to look purdy */
 				uri = "(untitled)";
 			menu_items = gtk_menu_item_new_with_label(uri);
 			gtk_menu_append(GTK_MENU (menu), menu_items);
