@@ -731,6 +731,8 @@ Default is
 Most keyboard shortcuts can be reprogrammed using a
 .Cm keybinding
 entry in the configuration file.
+Each keyboard shortcut requires exactly one entry in the configuration file.
+A shortcut can have multiple entries in the configuration file.
 The format of the keybinding entry is as follows
 keybinding = action,keystroke(s).
 For example, "keybinding = tabnew,C+t" where
@@ -760,6 +762,7 @@ Shift
 .El
 .Pp
 Shift should be used sparingly since it gets in the way of non-USA keyboards.
+See the accompanying configuration file for examples.
 .Pp
 .Bl -tag -width "scrollfarright" -compact
 .It Cm clearall
