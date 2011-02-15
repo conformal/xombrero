@@ -1540,6 +1540,48 @@ get_toplevel_domain(char *domain)
 	return (NULL);
 }
 
+int
+settings_add(char *var, char *val)
+{
+	int i, rv, *p;
+	char **s;
+
+	/* get settings */
+	for (i = 0, rv = 0; i < LENGTH(rs); i++) {
+		if (strcmp(var, rs[i].name))
+			continue;
+
+		if (rs[i].s) {
+			if (rs[i].s->set(&rs[i], val))
+				errx(1, "invalid value for %s", var);
+			rv = 1;
+			break;
+		} else
+			switch (rs[i].type) {
+			case XT_S_INT:
+				p = rs[i].ival;
+				*p = atoi(val);
+				rv = 1;
+				break;
+			case XT_S_STR:
+				s = rs[i].sval;
+				if (s == NULL)
+					errx(1, "invalid sval for %s",
+					    rs[i].name);
+				if (*s)
+					g_free(*s);
+				*s = g_strdup(val);
+				rv = 1;
+				break;
+			case XT_S_INVALID:
+			default:
+				errx(1, "invalid type for %s", var);
+			}
+		break;
+	}
+	return (rv);
+}
+
 #define	WS	"\n= \t"
 void
 config_parse(char *filename, int runtime)
@@ -1547,8 +1589,8 @@ config_parse(char *filename, int runtime)
 	FILE			*config, *f;
 	char			*line, *cp, *var, *val;
 	size_t			len, lineno = 0;
-	int			i, handled, *p;
-	char			**s, file[PATH_MAX];
+	int			handled;
+	char			file[PATH_MAX];
 	struct stat		sb;
 
 	DNPRINTF(XT_D_CONFIG, "config_parse: filename %s\n", filename);
@@ -1596,40 +1638,7 @@ config_parse(char *filename, int runtime)
 			break;
 
 		DNPRINTF(XT_D_CONFIG, "config_parse: %s=%s\n",var ,val);
-
-		/* get settings */
-		for (i = 0, handled = 0; i < LENGTH(rs); i++) {
-			if (strcmp(var, rs[i].name))
-				continue;
-
-			if (rs[i].s) {
-				if (rs[i].s->set(&rs[i], val))
-					errx(1, "invalid value for %s", var);
-				handled = 1;
-				break;
-			} else
-				switch (rs[i].type) {
-				case XT_S_INT:
-					p = rs[i].ival;
-					*p = atoi(val);
-					handled = 1;
-					break;
-				case XT_S_STR:
-					s = rs[i].sval;
-					if (s == NULL)
-						errx(1, "invalid sval for %s",
-						    rs[i].name);
-					if (*s)
-						g_free(*s);
-					*s = g_strdup(val);
-					handled = 1;
-					break;
-				case XT_S_INVALID:
-				default:
-					errx(1, "invalid type for %s", var);
-				}
-			break;
-		}
+		handled = settings_add(var, val);
 		if (handled == 0)
 			errx(1, "invalid conf file entry: %s=%s", var, val);
 
@@ -3065,9 +3074,17 @@ wl_save(struct tab *t, struct karg *args, int js)
 	a.i |= flags;
 	if (js) {
 		d = wl_find(dom_save, &js_wl);
+		if (!d) {
+			settings_add("js_wl", dom_save);
+			d = wl_find(dom_save, &js_wl);
+		}
 		toggle_js(t, &a);
 	} else {
 		d = wl_find(dom_save, &c_wl);
+		if (!d) {
+			settings_add("cookie_wl", dom_save);
+			d = wl_find(dom_save, &c_wl);
+		}
 		toggle_cwl(t, &a);
 
 		/* find and add to persistent jar */
