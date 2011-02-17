@@ -75,14 +75,22 @@ Display version and exit.
 The following notation is used throughout this page:
 .Pp
 .Bl -tag -width Ds -offset indent -compact
-.It Cm C
+.It Cm C-
 Control
-.It Cm M
-Meta (sometimes marked Alt)
-.It Cm M1
-Mouse button 1
-.It Cm S
+.It Cm M1-
+Meta 1 (sometimes marked Alt)
+.It Cm M2-
+Meta 2
+.It Cm M3-
+Meta 3
+.It Cm M4-
+Meta 4 (sometimes marked Windows)
+.It Cm M5-
+Meta 2
+.It Cm S-
 Shift
+.It Cm MB1
+Mouse button 1
 .El
 .Pp
 To browse to a specific address,
@@ -218,7 +226,7 @@ and back.
 These commands then are used to create, destroy, and move between tabs.
 .Pp
 .Bl -tag -width "C-plus, C-equalXXX" -offset indent -compact
-.It Cm C-M1
+.It Cm C-MB1
 Open new tab with the clicked link
 .It Cm C-t
 Create new tab with focus in URL entry
@@ -735,31 +743,12 @@ Each keyboard shortcut requires exactly one entry in the configuration file.
 A shortcut can have multiple entries in the configuration file.
 The format of the keybinding entry is as follows
 keybinding = action,keystroke(s).
-For example, "keybinding = tabnew,C+t" where
+For example, "keybinding = tabnew,C-t" where
 .Cm tabnew
 is the action and
-.Cm C+t
+.Cm C-t
 are
 the keystrokes.
-The following notation is used for
-.Cm keystrokes :
-.Pp
-.Bl -tag -width Ds -offset indent -compact
-.It Cm C+
-Control
-.It Cm M1+
-Meta 1 (sometimes marked Alt)
-.It Cm M2+
-Meta 2
-.It Cm M3+
-Meta 3
-.It Cm M4+
-Meta 4 (sometimes marked Windows)
-.It Cm M5+
-Meta 2
-.It Cm S+
-Shift
-.El
 .Pp
 Shift should be used sparingly since it gets in the way of non-USA keyboards.
 See the accompanying configuration file for examples.
@@ -776,48 +765,48 @@ entry on the configuration file.
 .It Cm cookiejar
 Bring up the cookie jar screen.
 Default
-.Cm M1+j .
+.Cm M1-j .
 .It Cm downloadmgr
 Bring up the download manager screen.
 Default
-.Cm M1+d .
+.Cm M1-d .
 .It Cm history
 Bring up the history screen.
 Default
-.Cm M1+h .
+.Cm M1-h .
 .It Cm print
 Bring up print page or pane dialog.
 Default
-.Cm C+p .
+.Cm C-p .
 .It Cm quit
 Terminate
 .Nm
 session and close all tabs.
 Default
-.Cm C+q .
+.Cm C-q .
 .It Cm restart
 Restart
 .Nm
 while maintaining most state.
 Temporary cookies and Java Script whitelist items will be discarded.
 Default
-.Cm M1+q .
+.Cm M1-q .
 .It Cm togglejs
 Toggle Java Script whitelist entry for
 .Cm FQDN
 of the current tab.
 Default
-.Cm C+j .
+.Cm C-j .
 .It Cm togglecookie
 Toggle cookie whitelist entry for
 .Cm FQDN
 of the current tab.
 Default
-.Cm M1+c .
+.Cm M1-c .
 .It Cm togglesrc
 Toggle between source and normal view.
 Default
-.Cm C+s .
+.Cm C-s .
 .It Cm yankuri
 Yank (copy) URL of current tab into the clipboard.
 Default
@@ -861,28 +850,28 @@ Go to previous web page.
 Default
 .Cm BackSpace
 and
-.Cm M1+Left .
+.Cm M1-Left .
 .It Cm goforward
 Go to next web page.
 Default
-.Cm S+BackSpace
+.Cm S-BackSpace
 and
-.Cm M1+Right .
+.Cm M1-Right .
 .It Cm reload
 Refresh web page.
 Default
 .Cm F5 ,
-.Cm C+l
+.Cm C-l
 and
-.Cm C+r .
+.Cm C-r .
 .It Cm reloadforce
 Refresh web page bypassing all cache entries.
 Default
-.Cm C+R .
+.Cm C-R .
 .It Cm favorites
 Bring up favorites screen.
 Default
-.Cm M1+f .
+.Cm M1-f .
 .It Cm scrolldown
 Go "one line" down.
 Default
@@ -911,23 +900,23 @@ and
 Go "one page" down.
 Default
 .Cm Space ,
-.Cm C+f
+.Cm C-f
 and
 .Cm PageDown .
 .It Cm scrollhalfdown
 Go "one half a page" down.
 Default
-.Cm C+d .
+.Cm C-d .
 .It Cm scrollpageup
 Go "one page" up.
 Default
 .Cm PageUp
 and
-.Cm C+b .
+.Cm C-b .
 .It Cm scrollhalfup
 Go "one half a page" up.
 Default
-.Cm C+u .
+.Cm C-u .
 .It Cm scrollright
 Scroll page to the right.
 Default
@@ -951,11 +940,11 @@ Default
 .It Cm tabnew
 Create a new tab.
 Default
-.Cm C+t .
+.Cm C-t .
 .It Cm tabclose
 Close current tab.
 Default
-.Cm C+w .
+.Cm C-w .
 .It Cm tabundoclose
 Reopen last closed tab.
 Default
@@ -963,75 +952,75 @@ Default
 .It Cm tabgoto1
 Go to tab 1 (first tab).
 Default
-.Cm C+1 .
+.Cm C-1 .
 .It Cm tabgoto2
 Go to tab 2.
 Default
-.Cm C+2 .
+.Cm C-2 .
 .It Cm tabgoto3
 Go to tab 3.
 Default
-.Cm C+3 .
+.Cm C-3 .
 .It Cm tabgoto4
 Go to tab 4.
 Default
-.Cm C+4 .
+.Cm C-4 .
 .It Cm tabgoto5
 Go to tab 5.
 Default
-.Cm C+5 .
+.Cm C-5 .
 .It Cm tabgoto6
 Go to tab 6.
 Default
-.Cm C+6 .
+.Cm C-6 .
 .It Cm tabgoto7
 Go to tab 7.
 Default
-.Cm C+7 .
+.Cm C-7 .
 .It Cm tabgoto8
 Go to tab 8.
 Default
-.Cm C+8 .
+.Cm C-8 .
 .It Cm tabgoto9
 Go to tab 9.
 Default
-.Cm C+9 .
+.Cm C-9 .
 .It Cm tabgoto10
 Go to tab 10.
 Default
-.Cm C+10 .
+.Cm C-10 .
 .It Cm tabgotofirst
 Go to first tab.
 Default
-.Cm C+less .
+.Cm C-less .
 .It Cm tabgotolast
 Go to last tab.
 Default
-.Cm C+greater .
+.Cm C-greater .
 .It Cm tabgotonext
 Go to next tab.
 If the current tab is the last tab
 .Nm
 will go to the first tab.
 Default
-.Cm C+Right .
+.Cm C-Right .
 .It Cm tabgotoprev
 Go to previous tab.
 If the current tab is the first tab
 .Nm
 will go to the last tab.
 Default
-.Cm C+Left .
+.Cm C-Left .
 .It Cm focusout
 Make fonts on current tab smaller.
 Default
-.Cm C+minus .
+.Cm C-minus .
 .It Cm focusin
 Make fonts on current tab bigger.
 Default
-.Cm C+equal
+.Cm C-equal
 and
-.Cm C+plus .
+.Cm C-plus .
 .El
 .Sh HISTORY
 .Nm

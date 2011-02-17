@@ -134,6 +134,7 @@ u_int32_t		swm_debug = 0
 			    | XT_D_FAVORITE
 			    | XT_D_PRINTING
 			    | XT_D_COOKIE
+			    | XT_D_KEYBINDING
 			    ;
 #else
 #define DPRINTF(x...)
@@ -4581,23 +4582,27 @@ walk_kb(struct settings *s,
 			continue;
 		str[0] = '\0';
 
+		/* sanity */
+		if (gdk_keyval_name(k->key) == NULL)
+			continue;
+
 		strlcat(str, k->name, sizeof str);
 		strlcat(str, ",", sizeof str);
 
 		if (k->mask & GDK_SHIFT_MASK)
-			strlcat(str, "S+", sizeof str);
+			strlcat(str, "S-", sizeof str);
 		if (k->mask & GDK_CONTROL_MASK)
-			strlcat(str, "C+", sizeof str);
+			strlcat(str, "C-", sizeof str);
 		if (k->mask & GDK_MOD1_MASK)
-			strlcat(str, "M1+", sizeof str);
+			strlcat(str, "M1-", sizeof str);
 		if (k->mask & GDK_MOD2_MASK)
-			strlcat(str, "M2+", sizeof str);
+			strlcat(str, "M2-", sizeof str);
 		if (k->mask & GDK_MOD3_MASK)
-			strlcat(str, "M3+", sizeof str);
+			strlcat(str, "M3-", sizeof str);
 		if (k->mask & GDK_MOD4_MASK)
-			strlcat(str, "M4+", sizeof str);
+			strlcat(str, "M4-", sizeof str);
 		if (k->mask & GDK_MOD5_MASK)
-			strlcat(str, "M5+", sizeof str);
+			strlcat(str, "M5-", sizeof str);
 
 		strlcat(str, gdk_keyval_name(k->key), sizeof str);
 		cb(s, str, cb_args);
@@ -4629,8 +4634,7 @@ keybinding_clearall(void)
 {
 	struct key_binding	*k, *next;
 
-	for (k = TAILQ_FIRST(&kbl); k != TAILQ_LAST(&kbl, keybinding_list);
-	    k = next) {
+	for (k = TAILQ_FIRST(&kbl); k; k = next) {
 		next = TAILQ_NEXT(k, entry);
 		if (k->name == NULL)
 			continue;
@@ -4643,42 +4647,38 @@ keybinding_clearall(void)
 }
 
 int
-keybinding_add(char *kb, struct key_binding *orig)
+keybinding_add(char *kb, char *value, struct key_binding *orig)
 {
 	struct key_binding	*k;
-	char			*name, *value, *s;
 	guint			keyval, mask = 0;
 	int			i;
 
-	DNPRINTF(XT_D_KEYBINDING, "keybinding_add: %s\n", kb);
+	DNPRINTF(XT_D_KEYBINDING, "keybinding_add: %s %s %s\n", kb, value, orig->name);
 
-	s = strstr(kb, ",");
-	if (s == NULL)
+	if (orig == NULL)
 		return (1);
-	*s = '\0';
-
-	name = kb;
-	value = s + 1;
+	if (strcmp(kb, orig->name))
+		return (1);
 
 	/* find modifier keys */
-	if (strstr(value, "S+"))
+	if (strstr(value, "S-"))
 		mask |= GDK_SHIFT_MASK;
-	if (strstr(value, "C+"))
+	if (strstr(value, "C-"))
 		mask |= GDK_CONTROL_MASK;
-	if (strstr(value, "M1+"))
+	if (strstr(value, "M1-"))
 		mask |= GDK_MOD1_MASK;
-	if (strstr(value, "M2+"))
+	if (strstr(value, "M2-"))
 		mask |= GDK_MOD2_MASK;
-	if (strstr(value, "M3+"))
+	if (strstr(value, "M3-"))
 		mask |= GDK_MOD3_MASK;
-	if (strstr(value, "M4+"))
+	if (strstr(value, "M4-"))
 		mask |= GDK_MOD4_MASK;
-	if (strstr(value, "M5+"))
+	if (strstr(value, "M5-"))
 		mask |= GDK_MOD5_MASK;
 
 	/* find keyname */
 	for (i = strlen(value) - 1; i > 0; i--)
-		if (value[i] == '+')
+		if (value[i] == '-')
 			value = &value[i + 1];
 
 	/* validate keyname */
@@ -4687,10 +4687,22 @@ keybinding_add(char *kb, struct key_binding *orig)
 		warnx("invalid keybinding name %s", value);
 		return (1);
 	}
+	/* must run this test too, gtk+ doesn't handle 10 for example */
+	if (gdk_keyval_name(keyval) == NULL) {
+		warnx("invalid keybinding name %s", value);
+		return (1);
+	}
+
+	/* make sure it isn't a dupe */
+	TAILQ_FOREACH(k, &kbl, entry)
+		if (k->key == keyval && k->mask == mask) {
+			warnx("duplicate keybinding for %s", value);
+			return (1);
+		}
 
 	/* add keyname */
 	k = g_malloc0(sizeof *k);
-	k->name = name;
+	k->name = orig->name;
 	k->mask = mask;
 	k->use_in_entry = orig->use_in_entry;
 	k->key = keyval;
@@ -4714,6 +4726,7 @@ int
 add_kb(struct settings *s, char *entry)
 {
 	int			i;
+	char			*kb, *value;
 
 	DNPRINTF(XT_D_KEYBINDING, "add_kb: %s\n", entry);
 
@@ -4723,18 +4736,23 @@ add_kb(struct settings *s, char *entry)
 		return (0);
 	}
 
+	kb = strstr(entry, ",");
+	if (kb == NULL)
+		return (1);
+	*kb = '\0';
+	value = kb + 1;
+
 	/* make sure it is a valid keybinding */
 	for (i = 0; i < LENGTH(keys); i++)
-		if (keys[i].name && !strncmp(entry, keys[i].name,
-		    strlen(keys[i].name))) {
-			DNPRINTF(XT_D_KEYBINDING, "%s 0x%x %d 0x%x\n",
+		if (keys[i].name && !strcmp(entry, keys[i].name)) {
+			DNPRINTF(XT_D_KEYBINDING, "add_kb: %s 0x%x %d 0x%x\n",
 			    keys[i].name,
 			    keys[i].mask,
 			    keys[i].use_in_entry,
 			    keys[i].key);
 
-			return (keybinding_add(entry, &keys[i]));
-			}
+			return (keybinding_add(entry, value, &keys[i]));
+		}
 
 	return (1);
 }
