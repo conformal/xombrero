@@ -1202,15 +1202,18 @@ load_uri(struct tab *t, gchar *uri)
 {
 	gchar		*newuri = NULL;
 
-	if (uri == NULL || !strlen(uri))
+	if (uri == NULL)
 		return;
 
 	/* Strip leading spaces. */
 	while(*uri && isspace(*uri))
 		uri++;
 
-	if (!strlen(uri))
+	if (strlen(uri) == 0 || !strcmp(uri, "about:blank")) {
+		newuri = "";
+		webkit_web_view_load_uri(t->wv, newuri);
 		return;
+	}
 
 	if (valid_url_type(uri)) {
 		newuri = guess_url_type(uri);
