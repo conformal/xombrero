@@ -300,6 +300,7 @@ struct karg {
 #define XT_MAX_URL_LENGTH	(4096) /* 1 page is atomic, don't make bigger */
 #define XT_MAX_UNDO_CLOSE_TAB	(32)
 #define XT_RESERVED_CHARS	"$&+,/:;=?@ \"<>#%%{}|^~[]`"
+#define XT_PRINT_EXTRA_MARGIN	10
 
 /* file sizes */
 #define SZ_KB		((uint64_t) 1024)
@@ -4426,15 +4427,47 @@ int
 print_page(struct tab *t, struct karg *args)
 {
 	WebKitWebFrame			*frame;
+	GtkPageSetup			*ps;
+	GtkPrintOperation		*op;
+	GtkPrintOperationAction		action;
+	GtkPrintOperationResult		print_res;
+	GError				*g_err = NULL;
+	int				marg_l, marg_r, marg_t, marg_b;
 
 	DNPRINTF(XT_D_PRINTING, "%s:", __func__);
 
-	/*
-	 * for now we just call the GTK print box,
-	 * but later we might decide to hook in a command.
-	 */
+	ps = gtk_page_setup_new();
+	op = gtk_print_operation_new();
+	action = GTK_PRINT_OPERATION_ACTION_PRINT_DIALOG;
 	frame = webkit_web_view_get_main_frame(t->wv);
-	webkit_web_frame_print(frame);
+
+	/* the default margins are too small, so we will bump them */
+	marg_l = gtk_page_setup_get_left_margin(ps, GTK_UNIT_MM) +
+	    XT_PRINT_EXTRA_MARGIN;
+	marg_r = gtk_page_setup_get_right_margin(ps, GTK_UNIT_MM) +
+	    XT_PRINT_EXTRA_MARGIN;
+	marg_t = gtk_page_setup_get_top_margin(ps, GTK_UNIT_MM) +
+	    XT_PRINT_EXTRA_MARGIN;
+	marg_b = gtk_page_setup_get_bottom_margin(ps, GTK_UNIT_MM) +
+	    XT_PRINT_EXTRA_MARGIN;
+
+	/* set margins */
+	gtk_page_setup_set_left_margin(ps, marg_l, GTK_UNIT_MM);
+	gtk_page_setup_set_right_margin(ps, marg_r, GTK_UNIT_MM);
+	gtk_page_setup_set_top_margin(ps, marg_t, GTK_UNIT_MM);
+	gtk_page_setup_set_bottom_margin(ps, marg_b, GTK_UNIT_MM);
+
+	gtk_print_operation_set_default_page_setup(op, ps);
+
+	/* this appears to free 'op' and 'ps' */
+	print_res = webkit_web_frame_print_full(frame, op, action, &g_err);
+
+	/* check it worked */
+	if (print_res == GTK_PRINT_OPERATION_RESULT_ERROR) {
+		show_oops_s("can't print: %s", g_err->message);
+		g_error_free (g_err);
+		return (1);
+	}
 
 	return (0);
 }
