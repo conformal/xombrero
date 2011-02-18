@@ -619,7 +619,7 @@ struct settings {
 	{ "show_statusbar",		XT_S_INT, 0,		&show_statusbar, NULL, NULL },
 	{ "ssl_ca_file",		XT_S_STR, 0, NULL,	&ssl_ca_file, NULL },
 	{ "ssl_strict_certs",		XT_S_INT, 0,		&ssl_strict_certs, NULL, NULL },
-	{ "user_agent", 		XT_S_STR, 0, NULL,	&user_agent, NULL },
+	{ "user_agent",			XT_S_STR, 0, NULL,	&user_agent, NULL },
 	{ "window_height",		XT_S_INT, 0,		&window_height, NULL, NULL },
 	{ "window_width",		XT_S_INT, 0,		&window_width, NULL, NULL },
 	{ "work_dir",			XT_S_STR, 0, NULL, NULL,&s_work_dir },
@@ -630,6 +630,50 @@ struct settings {
 	{ "js_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_js },
 	{ "keybinding",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_kb },
 	{ "mime_type",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_mime },
+};
+
+int			about(struct tab *, struct karg *);
+int			blank(struct tab *, struct karg *);
+int			cookie_show_wl(struct tab *, struct karg *);
+int			js_show_wl(struct tab *, struct karg *);
+int			help(struct tab *, struct karg *);
+int			set(struct tab *, struct karg *);
+int			stats(struct tab *, struct karg *);
+int			xtp_page_cl(struct tab *, struct karg *);
+int			xtp_page_dl(struct tab *, struct karg *);
+int			xtp_page_fl(struct tab *, struct karg *);
+int			xtp_page_hl(struct tab *, struct karg *);
+
+#define XT_URI_ABOUT		("about:")
+#define XT_URI_ABOUT_LEN	(strlen(XT_URI_ABOUT))
+#define XT_URI_ABOUT_ABOUT	("about")
+#define XT_URI_ABOUT_BLANK	("blank")
+#define XT_URI_ABOUT_CERTS	("certs")	/* XXX NOT YET */
+#define XT_URI_ABOUT_COOKIEWL	("cookiewl")	/* NOT YET */
+#define XT_URI_ABOUT_COOKIEJAR	("cookiejar")
+#define XT_URI_ABOUT_DOWNLOADS	("downloads")
+#define XT_URI_ABOUT_FAVORITES	("favorites")
+#define XT_URI_ABOUT_HELP	("help")
+#define XT_URI_ABOUT_HISTORY	("history")
+#define XT_URI_ABOUT_JSWL	("jswl")	/* NOT YET */
+#define XT_URI_ABOUT_SET	("set")
+#define XT_URI_ABOUT_STATS	("stats")
+
+struct about_type {
+	char		*name;
+	int		(*func)(struct tab *, struct karg *);
+} about_list[] = {
+	{ XT_URI_ABOUT_ABOUT, about },
+	{ XT_URI_ABOUT_BLANK, blank },
+	{ XT_URI_ABOUT_COOKIEWL, cookie_show_wl },
+	{ XT_URI_ABOUT_COOKIEJAR, xtp_page_cl },
+	{ XT_URI_ABOUT_DOWNLOADS, xtp_page_dl },
+	{ XT_URI_ABOUT_FAVORITES, xtp_page_fl },
+	{ XT_URI_ABOUT_HELP, help },
+	{ XT_URI_ABOUT_HISTORY, xtp_page_hl },
+	{ XT_URI_ABOUT_JSWL, js_show_wl },
+	{ XT_URI_ABOUT_SET, set },
+	{ XT_URI_ABOUT_STATS, stats },
 };
 
 /* globals */
@@ -695,6 +739,23 @@ sigchild(int sig)
 }
 
 void
+_load_webkit_string(struct tab *t, const char *str, gchar *title)
+{
+	gchar			*uri;
+
+	/* we set this to indicate we want to manually do navaction */
+	if (t->bfl)
+		t->item = webkit_web_back_forward_list_get_current_item(t->bfl);
+	webkit_web_view_load_string(t->wv, str, NULL, NULL, NULL);
+
+	if (title) {
+		uri = g_strdup_printf("%s%s", XT_URI_ABOUT, title);
+		gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
+		g_free(uri);
+	}
+}
+
+void
 load_webkit_string(struct tab *t, const char *str)
 {
 	/* we set this to indicate we want to manually do navaction */
@@ -712,7 +773,6 @@ set_status(struct tab *t, gchar *s, int status)
 
 	switch (status) {
 	case XT_STATUS_LOADING:
-		gtk_entry_set_text(GTK_ENTRY(t->uri_entry), s);
 		type = g_strdup_printf("Loading: %s", s);
 		s = type;
 		break;
@@ -979,10 +1039,6 @@ void			delete_tab(struct tab *);
 void			adjustfont_webkit(struct tab *, int);
 int			run_script(struct tab *, char *);
 int			download_rb_cmp(struct download *, struct download *);
-int			xtp_page_hl(struct tab *t, struct karg *args);
-int			xtp_page_dl(struct tab *t, struct karg *args);
-int			xtp_page_cl(struct tab *t, struct karg *args);
-int			xtp_page_fl(struct tab *t, struct karg *args);
 
 int
 history_rb_cmp(struct history *h1, struct history *h2)
@@ -1201,7 +1257,9 @@ guess_url_type(char *url_in)
 void
 load_uri(struct tab *t, gchar *uri)
 {
+	struct karg	args;
 	gchar		*newuri = NULL;
+	int		i;
 
 	if (uri == NULL)
 		return;
@@ -1210,9 +1268,19 @@ load_uri(struct tab *t, gchar *uri)
 	while(*uri && isspace(*uri))
 		uri++;
 
-	if (strlen(uri) == 0 || !strcmp(uri, "about:blank")) {
-		newuri = "";
-		webkit_web_view_load_uri(t->wv, newuri);
+	if (strlen(uri) == 0) {
+		blank(t, NULL);
+		return;
+	}
+
+	if (!strncmp(uri, XT_URI_ABOUT, XT_URI_ABOUT_LEN)) {
+		for (i = 0; i < LENGTH(about_list); i++)
+			if (!strcmp(&uri[XT_URI_ABOUT_LEN], about_list[i].name)) {
+				bzero(&args, sizeof args);
+				about_list[i].func(t, &args);
+				return;
+			}
+		show_oops(t, "invalid about page");
 		return;
 	}
 
@@ -2288,12 +2356,22 @@ stats(struct tab *t, struct karg *args)
 	   blocked_cookies,
 	   line);
 
-	load_webkit_string(t, stats);
+	_load_webkit_string(t, stats, XT_URI_ABOUT_STATS);
 	g_free(stats);
 
 	return (0);
 }
 
+int
+blank(struct tab *t, struct karg *args)
+{
+	if (t == NULL)
+		show_oops_s("about invalid parameters");
+
+	_load_webkit_string(t, "", XT_URI_ABOUT_BLANK);
+
+	return (0);
+}
 int
 about(struct tab *t, struct karg *args)
 {
@@ -2324,7 +2402,7 @@ about(struct tab *t, struct karg *args)
 	    version
 	    );
 
-	load_webkit_string(t, about);
+	_load_webkit_string(t, about, XT_URI_ABOUT_ABOUT);
 	g_free(about);
 
 	return (0);
@@ -2353,7 +2431,7 @@ help(struct tab *t, struct karg *args)
 	    "</html>"
 	    ;
 
-	load_webkit_string(t, help);
+	_load_webkit_string(t, help, XT_URI_ABOUT_HELP);
 
 	return (0);
 }
@@ -2475,7 +2553,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	if (!failed) {
 		html = g_strdup_printf("%s%s</table></div></html>",
 		    header, body);
-		load_webkit_string(t, html);
+		_load_webkit_string(t, html, XT_URI_ABOUT_FAVORITES);
 	}
 
 	update_favorite_tabs(t);
@@ -2536,7 +2614,7 @@ show_certs(struct tab *t, gnutls_x509_crt_t *certs,
 	g_free(header);
 	g_free(body);
 	g_free(footer);
-	load_webkit_string(t, tmp);
+	_load_webkit_string(t, tmp, XT_URI_ABOUT_CERTS);
 	g_free(tmp);
 }
 
@@ -3004,7 +3082,10 @@ wl_show(struct tab *t, char *args, char *title, struct domain_list *wl)
 	g_free(header);
 	g_free(body);
 	g_free(footer);
-	load_webkit_string(t, tmp);
+	if (wl == &js_wl)
+		_load_webkit_string(t, tmp, XT_URI_ABOUT_JSWL);
+	else
+		_load_webkit_string(t, tmp, XT_URI_ABOUT_COOKIEWL);
 	g_free(tmp);
 	return (0);
 }
@@ -3113,6 +3194,22 @@ done:
 	if (lt)
 		g_free(lt);
 	fclose(f);
+
+	return (0);
+}
+
+int
+js_show_wl(struct tab *t, struct karg *args)
+{
+	wl_show(t, "show all", "JavaScript White List", &js_wl);
+
+	return (0);
+}
+
+int
+cookie_show_wl(struct tab *t, struct karg *args)
+{
+	wl_show(t, "show all", "Cookie White List", &c_wl);
 
 	return (0);
 }
@@ -3993,7 +4090,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	g_free(table_headers);
 	g_free(last_domain);
 
-	load_webkit_string(t, page);
+	_load_webkit_string(t, page, XT_URI_ABOUT_COOKIEJAR);
 	update_cookie_tabs(t);
 
 	g_free(page);
@@ -4074,7 +4171,7 @@ xtp_page_hl(struct tab *t, struct karg *args)
 	g_free(body);
 	g_free(footer);
 
-	load_webkit_string(t, page);
+	_load_webkit_string(t, page, XT_URI_ABOUT_HISTORY);
 	g_free(page);
 
 	return (0);
@@ -4167,7 +4264,7 @@ xtp_page_dl(struct tab *t, struct karg *args)
 	g_free(body);
 	g_free(footer);
 
-	load_webkit_string(t, page);
+	_load_webkit_string(t, page, XT_URI_ABOUT_DOWNLOADS);
 	g_free(page);
 
 	return (0);
@@ -4286,7 +4383,7 @@ set(struct tab *t, struct karg *args)
 		g_free(body);
 		g_free(footer);
 
-		load_webkit_string(t, page);
+		_load_webkit_string(t, page, XT_URI_ABOUT_SET);
 	} else
 		show_oops(t, "Invalid command: %s", pars);
 
@@ -4749,7 +4846,7 @@ keybinding_add(char *kb, char *value, struct key_binding *orig)
 	    k->use_in_entry,
 	    k->key);
 	DNPRINTF(XT_D_KEYBINDING, "keybinding_add: adding: %s %s\n",
-	    name, gdk_keyval_name(keyval));
+	    k->name, gdk_keyval_name(keyval));
 
 	TAILQ_INSERT_HEAD(&kbl, k, entry);
 
@@ -5566,7 +5663,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	case WEBKIT_LOAD_COMMITTED:
 		/* 1 */
 		if ((uri = get_uri(wview)) != NULL) {
-			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
+			if (strncmp(uri, XT_URI_ABOUT, XT_URI_ABOUT_LEN))
+				gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
 
 			if (t->status) {
 				g_free(t->status);
