@@ -739,7 +739,7 @@ sigchild(int sig)
 }
 
 void
-_load_webkit_string(struct tab *t, const char *str, gchar *title)
+load_webkit_string(struct tab *t, const char *str, gchar *title)
 {
 	gchar			*uri;
 
@@ -753,14 +753,6 @@ _load_webkit_string(struct tab *t, const char *str, gchar *title)
 		gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
 		g_free(uri);
 	}
-}
-
-void
-load_webkit_string(struct tab *t, const char *str)
-{
-	/* we set this to indicate we want to manually do navaction */
-	t->item = webkit_web_back_forward_list_get_current_item(t->bfl);
-	webkit_web_view_load_string(t->wv, str, NULL, NULL, NULL);
 }
 
 void
@@ -2356,7 +2348,7 @@ stats(struct tab *t, struct karg *args)
 	   blocked_cookies,
 	   line);
 
-	_load_webkit_string(t, stats, XT_URI_ABOUT_STATS);
+	load_webkit_string(t, stats, XT_URI_ABOUT_STATS);
 	g_free(stats);
 
 	return (0);
@@ -2368,7 +2360,7 @@ blank(struct tab *t, struct karg *args)
 	if (t == NULL)
 		show_oops_s("about invalid parameters");
 
-	_load_webkit_string(t, "", XT_URI_ABOUT_BLANK);
+	load_webkit_string(t, "", XT_URI_ABOUT_BLANK);
 
 	return (0);
 }
@@ -2402,7 +2394,7 @@ about(struct tab *t, struct karg *args)
 	    version
 	    );
 
-	_load_webkit_string(t, about, XT_URI_ABOUT_ABOUT);
+	load_webkit_string(t, about, XT_URI_ABOUT_ABOUT);
 	g_free(about);
 
 	return (0);
@@ -2431,7 +2423,7 @@ help(struct tab *t, struct karg *args)
 	    "</html>"
 	    ;
 
-	_load_webkit_string(t, help, XT_URI_ABOUT_HELP);
+	load_webkit_string(t, help, XT_URI_ABOUT_HELP);
 
 	return (0);
 }
@@ -2553,7 +2545,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	if (!failed) {
 		html = g_strdup_printf("%s%s</table></div></html>",
 		    header, body);
-		_load_webkit_string(t, html, XT_URI_ABOUT_FAVORITES);
+		load_webkit_string(t, html, XT_URI_ABOUT_FAVORITES);
 	}
 
 	update_favorite_tabs(t);
@@ -2614,7 +2606,7 @@ show_certs(struct tab *t, gnutls_x509_crt_t *certs,
 	g_free(header);
 	g_free(body);
 	g_free(footer);
-	_load_webkit_string(t, tmp, XT_URI_ABOUT_CERTS);
+	load_webkit_string(t, tmp, XT_URI_ABOUT_CERTS);
 	g_free(tmp);
 }
 
@@ -3083,9 +3075,9 @@ wl_show(struct tab *t, char *args, char *title, struct domain_list *wl)
 	g_free(body);
 	g_free(footer);
 	if (wl == &js_wl)
-		_load_webkit_string(t, tmp, XT_URI_ABOUT_JSWL);
+		load_webkit_string(t, tmp, XT_URI_ABOUT_JSWL);
 	else
-		_load_webkit_string(t, tmp, XT_URI_ABOUT_COOKIEWL);
+		load_webkit_string(t, tmp, XT_URI_ABOUT_COOKIEWL);
 	g_free(tmp);
 	return (0);
 }
@@ -4090,7 +4082,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	g_free(table_headers);
 	g_free(last_domain);
 
-	_load_webkit_string(t, page, XT_URI_ABOUT_COOKIEJAR);
+	load_webkit_string(t, page, XT_URI_ABOUT_COOKIEJAR);
 	update_cookie_tabs(t);
 
 	g_free(page);
@@ -4171,7 +4163,7 @@ xtp_page_hl(struct tab *t, struct karg *args)
 	g_free(body);
 	g_free(footer);
 
-	_load_webkit_string(t, page, XT_URI_ABOUT_HISTORY);
+	load_webkit_string(t, page, XT_URI_ABOUT_HISTORY);
 	g_free(page);
 
 	return (0);
@@ -4264,7 +4256,7 @@ xtp_page_dl(struct tab *t, struct karg *args)
 	g_free(body);
 	g_free(footer);
 
-	_load_webkit_string(t, page, XT_URI_ABOUT_DOWNLOADS);
+	load_webkit_string(t, page, XT_URI_ABOUT_DOWNLOADS);
 	g_free(page);
 
 	return (0);
@@ -4383,7 +4375,7 @@ set(struct tab *t, struct karg *args)
 		g_free(body);
 		g_free(footer);
 
-		_load_webkit_string(t, page, XT_URI_ABOUT_SET);
+		load_webkit_string(t, page, XT_URI_ABOUT_SET);
 	} else
 		show_oops(t, "Invalid command: %s", pars);
 
