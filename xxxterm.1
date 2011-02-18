@@ -1,7 +1,7 @@
 .\"	$xxxterm$
 .\"
 .\" Copyright (c) 2010, 2011 Marco Peereboom <marco@peereboom.us>
-.\" Copyright (c) 2011 Jason McIntyre <jmc@kerhand.co.uk>
+.\" Copyright (c) 2011 Jason McIntyre <jmc@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -53,6 +53,13 @@ The options are as follows:
 .Bl -tag -width Ds
 .It Fl f Ar file
 Specify an alternative configuration file.
+.It Fl n
+Open a new tab in a running
+.Nm
+for each specified URL.
+This option requires
+.Cm enable_socket
+to be enabled.
 .It Fl S
 Disable the toolbar.
 .It Fl s Ar session_name
@@ -61,13 +68,6 @@ Open session that was saved with ":session save" command.
 Disable visualization of tabs.
 .It Fl t
 Disable tabs.
-.It Fl n
-Open a new tab in a running
-.Nm
-for each specified URL.
-This option requires
-.Cm enable_socket
-to be enabled.
 .It Fl V
 Display version and exit.
 .El
@@ -77,6 +77,8 @@ The following notation is used throughout this page:
 .Bl -tag -width Ds -offset indent -compact
 .It Cm C-
 Control
+.It Cm S-
+Shift
 .It Cm M1-
 Meta 1 (sometimes marked Alt)
 .It Cm M2-
@@ -87,8 +89,6 @@ Meta 3
 Meta 4 (sometimes marked Windows)
 .It Cm M5-
 Meta 2
-.It Cm S-
-Shift
 .It Cm MB1
 Mouse button 1
 .El
@@ -120,12 +120,34 @@ to follow the link.
 .Sh KEY BINDINGS
 .Nm
 provides many actions accessed via key or mouse bindings.
-Note that WebKit & GTK+ have their own set of key bindings
-that are not overruled and therefore are available as-is.
+Most can be reprogrammed using a
+.Cm keybinding
+entry in the configuration file.
+Each keyboard shortcut requires exactly one entry in the configuration file.
+A shortcut can have multiple entries in the configuration file.
+The format of the keybinding entry is as follows:
 .Pp
-Note: see the
-.Cm KEY MAPPINGS
-section for an exhaustive list of all changeable keyboard shortcuts.
+.D1 keybinding = action,keystroke(s)
+.Pp
+For example, "keybinding = tabnew,C-t" where
+.Cm tabnew
+is the action and
+.Cm C-t
+are
+the keystrokes.
+The
+.Cm clearall
+key word is special and is meant to reset the key binding list to the GTK+
+and WebKit defaults.
+This keyword should be the first
+.Cm keybinding
+entry in the configuration file.
+.Pp
+Shift should be used sparingly since it gets in the way of non-USA keyboards.
+See the accompanying configuration file for examples.
+.Pp
+The various bindings are documented below.
+The relevant keybinding action is given afterwards, in parentheses.
 .Ss Search Commands
 These commands are used to search for text strings within a web page.
 .Pp
@@ -136,8 +158,10 @@ Start a search
 Start a backwards search
 .It Cm n
 Next item matching search
+.Pq Cm searchnext
 .It Cm N
 Previous item matching search
+.Pq Cm searchprev
 .El
 .Ss Focus Commands
 These commands are used to shift the focus of
@@ -147,8 +171,10 @@ from one area to another.
 .Bl -tag -width Ds -offset indent -compact
 .It Cm F6
 Focus on address bar
+.Pq Cm focusaddress
 .It Cm F7
 Focus on search entry
+.Pq Cm focussearch
 .El
 .Ss Command Aliases
 These commands allow the user to map specific actions to specific keys.
@@ -174,48 +200,70 @@ control the browser.
 .Bl -tag -width "Space, C-f, PageDownXXX" -offset indent -compact
 .It Cm F5, C-r, C-l
 Reload page
+.Pq Cm reload
 .It Cm C-R
 Reload page without using any cached data
+.Pq Cm reloadforce
 .It Cm Backspace, M-Left
 Previous page
+.Pq Cm goback
 .It Cm S-BackSpace, M-Right
 Forward page
+.Pq Cm goforward
 .It Cm j, Down
 Next line on page
+.Pq Cm scrolldown
 .It Cm k, Up
 Previous line on page
+.Pq Cm scrollup
 .It Cm G, End
 Bottom of page
+.Pq Cm scrollbottom
 .It Cm gg, Home
 Top of page
+.Pq Cm scrolltop
 .It Cm Space, C-f, PageDown
 Page down
+.Pq Cm scrollpagedown
 .It Cm C-b, PageUp
 Page up
+.Pq Cm scrollpageup
 .It Cm l, Right
 Page right
+.Pq Cm scrollright
 .It Cm h, Left
 Page left
+.Pq Cm scrollleft
 .It Cm $
 Page far right
+.Pq Cm scrollfarright
 .It Cm 0
 Page far left
+.Pq Cm scrollfarleft
 .It Cm M-f
 Favorites
+.Pq Cm favorites
 .It Cm M-j
 Cookie jar
+.Pq Cm cookiejar
 .It Cm M-d
 Download manager
+.Pq Cm downloadmgr
 .It Cm C-p
 Print page
+.Pq Cm print
 .It Cm M-h
 Global history
+.Pq Cm history
 .It Cm C-j
-Toggle Java Script enabled for FQDN.
+Toggle Java Script enabled for FQDN
+.Pq Cm togglejs
 .It Cm C-s
 Toggle source view
+.Pq Cm togglesrc
 .It Cm M-c
-Toggle cookie enabled for FQDN.
+Toggle cookie enabled for FQDN
+.Pq Cm togglecookie
 .El
 .Ss Tab Manipulation
 .Nm
@@ -230,21 +278,29 @@ These commands then are used to create, destroy, and move between tabs.
 Open new tab with the clicked link
 .It Cm C-t
 Create new tab with focus in URL entry
+.Pq Cm tabnew
 .It Cm C-w
 Destroy current tab
+.Pq Cm tabclose
 .It Cm U
 Undo close tab
+.Pq Cm tabundoclose
 .It Cm C-Left
 Go to the previous tab
+.Pq Cm tabgotoprev
 .It Cm C-Right
 Go to the next tab
+.Pq Cm tabgotonext
 .It Cm C-[1..0]
 Jump to page
 .Ar N
+.Pq Cm tabgoto[1..0]
 .It Cm C-minus
 Shrink font size by one point
+.Pq Cm focusout
 .It Cm C-plus, C-equal
 Grow font size by one point
+.Pq Cm focusin
 .El
 .Ss Yanking and pasting
 These commands copy and paste text to and from the clipboard.
@@ -252,10 +308,13 @@ These commands copy and paste text to and from the clipboard.
 .Bl -tag -width Ds -offset indent -compact
 .It Cm p
 Paste the contents of the clipboard into the address bar
+.Pq Cm pasteuricur
 .It Cm P
 Paste the contents of the clipboard into a new tab
+.Pq Cm pasteurinew
 .It Cm y
 Yank the current URL into the clipboard
+.Pq Cm yankuri
 .El
 .Ss Hyperlink Following
 This allows the user to follow hyperlinks
@@ -269,6 +328,7 @@ will follow the link.
 .Bl -tag -width Ds -offset indent -compact
 .It Cm f
 Highlight all links and prefix them with a number.
+.Pq Cm hinting
 .El
 .Ss Exiting
 Commands to exit the browser.
@@ -276,6 +336,7 @@ Commands to exit the browser.
 .Bl -tag -width Ds -offset indent -compact
 .It Cm C-q
 Quit
+.Pq Cm quit
 .El
 .Sh COMMAND MODE
 Command mode works in a similar fashion to the
@@ -460,10 +521,12 @@ Setting up the whitelists is a little tricky due to intricacies of WebKit.
 In fact the semantics are different for cookies and Java Script.
 .Pp
 Cookie whitelist requires the following configuration to be set:
+.Pp
 .Bl -tag -width "enable_cookie_whitelistXXX" -offset indent -compact
 .It Cm cookies_enabled
 This is a WebKit setting and must be set to
-.Pa 1 (ENABLED)
+.Pa 1
+(ENABLED)
 in order to be able to use a
 cookie whitelist.
 .It Cm enable_cookie_whitelist
@@ -476,10 +539,12 @@ cookie whitelist.
 .El
 .Pp
 Java Script whitelist requires the following configuration to be set:
+.Pp
 .Bl -tag -width "enable_js_whitelistXXX" -offset indent -compact
 .It Cm enable_scripts
 This is a WebKit setting and must be set to
-.Pa 0 (DISABLED)
+.Pa 0
+(DISABLED)
 in order to be able to use a
 Java Script whitelist.
 .It Cm enable_js_whitelist
@@ -495,7 +560,6 @@ See the
 .Pa FILES
 section for additional configuration file entries and details
 that alter runtime behavior.
-.PP
 .Sh FILES
 .Bl -tag -width "/etc/xxxterm.confXXX" -compact
 .It Pa ~/.xxxterm.conf
@@ -544,7 +608,7 @@ The
 browser has 2 default operating modes:
 .Pa normal
 (the default) or
-.Pa whitelist.
+.Pa whitelist .
 In the
 .Pa normal
 mode the browser allows all cookies and Java Script as any other browser
@@ -620,7 +684,8 @@ When enabled
 .Nm
 will try to guess if the string you entered, in the URI entry widget or
 the command widget, is term you want to search for using search_string
-(see above). If the string does not contain a dot nor a slash, is not a
+(see above).
+If the string does not contain a dot nor a slash, is not a
 path to a local file and does not resolves to an IP then it is assumed
 to be a search term.
 .It Cm home
@@ -734,293 +799,6 @@ Set the work directory where all
 scratch files are stored.
 Default is
 .Cm ~/.xxxterm .
-.El
-.Sh KEY MAPPINGS
-Most keyboard shortcuts can be reprogrammed using a
-.Cm keybinding
-entry in the configuration file.
-Each keyboard shortcut requires exactly one entry in the configuration file.
-A shortcut can have multiple entries in the configuration file.
-The format of the keybinding entry is as follows
-keybinding = action,keystroke(s).
-For example, "keybinding = tabnew,C-t" where
-.Cm tabnew
-is the action and
-.Cm C-t
-are
-the keystrokes.
-.Pp
-Shift should be used sparingly since it gets in the way of non-USA keyboards.
-See the accompanying configuration file for examples.
-.Pp
-.Bl -tag -width "scrollfarright" -compact
-.It Cm clearall
-The
-.Cm clearall
-key word is special and is meant to reset the key binding list to the GTK+
-and WebKit defaults.
-This keyword should be the first
-.Cm keybinding
-entry on the configuration file.
-.It Cm cookiejar
-Bring up the cookie jar screen.
-Default
-.Cm M1-j .
-.It Cm downloadmgr
-Bring up the download manager screen.
-Default
-.Cm M1-d .
-.It Cm history
-Bring up the history screen.
-Default
-.Cm M1-h .
-.It Cm print
-Bring up print page or pane dialog.
-Default
-.Cm C-p .
-.It Cm quit
-Terminate
-.Nm
-session and close all tabs.
-Default
-.Cm C-q .
-.It Cm restart
-Restart
-.Nm
-while maintaining most state.
-Temporary cookies and Java Script whitelist items will be discarded.
-Default
-.Cm M1-q .
-.It Cm togglejs
-Toggle Java Script whitelist entry for
-.Cm FQDN
-of the current tab.
-Default
-.Cm C-j .
-.It Cm togglecookie
-Toggle cookie whitelist entry for
-.Cm FQDN
-of the current tab.
-Default
-.Cm M1-c .
-.It Cm togglesrc
-Toggle between source and normal view.
-Default
-.Cm C-s .
-.It Cm yankuri
-Yank (copy) URL of current tab into the clipboard.
-Default
-.Cm y .
-.It Cm pasteuricur
-Paste clipboard URL in the current tab and attempt to load it.
-Default
-.Cm p .
-.It Cm pasteurinew
-Paste clipboard URL in a new tab and attempt to load it.
-Default
-.Cm P .
-.It Cm searchnext
-Find the next occurence of the previously entered search term.
-If there is no previously entered search term on the current tab
-.Nm
-will attempt to use the last entered search term.
-Default
-.Cm n .
-.It Cm searchprev
-Find the previous occurence of the previously entered search term.
-If there is no previously entered search term on the current tab
-.Nm
-will attempt to use the last entered search term.
-Default
-.Cm N .
-.It Cm focusaddress
-Move keyboard focus to address (a.k.a. URL) entry bar.
-Default
-.Cm F6 .
-.It Cm focussearch
-Move keyboard focus to search entry bar.
-Default
-.Cm F7 .
-.It Cm hinting
-Switch to hinting mode.
-Default
-.Cm f .
-.It Cm goback
-Go to previous web page.
-Default
-.Cm BackSpace
-and
-.Cm M1-Left .
-.It Cm goforward
-Go to next web page.
-Default
-.Cm S-BackSpace
-and
-.Cm M1-Right .
-.It Cm reload
-Refresh web page.
-Default
-.Cm F5 ,
-.Cm C-l
-and
-.Cm C-r .
-.It Cm reloadforce
-Refresh web page bypassing all cache entries.
-Default
-.Cm C-R .
-.It Cm favorites
-Bring up favorites screen.
-Default
-.Cm M1-f .
-.It Cm scrolldown
-Go "one line" down.
-Default
-.Cm j
-and
-.Cm Down .
-.It Cm scrollup
-Go "one line" up.
-Default
-.Cm k
-and
-.Cm Up .
-.It Cm scrollbottom
-Go to the bottom of the page.
-Default
-.Cm G
-and
-.Cm End .
-.It Cm scrolltop
-Go to the top of the page.
-Default
-.Cm g
-and
-.Cm Home .
-.It Cm scrollpagedown
-Go "one page" down.
-Default
-.Cm Space ,
-.Cm C-f
-and
-.Cm PageDown .
-.It Cm scrollhalfdown
-Go "one half a page" down.
-Default
-.Cm C-d .
-.It Cm scrollpageup
-Go "one page" up.
-Default
-.Cm PageUp
-and
-.Cm C-b .
-.It Cm scrollhalfup
-Go "one half a page" up.
-Default
-.Cm C-u .
-.It Cm scrollright
-Scroll page to the right.
-Default
-.Cm l
-and
-.Cm Right .
-.It Cm scrollfarright
-Scroll page to the far right.
-Default
-.Cm dollar .
-.It Cm scrollleft
-Scroll page to the left.
-Default
-.Cm h
-and
-.Cm Left .
-.It Cm scrollfarleft
-Scroll page to the far left.
-Default
-.Cm 0 .
-.It Cm tabnew
-Create a new tab.
-Default
-.Cm C-t .
-.It Cm tabclose
-Close current tab.
-Default
-.Cm C-w .
-.It Cm tabundoclose
-Reopen last closed tab.
-Default
-.Cm U .
-.It Cm tabgoto1
-Go to tab 1 (first tab).
-Default
-.Cm C-1 .
-.It Cm tabgoto2
-Go to tab 2.
-Default
-.Cm C-2 .
-.It Cm tabgoto3
-Go to tab 3.
-Default
-.Cm C-3 .
-.It Cm tabgoto4
-Go to tab 4.
-Default
-.Cm C-4 .
-.It Cm tabgoto5
-Go to tab 5.
-Default
-.Cm C-5 .
-.It Cm tabgoto6
-Go to tab 6.
-Default
-.Cm C-6 .
-.It Cm tabgoto7
-Go to tab 7.
-Default
-.Cm C-7 .
-.It Cm tabgoto8
-Go to tab 8.
-Default
-.Cm C-8 .
-.It Cm tabgoto9
-Go to tab 9.
-Default
-.Cm C-9 .
-.It Cm tabgoto10
-Go to tab 10.
-Default
-.Cm C-10 .
-.It Cm tabgotofirst
-Go to first tab.
-Default
-.Cm C-less .
-.It Cm tabgotolast
-Go to last tab.
-Default
-.Cm C-greater .
-.It Cm tabgotonext
-Go to next tab.
-If the current tab is the last tab
-.Nm
-will go to the first tab.
-Default
-.Cm C-Right .
-.It Cm tabgotoprev
-Go to previous tab.
-If the current tab is the first tab
-.Nm
-will go to the last tab.
-Default
-.Cm C-Left .
-.It Cm focusout
-Make fonts on current tab smaller.
-Default
-.Cm C-minus .
-.It Cm focusin
-Make fonts on current tab bigger.
-Default
-.Cm C-equal
-and
-.Cm C-plus .
 .El
 .Sh HISTORY
 .Nm
