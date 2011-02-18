@@ -2104,11 +2104,10 @@ toggle_cwl(struct tab *t, struct karg *args)
 	if (args == NULL)
 		return (1);
 
-	if ((uri = get_uri(t->wv)) == NULL)
-		return (1);
-
+	uri = get_uri(t->wv);
 	dom = find_domain(uri, 1);
 	d = wl_find(dom, &c_wl);
+
 	if (d == NULL)
 		es = 0;
 	else
@@ -2161,10 +2160,9 @@ toggle_js(struct tab *t, struct karg *args)
 	else
 		return (1);
 
-	if ((uri = get_uri(t->wv)) == NULL)
-		return (1);
-
+	uri = get_uri(t->wv);
 	dom = find_domain(uri, 1);
+
 	if (uri == NULL || dom == NULL) {
 		show_oops(t, "Can't toggle domain in JavaScript white list");
 		goto done;
