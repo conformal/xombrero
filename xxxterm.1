@@ -495,6 +495,42 @@ The tabs will be restored next time
 the session is opened.
 See the session command for additional details.
 .El
+.Sh ABOUT SCREENS
+The about screens are internally generated web pages by
+.Nm
+for user interaction.
+These are entered in the address bar and the format is
+.Cm about:screen
+where screen is the desired screen to display.
+For example about:favorites.
+Any about screen can be used as the home page as specified by
+.Cm home
+in the configuration file.
+.Pp
+.Bl -tag -width "downloadsXXX" -offset indent -compact
+.It Cm about
+show the about screen
+.It Cm blank
+show a blank screen
+.It Cm cookiewl
+show the cookie whitelist screen
+.It Cm cookiejar
+show the cookiejar screen
+.It Cm downloads
+show the downloads screen
+.It Cm favorites
+show the favorites screen
+.It Cm help
+show the help web page
+.It Cm history
+show the history screen
+.It Cm jswl
+show the Java Script whitelist screen
+.It Cm set
+show the settings screen
+.It Cm stats
+show the statistics screen
+.El
 .Sh WHITELISTS
 This section descibes advanced usage settings.
 Most users should use
