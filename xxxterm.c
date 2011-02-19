@@ -649,13 +649,13 @@ int			xtp_page_hl(struct tab *, struct karg *);
 #define XT_URI_ABOUT_ABOUT	("about")
 #define XT_URI_ABOUT_BLANK	("blank")
 #define XT_URI_ABOUT_CERTS	("certs")	/* XXX NOT YET */
-#define XT_URI_ABOUT_COOKIEWL	("cookiewl")	/* NOT YET */
+#define XT_URI_ABOUT_COOKIEWL	("cookiewl")
 #define XT_URI_ABOUT_COOKIEJAR	("cookiejar")
 #define XT_URI_ABOUT_DOWNLOADS	("downloads")
 #define XT_URI_ABOUT_FAVORITES	("favorites")
 #define XT_URI_ABOUT_HELP	("help")
 #define XT_URI_ABOUT_HISTORY	("history")
-#define XT_URI_ABOUT_JSWL	("jswl")	/* NOT YET */
+#define XT_URI_ABOUT_JSWL	("jswl")
 #define XT_URI_ABOUT_SET	("set")
 #define XT_URI_ABOUT_STATS	("stats")
 
