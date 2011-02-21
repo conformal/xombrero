@@ -174,6 +174,7 @@ struct tab {
 	GtkWidget		*forward;
 	GtkWidget		*stop;
 	GtkWidget		*js_toggle;
+	GtkEntryCompletion	*completion;
 	guint			tab_id;
 	WebKitWebView		*wv;
 
@@ -700,6 +701,10 @@ uint64_t		blocked_cookies = 0;
 char			named_session[PATH_MAX];
 void			update_favicon(struct tab *);
 int			icon_size_map(int);
+
+GtkListStore		*completion_model;
+void			completion_add(struct tab *);
+void			completion_add_uri(const gchar *);
 
 void
 sigchild(int sig)
@@ -1875,6 +1880,7 @@ restore_global_history(void)
 			h->uri = g_strdup(uri);
 			h->title = g_strdup(title);
 			RB_INSERT(history_list, &hl, h);
+			completion_add_uri(h->uri);
 		} else {
 			warnx("%s: failed to restore history\n", __func__);
 			free(uri);
@@ -5723,6 +5729,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 			else
 				h->title = g_strdup(uri);
 			RB_INSERT(history_list, &hl, h);
+			completion_add_uri(h->uri);
 			update_history_tabs(NULL);
 		}
 
@@ -6556,6 +6563,7 @@ create_toolbar(struct tab *t)
 	    G_CALLBACK(activate_uri_entry_cb), t);
 	g_signal_connect(G_OBJECT(t->uri_entry), "key-press-event",
 	    G_CALLBACK(entry_key_cb), t);
+	completion_add(t);
 	eb1 = gtk_hbox_new(FALSE, 0);
 	gtk_container_set_border_width(GTK_CONTAINER(eb1), 1);
 	gtk_box_pack_start(GTK_BOX(eb1), t->uri_entry, TRUE, TRUE, 0);
@@ -7430,6 +7438,79 @@ done:
 	return (-1);
 }
 
+static gboolean
+completion_select_cb(GtkEntryCompletion *widget, GtkTreeModel *model,
+    GtkTreeIter *iter, struct tab *t)
+{
+	gchar			*value;
+
+	gtk_tree_model_get(model, iter, 0, &value, -1);
+	load_uri(t, value);
+
+	return (FALSE);
+}
+
+void
+completion_add_uri(const gchar *uri)
+{
+	GtkTreeIter		iter;
+
+	/* add uri to list_store */
+	gtk_list_store_append(completion_model, &iter);
+	gtk_list_store_set(completion_model, &iter, 0, uri, -1);
+}
+
+gboolean
+completion_match(GtkEntryCompletion *completion, const gchar *key,
+    GtkTreeIter *iter, gpointer user_data)
+{
+	gchar			*value, *voffset;
+	size_t			len;
+	gboolean		match = FALSE;
+
+	len = strlen(key);
+
+	gtk_tree_model_get(GTK_TREE_MODEL(completion_model), iter, 0, &value,
+	    -1);
+
+	if (value == NULL)
+		return FALSE;
+
+	if (!strncmp(key, value, len))
+		match = TRUE;
+	else if (g_str_has_prefix(value, "http://") ||
+	    g_str_has_prefix(value, "https://") ||
+	    g_str_has_prefix(value, "file://")) {
+		voffset = strstr(value, "/") + 2;
+		if (!strncmp(key, voffset, len))
+			match = TRUE;
+		else if (g_str_has_prefix(voffset, "www.")) {
+		    voffset = voffset + strlen("www.");
+		    if (!strncmp(key, voffset, len))
+				match = TRUE;
+		}
+	}
+
+	g_free(value);
+	return (match);
+}
+
+void
+completion_add(struct tab *t)
+{
+	/* enable completion for tab */
+	t->completion = gtk_entry_completion_new();
+	gtk_entry_completion_set_text_column(t->completion, 0);
+	gtk_entry_set_completion(GTK_ENTRY(t->uri_entry), t->completion);
+	gtk_entry_completion_set_model(t->completion,
+	    GTK_TREE_MODEL(completion_model));
+	gtk_entry_completion_set_match_func(t->completion, completion_match,
+	    NULL, NULL);
+	gtk_entry_completion_set_minimum_key_length(t->completion, 1);
+	g_signal_connect(G_OBJECT (t->completion), "match-selected",
+	    G_CALLBACK(completion_select_cb), t);
+}
+
 void
 usage(void)
 {
@@ -7670,6 +7751,9 @@ main(int argc, char *argv[])
 		}
 		exit(0);
 	}
+
+	/* uri completion */
+	completion_model = gtk_list_store_new(1, G_TYPE_STRING);
 
 	/* go graphical */
 	create_canvas();
