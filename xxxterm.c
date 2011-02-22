@@ -463,6 +463,7 @@ int		read_only_cookies = 0; /* enable to not write cookies */
 int		enable_scripts = 1;
 int		enable_plugins = 0;
 int		default_font_size = 12;
+gfloat		default_zoom_level = 1.0;
 int		window_height = 768;
 int		window_width = 1024;
 int		icon_size = 2; /* 1 = smallest, 2+ = bigger */
@@ -581,12 +582,14 @@ struct settings {
 #define XT_S_INVALID	(0)
 #define XT_S_INT	(1)
 #define XT_S_STR	(2)
+#define XT_S_FLOAT	(3)
 	uint32_t	flags;
 #define XT_SF_RESTART	(1<<0)
 #define XT_SF_RUNTIME	(1<<1)
 	int		*ival;
 	char		**sval;
 	struct special	*s;
+	gfloat		*fval;
 } rs[] = {
 	{ "append_next",		XT_S_INT, 0,		&append_next, NULL, NULL },
 	{ "allow_volatile_cookies",	XT_S_INT, 0,		&allow_volatile_cookies, NULL, NULL },
@@ -595,6 +598,7 @@ struct settings {
 	{ "cookies_enabled",		XT_S_INT, 0,		&cookies_enabled, NULL, NULL },
 	{ "ctrl_click_focus",		XT_S_INT, 0,		&ctrl_click_focus, NULL, NULL },
 	{ "default_font_size",		XT_S_INT, 0,		&default_font_size, NULL, NULL },
+	{ "default_zoom_level",		XT_S_FLOAT, 0,		NULL, NULL, NULL, &default_zoom_level },
 	{ "download_dir",		XT_S_STR, 0, NULL, NULL,&s_download_dir },
 	{ "enable_cookie_whitelist",	XT_S_INT, 0,		&enable_cookie_whitelist, NULL, NULL },
 	{ "enable_js_whitelist",	XT_S_INT, 0,		&enable_js_whitelist, NULL, NULL },
@@ -882,6 +886,8 @@ get_as_string(struct settings *s)
 		r = g_strdup_printf("%d", *s->ival);
 	else if (s->type == XT_S_STR)
 		r = g_strdup(*s->sval);
+	else if (s->type == XT_S_FLOAT)
+		r = g_strdup_printf("%f", *s->fval);
 	else
 		r = g_strdup_printf("INVALID TYPE");
 
@@ -1624,6 +1630,7 @@ int
 settings_add(char *var, char *val)
 {
 	int i, rv, *p;
+	gfloat *f;
 	char **s;
 
 	/* get settings */
@@ -1651,6 +1658,11 @@ settings_add(char *var, char *val)
 				if (*s)
 					g_free(*s);
 				*s = g_strdup(val);
+				rv = 1;
+				break;
+			case XT_S_FLOAT:
+				f = rs[i].fval;
+				*f = atof(val);
 				rv = 1;
 				break;
 			case XT_S_INVALID:
@@ -6456,6 +6468,8 @@ setup_webkit(struct tab *t)
 	    "enable-scripts", enable_scripts, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
 	    "enable-plugins", enable_plugins, (char *)NULL);
+	g_object_set(G_OBJECT(t->wv),
+	    "full-content-zoom", TRUE, (char *)NULL);
 	adjustfont_webkit(t, XT_FONT_SET);
 
 	webkit_web_view_set_settings(t->wv, t->settings);
@@ -6695,19 +6709,30 @@ delete_tab(struct tab *t)
 void
 adjustfont_webkit(struct tab *t, int adjust)
 {
+	gfloat	zoom;
 	if (t == NULL) {
 		show_oops_s("adjustfont_webkit invalid parameters");
 		return;
 	}
 
-	if (adjust == XT_FONT_SET)
+	g_object_get(G_OBJECT(t->wv), "zoom-level", &zoom, (char *)NULL);
+	if (adjust == XT_FONT_SET) {
 		t->font_size = default_font_size;
-
-	t->font_size += adjust;
-	g_object_set(G_OBJECT(t->settings), "default-font-size",
-	    t->font_size, (char *)NULL);
-	g_object_get(G_OBJECT(t->settings), "default-font-size",
-	    &t->font_size, (char *)NULL);
+		zoom = default_zoom_level;
+		t->font_size += adjust;
+		g_object_set(G_OBJECT(t->settings), "default-font-size",
+		    t->font_size, (char *)NULL);
+		g_object_get(G_OBJECT(t->settings), "default-font-size",
+		    &t->font_size, (char *)NULL);
+	} else {
+		t->font_size += adjust;
+		zoom += adjust/25.0;
+		if (zoom < 0.0) {
+			zoom = 0.04;
+		}
+	}
+	g_object_set(G_OBJECT(t->wv), "zoom-level", zoom, (char *)NULL);
+	g_object_get(G_OBJECT(t->wv), "zoom-level", &zoom, (char *)NULL);
 }
 
 void
