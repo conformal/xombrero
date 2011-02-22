@@ -6791,7 +6791,6 @@ create_new_tab(char *title, struct undo *u, int focus)
 	WebKitWebHistoryItem		*item;
 	GList				*items;
 	GdkColor			color;
-	PangoFontDescription		*fd = NULL;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
@@ -6859,10 +6858,6 @@ create_new_tab(char *title, struct undo *u, int focus)
 	gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL, &color);
 	gdk_color_parse("white", &color);
 	gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL, &color);
-	fd = GTK_WIDGET(t->statusbar)->style->font_desc;
-	pango_font_description_set_weight(fd, PANGO_WEIGHT_SEMIBOLD);
-	pango_font_description_set_absolute_size(fd, 10 * PANGO_SCALE); /* 10 px font */
-	gtk_widget_modify_font(t->statusbar, fd);
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->statusbar, FALSE, FALSE, 0);
 
 	/* xtp meaning is normal by default */
