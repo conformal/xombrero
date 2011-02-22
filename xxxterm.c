@@ -7478,9 +7478,7 @@ completion_match(GtkEntryCompletion *completion, const gchar *key,
 
 	if (!strncmp(key, value, len))
 		match = TRUE;
-	else if (g_str_has_prefix(value, "http://") ||
-	    g_str_has_prefix(value, "https://") ||
-	    g_str_has_prefix(value, "file://")) {
+	else {
 		voffset = strstr(value, "/") + 2;
 		if (!strncmp(key, voffset, len))
 			match = TRUE;
