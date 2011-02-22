@@ -1037,7 +1037,7 @@ struct mime_type_list	mtl;
 struct alias_list	aliases;
 
 /* protos */
-void			create_new_tab(char *, struct undo *, int);
+struct tab		*create_new_tab(char *, struct undo *, int);
 void			delete_tab(struct tab *);
 void			adjustfont_webkit(struct tab *, int);
 int			run_script(struct tab *, char *);
@@ -5853,10 +5853,47 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 WebKitWebView *
 webview_cwv_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 {
+	struct tab		*tt;
+	struct domain		*d = NULL;
+	const gchar		*uri;
+	WebKitWebView		*webview = NULL;
+
 	DNPRINTF(XT_D_NAV, "webview_cwv_cb: %s\n",
 	    webkit_web_view_get_uri(wv));
 
-	return (wv);
+	if (enable_scripts == 0 && enable_cookie_whitelist == 1) {
+		uri = webkit_web_view_get_uri(wv);
+		if (uri && (d = wl_find_uri(uri, &js_wl)) == NULL)
+			return (NULL);
+
+		tt = create_new_tab(NULL, NULL, 1);
+		webview = tt->wv;
+	} else if (enable_scripts == 1) {
+		tt = create_new_tab(NULL, NULL, 1);
+		webview = tt->wv;
+	}
+
+	return (webview);
+}
+
+gboolean
+webview_closewv_cb(WebKitWebView *wv, struct tab *t)
+{
+	const gchar		*uri;
+	struct domain		*d = NULL;
+
+	DNPRINTF(XT_D_NAV, "webview_close_cb: %d\n", t->tab_id);
+
+	if (enable_scripts == 0 && enable_cookie_whitelist == 1) {
+		uri = webkit_web_view_get_uri(wv);
+		if (uri && (d = wl_find_uri(uri, &js_wl)) == NULL)
+			return (FALSE);
+
+		delete_tab(t);
+	} else if (enable_scripts == 1)
+		delete_tab(t);
+
+	return (TRUE);
 }
 
 int
@@ -6745,7 +6782,7 @@ append_tab(struct tab *t)
 	t->tab_id = gtk_notebook_append_page(notebook, t->vbox, t->tab_content);
 }
 
-void
+struct tab *
 create_new_tab(char *title, struct undo *u, int focus)
 {
 	struct tab			*t, *tt;
@@ -6760,7 +6797,7 @@ create_new_tab(char *title, struct undo *u, int focus)
 
 	if (tabless && !TAILQ_EMPTY(&tabs)) {
 		DNPRINTF(XT_D_TAB, "create_new_tab: new tab rejected\n");
-		return;
+		return (NULL);
 	}
 
 	t = g_malloc0(sizeof *t);
@@ -6888,6 +6925,7 @@ create_new_tab(char *title, struct undo *u, int focus)
 	    "signal::navigation-policy-decision-requested", G_CALLBACK(webview_npd_cb), t,
 	    "signal::new-window-policy-decision-requested", G_CALLBACK(webview_nw_cb), t,
 	    "signal::create-web-view", G_CALLBACK(webview_cwv_cb), t,
+	    "signal::close-web-view", G_CALLBACK(webview_closewv_cb), t,
 	    "signal::event", G_CALLBACK(webview_event_cb), t,
 	    "signal::load-finished", G_CALLBACK(webview_load_finished_cb), t,
 	    "signal::load-progress-changed", G_CALLBACK(webview_progress_changed_cb), t,
@@ -6947,6 +6985,8 @@ create_new_tab(char *title, struct undo *u, int focus)
 		g_list_free(u->history);
 	} else
 		webkit_web_back_forward_list_clear(t->bfl);
+
+	return (t);
 }
 
 void
