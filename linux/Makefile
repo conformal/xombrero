@@ -1,9 +1,9 @@
 # $xxxterm$
 
-LIBS= gtk+-2.0 webkit-1.0 libsoup-2.4
+LIBS= gtk+-2.0 webkit-1.0 libsoup-2.4 gnutls
 
 CFLAGS+= -Wall -ggdb -D_GNU_SOURCE -I. $(shell pkg-config --cflags $(LIBS))
-LDADD+= $(shell pkg-config --libs $(LIBS)) -lbsd
+LDADD+= $(shell pkg-config --libs $(LIBS)) -lbsd -ldl
 
 PREFIX?= /usr/local
 BINDIR?= $(PREFIX)/bin
