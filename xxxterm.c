@@ -751,6 +751,8 @@ void
 load_webkit_string(struct tab *t, const char *str, gchar *title)
 {
 	gchar			*uri;
+	char			file[PATH_MAX];
+	GdkPixbuf		*pb;
 
 	/* we set this to indicate we want to manually do navaction */
 	if (t->bfl)
@@ -761,6 +763,12 @@ load_webkit_string(struct tab *t, const char *str, gchar *title)
 		uri = g_strdup_printf("%s%s", XT_URI_ABOUT, title);
 		gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
 		g_free(uri);
+
+		snprintf(file, sizeof file, "%s/%s", resource_dir, icons[0]);
+		pb = gdk_pixbuf_new_from_file(file, NULL);
+		gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->uri_entry),
+		    GTK_ENTRY_ICON_PRIMARY, pb);
+		gdk_pixbuf_unref(pb);
 	}
 }
 
@@ -1263,8 +1271,6 @@ load_uri(struct tab *t, gchar *uri)
 	struct karg	args;
 	gchar		*newuri = NULL;
 	int		i;
-	char			file[PATH_MAX];
-	GdkPixbuf		*pb;
 
 	if (uri == NULL)
 		return;
@@ -1283,14 +1289,6 @@ load_uri(struct tab *t, gchar *uri)
 			if (!strcmp(&uri[XT_URI_ABOUT_LEN], about_list[i].name)) {
 				bzero(&args, sizeof args);
 				about_list[i].func(t, &args);
-
-				snprintf(file, sizeof file, "%s/%s",
-				    resource_dir, icons[0]);
-				pb = gdk_pixbuf_new_from_file(file, NULL);
-				gtk_entry_set_icon_from_pixbuf(
-				    GTK_ENTRY(t->uri_entry),
-				    GTK_ENTRY_ICON_PRIMARY, pb);
-				gdk_pixbuf_unref(pb);
 				return;
 			}
 		show_oops(t, "invalid about page");
@@ -5678,6 +5676,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), TRUE);
 
+		t->focus_wv = 1;
+
 		break;
 
 	case WEBKIT_LOAD_COMMITTED:
@@ -5777,7 +5777,6 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	    webkit_web_view_can_go_forward(wview));
 
 	/* take focus if we are visible */
-	t->focus_wv = 1;
 	focus_webview(t);
 }
 
