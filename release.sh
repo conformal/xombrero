@@ -6,7 +6,7 @@
 
 td=`mktemp -d /tmp/release.XXXXXXXXXX`
 cd $td
-cvs -d anoncvs@opensource.conformal.com:/anoncvs/xxxterm -Q export -D tomorrow xxxterm || exit 1
+cvs -d $(cat $1/CVS/Root) -Q export -D tomorrow xxxterm || exit 1
 REL=$(awk '/ .xxxterm: xxxterm.c,v/{print $4;}' xxxterm/xxxterm.c)
 mv xxxterm xxxterm-$REL
 tar zcf xxxterm-$REL.tgz xxxterm-$REL
