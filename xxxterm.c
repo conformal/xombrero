@@ -5476,7 +5476,7 @@ xt_icon_from_pixbuf(struct tab *t, GdkPixbuf *pixbuf)
 gboolean
 is_valid_icon(char *file)
 {
-        gboolean		valid = 0;
+	gboolean		valid = 0;
 	const char		*mime_type;
 	GFileInfo		*fi;
 	GFile			*gf;
@@ -6787,7 +6787,8 @@ delete_tab(struct tab *t)
 void
 adjustfont_webkit(struct tab *t, int adjust)
 {
-	gfloat	zoom;
+	gfloat			zoom;
+
 	if (t == NULL) {
 		show_oops_s("adjustfont_webkit invalid parameters");
 		return;
