@@ -5452,14 +5452,12 @@ xt_icon_from_name(struct tab *t, gchar *name)
 {
 	gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->uri_entry),
 	    GTK_ENTRY_ICON_PRIMARY, "text-html");
-	if (show_url == 0) {
+	if (show_url == 0)
 		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->statusbar),
 		    GTK_ENTRY_ICON_PRIMARY, "text-html");
-	} else {
+	else
 		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->statusbar),
 		    GTK_ENTRY_ICON_PRIMARY, NULL);
-	}
-	return;
 }
 
 void
@@ -5467,13 +5465,12 @@ xt_icon_from_pixbuf(struct tab *t, GdkPixbuf *pixbuf)
 {
 	gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->uri_entry),
 	    GTK_ENTRY_ICON_PRIMARY, pixbuf);
-	if (show_url == 0) {
+	if (show_url == 0)
 		gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->statusbar),
 		    GTK_ENTRY_ICON_PRIMARY, pixbuf);
-	} else {
+	else
 		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->statusbar),
 		    GTK_ENTRY_ICON_PRIMARY, NULL);
-	}
 }
 
 gboolean
