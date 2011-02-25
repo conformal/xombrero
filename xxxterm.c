@@ -2271,6 +2271,8 @@ toggle_js(struct tab *t, struct karg *args)
 	}
 	g_object_set(G_OBJECT(t->settings),
 	    "enable-scripts", es, (char *)NULL);
+	g_object_set(G_OBJECT(t->settings),
+	    "javascript-can-open-windows-automatically", es, (char *)NULL);
 	webkit_web_view_set_settings(t->wv, t->settings);
 	webkit_web_view_reload(t->wv);
 done:
@@ -5354,6 +5356,8 @@ check_and_set_js(const gchar *uri, struct tab *t)
 
 	g_object_set(G_OBJECT(t->settings),
 	    "enable-scripts", es, (char *)NULL);
+	g_object_set(G_OBJECT(t->settings),
+	    "javascript-can-open-windows-automatically", es, (char *)NULL);
 	webkit_web_view_set_settings(t->wv, t->settings);
 
 	button_set_stockid(t->js_toggle,
@@ -6546,6 +6550,8 @@ setup_webkit(struct tab *t)
 	    "enable-scripts", enable_scripts, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
 	    "enable-plugins", enable_plugins, (char *)NULL);
+	g_object_set(G_OBJECT(t->settings),
+	    "javascript-can-open-windows-automatically", enable_scripts, (char *)NULL);
 	g_object_set(G_OBJECT(t->wv),
 	    "full-content-zoom", TRUE, (char *)NULL);
 	adjustfont_webkit(t, XT_FONT_SET);
