@@ -5844,29 +5844,6 @@ webview_progress_changed_cb(WebKitWebView *wv, int progress, struct tab *t)
 }
 
 int
-webview_nw_cb(WebKitWebView *wv, WebKitWebFrame *wf,
-    WebKitNetworkRequest *request, WebKitWebNavigationAction *na,
-    WebKitWebPolicyDecision *pd, struct tab *t)
-{
-	char			*uri;
-
-	if (t == NULL) {
-		show_oops_s("webview_nw_cb invalid paramters");
-		return (FALSE);
-	}
-
-	DNPRINTF(XT_D_NAV, "webview_nw_cb: %s\n",
-	    webkit_network_request_get_uri(request));
-
-	/* open in current tab */
-	uri = (char *)webkit_network_request_get_uri(request);
-	webkit_web_view_load_uri(t->wv, uri);
-	webkit_web_policy_decision_ignore(pd);
-
-	return (TRUE); /* we made the decission */
-}
-
-int
 webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
     WebKitNetworkRequest *request, WebKitWebNavigationAction *na,
     WebKitWebPolicyDecision *pd, struct tab *t)
@@ -6966,7 +6943,7 @@ create_new_tab(char *title, struct undo *u, int focus)
 	    "signal::download-requested", G_CALLBACK(webview_download_cb), t,
 	    "signal::mime-type-policy-decision-requested", G_CALLBACK(webview_mimetype_cb), t,
 	    "signal::navigation-policy-decision-requested", G_CALLBACK(webview_npd_cb), t,
-	    "signal::new-window-policy-decision-requested", G_CALLBACK(webview_nw_cb), t,
+	    "signal::new-window-policy-decision-requested", G_CALLBACK(webview_npd_cb), t,
 	    "signal::create-web-view", G_CALLBACK(webview_cwv_cb), t,
 	    "signal::close-web-view", G_CALLBACK(webview_closewv_cb), t,
 	    "signal::event", G_CALLBACK(webview_event_cb), t,
