@@ -37,4 +37,7 @@ beforeinstall:
 
 ${PROG} ${OBJS} beforedepend: ${.CURDIR}/javascript.h
 
+release:
+	@sh ${.CURDIR}/release.sh ${.CURDIR}
+
 .include <bsd.prog.mk>
