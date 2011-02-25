@@ -5701,7 +5701,6 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 {
 	const gchar		*set = NULL, *uri = NULL, *title = NULL;
 	struct history		*h, find;
-	int			add = 0;
 	const gchar		*s_loading;
 	struct karg		a;
 
@@ -5759,46 +5758,29 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 	case WEBKIT_LOAD_FIRST_VISUALLY_NON_EMPTY_LAYOUT:
 		/* 3 */
-		title = webkit_web_view_get_title(wview);
-		uri = get_uri(wview);
-		if (title)
-			set = title;
-		else if (uri)
-			set = uri;
-		else
-			break;
-
-		gtk_label_set_text(GTK_LABEL(t->label), set);
-		gtk_window_set_title(GTK_WINDOW(main_window), set);
-
-		if (uri) {
-			if (!strncmp(uri, "http://", strlen("http://")) ||
-			    !strncmp(uri, "https://", strlen("https://")) ||
-			    !strncmp(uri, "file://", strlen("file://")))
-				add = 1;
-			if (add == 0)
-				break;
-			find.uri = uri;
-			h = RB_FIND(history_list, &hl, &find);
-			if (h)
-				break;
-
-			h = g_malloc(sizeof *h);
-			h->uri = g_strdup(uri);
-			if (title)
-				h->title = g_strdup(title);
-			else
-				h->title = g_strdup(uri);
-			RB_INSERT(history_list, &hl, h);
-			completion_add_uri(h->uri);
-			update_history_tabs(NULL);
-		}
-
 		break;
 
 	case WEBKIT_LOAD_FINISHED:
 		/* 2 */
 		uri = get_uri(wview);
+
+		if (!strncmp(uri, "http://", strlen("http://")) ||
+		    !strncmp(uri, "https://", strlen("https://")) ||
+		    !strncmp(uri, "file://", strlen("file://"))) {
+			find.uri = uri;
+			h = RB_FIND(history_list, &hl, &find);
+			if (!h) {
+				title = webkit_web_view_get_title(wview);
+				set = title ? title: uri;
+				h = g_malloc(sizeof *h);
+				h->uri = g_strdup(uri);
+				h->title = g_strdup(set);
+				RB_INSERT(history_list, &hl, h);
+				completion_add_uri(h->uri);
+				update_history_tabs(NULL);
+			}
+		}
+
 		set_status(t, (char *)uri, XT_STATUS_URI);
 #if WEBKIT_CHECK_VERSION(1, 1, 18)
 	case WEBKIT_LOAD_FAILED:
@@ -5827,6 +5809,17 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 	/* take focus if we are visible */
 	focus_webview(t);
+}
+
+void
+notify_title_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
+{
+	const gchar		*set = NULL, *title = NULL;
+
+	title = webkit_web_view_get_title(wview);
+	set = title ? title: get_uri(wview);
+	gtk_label_set_text(GTK_LABEL(t->label), set);
+	gtk_window_set_title(GTK_WINDOW(main_window), set);
 }
 
 void
@@ -6979,6 +6972,8 @@ create_new_tab(char *title, struct undo *u, int focus)
 	    (char *)NULL);
 	g_signal_connect(t->wv,
 	    "notify::load-status", G_CALLBACK(notify_load_status_cb), t);
+	g_signal_connect(t->wv,
+	    "notify::title", G_CALLBACK(notify_title_cb), t);
 
 	/* hijack the unused keys as if we were the browser */
 	g_object_connect(G_OBJECT(t->toolbar),
