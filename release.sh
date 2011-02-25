@@ -4,11 +4,10 @@
 # XXX This sucks, I know.  send me diffs to make it better
 #
 
-cd /tmp
-rm -rf xxxterm
-cvs -d anoncvs@opensource.conformal.com:/anoncvs/xxxterm -Q co xxxterm
-REL=$(awk '/ \$xxxterm$4;}' xxxterm/xxxterm.c)
-find xxxterm -name CVS -exec rm -rf {} \; 2> /dev/null
+td=`mktemp -d /tmp/release.XXXXXXXXXX`
+cd $td
+cvs -d anoncvs@opensource.conformal.com:/anoncvs/xxxterm -Q export -D tomorrow xxxterm || exit 1
+REL=$(awk '/ .xxxterm: xxxterm.c,v/{print $4;}' xxxterm/xxxterm.c)
 mv xxxterm xxxterm-$REL
 tar zcf xxxterm-$REL.tgz xxxterm-$REL
-echo /tmp/xxxterm-$REL.tgz
+echo $td/xxxterm-$REL.tgz
