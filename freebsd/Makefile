@@ -18,8 +18,8 @@ CC?= cc
 all: ../javascript.h xxxterm
 
 ../javascript.h: ../js-merge-helper.pl ../hinting.js
-	perl ../js-merge-helper.pl ../hinting.js \
-		../input-focus.js > ../javascript.h
+	perl ../js-merge-helper.pl ../hinting.js ../input-focus.js \
+	../inverse.js > ../javascript.h
 
 xxxterm.o: ../xxxterm.o
 
