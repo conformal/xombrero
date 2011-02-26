@@ -20,9 +20,6 @@
 
 /*
  * TODO:
- *	inverse color browsing
- *	favs
- *		- store in sqlite
  *	multi letter commands
  *	pre and post counts for commands
  *	autocompletion on various inputs
@@ -207,6 +204,10 @@ struct tab {
 #define XT_HINT_ALPHANUM	(2)
 	char			hint_buf[128];
 	char			hint_num[128];
+
+	/* custom stylesheet */
+	int			styled;
+	char			*stylesheet;
 
 	/* search */
 	char			*search_text;
@@ -1849,6 +1850,29 @@ hint(struct tab *t, struct karg *args)
 	else
 		disable_hints(t);
 
+	return (0);
+}
+
+void
+apply_style(struct tab *t)
+{
+	g_object_set(G_OBJECT(t->settings),
+	    "user-stylesheet-uri", t->stylesheet, (char *)NULL);
+}
+
+int
+userstyle(struct tab *t, struct karg *args)
+{
+	DNPRINTF(XT_D_JS, "userstyle: tab %d\n", t->tab_id);
+
+	if (t->styled) {
+		t->styled = 0;
+		g_object_set(G_OBJECT(t->settings),
+		    "user-stylesheet-uri", NULL, (char *)NULL);
+	} else {
+		t->styled = 1;
+		apply_style(t);
+	}
 	return (0);
 }
 
@@ -4657,6 +4681,9 @@ struct key_binding {
 	/* hinting */
 	{ "hinting",		0,	0,	GDK_f,		hint,		{.i = 0} },
 
+	/* custom stylesheet */
+	{ "userstyle",		0,	0,	GDK_i,		userstyle,	{.i = 0 } },
+
 	/* navigation */
 	{ "goback",		0,	0,	GDK_BackSpace,	navaction,	{.i = XT_NAV_BACK} },
 	{ "goback",		MOD1,	0,	GDK_Left,	navaction,	{.i = XT_NAV_BACK} },
@@ -5751,6 +5778,9 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 			check_and_set_js(uri, t);
 		}
 
+		if (t->styled)
+			apply_style(t);
+
 		show_ca_status(t, uri);
 
 		/* we know enough to autosave the session */
@@ -6567,9 +6597,10 @@ create_browser(struct tab *t)
 		    (char *)NULL);
 		t->user_agent = g_strdup_printf("%s %s+", strval, version);
 		g_free(strval);
-	} else {
+	} else
 		t->user_agent = g_strdup(user_agent);
-	}
+
+	t->stylesheet = g_strdup_printf("file://%s/style.css", resource_dir);
 
 	setup_webkit(t);
 
@@ -6753,6 +6784,7 @@ delete_tab(struct tab *t)
 
 	gtk_widget_destroy(t->vbox);
 	g_free(t->user_agent);
+	g_free(t->stylesheet);
 	g_free(t);
 
 	recalc_tabs();

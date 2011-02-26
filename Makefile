@@ -23,9 +23,10 @@ MANDIR= ${PREFIX}/man/cat
 
 CLEANFILES += javascript.h
 
-${.CURDIR}/javascript.h: hinting.js input-focus.js
+${.CURDIR}/javascript.h: hinting.js input-focus.js inverse.js
 	perl ${.CURDIR}/js-merge-helper.pl ${.CURDIR}/hinting.js \
-	    ${.CURDIR}/input-focus.js >  ${.CURDIR}/javascript.h
+	    ${.CURDIR}/input-focus.js ${.CURDIR}/inverse.js \
+	>  ${.CURDIR}/javascript.h
 
 beforeinstall:
 	mkdir -p ${PREFIX}/share/xxxterm
@@ -34,6 +35,7 @@ beforeinstall:
 	cp ${.CURDIR}/xxxtermicon48.png ${PREFIX}/share/xxxterm
 	cp ${.CURDIR}/xxxtermicon64.png ${PREFIX}/share/xxxterm
 	cp ${.CURDIR}/xxxtermicon128.png ${PREFIX}/share/xxxterm
+	cp ${.CURDIR}/style.css ${PREFIX}/share/xxxterm
 
 ${PROG} ${OBJS} beforedepend: ${.CURDIR}/javascript.h
 
