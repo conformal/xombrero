@@ -649,10 +649,12 @@ as the last tab.
 .It Cm browser_mode
 The
 .Nm
-browser has 2 default operating modes:
+browser has 3 default operating modes:
 .Pa normal
-(the default) or
-.Pa whitelist .
+(the default),
+.Pa whitelist
+and
+.Pa kiosk .
 In the
 .Pa normal
 mode the browser allows all cookies and Java Script as any other browser
@@ -671,6 +673,12 @@ items.
 If a domain does not appear in the whitelists
 .Nm
 disallows cookies and Java Script execution.
+.Pp
+In
+.Pa kiosk
+mode the browse works just like
+.Pa normal
+mode however the toolbar only has the backward, forward and home button.
 .Pp
 This setting must be the first entry in
 .Pa ~/.xxxterm.conf

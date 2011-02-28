@@ -170,6 +170,7 @@ struct tab {
 	GtkWidget		*backward;
 	GtkWidget		*forward;
 	GtkWidget		*stop;
+	GtkWidget		*gohome;
 	GtkWidget		*js_toggle;
 	GtkEntryCompletion	*completion;
 	guint			tab_id;
@@ -427,8 +428,9 @@ struct karg {
 #define XT_SES_DONOTHING	(0)
 #define XT_SES_CLOSETABS	(1)
 
-#define XT_COOKIE_NORMAL	(0)
-#define XT_COOKIE_WHITELIST	(1)
+#define XT_BM_NORMAL		(0)
+#define XT_BM_WHITELIST		(1)
+#define XT_BM_KIOSK		(2)
 
 /* mime types */
 struct mime_type {
@@ -452,7 +454,7 @@ int		tabless = 0;	/* allow only 1 tab */
 int		enable_socket = 0;
 int		single_instance = 0; /* only allow one xxxterm to run */
 int		fancy_bar = 1;	/* fancy toolbar */
-int		browser_mode = XT_COOKIE_NORMAL;
+int		browser_mode = XT_BM_NORMAL;
 
 /* runtime settings */
 int		show_tabs = 1;	/* show tabs on notebook */
@@ -924,7 +926,7 @@ int
 set_browser_mode(struct settings *s, char *val)
 {
 	if (!strcmp(val, "whitelist")) {
-		browser_mode = XT_COOKIE_WHITELIST;
+		browser_mode = XT_BM_WHITELIST;
 		allow_volatile_cookies	= 0;
 		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
 		cookies_enabled = 1;
@@ -935,7 +937,7 @@ set_browser_mode(struct settings *s, char *val)
 		enable_scripts = 0;
 		enable_js_whitelist = 1;
 	} else if (!strcmp(val, "normal")) {
-		browser_mode = XT_COOKIE_NORMAL;
+		browser_mode = XT_BM_NORMAL;
 		allow_volatile_cookies = 0;
 		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_ALWAYS;
 		cookies_enabled = 1;
@@ -945,6 +947,18 @@ set_browser_mode(struct settings *s, char *val)
 		session_timeout = 3600;
 		enable_scripts = 1;
 		enable_js_whitelist = 0;
+	} else if (!strcmp(val, "kiosk")) {
+		browser_mode = XT_BM_KIOSK;
+		allow_volatile_cookies = 0;
+		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_ALWAYS;
+		cookies_enabled = 1;
+		enable_cookie_whitelist = 0;
+		read_only_cookies = 0;
+		save_rejected_cookies = 0;
+		session_timeout = 3600;
+		enable_scripts = 1;
+		enable_js_whitelist = 0;
+		show_tabs = 0;
 	} else
 		return (1);
 
@@ -956,10 +970,12 @@ get_browser_mode(struct settings *s)
 {
 	char			*r = NULL;
 
-	if (browser_mode == XT_COOKIE_WHITELIST)
+	if (browser_mode == XT_BM_WHITELIST)
 		r = g_strdup("whitelist");
-	else if (browser_mode == XT_COOKIE_NORMAL)
+	else if (browser_mode == XT_BM_NORMAL)
 		r = g_strdup("normal");
+	else if (browser_mode == XT_BM_KIOSK)
+		r = g_strdup("kiosk");
 	else
 		return (NULL);
 
@@ -6527,6 +6543,19 @@ forward_cb(GtkWidget *w, struct tab *t)
 }
 
 void
+home_cb(GtkWidget *w, struct tab *t)
+{
+	if (t == NULL) {
+		show_oops_s("home_cb invalid parameters");
+		return;
+	}
+
+	DNPRINTF(XT_D_NAV, "home_cb: tab %d\n", t->tab_id);
+
+	load_uri(t, home);
+}
+
+void
 stop_cb(GtkWidget *w, struct tab *t)
 {
 	WebKitWebFrame		*frame;
@@ -6620,6 +6649,45 @@ create_window(void)
 	    G_CALLBACK (gtk_main_quit), NULL);
 
 	return (w);
+}
+
+GtkWidget *
+create_kiosk_toolbar(struct tab *t)
+{
+	GtkWidget		*toolbar = NULL, *b;
+
+	b = gtk_hbox_new(FALSE, 0);
+	toolbar = b;
+	gtk_container_set_border_width(GTK_CONTAINER(toolbar), 0);
+
+	/* backward button */
+	t->backward = create_button("GoBack", GTK_STOCK_GO_BACK, 0);
+	gtk_widget_set_sensitive(t->backward, FALSE);
+	g_signal_connect(G_OBJECT(t->backward), "clicked",
+	    G_CALLBACK(backward_cb), t);
+	gtk_box_pack_start(GTK_BOX(b), t->backward, TRUE, TRUE, 0);
+
+	/* forward button */
+	t->forward = create_button("GoForward", GTK_STOCK_GO_FORWARD, 0);
+	gtk_widget_set_sensitive(t->forward, FALSE);
+	g_signal_connect(G_OBJECT(t->forward), "clicked",
+	    G_CALLBACK(forward_cb), t);
+	gtk_box_pack_start(GTK_BOX(b), t->forward, TRUE, TRUE, 0);
+
+	/* home button */
+	t->gohome = create_button("GoForward", GTK_STOCK_HOME, 0);
+	gtk_widget_set_sensitive(t->gohome, true);
+	g_signal_connect(G_OBJECT(t->gohome), "clicked",
+	    G_CALLBACK(home_cb), t);
+	gtk_box_pack_start(GTK_BOX(b), t->gohome, TRUE, TRUE, 0);
+
+	/* create widgets but don't use them */
+	t->uri_entry = gtk_entry_new();
+	t->stop = create_button("Stop", GTK_STOCK_STOP, 0);
+	t->js_toggle = create_button("JS-Toggle", enable_scripts ?
+	    GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE, 0);
+
+	return (toolbar);
 }
 
 GtkWidget *
@@ -6782,15 +6850,25 @@ delete_tab(struct tab *t)
 	webkit_web_view_stop_loading(t->wv);
 	undo_close_tab_save(t);
 
+	if (browser_mode == XT_BM_KIOSK) {
+		gtk_widget_destroy(t->uri_entry);
+		gtk_widget_destroy(t->stop);
+		gtk_widget_destroy(t->js_toggle);
+
+	}
+
 	gtk_widget_destroy(t->vbox);
 	g_free(t->user_agent);
 	g_free(t->stylesheet);
 	g_free(t);
 
 	recalc_tabs();
-	if (TAILQ_EMPTY(&tabs))
-		create_new_tab(NULL, NULL, 1);
-
+	if (TAILQ_EMPTY(&tabs)) {
+		if (browser_mode == XT_BM_KIOSK)
+			create_new_tab(home, NULL, 1);
+		else
+			create_new_tab(NULL, NULL, 1);
+	}
 
 	/* recreate session */
 	if (session_autosave) {
@@ -6884,7 +6962,11 @@ create_new_tab(char *title, struct undo *u, int focus)
 #endif
 
 	/* toolbar */
-	t->toolbar = create_toolbar(t);
+	if (browser_mode == XT_BM_KIOSK)
+		t->toolbar = create_kiosk_toolbar(t);
+	else
+		t->toolbar = create_toolbar(t);
+
 	gtk_box_pack_start(GTK_BOX(t->vbox), t->toolbar, FALSE, FALSE, 0);
 
 	/* browser */
@@ -7161,7 +7243,8 @@ create_button(char *name, char *stockid, int size)
 void
 button_set_stockid(GtkWidget *button, char *stockid)
 {
-	GtkWidget *image;
+	GtkWidget		*image;
+
 	image = gtk_image_new_from_stock(stockid, icon_size_map(icon_size));
 	gtk_widget_set_size_request(GTK_WIDGET(image), -1, -1);
 	gtk_button_set_image(GTK_BUTTON(button), image);
