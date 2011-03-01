@@ -5894,7 +5894,9 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
     WebKitNetworkRequest *request, WebKitWebNavigationAction *na,
     WebKitWebPolicyDecision *pd, struct tab *t)
 {
-	char			*uri;
+	char				*uri;
+	WebKitWebNavigationReason	reason;
+	struct domain			*d = NULL;
 
 	if (t == NULL) {
 		show_oops_s("webview_npd_cb invalid parameters");
@@ -5914,8 +5916,22 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 		return (TRUE); /* we made the decission */
 	}
 
-	webkit_web_policy_decision_use(pd);
-	return (TRUE); /* we made the decission */
+	/*
+	 * This is a little hairy but it comes down to this:
+	 * when we run in whitelist mode we have to assist the browser in
+	 * opening the URL that it would have opened in a new tab.
+	 */
+	reason = webkit_web_navigation_action_get_reason(na);
+	if (reason == WEBKIT_WEB_NAVIGATION_REASON_LINK_CLICKED) {
+		if (enable_scripts == 0 && enable_cookie_whitelist == 1)
+			if (uri && (d = wl_find_uri(uri, &js_wl)) == NULL)
+				load_uri(t, uri);
+
+		webkit_web_policy_decision_use(pd);
+		return (TRUE); /* we made the decission */
+	}
+
+	return (FALSE);
 }
 
 WebKitWebView *
