@@ -21,12 +21,11 @@ LDFLAGS+= $(GTK_LDFLAGS) -pthread
 
 MANDIR= ${PREFIX}/man/cat
 
-CLEANFILES += javascript.h
+CLEANFILES += ${.CURDIR}/javascript.h
 
-${.CURDIR}/javascript.h: hinting.js input-focus.js inverse.js
+${.CURDIR}/javascript.h: hinting.js input-focus.js
 	perl ${.CURDIR}/js-merge-helper.pl ${.CURDIR}/hinting.js \
-	    ${.CURDIR}/input-focus.js ${.CURDIR}/inverse.js \
-	>  ${.CURDIR}/javascript.h
+	    ${.CURDIR}/input-focus.js >  ${.CURDIR}/javascript.h
 
 beforeinstall:
 	mkdir -p ${PREFIX}/share/xxxterm
