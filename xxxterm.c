@@ -5031,7 +5031,23 @@ struct cmd {
 gboolean
 wv_button_cb(GtkWidget *btn, GdkEventButton *e, struct tab *t)
 {
+	struct karg		a;
+
 	hide_oops(t);
+
+	if (e->type == GDK_BUTTON_PRESS && e->button == 8 /* btn 4 */) {
+		/* go backward */
+		a.i = XT_NAV_BACK;
+		navaction(t, &a);
+
+		return (TRUE);
+	} else if (e->type == GDK_BUTTON_PRESS && e->button == 9 /* btn 5 */) {
+		/* go forward */
+		a.i = XT_NAV_FORWARD;
+		navaction(t, &a);
+
+		return (TRUE);
+	}
 
 	return (FALSE);
 }
