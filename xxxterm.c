@@ -3952,7 +3952,7 @@ xtp_page_dl_row(struct tab *t, char *html, struct download *dl)
 	new_html = g_strdup_printf(
 	    "%s\n<tr><td>%s</td><td>%s</td>"
 	    "<td style='text-align:center'>%s</td></tr>\n",
-	    html, basename(webkit_download_get_uri(dl->download)),
+	    html, basename(webkit_download_get_destination_uri(dl->download)),
 	    status_html, cmd_html);
 	g_free(html);
 
@@ -6112,6 +6112,8 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download,
 		/* get from history */
 		g_object_ref(wk_download);
 		gtk_label_set_text(GTK_LABEL(t->label), "Downloading");
+		show_oops(t, "Download of '%s' started...",
+		    basename(webkit_download_get_destination_uri(wk_download)));
 	}
 
 	if (uri)
