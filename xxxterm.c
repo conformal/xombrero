@@ -306,7 +306,7 @@ struct karg {
 #define XT_PRINT_EXTRA_MARGIN	10
 
 /* colors */
-#define	XT_COLOR_RED		"#ff9966"
+#define	XT_COLOR_RED		"#cc0000"
 #define	XT_COLOR_YELLOW		"#ffff66"
 #define	XT_COLOR_BLUE		"lightblue"
 #define	XT_COLOR_GREEN		"#99ff66"
