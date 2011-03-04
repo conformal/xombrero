@@ -305,11 +305,13 @@ struct karg {
 #define XT_RESERVED_CHARS	"$&+,/:;=?@ \"<>#%%{}|^~[]`"
 #define XT_PRINT_EXTRA_MARGIN	10
 
-/* file sizes */
-#define SZ_KB		((uint64_t) 1024)
-#define SZ_MB		(SZ_KB * SZ_KB)
-#define SZ_GB		(SZ_KB * SZ_KB * SZ_KB)
-#define SZ_TB		(SZ_KB * SZ_KB * SZ_KB * SZ_KB)
+/* colors */
+#define	XT_COLOR_RED		"#ff9966"
+#define	XT_COLOR_YELLOW		"#ffff66"
+#define	XT_COLOR_BLUE		"lightblue"
+#define	XT_COLOR_GREEN		"#99ff66"
+#define	XT_COLOR_WHITE		"white"
+#define	XT_COLOR_BLACK		"black"
 
 /*
  * xxxterm "protocol" (xtp)
@@ -2922,7 +2924,7 @@ save_certs(struct tab *t, gnutls_x509_crt_t *certs,
 	gdk_color_parse("lightblue", &color);
 	gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
 	gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL, &color);
-	gdk_color_parse("black", &color);
+	gdk_color_parse(XT_COLOR_BLACK, &color);
 	gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL, &color);
 done:
 	fclose(f);
@@ -3864,7 +3866,7 @@ command(struct tab *t, struct karg *args)
 	DNPRINTF(XT_D_CMD, "command: type %s\n", s);
 
 	gtk_entry_set_text(GTK_ENTRY(t->cmd), s);
-	gdk_color_parse("white", &color);
+	gdk_color_parse(XT_COLOR_WHITE, &color);
 	gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL, &color);
 	show_cmd(t);
 	gtk_widget_grab_focus(GTK_WIDGET(t->cmd));
@@ -5431,7 +5433,7 @@ show_ca_status(struct tab *t, const char *uri)
 	WebKitNetworkRequest	*request;
 	SoupMessage		*message;
 	GdkColor		color;
-	gchar			*col_str = "white";
+	gchar			*col_str = XT_COLOR_WHITE;
 	int			r;
 
 	DNPRINTF(XT_D_URL, "show_ca_status: %d %s %s\n",
@@ -5443,7 +5445,7 @@ show_ca_status(struct tab *t, const char *uri)
 		if (g_str_has_prefix(uri, "http://"))
 			goto done;
 		if (g_str_has_prefix(uri, "https://")) {
-			col_str = "red";
+			col_str = XT_COLOR_RED;
 			goto done;
 		}
 		return;
@@ -5459,16 +5461,16 @@ show_ca_status(struct tab *t, const char *uri)
 
 	if (message && (soup_message_get_flags(message) &
 	    SOUP_MESSAGE_CERTIFICATE_TRUSTED)) {
-		col_str = "green";
+		col_str = XT_COLOR_GREEN;
 		goto done;
 	} else {
 		r = load_compare_cert(t, NULL);
 		if (r == 0)
-			col_str = "lightblue";
+			col_str = XT_COLOR_BLUE;
 		else if (r == 1)
-			col_str = "yellow";
+			col_str = XT_COLOR_YELLOW;
 		else
-			col_str = "red";
+			col_str = XT_COLOR_RED;
 		goto done;
 	}
 done:
@@ -5476,16 +5478,16 @@ done:
 		gdk_color_parse(col_str, &color);
 		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
 
-		if (!strcmp(col_str, "white")) {
+		if (!strcmp(col_str, XT_COLOR_WHITE)) {
 			gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL,
 			    &color);
-			gdk_color_parse("black", &color);
+			gdk_color_parse(XT_COLOR_BLACK, &color);
 			gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL,
 			    &color);
 		} else {
 			gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL,
 			    &color);
-			gdk_color_parse("black", &color);
+			gdk_color_parse(XT_COLOR_BLACK, &color);
 			gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL,
 			    &color);
 		}
@@ -6335,7 +6337,7 @@ cmd_keyrelease_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	if (webkit_web_view_search_text(t->wv, &c[1], FALSE, forward, TRUE) ==
 	    FALSE) {
 		/* not found, mark red */
-		gdk_color_parse("red", &color);
+		gdk_color_parse(XT_COLOR_RED, &color);
 		gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL, &color);
 		/* unmark and remove selection */
 		webkit_web_view_unmark_text_matches(t->wv);
@@ -6345,7 +6347,7 @@ cmd_keyrelease_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		webkit_web_view_unmark_text_matches(t->wv);
 		webkit_web_view_mark_text_matches(t->wv, &c[1], FALSE, 0);
 		webkit_web_view_set_highlight_text_matches(t->wv, TRUE);
-		gdk_color_parse("white", &color);
+		gdk_color_parse(XT_COLOR_WHITE, &color);
 		gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL, &color);
 	}
 done:
@@ -7012,7 +7014,7 @@ create_new_tab(char *title, struct undo *u, int focus)
 	gtk_entry_set_inner_border(GTK_ENTRY(t->oops), NULL);
 	gtk_entry_set_has_frame(GTK_ENTRY(t->oops), FALSE);
 	gtk_widget_set_can_focus(GTK_WIDGET(t->oops), FALSE);
-	gdk_color_parse("red", &color);
+	gdk_color_parse(XT_COLOR_RED, &color);
 	gtk_widget_modify_base(t->oops, GTK_STATE_NORMAL, &color);
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->oops, FALSE, FALSE, 0);
 
@@ -7027,9 +7029,9 @@ create_new_tab(char *title, struct undo *u, int focus)
 	gtk_entry_set_inner_border(GTK_ENTRY(t->statusbar), NULL);
 	gtk_entry_set_has_frame(GTK_ENTRY(t->statusbar), FALSE);
 	gtk_widget_set_can_focus(GTK_WIDGET(t->statusbar), FALSE);
-	gdk_color_parse("black", &color);
+	gdk_color_parse(XT_COLOR_BLACK, &color);
 	gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL, &color);
-	gdk_color_parse("white", &color);
+	gdk_color_parse(XT_COLOR_WHITE, &color);
 	gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL, &color);
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->statusbar, FALSE, FALSE, 0);
 
