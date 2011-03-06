@@ -7434,6 +7434,10 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 	if (jar == p_cookiejar)
 		return;
 
+	/* sanity */
+	if (jar == NULL || cookie == NULL)
+		return;
+
 	if (enable_cookie_whitelist &&
 	    (d = wl_find(cookie->domain, &c_wl)) == NULL) {
 		blocked_cookies++;
