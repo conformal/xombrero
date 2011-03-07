@@ -4690,12 +4690,6 @@ struct key_binding {
 	{ "focusaddress",	0,	0,	GDK_F6,		focus,		{.i = XT_FOCUS_URI} },
 	{ "focussearch",	0,	0,	GDK_F7,		focus,		{.i = XT_FOCUS_SEARCH} },
 
-	/* command aliases (handy when -S flag is used) */
-	{ "open",		0,	0,	GDK_F9,		command,	{.i = XT_CMD_OPEN} },
-	{ "opencurrent",	0,	0,	GDK_F10,	command,	{.i = XT_CMD_OPEN_CURRENT} },
-	{ "tabnew",		0,	0,	GDK_F11,	command,	{.i = XT_CMD_TABNEW} },
-	{ "tabnewcurrent",	0,	0,	GDK_F12,	command,	{.i = XT_CMD_TABNEW_CURRENT} },
-
 	/* hinting */
 	{ "hinting",		0,	0,	GDK_f,		hint,		{.i = 0} },
 
@@ -4758,6 +4752,13 @@ struct key_binding {
 	{ "focusout",		CTRL,	0,	GDK_minus,	resizetab,	{.i = -1} },
 	{ "focusin",		CTRL,	0,	GDK_plus,	resizetab,	{.i = 1} },
 	{ "focusin",		CTRL,	0,	GDK_equal,	resizetab,	{.i = 1} },
+
+	/* command aliases (handy when -S flag is used) */
+	{ "open",		0,	0,	GDK_F9,		command,	{.i = XT_CMD_OPEN} },
+	{ "opencurrent",	0,	0,	GDK_F10,	command,	{.i = XT_CMD_OPEN_CURRENT} },
+	{ "tabnew",		0,	0,	GDK_F11,	command,	{.i = XT_CMD_TABNEW} },
+	{ "tabnewcurrent",	0,	0,	GDK_F12,	command,	{.i = XT_CMD_TABNEW_CURRENT} },
+
 };
 TAILQ_HEAD(keybinding_list, key_binding);
 
