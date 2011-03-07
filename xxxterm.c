@@ -1657,7 +1657,7 @@ settings_add(char *var, char *val)
 
 		if (rs[i].s) {
 			if (rs[i].s->set(&rs[i], val))
-				errx(1, "invalid value for %s", var);
+				errx(1, "invalid value for %s: %s", var, val);
 			rv = 1;
 			break;
 		} else
@@ -4754,11 +4754,10 @@ struct key_binding {
 	{ "focusin",		CTRL,	0,	GDK_equal,	resizetab,	{.i = 1} },
 
 	/* command aliases (handy when -S flag is used) */
-	{ "open",		0,	0,	GDK_F9,		command,	{.i = XT_CMD_OPEN} },
-	{ "opencurrent",	0,	0,	GDK_F10,	command,	{.i = XT_CMD_OPEN_CURRENT} },
-	{ "tabnew",		0,	0,	GDK_F11,	command,	{.i = XT_CMD_TABNEW} },
-	{ "tabnewcurrent",	0,	0,	GDK_F12,	command,	{.i = XT_CMD_TABNEW_CURRENT} },
-
+	{ "promptopen",		0,	0,	GDK_F9,		command,	{.i = XT_CMD_OPEN} },
+	{ "promptopencurrent",	0,	0,	GDK_F10,	command,	{.i = XT_CMD_OPEN_CURRENT} },
+	{ "prompttabnew",	0,	0,	GDK_F11,	command,	{.i = XT_CMD_TABNEW} },
+	{ "prompttabnewcurrent",0,	0,	GDK_F12,	command,	{.i = XT_CMD_TABNEW_CURRENT} },
 };
 TAILQ_HEAD(keybinding_list, key_binding);
 
