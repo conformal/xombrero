@@ -4691,10 +4691,10 @@ struct key_binding {
 	{ "focussearch",	0,	0,	GDK_F7,		focus,		{.i = XT_FOCUS_SEARCH} },
 
 	/* command aliases (handy when -S flag is used) */
-	{ NULL,			0,	0,	GDK_F9,		command,	{.i = XT_CMD_OPEN} },
-	{ NULL,			0,	0,	GDK_F10,	command,	{.i = XT_CMD_OPEN_CURRENT} },
-	{ NULL,			0,	0,	GDK_F11,	command,	{.i = XT_CMD_TABNEW} },
-	{ NULL,			0,	0,	GDK_F12,	command,	{.i = XT_CMD_TABNEW_CURRENT} },
+	{ "open",		0,	0,	GDK_F9,		command,	{.i = XT_CMD_OPEN} },
+	{ "opencurrent",	0,	0,	GDK_F10,	command,	{.i = XT_CMD_OPEN_CURRENT} },
+	{ "tabnew",		0,	0,	GDK_F11,	command,	{.i = XT_CMD_TABNEW} },
+	{ "tabnewcurrent",	0,	0,	GDK_F12,	command,	{.i = XT_CMD_TABNEW_CURRENT} },
 
 	/* hinting */
 	{ "hinting",		0,	0,	GDK_f,		hint,		{.i = 0} },
