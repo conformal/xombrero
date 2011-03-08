@@ -5831,6 +5831,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	case WEBKIT_LOAD_FINISHED:
 		/* 2 */
 		uri = get_uri(wview);
+		if (uri == NULL)
+			return;
 
 		if (!strncmp(uri, "http://", strlen("http://")) ||
 		    !strncmp(uri, "https://", strlen("https://")) ||
