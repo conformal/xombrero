@@ -4958,77 +4958,114 @@ struct cmd {
 	int		params;
 	int		(*func)(struct tab *, struct karg *);
 	struct karg	arg;
+	bool		userarg; /* allow free text arg */
 } cmds[] = {
-	{ "q!",			0,	quit,			{0} },
-	{ "qa",			0,	quit,			{0} },
-	{ "qa!",		0,	quit,			{0} },
-	{ "w",			0,	save_tabs,		{0} },
-	{ "wq",			0,	save_tabs_and_quit,	{0} },
-	{ "wq!",		0,	save_tabs_and_quit,	{0} },
-	{ "help",		0,	help,			{0} },
-	{ "about",		0,	about,			{0} },
-	{ "stats",		0,	stats,			{0} },
-	{ "version",		0,	about,			{0} },
-	{ "cookies",		0,	xtp_page_cl,		{0} },
-	{ "fav",		0,	xtp_page_fl,		{0} },
-	{ "favadd",		0,	add_favorite,		{0} },
-	{ "js",			2,	js_cmd,			{0} },
-	{ "cookie",		2,	cookie_cmd,		{0} },
-	{ "cert",		1,	cert_cmd,		{0} },
-	{ "ca",			0,	ca_cmd,			{0} },
-	{ "dl",			0,	xtp_page_dl,		{0} },
-	{ "h",			0,	xtp_page_hl,		{0} },
-	{ "hist",		0,	xtp_page_hl,		{0} },
-	{ "history",		0,	xtp_page_hl,		{0} },
-	{ "home",		0,	go_home,		{0} },
-	{ "restart",		0,	restart,		{0} },
-	{ "urlhide",		0,	urlaction,		{.i = XT_URL_HIDE} },
-	{ "urlh",		0,	urlaction,		{.i = XT_URL_HIDE} },
-	{ "urlshow",		0,	urlaction,		{.i = XT_URL_SHOW} },
-	{ "urls",		0,	urlaction,		{.i = XT_URL_SHOW} },
-	{ "statushide",		0,	statusaction,		{.i = XT_STATUSBAR_HIDE} },
-	{ "statush",		0,	statusaction,		{.i = XT_STATUSBAR_HIDE} },
-	{ "statusshow",		0,	statusaction,		{.i = XT_STATUSBAR_SHOW} },
-	{ "statuss",		0,	statusaction,		{.i = XT_STATUSBAR_SHOW} },
+	{ "q!",			0,	quit,			{0}, FALSE },
+	{ "qa",			0,	quit,			{0}, FALSE },
+	{ "qa!",		0,	quit,			{0}, FALSE },
+	{ "w",			0,	save_tabs,		{0}, FALSE },
+	{ "wq",			0,	save_tabs_and_quit,	{0}, FALSE },
+	{ "wq!",		0,	save_tabs_and_quit,	{0}, FALSE },
+	{ "help",		0,	help,			{0}, FALSE },
+	{ "about",		0,	about,			{0}, FALSE },
+	{ "stats",		0,	stats,			{0}, FALSE },
+	{ "version",		0,	about,			{0}, FALSE },
+	{ "fav",		0,	xtp_page_fl,		{0}, FALSE },
+	{ "favadd",		0,	add_favorite,		{0}, FALSE },
 
-	{ "1",			0,	move,			{.i = XT_MOVE_TOP} },
-	{ "print",		0,	print_page,		{0} },
+	{ "js",			0,	js_cmd,			{0}, FALSE },
+	{ "save",		1,	js_cmd,			{0}, FALSE },
+	{ "domain",		2,	js_cmd,			{0}, FALSE },
+	{ "fqdn",		2,	js_cmd,			{0}, FALSE },
+	{ "toggle",		1,	js_cmd,			{0}, FALSE },
+	{ "domain",		2,	js_cmd,			{0}, FALSE },
+	{ "fqdn",		2,	js_cmd,			{0}, FALSE },
+	{ "show",		1,	js_cmd,			{0}, FALSE },
+	{ "all",		2,	js_cmd,			{0}, FALSE },
+	{ "persistent",		2,	js_cmd,			{0}, FALSE },
+	{ "session",		2,	js_cmd,			{0}, FALSE },
+
+	{ "cookie",		0,	cookie_cmd,		{0}, FALSE },
+	{ "show",		1,	cookie_cmd,		{0}, FALSE },
+	{ "all",		2,	cookie_cmd,		{0}, FALSE },
+	{ "persistent",		2,	cookie_cmd,		{0}, FALSE },
+	{ "session",		2,	cookie_cmd,		{0}, FALSE },
+	{ "save",		1,      cookie_cmd,		{0}, FALSE },
+	{ "fqdn",		2,      cookie_cmd,		{0}, FALSE },
+	{ "domain",		2,	cookie_cmd,		{0}, FALSE },
+	{ "toggle",		1,	cookie_cmd,		{0}, FALSE },
+	{ "domain",		2,	cookie_cmd,		{0}, FALSE },
+	{ "fqdn",		2,	cookie_cmd,		{0}, FALSE },
+
+	{ "cert",		0,	cert_cmd,		{0}, FALSE },
+	{ "show",		1,	cert_cmd,		{0}, FALSE },
+	{ "save",		1,	cert_cmd,		{0}, FALSE },
+
+	{ "cookies",		0,	xtp_page_cl,		{0}, FALSE },
+	{ "ca",			0,	ca_cmd,			{0}, FALSE },
+	{ "dl",			0,	xtp_page_dl,		{0}, FALSE },
+	{ "h",			0,	xtp_page_hl,		{0}, FALSE },
+	{ "hist",		0,	xtp_page_hl,		{0}, FALSE },
+	{ "history",		0,	xtp_page_hl,		{0}, FALSE },
+	{ "home",		0,	go_home,		{0}, FALSE },
+	{ "restart",		0,	restart,		{0}, FALSE },
+	{ "urlhide",		0,	urlaction,		{.i = XT_URL_HIDE}, FALSE },
+	{ "urlh",		0,	urlaction,		{.i = XT_URL_HIDE}, FALSE },
+	{ "urlshow",		0,	urlaction,		{.i = XT_URL_SHOW}, FALSE },
+	{ "urls",		0,	urlaction,		{.i = XT_URL_SHOW}, FALSE },
+	{ "statushide",		0,	statusaction,		{.i = XT_STATUSBAR_HIDE}, FALSE },
+	{ "statush",		0,	statusaction,		{.i = XT_STATUSBAR_HIDE}, FALSE },
+	{ "statusshow",		0,	statusaction,		{.i = XT_STATUSBAR_SHOW}, FALSE },
+	{ "statuss",		0,	statusaction,		{.i = XT_STATUSBAR_SHOW}, FALSE },
+
+	{ "1",			0,	move,			{.i = XT_MOVE_TOP}, FALSE },
+	{ "print",		0,	print_page,		{0}, FALSE },
 
 	/* tabs */
-	{ "o",			1,	tabaction,		{.i = XT_TAB_OPEN} },
-	{ "op",			1,	tabaction,		{.i = XT_TAB_OPEN} },
-	{ "open",		1,	tabaction,		{.i = XT_TAB_OPEN} },
-	{ "tabnew",		1,	tabaction,		{.i = XT_TAB_NEW} },
-	{ "tabedit",		1,	tabaction,		{.i = XT_TAB_NEW} },
-	{ "tabe",		1,	tabaction,		{.i = XT_TAB_NEW} },
-	{ "tabclose",		0,	tabaction,		{.i = XT_TAB_DELETE} },
-	{ "tabc",		0,	tabaction,		{.i = XT_TAB_DELETE} },
-	{ "tabshow",		1,	tabaction,		{.i = XT_TAB_SHOW} },
-	{ "tabs",		1,	tabaction,		{.i = XT_TAB_SHOW} },
-	{ "tabhide",		1,	tabaction,		{.i = XT_TAB_HIDE} },
-	{ "tabh",		1,	tabaction,		{.i = XT_TAB_HIDE} },
-	{ "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT} },
-	{ "q",			0,	tabaction,		{.i = XT_TAB_DELQUIT} },
+	{ "o",			0,	tabaction,		{.i = XT_TAB_OPEN}, TRUE },
+	{ "op",			0,	tabaction,		{.i = XT_TAB_OPEN},TRUE },
+	{ "open",		0,	tabaction,		{.i = XT_TAB_OPEN}, TRUE },
+	{ "tabnew",		0,	tabaction,		{.i = XT_TAB_NEW}, TRUE },
+	{ "tabedit",		0,	tabaction,		{.i = XT_TAB_NEW}, TRUE },
+	{ "tabe",		0,	tabaction,		{.i = XT_TAB_NEW}, TRUE },
+	{ "tabclose",		0,	tabaction,		{.i = XT_TAB_DELETE}, FALSE },
+	{ "tabc",		0,	tabaction,		{.i = XT_TAB_DELETE}, FALSE },
+	{ "tabshow",		0,	tabaction,		{.i = XT_TAB_SHOW}, FALSE },
+	{ "tabs",		0,	tabaction,		{.i = XT_TAB_SHOW}, FALSE },
+	{ "tabhide",		0,	tabaction,		{.i = XT_TAB_HIDE}, FALSE },
+	{ "tabh",		0,	tabaction,		{.i = XT_TAB_HIDE}, FALSE },
+	{ "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT}, FALSE },
+	{ "q",			0,	tabaction,		{.i = XT_TAB_DELQUIT}, FALSE },
 	/* XXX add count to these commands */
-	{ "tabfirst",		0,	movetab,		{.i = XT_TAB_FIRST} },
-	{ "tabfir",		0,	movetab,		{.i = XT_TAB_FIRST} },
-	{ "tabrewind",		0,	movetab,		{.i = XT_TAB_FIRST} },
-	{ "tabr",		0,	movetab,		{.i = XT_TAB_FIRST} },
-	{ "tablast",		0,	movetab,		{.i = XT_TAB_LAST} },
-	{ "tabl",		0,	movetab,		{.i = XT_TAB_LAST} },
-	{ "tabprevious",	0,	movetab,		{.i = XT_TAB_PREV} },
-	{ "tabp",		0,	movetab,		{.i = XT_TAB_PREV} },
-	{ "tabnext",		0,	movetab,		{.i = XT_TAB_NEXT} },
-	{ "tabn",		0,	movetab,		{.i = XT_TAB_NEXT} },
+	{ "tabfirst",		0,	movetab,		{.i = XT_TAB_FIRST}, FALSE },
+	{ "tabfir",		0,	movetab,		{.i = XT_TAB_FIRST}, FALSE },
+	{ "tabrewind",		0,	movetab,		{.i = XT_TAB_FIRST}, FALSE },
+	{ "tabr",		0,	movetab,		{.i = XT_TAB_FIRST}, FALSE },
+	{ "tablast",		0,	movetab,		{.i = XT_TAB_LAST}, FALSE },
+	{ "tabl",		0,	movetab,		{.i = XT_TAB_LAST}, FALSE },
+	{ "tabprevious",	0,	movetab,		{.i = XT_TAB_PREV}, FALSE },
+	{ "tabp",		0,	movetab,		{.i = XT_TAB_PREV}, FALSE },
+	{ "tabnext",		0,	movetab,		{.i = XT_TAB_NEXT}, FALSE },
+	{ "tabn",		0,	movetab,		{.i = XT_TAB_NEXT}, FALSE },
 
 	/* settings */
-	{ "set",		1,	set,			{0} },
-	{ "fullscreen",		0,	fullscreen,		{0} },
-	{ "f",			0,	fullscreen,		{0} },
+	{ "set",		0,	set,			{0}, FALSE },
+	{ "fullscreen",		0,	fullscreen,		{0}, FALSE },
+	{ "f",			0,	fullscreen,		{0}, FALSE },
 
 	/* sessions */
-	{ "session",		1,	session_cmd,		{0} },
+	{ "session",		0,	session_cmd,		{0}, FALSE },
+	{ "show",		1,	session_cmd,		{0}, FALSE },
+	{ "delete",		1,	session_cmd,		{0}, TRUE },
+	{ "open",		1,	session_cmd,		{0}, TRUE },
+	{ "save",		1,	session_cmd,		{0}, TRUE },
 };
+
+struct {
+	int			index;
+	int			len;
+	gchar			*list[256];
+} cmd_status = {-1, 0};
 
 gboolean
 wv_button_cb(GtkWidget *btn, GdkEventButton *e, struct tab *t)
@@ -6356,29 +6393,163 @@ done:
 	return (XT_CB_PASSTHROUGH);
 }
 
-#if 0
-int
-cmd_complete(struct tab *t, char *s)
-{
-	int			i;
-	GtkEntry		*w = GTK_ENTRY(t->cmd);
+gboolean
+match_uri(const gchar *uri, const gchar *key) {
+	gchar			*voffset;
+	size_t			len;
+	gboolean		match = FALSE;
 
-	DNPRINTF(XT_D_CMD, "cmd_keypress_cb: complete %s\n", s);
+	len = strlen(key);
 
-	for (i = 0; i < LENGTH(cmds); i++) {
-		if (!strncasecmp(cmds[i].cmd, s, strlen(s))) {
-			fprintf(stderr, "match %s %d\n", cmds[i].cmd, strcasecmp(cmds[i].cmd, s));
-#if 0
-			gtk_entry_set_text(w, ":");
-			gtk_entry_append_text(w, cmds[i].cmd);
-			gtk_editable_set_position(GTK_EDITABLE(w), -1);
-#endif
+	if (!strncmp(key, uri, len))
+		match = TRUE;
+	else {
+		voffset = strstr(uri, "/") + 2;
+		if (!strncmp(key, voffset, len))
+			match = TRUE;
+		else if (g_str_has_prefix(voffset, "www.")) {
+			voffset = voffset + strlen("www.");
+			if (!strncmp(key, voffset, len))
+				match = TRUE;
 		}
 	}
 
-	return (0);
+	return (match);
 }
-#endif
+
+void
+cmd_getlist(int id, char *key)
+{
+	int			i,  dep, c = 0;
+	struct history		*h;
+
+	if (id >= 0 && (cmds[id].arg.i == XT_TAB_OPEN || cmds[id].arg.i == XT_TAB_NEW)) {
+		RB_FOREACH_REVERSE(h, history_list, &hl)
+			if (match_uri(h->uri, key)) {
+				cmd_status.list[c] = (char *)h->uri;
+				if (++c > 255)
+					break;
+			}
+
+		cmd_status.len = c;
+		return;
+	}
+
+	dep = (id == -1) ? 0 : cmds[id].params + 1;
+
+	for (i = id + 1; i < LENGTH(cmds); i++) {
+		if(cmds[i].params < dep)
+			break;
+		if (cmds[i].params == dep && !strncmp(key, cmds[i].cmd, strlen(key)))
+			cmd_status.list[c++] = cmds[i].cmd;
+
+	}
+
+	cmd_status.len = c;
+}
+
+char *
+cmd_getnext(int dir)
+{
+	cmd_status.index += dir;
+
+	if (cmd_status.index<0)
+		cmd_status.index = cmd_status.len-1;
+	else if (cmd_status.index >= cmd_status.len)
+		cmd_status.index = 0;
+
+	return cmd_status.list[cmd_status.index];
+}
+
+int
+cmd_tokenize(char *s, char *tokens[])
+{
+	int			i = 0;
+	char			*tok, *last;
+	size_t			len = strlen(s);
+	bool 			blank = len == 0 || (len > 0 && s[len-1] == ' ');
+
+	for (tok = strtok_r(s, " ", &last); tok && i < 3; tok = strtok_r(NULL, " ", &last), i++)
+		tokens[i] = tok;
+
+	if (blank && i < 3)
+		tokens[i++] = "";
+
+	return (i);
+}
+
+void
+cmd_complete(struct tab *t, char *str, int dir)
+{
+	GtkEntry		*w = GTK_ENTRY(t->cmd);
+	int			i, j, levels, c = 0, dep = 0, parent = -1;
+	char			*tok, *match, *s = strdup(str);
+	char			*tokens[3];
+	char			res[XT_MAX_URL_LENGTH + 32] = ":";
+
+	DNPRINTF(XT_D_CMD, "cmd_keypress_cb: complete %s\n", str);
+
+	levels = cmd_tokenize(s, tokens);
+
+	for (i = 0; i < levels - 1; i++) {
+		tok=tokens[i];
+		for (j = c; j < LENGTH(cmds); j++)
+			if (cmds[j].params == dep && !strcmp(tok, cmds[j].cmd)) {
+				strlcat(res, tok, sizeof res);
+				strlcat(res, " ", sizeof res);
+				dep++;
+				c = j;
+				break;
+			}
+
+		parent = c;
+	}
+
+	if (cmd_status.index == -1 )
+		cmd_getlist(parent, tokens[i]);
+
+	if (cmd_status.len > 0) {
+		match = cmd_getnext(dir);
+		strlcat(res, match, sizeof res);
+		gtk_entry_set_text(w, res);
+		gtk_editable_set_position(GTK_EDITABLE(w), -1);
+	}
+}
+
+void
+cmd_execute(struct tab *t, char *str)
+{
+	struct cmd 		*cmd = NULL;
+	char 			*tok, *last, *s = g_strdup(str);
+	int			i, c = 0, dep = 0;
+
+	for (tok = strtok_r(s, " ", &last); tok; tok = strtok_r(NULL , " ", &last)) {
+		for (i = c; i < LENGTH(cmds); i++) {
+			if(cmds[i].params < dep){
+				show_oops(t, "Invalid command: %s", str);
+				return;
+			}
+			if (cmds[i].params == dep && !strcmp(tok, cmds[i].cmd)) {
+				printf("ha %s\n", tok);
+				cmd = &cmds[i];
+				if (cmd->userarg){
+					goto execute_cmd;
+				}
+				c = i + 1;
+				dep++;
+				break;
+			}
+		}
+		if (i == LENGTH(cmds)) {
+			show_oops(t, "Invalid command: %s", str);
+			return;
+		}
+	}
+execute_cmd:
+	printf("%s\n", str);
+	cmd->arg.s = g_strdup(str);
+	cmd->func(t, &cmd->arg);
+}
 
 int
 entry_key_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
@@ -6436,22 +6607,19 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	else if (!(c[0] == ':' || c[0] == '/' || c[0] == '?'))
 		e->keyval = GDK_Escape;
 
+	if (e->keyval != GDK_Tab && e->keyval != GDK_Shift_L && e->keyval != GDK_ISO_Left_Tab)
+		cmd_status.index = -1;
+
 	switch (e->keyval) {
-#if 0
 	case GDK_Tab:
-		if (c[0] != ':')
-			goto done;
-
-		if (strchr (c, ' ')) {
-			/* par completion */
-			fprintf(stderr, "completeme par\n");
-			goto done;
-		}
-
-		cmd_complete(t, (char *)&c[1]);
+		if (c[0] == ':')
+			cmd_complete(t, (char *)&c[1], 1);
+		goto done;
+	case GDK_ISO_Left_Tab:
+		if (c[0] == ':')
+			cmd_complete(t, (char *)&c[1], -1);
 
 		goto done;
-#endif
 	case GDK_BackSpace:
 		if (!(!strcmp(c, ":") || !strcmp(c, "/") || !strcmp(c, "?")))
 			break;
@@ -6494,7 +6662,6 @@ cmd_focusout_cb(GtkWidget *w, GdkEventFocus *e, struct tab *t)
 void
 cmd_activate_cb(GtkEntry *entry, struct tab *t)
 {
-	int			i;
 	char			*s;
 	const gchar		*c = gtk_entry_get_text(entry);
 
@@ -6529,25 +6696,12 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 		goto done;
 	}
 
-	for (i = 0; i < LENGTH(cmds); i++)
-		if (cmds[i].params) {
-			if (!strncmp(s, cmds[i].cmd, strlen(cmds[i].cmd))) {
-				cmds[i].arg.s = g_strdup(s);
-				goto execute_command;
-			}
-		} else {
-			if (!strcmp(s, cmds[i].cmd))
-				goto execute_command;
-		}
-	show_oops(t, "Invalid command: %s", s);
+	cmd_execute(t, s);
+
 done:
 	hide_cmd(t);
-	return;
-
-execute_command:
-	hide_cmd(t);
-	cmds[i].func(t, &cmds[i].arg);
 }
+
 void
 backward_cb(GtkWidget *w, struct tab *t)
 {
@@ -7708,11 +7862,8 @@ gboolean
 completion_match(GtkEntryCompletion *completion, const gchar *key,
     GtkTreeIter *iter, gpointer user_data)
 {
-	gchar			*value, *voffset;
-	size_t			len;
+	gchar			*value;
 	gboolean		match = FALSE;
-
-	len = strlen(key);
 
 	gtk_tree_model_get(GTK_TREE_MODEL(completion_model), iter, 0, &value,
 	    -1);
@@ -7720,18 +7871,7 @@ completion_match(GtkEntryCompletion *completion, const gchar *key,
 	if (value == NULL)
 		return FALSE;
 
-	if (!strncmp(key, value, len))
-		match = TRUE;
-	else {
-		voffset = strstr(value, "/") + 2;
-		if (!strncmp(key, voffset, len))
-			match = TRUE;
-		else if (g_str_has_prefix(voffset, "www.")) {
-		    voffset = voffset + strlen("www.");
-		    if (!strncmp(key, voffset, len))
-				match = TRUE;
-		}
-	}
+	match = match_uri(value, key);
 
 	g_free(value);
 	return (match);
