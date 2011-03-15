@@ -6612,6 +6612,7 @@ cmd_execute(struct tab *t, char *str)
 			return;
 		}
 	}
+
 execute_cmd:
 	printf("%s\n", str);
 	cmd->arg.s = g_strdup(str);
@@ -7757,14 +7758,14 @@ setup_proxy(char *uri)
 }
 
 int
-send_url_to_socket(char *url)
+send_cmd_to_socket(char *cmd)
 {
-	int			s, len, rv = -1;
+	int			s, len, rv = 1;
 	struct sockaddr_un	sa;
 
 	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-		warnx("send_url_to_socket: socket");
-		return (-1);
+		warnx("%s: socket", __func__);
+		return (rv);
 	}
 
 	sa.sun_family = AF_UNIX;
@@ -7773,14 +7774,16 @@ send_url_to_socket(char *url)
 	len = SUN_LEN(&sa);
 
 	if (connect(s, (struct sockaddr *)&sa, len) == -1) {
-		warnx("send_url_to_socket: connect");
+		warnx("%s: connect", __func__);
 		goto done;
 	}
 
-	if (send(s, url, strlen(url) + 1, 0) == -1) {
-		warnx("send_url_to_socket: send");
+	if (send(s, cmd, strlen(cmd) + 1, 0) == -1) {
+		warnx("%s: send", __func__);
 		goto done;
 	}
+
+	rv = 0;
 done:
 	close(s);
 	return (rv);
@@ -7796,24 +7799,25 @@ socket_watcher(gpointer data, gint fd, GdkInputCondition cond)
 	struct passwd		*p;
 	uid_t			uid;
 	gid_t			gid;
+	struct tab		*tt;
 
 	if ((s = accept(fd, (struct sockaddr *)&sa, &t)) == -1) {
-		warn("socket_watcher: accept");
+		warn("accept");
 		return;
 	}
 
 	if (getpeereid(s, &uid, &gid) == -1) {
-		warn("socket_watcher: getpeereid");
+		warn("getpeereid");
 		return;
 	}
 	if (uid != getuid() || gid != getgid()) {
-		warnx("socket_watcher: unauthorized user");
+		warnx("unauthorized user");
 		return;
 	}
 
 	p = getpwuid(uid);
 	if (p == NULL) {
-		warnx("socket_watcher: not a valid user");
+		warnx("not a valid user");
 		return;
 	}
 
@@ -7821,7 +7825,8 @@ socket_watcher(gpointer data, gint fd, GdkInputCondition cond)
 	if (n <= 0)
 		return;
 
-	create_new_tab(str, NULL, 1);
+	tt = TAILQ_LAST(&tabs, tab_list);
+	cmd_execute(tt, str);
 }
 
 int
@@ -7959,7 +7964,7 @@ int
 main(int argc, char *argv[])
 {
 	struct stat		sb;
-	int			c, s, optn = 0, focus = 1;
+	int			c, s, optn = 0, opte = 0, focus = 1;
 	char			conf[PATH_MAX] = { '\0' };
 	char			file[PATH_MAX];
 	char			*env_proxy = NULL;
@@ -7971,7 +7976,7 @@ main(int argc, char *argv[])
 
 	strlcpy(named_session, XT_SAVED_TABS_FILE, sizeof named_session);
 
-	while ((c = getopt(argc, argv, "STVf:s:tn")) != -1) {
+	while ((c = getopt(argc, argv, "STVf:s:tne")) != -1) {
 		switch (c) {
 		case 'S':
 			show_url = 0;
@@ -7993,6 +7998,9 @@ main(int argc, char *argv[])
 			break;
 		case 'n':
 			optn = 1;
+			break;
+		case 'e':
+			opte = 1;
 			break;
 		default:
 			usage();
@@ -8172,15 +8180,24 @@ main(int argc, char *argv[])
 	else
 		setup_proxy(http_proxy);
 
+	if (opte) {
+		send_cmd_to_socket(argv[0]);
+		exit(0);
+	}
+
 	/* see if there is already an xxxterm running */
 	if (single_instance && is_running()) {
 		optn = 1;
 		warnx("already running");
 	}
 
+	char *cmd = NULL;
 	if (optn) {
 		while (argc) {
-			send_url_to_socket(argv[0]);
+			cmd = g_strdup_printf("%s %s", "tabnew", argv[0]);
+			send_cmd_to_socket(cmd);
+			if (cmd)
+				g_free(cmd);
 
 			argc--;
 			argv++;

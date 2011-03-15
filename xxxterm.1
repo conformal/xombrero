@@ -60,6 +60,15 @@ for each specified URL.
 This option requires
 .Cm enable_socket
 to be enabled.
+.It Fl e Ar command
+Execute arbitrary command (see the
+.Sx COMMAND MODE
+section below) in a running
+.Nm
+instance. This option requires
+.Cm enable_socket
+to be enabled. Example run: xxxterm -e "tabnew openbsd.org"; xxxterm -e
+tabclose; xxxterm -e wq.
 .It Fl S
 Disable the toolbar.
 .It Fl s Ar session_name
