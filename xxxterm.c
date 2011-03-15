@@ -673,17 +673,17 @@ struct about_type {
 	char		*name;
 	int		(*func)(struct tab *, struct karg *);
 } about_list[] = {
-	{ XT_URI_ABOUT_ABOUT, about },
-	{ XT_URI_ABOUT_BLANK, blank },
-	{ XT_URI_ABOUT_COOKIEWL, cookie_show_wl },
-	{ XT_URI_ABOUT_COOKIEJAR, xtp_page_cl },
-	{ XT_URI_ABOUT_DOWNLOADS, xtp_page_dl },
-	{ XT_URI_ABOUT_FAVORITES, xtp_page_fl },
-	{ XT_URI_ABOUT_HELP, help },
-	{ XT_URI_ABOUT_HISTORY, xtp_page_hl },
-	{ XT_URI_ABOUT_JSWL, js_show_wl },
-	{ XT_URI_ABOUT_SET, set },
-	{ XT_URI_ABOUT_STATS, stats },
+	{ XT_URI_ABOUT_ABOUT,		about },
+	{ XT_URI_ABOUT_BLANK,		blank },
+	{ XT_URI_ABOUT_COOKIEWL,	cookie_show_wl },
+	{ XT_URI_ABOUT_COOKIEJAR,	xtp_page_cl },
+	{ XT_URI_ABOUT_DOWNLOADS,	xtp_page_dl },
+	{ XT_URI_ABOUT_FAVORITES,	xtp_page_fl },
+	{ XT_URI_ABOUT_HELP,		help },
+	{ XT_URI_ABOUT_HISTORY,		xtp_page_hl },
+	{ XT_URI_ABOUT_JSWL,		js_show_wl },
+	{ XT_URI_ABOUT_SET,		set },
+	{ XT_URI_ABOUT_STATS,		stats },
 };
 
 /* globals */
@@ -4662,102 +4662,101 @@ struct key_binding {
 	guint				mask;
 	guint				use_in_entry;
 	guint				key;
-	int				(*func)(struct tab *, struct karg *);
 	struct karg			arg;
 	TAILQ_ENTRY(key_binding)	entry;	/* in bss so no need to init */
 } keys[] = {
-	{ "cookiejar",		MOD1,	0,	GDK_j,		xtp_page_cl,	{0} },
-	{ "downloadmgr",	MOD1,	0,	GDK_d,		xtp_page_dl,	{0} },
-	{ "history",		MOD1,	0,	GDK_h,		xtp_page_hl,	{0} },
-	{ "print",		CTRL,	0,	GDK_p,		print_page,	{0}},
-	{ NULL,			0,	0,	GDK_slash,	command,	{.i = '/'} },
-	{ NULL,			0,	0,	GDK_question,	command,	{.i = '?'} },
-	{ NULL,			0,	0,	GDK_colon,	command,	{.i = ':'} },
-	{ "quit",		CTRL,	0,	GDK_q,		quit,		{0} },
-	{ "restart",		MOD1,	0,	GDK_q,		restart,	{0} },
-	{ "togglejs",		CTRL,	0,	GDK_j,		toggle_js,	{.i = XT_WL_TOGGLE | XT_WL_FQDN} },
-	{ "togglecookie",	MOD1,	0,	GDK_c,		toggle_cwl,	{.i = XT_WL_TOGGLE | XT_WL_FQDN} },
-	{ "togglesrc",		CTRL,	0,	GDK_s,		toggle_src,	{0} },
-	{ "yankuri",		0,	0,	GDK_y,		yank_uri,	{0} },
-	{ "pasteuricur",	0,	0,	GDK_p,		paste_uri,	{.i = XT_PASTE_CURRENT_TAB} },
-	{ "pasteurinew",	0,	0,	GDK_P,		paste_uri,	{.i = XT_PASTE_NEW_TAB} },
+	{ "cookies",		MOD1,	0,	GDK_j,		{0} },
+	{ "dl",			MOD1,	0,	GDK_d,		{0} },
+	{ "history",		MOD1,	0,	GDK_h,		{0} },
+	{ "print",		CTRL,	0,	GDK_p,		{0} },
+	{ "search",		0,	0,	GDK_slash,	{0} },
+	{ "searchb",		0,	0,	GDK_question,	{0} },
+	{ "command",		0,	0,	GDK_colon,	{0} },
+	{ "q!",			CTRL,	0,	GDK_q,		{0} },
+	{ "restart",		MOD1,	0,	GDK_q,		{0} },
+	{ "js",			CTRL,	0,	GDK_j,		{.s = "toggle"} },
+	{ "cookie",		MOD1,	0,	GDK_c,		{.s = "toggle"} },
+	{ "togglesrc",		CTRL,	0,	GDK_s,		{0} },
+	{ "yankuri",		0,	0,	GDK_y,		{0} },
+	{ "pasteuricur",	0,	0,	GDK_p,		{0} },
+	{ "pasteurinew",	0,	0,	GDK_P,		{0} },
 
 	/* search */
-	{ "searchnext",		0,	0,	GDK_n,		search,		{.i = XT_SEARCH_NEXT} },
-	{ "searchprev",		0,	0,	GDK_N,		search,		{.i = XT_SEARCH_PREV} },
+	{ "searchnext",		0,	0,	GDK_n,		{0} },
+	{ "searchprev",		0,	0,	GDK_N,		{0} },
 
 	/* focus */
-	{ "focusaddress",	0,	0,	GDK_F6,		focus,		{.i = XT_FOCUS_URI} },
-	{ "focussearch",	0,	0,	GDK_F7,		focus,		{.i = XT_FOCUS_SEARCH} },
+	{ "focusaddress",	0,	0,	GDK_F6,		{0} },
+	{ "focussearch",	0,	0,	GDK_F7,		{0} },
 
 	/* hinting */
-	{ "hinting",		0,	0,	GDK_f,		hint,		{.i = 0} },
+	{ "hinting",		0,	0,	GDK_f,		{0} },
 
 	/* custom stylesheet */
-	{ "userstyle",		0,	0,	GDK_i,		userstyle,	{.i = 0 } },
+	{ "userstyle",		0,	0,	GDK_i,		{0} },
 
 	/* navigation */
-	{ "goback",		0,	0,	GDK_BackSpace,	navaction,	{.i = XT_NAV_BACK} },
-	{ "goback",		MOD1,	0,	GDK_Left,	navaction,	{.i = XT_NAV_BACK} },
-	{ "goforward",		SHFT,	0,	GDK_BackSpace,	navaction,	{.i = XT_NAV_FORWARD} },
-	{ "goforward",		MOD1,	0,	GDK_Right,	navaction,	{.i = XT_NAV_FORWARD} },
-	{ "reload",		0,	0,	GDK_F5,		navaction,	{.i = XT_NAV_RELOAD} },
-	{ "reload",		CTRL,	0,	GDK_r,		navaction,	{.i = XT_NAV_RELOAD} },
-	{ "reloadforce",	CTRL,	0,	GDK_R,		navaction,	{.i = XT_NAV_RELOAD_CACHE} },
-	{ "reload"	,	CTRL,	0,	GDK_l,		navaction,	{.i = XT_NAV_RELOAD} },
-	{ "favorites",		MOD1,	1,	GDK_f,		xtp_page_fl,	{0} },
+	{ "goback",		0,	0,	GDK_BackSpace,	{0} },
+	{ "goback",		MOD1,	0,	GDK_Left,	{0} },
+	{ "goforward",		SHFT,	0,	GDK_BackSpace,	{0} },
+	{ "goforward",		MOD1,	0,	GDK_Right,	{0} },
+	{ "reload",		0,	0,	GDK_F5,		{0} },
+	{ "reload",		CTRL,	0,	GDK_r,		{0} },
+	{ "reloadforce",	CTRL,	0,	GDK_R,		{0} },
+	{ "reload",		CTRL,	0,	GDK_l,		{0} },
+	{ "fav",		MOD1,	1,	GDK_f,		{0} },
 
 	/* vertical movement */
-	{ "scrolldown",		0,	0,	GDK_j,		move,		{.i = XT_MOVE_DOWN} },
-	{ "scrolldown",		0,	0,	GDK_Down,	move,		{.i = XT_MOVE_DOWN} },
-	{ "scrollup",		0,	0,	GDK_Up,		move,		{.i = XT_MOVE_UP} },
-	{ "scrollup",		0,	0,	GDK_k,		move,		{.i = XT_MOVE_UP} },
-	{ "scrollbottom",	0,	0,	GDK_G,		move,		{.i = XT_MOVE_BOTTOM} },
-	{ "scrollbottom",	0,	0,	GDK_End,	move,		{.i = XT_MOVE_BOTTOM} },
-	{ "scrolltop",		0,	0,	GDK_Home,	move,		{.i = XT_MOVE_TOP} },
-	{ "scrolltop",		0,	0,	GDK_g,		move,		{.i = XT_MOVE_TOP} },
-	{ "scrollpagedown",	0,	0,	GDK_space,	move,		{.i = XT_MOVE_PAGEDOWN} },
-	{ "scrollpagedown",	CTRL,	0,	GDK_f,		move,		{.i = XT_MOVE_PAGEDOWN} },
-	{ "scrollhalfdown",	CTRL,	0,	GDK_d,		move,		{.i = XT_MOVE_HALFDOWN} },
-	{ "scrollpagedown",	0,	0,	GDK_Page_Down,	move,		{.i = XT_MOVE_PAGEDOWN} },
-	{ "scrollpageup",	0,	0,	GDK_Page_Up,	move,		{.i = XT_MOVE_PAGEUP} },
-	{ "scrollpageup",	CTRL,	0,	GDK_b,		move,		{.i = XT_MOVE_PAGEUP} },
-	{ "scrollhalfup",	CTRL,	0,	GDK_u,		move,		{.i = XT_MOVE_HALFUP} },
+	{ "scrolldown",		0,	0,	GDK_j,		{0} },
+	{ "scrolldown",		0,	0,	GDK_Down,	{0} },
+	{ "scrollup",		0,	0,	GDK_Up,		{0} },
+	{ "scrollup",		0,	0,	GDK_k,		{0} },
+	{ "scrollbottom",	0,	0,	GDK_G,		{0} },
+	{ "scrollbottom",	0,	0,	GDK_End,	{0} },
+	{ "scrolltop",		0,	0,	GDK_Home,	{0} },
+	{ "scrolltop",		0,	0,	GDK_g,		{0} },
+	{ "scrollpagedown",	0,	0,	GDK_space,	{0} },
+	{ "scrollpagedown",	CTRL,	0,	GDK_f,		{0} },
+	{ "scrollhalfdown",	CTRL,	0,	GDK_d,		{0} },
+	{ "scrollpagedown",	0,	0,	GDK_Page_Down,	{0} },
+	{ "scrollpageup",	0,	0,	GDK_Page_Up,	{0} },
+	{ "scrollpageup",	CTRL,	0,	GDK_b,		{0} },
+	{ "scrollhalfup",	CTRL,	0,	GDK_u,		{0} },
 	/* horizontal movement */
-	{ "scrollright",	0,	0,	GDK_l,		move,		{.i = XT_MOVE_RIGHT} },
-	{ "scrollright",	0,	0,	GDK_Right,	move,		{.i = XT_MOVE_RIGHT} },
-	{ "scrollleft",		0,	0,	GDK_Left,	move,		{.i = XT_MOVE_LEFT} },
-	{ "scrollleft",		0,	0,	GDK_h,		move,		{.i = XT_MOVE_LEFT} },
-	{ "scrollfarright",	0,	0,	GDK_dollar,	move,		{.i = XT_MOVE_FARRIGHT} },
-	{ "scrollfarleft",	0,	0,	GDK_0,		move,		{.i = XT_MOVE_FARLEFT} },
+	{ "scrollright",	0,	0,	GDK_l,		{0} },
+	{ "scrollright",	0,	0,	GDK_Right,	{0} },
+	{ "scrollleft",		0,	0,	GDK_Left,	{0} },
+	{ "scrollleft",		0,	0,	GDK_h,		{0} },
+	{ "scrollfarright",	0,	0,	GDK_dollar,	{0} },
+	{ "scrollfarleft",	0,	0,	GDK_0,		{0} },
 
 	/* tabs */
-	{ "tabnew",		CTRL,	0,	GDK_t,		tabaction,	{.i = XT_TAB_NEW} },
-	{ "tabclose",		CTRL,	1,	GDK_w,		tabaction,	{.i = XT_TAB_DELETE} },
-	{ "tabundoclose",	0,	0,	GDK_U,		tabaction,	{.i = XT_TAB_UNDO_CLOSE} },
-	{ "tabgoto1",		CTRL,	0,	GDK_1,		movetab,	{.i = 1} },
-	{ "tabgoto2",		CTRL,	0,	GDK_2,		movetab,	{.i = 2} },
-	{ "tabgoto3",		CTRL,	0,	GDK_3,		movetab,	{.i = 3} },
-	{ "tabgoto4",		CTRL,	0,	GDK_4,		movetab,	{.i = 4} },
-	{ "tabgoto5",		CTRL,	0,	GDK_5,		movetab,	{.i = 5} },
-	{ "tabgoto6",		CTRL,	0,	GDK_6,		movetab,	{.i = 6} },
-	{ "tabgoto7",		CTRL,	0,	GDK_7,		movetab,	{.i = 7} },
-	{ "tabgoto8",		CTRL,	0,	GDK_8,		movetab,	{.i = 8} },
-	{ "tabgoto9",		CTRL,	0,	GDK_9,		movetab,	{.i = 9} },
-	{ "tabgoto10",		CTRL,	0,	GDK_0,		movetab,	{.i = 10} },
-	{ "tabgotofirst",	CTRL,	0,	GDK_less,	movetab,	{.i = XT_TAB_FIRST} },
-	{ "tabgotolast",	CTRL,	0,	GDK_greater,	movetab,	{.i = XT_TAB_LAST} },
-	{ "tabgotoprev",	CTRL,	0,	GDK_Left,	movetab,	{.i = XT_TAB_PREV} },
-	{ "tabgotonext",	CTRL,	0,	GDK_Right,	movetab,	{.i = XT_TAB_NEXT} },
-	{ "focusout",		CTRL,	0,	GDK_minus,	resizetab,	{.i = -1} },
-	{ "focusin",		CTRL,	0,	GDK_plus,	resizetab,	{.i = 1} },
-	{ "focusin",		CTRL,	0,	GDK_equal,	resizetab,	{.i = 1} },
+	{ "tabnew",		CTRL,	0,	GDK_t,		{0} },
+	{ "tabclose",		CTRL,	1,	GDK_w,		{0} },
+	{ "tabundoclose",	0,	0,	GDK_U,		{0} },
+	{ "tabgoto1",		CTRL,	0,	GDK_1,		{0} },
+	{ "tabgoto2",		CTRL,	0,	GDK_2,		{0} },
+	{ "tabgoto3",		CTRL,	0,	GDK_3,		{0} },
+	{ "tabgoto4",		CTRL,	0,	GDK_4,		{0} },
+	{ "tabgoto5",		CTRL,	0,	GDK_5,		{0} },
+	{ "tabgoto6",		CTRL,	0,	GDK_6,		{0} },
+	{ "tabgoto7",		CTRL,	0,	GDK_7,		{0} },
+	{ "tabgoto8",		CTRL,	0,	GDK_8,		{0} },
+	{ "tabgoto9",		CTRL,	0,	GDK_9,		{0} },
+	{ "tabgoto10",		CTRL,	0,	GDK_0,		{0} },
+	{ "tabfirst",		CTRL,	0,	GDK_less,	{0} },
+	{ "tablast",		CTRL,	0,	GDK_greater,	{0} },
+	{ "tabprevious",	CTRL,	0,	GDK_Left,	{0} },
+	{ "tabnext",		CTRL,	0,	GDK_Right,	{0} },
+	{ "focusout",		CTRL,	0,	GDK_minus,	{0} },
+	{ "focusin",		CTRL,	0,	GDK_plus,	{0} },
+	{ "focusin",		CTRL,	0,	GDK_equal,	{0} },
 
 	/* command aliases (handy when -S flag is used) */
-	{ "promptopen",		0,	0,	GDK_F9,		command,	{.i = XT_CMD_OPEN} },
-	{ "promptopencurrent",	0,	0,	GDK_F10,	command,	{.i = XT_CMD_OPEN_CURRENT} },
-	{ "prompttabnew",	0,	0,	GDK_F11,	command,	{.i = XT_CMD_TABNEW} },
-	{ "prompttabnewcurrent",0,	0,	GDK_F12,	command,	{.i = XT_CMD_TABNEW_CURRENT} },
+	{ "promptopen",		0,	0,	GDK_F9,		{0} },
+	{ "promptopencurrent",	0,	0,	GDK_F10,	{0} },
+	{ "prompttabnew",	0,	0,	GDK_F11,	{0} },
+	{ "prompttabnewcurrent",0,	0,	GDK_F12,	{0} },
 };
 TAILQ_HEAD(keybinding_list, key_binding);
 
@@ -4816,7 +4815,6 @@ init_keybindings(void)
 		k->mask = keys[i].mask;
 		k->use_in_entry = keys[i].use_in_entry;
 		k->key = keys[i].key;
-		k->func = keys[i].func;
 		bcopy(&keys[i].arg, &k->arg, sizeof k->arg);
 		TAILQ_INSERT_HEAD(&kbl, k, entry);
 
@@ -4902,7 +4900,6 @@ keybinding_add(char *kb, char *value, struct key_binding *orig)
 	k->mask = mask;
 	k->use_in_entry = orig->use_in_entry;
 	k->key = keyval;
-	k->func = orig->func;
 	bcopy(&orig->arg, &k->arg, sizeof k->arg);
 
 	DNPRINTF(XT_D_KEYBINDING, "keybinding_add: %s 0x%x %d 0x%x\n",
@@ -4960,6 +4957,57 @@ struct cmd {
 	struct karg	arg;
 	bool		userarg; /* allow free text arg */
 } cmds[] = {
+	{ "command",		0,	command,	{.i = ':'},	FALSE },
+	{ "search",		0,	command,	{.i = '/'},	FALSE },
+	{ "searchb",		0,	command,	{.i = '?'},	FALSE },
+	{ "togglesrc",		0,	toggle_src,	{0}, 		FALSE },
+
+	/* yanking and pasting */
+	{ "yankuri",		0,	yank_uri,	{0},				FALSE },
+	/* XXX: pasteuri{cur,new} do not work from the cmd_entry? */
+	{ "pasteuricur",	0,	paste_uri,	{.i = XT_PASTE_CURRENT_TAB},	FALSE },
+	{ "pasteurinew",	0,	paste_uri,	{.i = XT_PASTE_NEW_TAB},	FALSE },
+
+	/* search */
+	{ "searchnext",		0,	search,		{.i = XT_SEARCH_NEXT},	FALSE },
+	{ "searchprev",		0,	search,		{.i = XT_SEARCH_PREV},	FALSE },
+
+	/* focus */
+	{ "focusaddress",	0,	focus,		{.i = XT_FOCUS_URI},	FALSE },
+	{ "focussearch",	0,	focus,		{.i = XT_FOCUS_SEARCH},	FALSE },
+
+	/* hinting */
+	{ "hinting",		0,	hint,		{.i = 0},	FALSE },
+
+	/* custom stylesheet */
+	{ "userstyle",		0,	userstyle,	{.i = 0 },	FALSE },
+
+	/* navigation */
+	{ "goback",		0,	navaction,	{.i = XT_NAV_BACK},		FALSE },
+	{ "goforward",		0,	navaction,	{.i = XT_NAV_FORWARD},		FALSE },
+	{ "reload",		0,	navaction,	{.i = XT_NAV_RELOAD},		FALSE },
+	{ "reloadforce",	0,	navaction,	{.i = XT_NAV_RELOAD_CACHE},	FALSE },
+
+	/* vertical movement */
+	{ "scrolldown",		0,	move,		{.i = XT_MOVE_DOWN},	FALSE },
+	{ "scrollup",		0,	move,		{.i = XT_MOVE_UP},	FALSE },
+	{ "scrollbottom",	0,	move,		{.i = XT_MOVE_BOTTOM},	FALSE },
+	{ "scrolltop",		0,	move,		{.i = XT_MOVE_TOP},	FALSE },
+	{ "1",			0,	move,		{.i = XT_MOVE_TOP},	FALSE },
+	{ "scrollhalfdown",	0,	move,		{.i = XT_MOVE_HALFDOWN},FALSE },
+	{ "scrollhalfup",	0,	move,		{.i = XT_MOVE_HALFUP},	FALSE },
+	{ "scrollpagedown",	0,	move,		{.i = XT_MOVE_PAGEDOWN},FALSE },
+	{ "scrollpageup",	0,	move,		{.i = XT_MOVE_PAGEUP},	FALSE },
+	/* horizontal movement */
+	{ "scrollright",	0,	move,		{.i = XT_MOVE_RIGHT},	FALSE },
+	{ "scrollleft",		0,	move,		{.i = XT_MOVE_LEFT},	FALSE },
+	{ "scrollfarright",	0,	move,		{.i = XT_MOVE_FARRIGHT},FALSE },
+	{ "scrollfarleft",	0,	move,		{.i = XT_MOVE_FARLEFT},	FALSE },
+
+
+	{ "fav",		0,	xtp_page_fl,	{0}, FALSE },
+	{ "favadd",		0,	add_favorite,	{0}, FALSE },
+
 	{ "q!",			0,	quit,			{0}, FALSE },
 	{ "qa",			0,	quit,			{0}, FALSE },
 	{ "qa!",		0,	quit,			{0}, FALSE },
@@ -4970,38 +5018,10 @@ struct cmd {
 	{ "about",		0,	about,			{0}, FALSE },
 	{ "stats",		0,	stats,			{0}, FALSE },
 	{ "version",		0,	about,			{0}, FALSE },
-	{ "fav",		0,	xtp_page_fl,		{0}, FALSE },
-	{ "favadd",		0,	add_favorite,		{0}, FALSE },
-
-	{ "js",			0,	js_cmd,			{0}, FALSE },
-	{ "save",		1,	js_cmd,			{0}, FALSE },
-	{ "domain",		2,	js_cmd,			{0}, FALSE },
-	{ "fqdn",		2,	js_cmd,			{0}, FALSE },
-	{ "toggle",		1,	js_cmd,			{0}, FALSE },
-	{ "domain",		2,	js_cmd,			{0}, FALSE },
-	{ "fqdn",		2,	js_cmd,			{0}, FALSE },
-	{ "show",		1,	js_cmd,			{0}, FALSE },
-	{ "all",		2,	js_cmd,			{0}, FALSE },
-	{ "persistent",		2,	js_cmd,			{0}, FALSE },
-	{ "session",		2,	js_cmd,			{0}, FALSE },
-
-	{ "cookie",		0,	cookie_cmd,		{0}, FALSE },
-	{ "show",		1,	cookie_cmd,		{0}, FALSE },
-	{ "all",		2,	cookie_cmd,		{0}, FALSE },
-	{ "persistent",		2,	cookie_cmd,		{0}, FALSE },
-	{ "session",		2,	cookie_cmd,		{0}, FALSE },
-	{ "save",		1,      cookie_cmd,		{0}, FALSE },
-	{ "fqdn",		2,      cookie_cmd,		{0}, FALSE },
-	{ "domain",		2,	cookie_cmd,		{0}, FALSE },
-	{ "toggle",		1,	cookie_cmd,		{0}, FALSE },
-	{ "domain",		2,	cookie_cmd,		{0}, FALSE },
-	{ "fqdn",		2,	cookie_cmd,		{0}, FALSE },
-
-	{ "cert",		0,	cert_cmd,		{0}, FALSE },
-	{ "show",		1,	cert_cmd,		{0}, FALSE },
-	{ "save",		1,	cert_cmd,		{0}, FALSE },
-
 	{ "cookies",		0,	xtp_page_cl,		{0}, FALSE },
+	{ "js",			2,	js_cmd,			{0}, FALSE },
+	{ "cookie",		2,	cookie_cmd,		{0}, FALSE },
+	{ "cert",		1,	cert_cmd,		{0}, FALSE },
 	{ "ca",			0,	ca_cmd,			{0}, FALSE },
 	{ "dl",			0,	xtp_page_dl,		{0}, FALSE },
 	{ "h",			0,	xtp_page_hl,		{0}, FALSE },
@@ -5018,35 +5038,54 @@ struct cmd {
 	{ "statusshow",		0,	statusaction,		{.i = XT_STATUSBAR_SHOW}, FALSE },
 	{ "statuss",		0,	statusaction,		{.i = XT_STATUSBAR_SHOW}, FALSE },
 
-	{ "1",			0,	move,			{.i = XT_MOVE_TOP}, FALSE },
-	{ "print",		0,	print_page,		{0}, FALSE },
+	{ "print",		0,	print_page,	{0}, FALSE },
 
 	/* tabs */
-	{ "o",			0,	tabaction,		{.i = XT_TAB_OPEN}, TRUE },
-	{ "op",			0,	tabaction,		{.i = XT_TAB_OPEN},TRUE },
-	{ "open",		0,	tabaction,		{.i = XT_TAB_OPEN}, TRUE },
-	{ "tabnew",		0,	tabaction,		{.i = XT_TAB_NEW}, TRUE },
-	{ "tabedit",		0,	tabaction,		{.i = XT_TAB_NEW}, TRUE },
-	{ "tabe",		0,	tabaction,		{.i = XT_TAB_NEW}, TRUE },
-	{ "tabclose",		0,	tabaction,		{.i = XT_TAB_DELETE}, FALSE },
-	{ "tabc",		0,	tabaction,		{.i = XT_TAB_DELETE}, FALSE },
-	{ "tabshow",		0,	tabaction,		{.i = XT_TAB_SHOW}, FALSE },
-	{ "tabs",		0,	tabaction,		{.i = XT_TAB_SHOW}, FALSE },
-	{ "tabhide",		0,	tabaction,		{.i = XT_TAB_HIDE}, FALSE },
-	{ "tabh",		0,	tabaction,		{.i = XT_TAB_HIDE}, FALSE },
-	{ "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT}, FALSE },
-	{ "q",			0,	tabaction,		{.i = XT_TAB_DELQUIT}, FALSE },
+	{ "o",			0,	tabaction,		{.i = XT_TAB_OPEN},	TRUE },
+	{ "op",			0,	tabaction,		{.i = XT_TAB_OPEN},	TRUE },
+	{ "open",		0,	tabaction,		{.i = XT_TAB_OPEN},	TRUE },
+	{ "tabnew",		0,	tabaction,		{.i = XT_TAB_NEW},	TRUE },
+	{ "tabedit",		0,	tabaction,		{.i = XT_TAB_NEW},	TRUE },
+	{ "tabe",		0,	tabaction,		{.i = XT_TAB_NEW},	TRUE },
+	{ "tabclose",		0,	tabaction,		{.i = XT_TAB_DELETE},	FALSE },
+	{ "tabundoclose",	0,	tabaction,		{.i = XT_TAB_UNDO_CLOSE} },
+	{ "tabc",		0,	tabaction,		{.i = XT_TAB_DELETE},	FALSE },
+	{ "tabshow",		0,	tabaction,		{.i = XT_TAB_SHOW},	FALSE },
+	{ "tabs",		0,	tabaction,		{.i = XT_TAB_SHOW},	FALSE },
+	{ "tabhide",		0,	tabaction,		{.i = XT_TAB_HIDE},	FALSE },
+	{ "tabh",		0,	tabaction,		{.i = XT_TAB_HIDE},	FALSE },
+	{ "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT},	FALSE },
+	{ "q",			0,	tabaction,		{.i = XT_TAB_DELQUIT},	FALSE },
 	/* XXX add count to these commands */
-	{ "tabfirst",		0,	movetab,		{.i = XT_TAB_FIRST}, FALSE },
-	{ "tabfir",		0,	movetab,		{.i = XT_TAB_FIRST}, FALSE },
-	{ "tabrewind",		0,	movetab,		{.i = XT_TAB_FIRST}, FALSE },
-	{ "tabr",		0,	movetab,		{.i = XT_TAB_FIRST}, FALSE },
-	{ "tablast",		0,	movetab,		{.i = XT_TAB_LAST}, FALSE },
-	{ "tabl",		0,	movetab,		{.i = XT_TAB_LAST}, FALSE },
-	{ "tabprevious",	0,	movetab,		{.i = XT_TAB_PREV}, FALSE },
-	{ "tabp",		0,	movetab,		{.i = XT_TAB_PREV}, FALSE },
-	{ "tabnext",		0,	movetab,		{.i = XT_TAB_NEXT}, FALSE },
-	{ "tabn",		0,	movetab,		{.i = XT_TAB_NEXT}, FALSE },
+	{ "tabfirst",		0,	movetab,		{.i = XT_TAB_FIRST},	FALSE },
+	{ "tabfir",		0,	movetab,		{.i = XT_TAB_FIRST},	FALSE },
+	{ "tabrewind",		0,	movetab,		{.i = XT_TAB_FIRST},	FALSE },
+	{ "tabr",		0,	movetab,		{.i = XT_TAB_FIRST},	FALSE },
+	{ "tablast",		0,	movetab,		{.i = XT_TAB_LAST},	FALSE },
+	{ "tabl",		0,	movetab,		{.i = XT_TAB_LAST},	FALSE },
+	{ "tabprevious",	0,	movetab,		{.i = XT_TAB_PREV},	FALSE },
+	{ "tabp",		0,	movetab,		{.i = XT_TAB_PREV},	FALSE },
+	{ "tabnext",		0,	movetab,		{.i = XT_TAB_NEXT},	FALSE },
+	{ "tabn",		0,	movetab,		{.i = XT_TAB_NEXT},	FALSE },
+	{ "tabgoto1",		0,	movetab,		{.i = 1},		FALSE },
+	{ "tabgoto2",		0,	movetab,		{.i = 2},		FALSE },
+	{ "tabgoto3",		0,	movetab,		{.i = 3},		FALSE },
+	{ "tabgoto4",		0,	movetab,		{.i = 4},		FALSE },
+	{ "tabgoto5",		0,	movetab,		{.i = 5},		FALSE },
+	{ "tabgoto6",		0,	movetab,		{.i = 6},		FALSE },
+	{ "tabgoto7",		0,	movetab,		{.i = 7},		FALSE },
+	{ "tabgoto8",		0,	movetab,		{.i = 8},		FALSE },
+	{ "tabgoto9",		0,	movetab,		{.i = 9},		FALSE },
+	{ "tabgoto10",		0,	movetab,		{.i = 10},		FALSE },
+	{ "focusout",		0,	resizetab,		{.i = -1},		FALSE },
+	{ "focusin",		0,	resizetab,		{.i = 1},		FALSE },
+	{ "focusin",		0,	resizetab,		{.i = 1},		FALSE },
+
+	/* command aliases (handy when -S flag is used) */
+	{ "promptopen",		0,	command,	{.i = XT_CMD_OPEN},		FALSE },
+	{ "promptopencurrent",	0,	command,	{.i = XT_CMD_OPEN_CURRENT},	FALSE },
+	{ "prompttabnew",	0,	command,	{.i = XT_CMD_TABNEW},		FALSE },
+	{ "prompttabnewcurrent",0,	command,	{.i = XT_CMD_TABNEW_CURRENT},	FALSE },
 
 	/* settings */
 	{ "set",		0,	set,			{0}, FALSE },
@@ -6189,6 +6228,49 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 }
 
 int
+_handle_keypress(struct key_binding *k, GdkEventKey *e)
+{
+	int i;
+
+	for (i = 0; i < LENGTH(cmds); i++) {
+		if (!strcmp(k->name, cmds[i].cmd)) {
+			if (cmds[i].params)
+				if (k->arg.s && strlen(k->arg.s) > 0)
+					cmds[i].arg.s = g_strdup_printf("%s %s",
+					    k->name, k->arg.s);
+			break;
+		}
+	}
+
+	return (i);
+}
+
+gboolean
+handle_keypress(struct tab *t, GdkEventKey *e, int entry)
+{
+	int			i = -1;
+	struct key_binding	*k;
+
+	TAILQ_FOREACH(k, &kbl, entry)
+		if (e->keyval == k->key && (entry ? k->use_in_entry : 1)) {
+			if (k->mask == 0) {
+				if ((e->state & (CTRL | MOD1)) == 0)
+					i = _handle_keypress(k, e);
+			} else if ((e->state & k->mask) == k->mask) {
+				i = _handle_keypress(k, e);
+			}
+		}
+
+	if (0 <= i && i < LENGTH(cmds)) {
+		cmds[i].func(t, &cmds[i].arg);
+		if (cmds[i].arg.s)
+			g_free(cmds[i].arg.s);
+		return (XT_CB_HANDLED);
+	} else
+		return (XT_CB_PASSTHROUGH);
+}
+
+int
 wv_keypress_after_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 {
 	char			s[2], buf[128];
@@ -6314,22 +6396,7 @@ anum:
 		return (XT_CB_HANDLED);
 	}
 
-	struct key_binding	*k;
-	TAILQ_FOREACH(k, &kbl, entry)
-		if (e->keyval == k->key) {
-			if (k->mask == 0) {
-				if ((e->state & (CTRL | MOD1)) == 0) {
-					k->func(t, &k->arg);
-					return (XT_CB_HANDLED);
-				}
-			}
-			else if ((e->state & k->mask) == k->mask) {
-				k->func(t, &k->arg);
-				return (XT_CB_HANDLED);
-			}
-		}
-
-	return (XT_CB_PASSTHROUGH);
+	return (handle_keypress(t, e, 0));
 }
 
 int
@@ -6523,16 +6590,16 @@ cmd_execute(struct tab *t, char *str)
 	char 			*tok, *last, *s = g_strdup(str);
 	int			i, c = 0, dep = 0;
 
-	for (tok = strtok_r(s, " ", &last); tok; tok = strtok_r(NULL , " ", &last)) {
+	for (tok = strtok_r(s, " ", &last); tok; tok = strtok_r(NULL, " ", &last)) {
 		for (i = c; i < LENGTH(cmds); i++) {
-			if(cmds[i].params < dep){
+			if(cmds[i].params < dep) {
 				show_oops(t, "Invalid command: %s", str);
 				return;
 			}
 			if (cmds[i].params == dep && !strcmp(tok, cmds[i].cmd)) {
 				printf("ha %s\n", tok);
 				cmd = &cmds[i];
-				if (cmd->userarg){
+				if (cmd->userarg) {
 					goto execute_cmd;
 				}
 				c = i + 1;
@@ -6549,6 +6616,8 @@ execute_cmd:
 	printf("%s\n", str);
 	cmd->arg.s = g_strdup(str);
 	cmd->func(t, &cmd->arg);
+	if (cmd->arg.s)
+		g_free(cmd->arg.s);
 }
 
 int
@@ -6569,22 +6638,7 @@ entry_key_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 	}
 
-	struct key_binding	*k;
-	TAILQ_FOREACH(k, &kbl, entry)
-		if (e->keyval == k->key && k->use_in_entry) {
-			if (k->mask == 0) {
-				if ((e->state & (CTRL | MOD1)) == 0) {
-					k->func(t, &k->arg);
-					return (XT_CB_HANDLED);
-				}
-			}
-			else if ((e->state & k->mask) == k->mask) {
-				k->func(t, &k->arg);
-				return (XT_CB_HANDLED);
-			}
-		}
-
-	return (XT_CB_PASSTHROUGH);
+	return (handle_keypress(t, e, 1));
 }
 
 int

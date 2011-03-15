@@ -154,8 +154,10 @@ These commands are used to search for text strings within a web page.
 .Bl -tag -width Ds -offset indent -compact
 .It Cm /
 Start a search
+.Pq Cm search
 .It Cm \&?
 Start a backwards search
+.Pq Cm searchb
 .It Cm n
 Next item matching search
 .Pq Cm searchnext
@@ -246,13 +248,13 @@ Page far left
 .Pq Cm scrollfarleft
 .It Cm M-f
 Favorites
-.Pq Cm favorites
+.Pq Cm fav
 .It Cm M-j
 Cookie jar
-.Pq Cm cookiejar
+.Pq Cm cookies
 .It Cm M-d
 Download manager
-.Pq Cm downloadmgr
+.Pq Cm dl
 .It Cm C-p
 Print page
 .Pq Cm print
@@ -261,13 +263,13 @@ Global history
 .Pq Cm history
 .It Cm C-j
 Toggle Java Script enabled for FQDN
-.Pq Cm togglejs
+.Pq Cm js
 .It Cm C-s
 Toggle source view
 .Pq Cm togglesrc
 .It Cm M-c
 Toggle cookie enabled for FQDN
-.Pq Cm togglecookie
+.Pq Cm cookie
 .El
 .Ss Tab Manipulation
 .Nm
@@ -291,10 +293,10 @@ Undo close tab
 .Pq Cm tabundoclose
 .It Cm C-Left
 Go to the previous tab
-.Pq Cm tabgotoprev
+.Pq Cm tabprevious
 .It Cm C-Right
 Go to the next tab
-.Pq Cm tabgotonext
+.Pq Cm tabnext
 .It Cm C-[1..0]
 Jump to page
 .Ar N
@@ -340,7 +342,7 @@ Commands to exit the browser.
 .Bl -tag -width Ds -offset indent -compact
 .It Cm C-q
 Quit
-.Pq Cm quit
+.Pq Cm q!
 .El
 .Ss Low-Contrast Color Scheme
 This command toggles the page's style between the default CSS and a
@@ -349,6 +351,7 @@ low-contrast color scheme with light grey text on a dark grey background.
 .Bl -tag -width Ds -offset indent -compact
 .It Cm i
 Toggle the current tab's style.
+.Pq Cm userstyle
 .El
 .Sh COMMAND MODE
 Command mode works in a similar fashion to the
