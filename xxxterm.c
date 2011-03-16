@@ -4694,8 +4694,8 @@ struct key_binding {
 	{ "command",		0,	0,	GDK_colon,	{0} },
 	{ "quit",		CTRL,	0,	GDK_q,		{0} },
 	{ "restart",		MOD1,	0,	GDK_q,		{0} },
-	{ "togglejs",		CTRL,	0,	GDK_j,		{.s = "toggle"} },
-	{ "togglecookie",	MOD1,	0,	GDK_c,		{.s = "toggle"} },
+	{ "togglejs",		CTRL,	0,	GDK_j,		{0} }, /* XXX broken */
+	{ "togglecookie",	MOD1,	0,	GDK_c,		{0} }, /* XXX broken */
 	{ "togglesrc",		CTRL,	0,	GDK_s,		{0} },
 	{ "yankuri",		0,	0,	GDK_y,		{0} },
 	{ "pasteuricur",	0,	0,	GDK_p,		{0} },
@@ -4703,7 +4703,7 @@ struct key_binding {
 
 	/* search */
 	{ "searchnext",		0,	0,	GDK_n,		{0} },
-	{ "searchprevious",		0,	0,	GDK_N,		{0} },
+	{ "searchprevious",	0,	0,	GDK_N,		{0} },
 
 	/* focus */
 	{ "focusaddress",	0,	0,	GDK_F6,		{0} },
