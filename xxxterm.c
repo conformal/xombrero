@@ -492,6 +492,7 @@ char		*user_agent = NULL;
 int		save_rejected_cookies = 0;
 time_t		session_autosave = 0;
 int		guess_search = 0;
+int		dns_prefetch = FALSE;
 
 struct settings;
 struct key_binding;
@@ -4684,17 +4685,17 @@ struct key_binding {
 	struct karg			arg;
 	TAILQ_ENTRY(key_binding)	entry;	/* in bss so no need to init */
 } keys[] = {
-	{ "cookies",		MOD1,	0,	GDK_j,		{0} },
-	{ "dl",			MOD1,	0,	GDK_d,		{0} },
+	{ "cookiejar",		MOD1,	0,	GDK_j,		{0} },
+	{ "downloadmgr",	MOD1,	0,	GDK_d,		{0} },
 	{ "history",		MOD1,	0,	GDK_h,		{0} },
 	{ "print",		CTRL,	0,	GDK_p,		{0} },
 	{ "search",		0,	0,	GDK_slash,	{0} },
 	{ "searchb",		0,	0,	GDK_question,	{0} },
 	{ "command",		0,	0,	GDK_colon,	{0} },
-	{ "q!",			CTRL,	0,	GDK_q,		{0} },
+	{ "quit",		CTRL,	0,	GDK_q,		{0} },
 	{ "restart",		MOD1,	0,	GDK_q,		{0} },
-	{ "js",			CTRL,	0,	GDK_j,		{.s = "toggle"} },
-	{ "cookie",		MOD1,	0,	GDK_c,		{.s = "toggle"} },
+	{ "togglejs",		CTRL,	0,	GDK_j,		{.s = "toggle"} },
+	{ "togglecookie",	MOD1,	0,	GDK_c,		{.s = "toggle"} },
 	{ "togglesrc",		CTRL,	0,	GDK_s,		{0} },
 	{ "yankuri",		0,	0,	GDK_y,		{0} },
 	{ "pasteuricur",	0,	0,	GDK_p,		{0} },
@@ -4702,7 +4703,7 @@ struct key_binding {
 
 	/* search */
 	{ "searchnext",		0,	0,	GDK_n,		{0} },
-	{ "searchprev",		0,	0,	GDK_N,		{0} },
+	{ "searchprevious",		0,	0,	GDK_N,		{0} },
 
 	/* focus */
 	{ "focusaddress",	0,	0,	GDK_F6,		{0} },
@@ -4723,7 +4724,7 @@ struct key_binding {
 	{ "reload",		CTRL,	0,	GDK_r,		{0} },
 	{ "reloadforce",	CTRL,	0,	GDK_R,		{0} },
 	{ "reload",		CTRL,	0,	GDK_l,		{0} },
-	{ "fav",		MOD1,	1,	GDK_f,		{0} },
+	{ "favorites",		MOD1,	1,	GDK_f,		{0} },
 
 	/* vertical movement */
 	{ "scrolldown",		0,	0,	GDK_j,		{0} },
@@ -4979,7 +4980,7 @@ struct cmd {
 	{ "command",		0,	command,	{.i = ':'},	FALSE },
 	{ "search",		0,	command,	{.i = '/'},	FALSE },
 	{ "searchb",		0,	command,	{.i = '?'},	FALSE },
-	{ "togglesrc",		0,	toggle_src,	{0}, 		FALSE },
+	{ "togglesrc",		0,	toggle_src,	{0},		FALSE },
 
 	/* yanking and pasting */
 	{ "yankuri",		0,	yank_uri,	{0},				FALSE },
@@ -4989,7 +4990,8 @@ struct cmd {
 
 	/* search */
 	{ "searchnext",		0,	search,		{.i = XT_SEARCH_NEXT},	FALSE },
-	{ "searchprev",		0,	search,		{.i = XT_SEARCH_PREV},	FALSE },
+	{ "searchprevious",	0,	search,		{.i = XT_SEARCH_PREV},	FALSE },
+	{ "searchprev",	0,	search,		{.i = XT_SEARCH_PREV},	FALSE },
 
 	/* focus */
 	{ "focusaddress",	0,	focus,		{.i = XT_FOCUS_URI},	FALSE },
@@ -5024,9 +5026,11 @@ struct cmd {
 	{ "scrollfarleft",	0,	move,		{.i = XT_MOVE_FARLEFT},	FALSE },
 
 
+	{ "favorites",		0,	xtp_page_fl,	{0}, FALSE },
 	{ "fav",		0,	xtp_page_fl,	{0}, FALSE },
 	{ "favadd",		0,	add_favorite,	{0}, FALSE },
 
+	{ "quit",		0,	quit,			{0}, FALSE },
 	{ "q!",			0,	quit,			{0}, FALSE },
 	{ "qa",			0,	quit,			{0}, FALSE },
 	{ "qa!",		0,	quit,			{0}, FALSE },
@@ -5037,11 +5041,41 @@ struct cmd {
 	{ "about",		0,	about,			{0}, FALSE },
 	{ "stats",		0,	stats,			{0}, FALSE },
 	{ "version",		0,	about,			{0}, FALSE },
-	{ "cookies",		0,	xtp_page_cl,		{0}, FALSE },
-	{ "js",			2,	js_cmd,			{0}, FALSE },
-	{ "cookie",		2,	cookie_cmd,		{0}, FALSE },
-	{ "cert",		1,	cert_cmd,		{0}, FALSE },
+	{ "cookiejar",		0,	xtp_page_cl,		{0}, FALSE },
+
+	/* js command */
+	{ "js",			0,	js_cmd,			{0}, FALSE },
+	{ "save",		1,	js_cmd,			{0}, FALSE },
+	{ "domain",		2,	js_cmd,			{0}, FALSE },
+	{ "fqdn",		2,	js_cmd,			{0}, FALSE },
+	{ "toggle",		1,	js_cmd,			{0}, FALSE },
+	{ "domain",		2,	js_cmd,			{0}, FALSE },
+	{ "fqdn",		2,	js_cmd,			{0}, FALSE },
+	{ "show",		1,	js_cmd,			{0}, FALSE },
+	{ "all",		2,	js_cmd,			{0}, FALSE },
+	{ "persistent",		2,	js_cmd,			{0}, FALSE },
+	{ "session",		2,	js_cmd,			{0}, FALSE },
+
+	/* cookie command */
+	{ "cookie",		0,	cookie_cmd,		{0}, FALSE },
+	{ "show",		1,	cookie_cmd,		{0}, FALSE },
+	{ "all",		2,	cookie_cmd,		{0}, FALSE },
+	{ "persistent",		2,	cookie_cmd,		{0}, FALSE },
+	{ "session",		2,	cookie_cmd,		{0}, FALSE },
+	{ "save",		1,	cookie_cmd,		{0}, FALSE },
+	{ "fqdn",		2,	cookie_cmd,		{0}, FALSE },
+	{ "domain",		2,	cookie_cmd,		{0}, FALSE },
+	{ "toggle",		1,	cookie_cmd,		{0}, FALSE },
+	{ "domain",		2,	cookie_cmd,		{0}, FALSE },
+	{ "fqdn",		2,	cookie_cmd,		{0}, FALSE },
+
+	/* cert command */
+	{ "cert",		0,	cert_cmd,		{0}, FALSE },
+	{ "show",		1,	cert_cmd,		{0}, FALSE },
+	{ "save",		1,	cert_cmd,		{0}, FALSE },
+
 	{ "ca",			0,	ca_cmd,			{0}, FALSE },
+	{ "downloadmgr",	0,	xtp_page_dl,		{0}, FALSE },
 	{ "dl",			0,	xtp_page_dl,		{0}, FALSE },
 	{ "h",			0,	xtp_page_hl,		{0}, FALSE },
 	{ "hist",		0,	xtp_page_hl,		{0}, FALSE },
@@ -5083,6 +5117,7 @@ struct cmd {
 	{ "tablast",		0,	movetab,		{.i = XT_TAB_LAST},	FALSE },
 	{ "tabl",		0,	movetab,		{.i = XT_TAB_LAST},	FALSE },
 	{ "tabprevious",	0,	movetab,		{.i = XT_TAB_PREV},	FALSE },
+	{ "tabprev",		0,	movetab,		{.i = XT_TAB_PREV},	FALSE },
 	{ "tabp",		0,	movetab,		{.i = XT_TAB_PREV},	FALSE },
 	{ "tabnext",		0,	movetab,		{.i = XT_TAB_NEXT},	FALSE },
 	{ "tabn",		0,	movetab,		{.i = XT_TAB_NEXT},	FALSE },
@@ -6605,18 +6640,18 @@ cmd_complete(struct tab *t, char *str, int dir)
 void
 cmd_execute(struct tab *t, char *str)
 {
-	struct cmd 		*cmd = NULL;
-	char 			*tok, *last, *s = g_strdup(str);
+	struct cmd		*cmd = NULL;
+	char			*tok, *last, *s = g_strdup(str);
 	int			i, c = 0, dep = 0;
 
-	for (tok = strtok_r(s, " ", &last); tok; tok = strtok_r(NULL, " ", &last)) {
+	for (tok = strtok_r(s, " ", &last); tok;
+	    tok = strtok_r(NULL, " ", &last)) {
 		for (i = c; i < LENGTH(cmds); i++) {
 			if(cmds[i].params < dep) {
 				show_oops(t, "Invalid command: %s", str);
 				return;
 			}
 			if (cmds[i].params == dep && !strcmp(tok, cmds[i].cmd)) {
-				printf("ha %s\n", tok);
 				cmd = &cmds[i];
 				if (cmd->userarg) {
 					goto execute_cmd;
@@ -6633,7 +6668,6 @@ cmd_execute(struct tab *t, char *str)
 	}
 
 execute_cmd:
-	printf("%s\n", str);
 	cmd->arg.s = g_strdup(str);
 	cmd->func(t, &cmd->arg);
 	if (cmd->arg.s)
@@ -6846,6 +6880,10 @@ stop_cb(GtkWidget *w, struct tab *t)
 void
 setup_webkit(struct tab *t)
 {
+	if (is_g_object_setting(G_OBJECT(t->settings),
+	    "enable-dns-prefetching"))
+		g_object_set(G_OBJECT(t->settings), "enable-dns-prefetching",
+		    FALSE, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
 	    "user-agent", t->user_agent, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
@@ -6886,11 +6924,6 @@ create_browser(struct tab *t)
 
 	/* set defaults */
 	t->settings = webkit_web_settings_new();
-	
-	if (is_g_object_setting(G_OBJECT(t->settings),
-	    "enable-dns-prefetching"))
-		g_object_set(G_OBJECT(t->settings), "enable-dns-prefetching",
-		    FALSE, (char *)NULL);
 
 	if (user_agent == NULL) {
 		g_object_get(G_OBJECT(t->settings), "user-agent", &strval,
