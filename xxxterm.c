@@ -752,6 +752,25 @@ sigchild(int sig)
 	errno = saved_errno;
 }
 
+int
+is_g_object_setting(GObject *o, char *str)
+{
+	guint		n_props = 0, i;
+	GParamSpec	**proplist;
+
+	if (! G_IS_OBJECT(o))
+		return (0);
+	
+	proplist = g_object_class_list_properties(G_OBJECT_GET_CLASS(o),
+	    &n_props);
+
+	for (i=0; i < n_props; i++) {
+		if (! strcmp(proplist[i]->name, str))
+			return (1);
+	}
+	return (0);
+}
+
 void
 load_webkit_string(struct tab *t, const char *str, gchar *title)
 {
@@ -6867,6 +6886,11 @@ create_browser(struct tab *t)
 
 	/* set defaults */
 	t->settings = webkit_web_settings_new();
+	
+	if (is_g_object_setting(G_OBJECT(t->settings),
+	    "enable-dns-prefetching"))
+		g_object_set(G_OBJECT(t->settings), "enable-dns-prefetching",
+		    FALSE, (char *)NULL);
 
 	if (user_agent == NULL) {
 		g_object_get(G_OBJECT(t->settings), "user-agent", &strval,
