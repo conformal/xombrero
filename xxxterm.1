@@ -783,12 +783,22 @@ See
 for semantics and more details.
 .It Cm mime_type
 Sets an action for a specific or default MIME type.
-For example, to download and view a pdf using kpdf set mime_type =
-application/pdf,kpdf.
-To set a default value use *, for example mime_type = video/*,mplayer.
+For example, to download and view a pdf using kpdf set
+.Pa mime_type = application/pdf,kpdf .
+To set a default value use *, for example,
+.Pa mime_type = video/*,mplayer .
 Note that the action is only passed the URL and not all applications are
-capable of downloading content and therefore one might have to create a wrapper
-script to download the content first.
+capable of dealing with a URL and therefore one might have to create a wrapper
+script to download the content first.  Alternatively one can add the
+.Pa @
+in front of the MIME type to indicate "download first".
+For example,
+.Pa mime_type = @application/pdf,xpdf .
+When
+.Pa @
+is use the file will be downloaded to the
+.Pa download_dir
+before the MIME handler is called.
 .It Cm read_only_cookies
 Mark cookies file read-only and discard all cookies once the session is
 terminated.

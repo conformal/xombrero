@@ -439,6 +439,7 @@ struct mime_type {
 	char			*mt_type;
 	char			*mt_action;
 	int			mt_default;
+	int			mt_download;
 	TAILQ_ENTRY(mime_type)	entry;
 };
 TAILQ_HEAD(mime_type_list, mime_type);
@@ -1404,15 +1405,20 @@ add_mime_type(struct settings *s, char *line)
 	char			*mime_type;
 	char			*l;
 	struct mime_type	*m = NULL;
+	int			downloadfirst = 0;
 
 	/* XXX this could be smarter */
 
-	if (line == NULL) {
+	if (line == NULL && strlen(line) == 0) {
 		show_oops_s("add_mime_type invalid parameters");
 		return (1);
 	}
 
 	l = line;
+	if (*l == '@') {
+		downloadfirst = 1;
+		l++;
+	}
 	m = g_malloc(sizeof(*m));
 
 	if ((mime_type = strsep(&l, " \t,")) == NULL || l == NULL) {
@@ -1432,6 +1438,7 @@ add_mime_type(struct settings *s, char *line)
 
 	m->mt_type = g_strdup(mime_type);
 	m->mt_action = g_strdup(l);
+	m->mt_download = 1;
 
 	DNPRINTF(XT_D_CONFIG, "add_mime_type: type %s action %s default %d\n",
 	    m->mt_type, m->mt_action, m->mt_default);
@@ -5899,8 +5906,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	const gchar		*s_loading;
 	struct karg		a;
 
-	DNPRINTF(XT_D_URL, "notify_load_status_cb: %d\n",
-	    webkit_web_view_get_load_status(wview));
+	DNPRINTF(XT_D_URL, "notify_load_status_cb: %d  %s\n",
+	    webkit_web_view_get_load_status(wview), get_uri(wview) ? get_uri(wview) : "NOTHING");
 
 	if (t == NULL) {
 		show_oops_s("notify_load_status_cb invalid paramters");
@@ -6159,6 +6166,8 @@ run_mimehandler(struct tab *t, char *mime_type, WebKitNetworkRequest *request)
 	m = find_mime_type(mime_type);
 	if (m == NULL)
 		return (1);
+	if (m->mt_download)
+		return (1);
 
 	switch (fork()) {
 	case -1:
@@ -6178,6 +6187,79 @@ run_mimehandler(struct tab *t, char *mime_type, WebKitNetworkRequest *request)
 
 	/* NOTREACHED */
 	return (0);
+}
+
+const gchar *
+get_mime_type(char *file)
+{
+	const char		*mime_type;
+	GFileInfo		*fi;
+	GFile			*gf;
+
+	if (g_str_has_prefix(file, "file://"))
+		file += strlen("file://");
+
+	gf = g_file_new_for_path(file);
+	fi = g_file_query_info(gf, G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE, 0,
+	    NULL, NULL);
+	mime_type = g_file_info_get_content_type(fi);
+	g_object_unref(fi);
+	g_object_unref(gf);
+
+	return (mime_type);
+}
+
+int
+run_download_mimehandler(char *mime_type, char *file)
+{
+	struct mime_type	*m;
+
+	m = find_mime_type(mime_type);
+	if (m == NULL)
+		return (1);
+
+	switch (fork()) {
+	case -1:
+		show_oops_s("can't fork download mime handler");
+		/* NOTREACHED */
+	case 0:
+		break;
+	default:
+		return (0);
+	}
+
+	/* child */
+	if (g_str_has_prefix(file, "file://"))
+		file += strlen("file://");
+	execlp(m->mt_action, m->mt_action, file, (void *)NULL);
+
+	_exit(0);
+
+	/* NOTREACHED */
+	return (0);
+}
+
+void
+download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
+    WebKitWebView *wv)
+{
+	WebKitDownloadStatus	status;
+	const gchar		*file = NULL, *mime = NULL;
+
+	if (download == NULL)
+		return;
+	status = webkit_download_get_status(download);
+	if (status != WEBKIT_DOWNLOAD_STATUS_FINISHED)
+		return;
+
+	file = webkit_download_get_destination_uri(download);
+	if (file == NULL)
+		return;
+	mime = get_mime_type((char *)file);
+	if (mime == NULL)
+		return;
+
+	run_download_mimehandler((char *)mime, (char *)file);
 }
 
 int
@@ -6238,6 +6320,10 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download,
 		ret = FALSE;
 		gtk_label_set_text(GTK_LABEL(t->label), "Download Failed");
 	} else {
+		/* connect "download first" mime handler */
+		g_signal_connect(G_OBJECT(wk_download), "notify::status",
+		    G_CALLBACK(download_status_changed_cb), NULL);
+
 		download_entry = g_malloc(sizeof(struct download));
 		download_entry->download = wk_download;
 		download_entry->tab = t;
