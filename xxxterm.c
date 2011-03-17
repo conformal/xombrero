@@ -494,6 +494,8 @@ int		save_rejected_cookies = 0;
 time_t		session_autosave = 0;
 int		guess_search = 0;
 int		dns_prefetch = FALSE;
+gint		max_connections = 25;
+gint		max_host_connections = 5;
 
 struct settings;
 struct key_binding;
@@ -616,6 +618,8 @@ struct settings {
 	{ "home",			XT_S_STR, 0, NULL,	&home, NULL },
 	{ "http_proxy",			XT_S_STR, 0, NULL,	&http_proxy, NULL },
 	{ "icon_size",			XT_S_INT, 0,		&icon_size, NULL, NULL },
+	{ "max_connections",		XT_S_INT, XT_SF_RESTART,&max_connections, NULL, NULL },
+	{ "max_host_connections",	XT_S_INT, XT_SF_RESTART,&max_host_connections, NULL, NULL },
 	{ "read_only_cookies",		XT_S_INT, 0,		&read_only_cookies, NULL, NULL },
 	{ "refresh_interval",		XT_S_INT, 0,		&refresh_interval, NULL, NULL },
 	{ "resource_dir",		XT_S_STR, 0, NULL,	&resource_dir, NULL },
@@ -8302,6 +8306,11 @@ main(int argc, char *argv[])
 		send_cmd_to_socket(argv[0]);
 		exit(0);
 	}
+
+	/* set some connection parameters */
+	g_object_set(session, "max-conns", max_connections, (char *)NULL);
+	g_object_set(session, "max-conns-per-host", max_host_connections,
+	    (char *)NULL);
 
 	/* see if there is already an xxxterm running */
 	if (single_instance && is_running()) {
