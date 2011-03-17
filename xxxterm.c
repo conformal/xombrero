@@ -1438,7 +1438,7 @@ add_mime_type(struct settings *s, char *line)
 
 	m->mt_type = g_strdup(mime_type);
 	m->mt_action = g_strdup(l);
-	m->mt_download = 1;
+	m->mt_download = downloadfirst;
 
 	DNPRINTF(XT_D_CONFIG, "add_mime_type: type %s action %s default %d\n",
 	    m->mt_type, m->mt_action, m->mt_default);
