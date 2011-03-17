@@ -1090,6 +1090,7 @@ void			delete_tab(struct tab *);
 void			adjustfont_webkit(struct tab *, int);
 int			run_script(struct tab *, char *);
 int			download_rb_cmp(struct download *, struct download *);
+gboolean		cmd_execute(struct tab *t, char *str);
 
 int
 history_rb_cmp(struct history *h1, struct history *h2)
