@@ -6945,10 +6945,11 @@ stop_cb(GtkWidget *w, struct tab *t)
 void
 setup_webkit(struct tab *t)
 {
-	if (is_g_object_setting(G_OBJECT(t->settings),
-	    "enable-dns-prefetching"))
+	if (is_g_object_setting(G_OBJECT(t->settings), "enable-dns-prefetching"))
 		g_object_set(G_OBJECT(t->settings), "enable-dns-prefetching",
 		    FALSE, (char *)NULL);
+	else
+		warnx("webkit does not have \"enable-dns-prefetching\" property");
 	g_object_set(G_OBJECT(t->settings),
 	    "user-agent", t->user_agent, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
@@ -8282,10 +8283,11 @@ main(int argc, char *argv[])
 	/* cookies */
 	session = webkit_get_default_session();
 	/* XXX ssl-priority property not quite available yet */
-	if (is_g_object_setting(G_OBJECT(session),
-	    "ssl-priority"))
+	if (is_g_object_setting(G_OBJECT(session), "ssl-priority"))
 		g_object_set(G_OBJECT(session), "ssl-priority", priority,
 		    (char *)NULL);
+	else
+		warnx("session does not have \"ssl-priority\" property");
 	setup_cookies();
 
 	/* certs */
