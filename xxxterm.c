@@ -4986,58 +4986,58 @@ struct cmd {
 	struct karg	arg;
 	bool		userarg; /* allow free text arg */
 } cmds[] = {
-	{ "command",		0,	command,	{.i = ':'},	FALSE },
-	{ "search",		0,	command,	{.i = '/'},	FALSE },
-	{ "searchb",		0,	command,	{.i = '?'},	FALSE },
-	{ "togglesrc",		0,	toggle_src,	{0},		FALSE },
+	{ "command",		0,	command,		{.i = ':'},	FALSE },
+	{ "search",		0,	command,		{.i = '/'},	FALSE },
+	{ "searchb",		0,	command,		{.i = '?'},	FALSE },
+	{ "togglesrc",		0,	toggle_src,		{0},		FALSE },
 
 	/* yanking and pasting */
-	{ "yankuri",		0,	yank_uri,	{0},				FALSE },
+	{ "yankuri",		0,	yank_uri,		{0},		FALSE },
 	/* XXX: pasteuri{cur,new} do not work from the cmd_entry? */
-	{ "pasteuricur",	0,	paste_uri,	{.i = XT_PASTE_CURRENT_TAB},	FALSE },
-	{ "pasteurinew",	0,	paste_uri,	{.i = XT_PASTE_NEW_TAB},	FALSE },
+	{ "pasteuricur",	0,	paste_uri,		{.i = XT_PASTE_CURRENT_TAB},	FALSE },
+	{ "pasteurinew",	0,	paste_uri,		{.i = XT_PASTE_NEW_TAB},	FALSE },
 
 	/* search */
-	{ "searchnext",		0,	search,		{.i = XT_SEARCH_NEXT},	FALSE },
-	{ "searchprevious",	0,	search,		{.i = XT_SEARCH_PREV},	FALSE },
-	{ "searchprev",	0,	search,		{.i = XT_SEARCH_PREV},	FALSE },
+	{ "searchnext",		0,	search,			{.i = XT_SEARCH_NEXT},	FALSE },
+	{ "searchprevious",	0,	search,			{.i = XT_SEARCH_PREV},	FALSE },
+	{ "searchprev",		0,	search,			{.i = XT_SEARCH_PREV},	FALSE },
 
 	/* focus */
-	{ "focusaddress",	0,	focus,		{.i = XT_FOCUS_URI},	FALSE },
-	{ "focussearch",	0,	focus,		{.i = XT_FOCUS_SEARCH},	FALSE },
+	{ "focusaddress",	0,	focus,			{.i = XT_FOCUS_URI},	FALSE },
+	{ "focussearch",	0,	focus,			{.i = XT_FOCUS_SEARCH},	FALSE },
 
 	/* hinting */
-	{ "hinting",		0,	hint,		{.i = 0},	FALSE },
+	{ "hinting",		0,	hint,			{.i = 0},	FALSE },
 
 	/* custom stylesheet */
-	{ "userstyle",		0,	userstyle,	{.i = 0 },	FALSE },
+	{ "userstyle",		0,	userstyle,		{.i = 0 },	FALSE },
 
 	/* navigation */
-	{ "goback",		0,	navaction,	{.i = XT_NAV_BACK},		FALSE },
-	{ "goforward",		0,	navaction,	{.i = XT_NAV_FORWARD},		FALSE },
-	{ "reload",		0,	navaction,	{.i = XT_NAV_RELOAD},		FALSE },
-	{ "reloadforce",	0,	navaction,	{.i = XT_NAV_RELOAD_CACHE},	FALSE },
+	{ "goback",		0,	navaction,		{.i = XT_NAV_BACK},		FALSE },
+	{ "goforward",		0,	navaction,		{.i = XT_NAV_FORWARD},		FALSE },
+	{ "reload",		0,	navaction,		{.i = XT_NAV_RELOAD},		FALSE },
+	{ "reloadforce",	0,	navaction,		{.i = XT_NAV_RELOAD_CACHE},	FALSE },
 
 	/* vertical movement */
-	{ "scrolldown",		0,	move,		{.i = XT_MOVE_DOWN},	FALSE },
-	{ "scrollup",		0,	move,		{.i = XT_MOVE_UP},	FALSE },
-	{ "scrollbottom",	0,	move,		{.i = XT_MOVE_BOTTOM},	FALSE },
-	{ "scrolltop",		0,	move,		{.i = XT_MOVE_TOP},	FALSE },
-	{ "1",			0,	move,		{.i = XT_MOVE_TOP},	FALSE },
-	{ "scrollhalfdown",	0,	move,		{.i = XT_MOVE_HALFDOWN},FALSE },
-	{ "scrollhalfup",	0,	move,		{.i = XT_MOVE_HALFUP},	FALSE },
-	{ "scrollpagedown",	0,	move,		{.i = XT_MOVE_PAGEDOWN},FALSE },
-	{ "scrollpageup",	0,	move,		{.i = XT_MOVE_PAGEUP},	FALSE },
+	{ "scrolldown",		0,	move,			{.i = XT_MOVE_DOWN},	FALSE },
+	{ "scrollup",		0,	move,			{.i = XT_MOVE_UP},	FALSE },
+	{ "scrollbottom",	0,	move,			{.i = XT_MOVE_BOTTOM},	FALSE },
+	{ "scrolltop",		0,	move,			{.i = XT_MOVE_TOP},	FALSE },
+	{ "1",			0,	move,			{.i = XT_MOVE_TOP},	FALSE },
+	{ "scrollhalfdown",	0,	move,			{.i = XT_MOVE_HALFDOWN},FALSE },
+	{ "scrollhalfup",	0,	move,			{.i = XT_MOVE_HALFUP},	FALSE },
+	{ "scrollpagedown",	0,	move,			{.i = XT_MOVE_PAGEDOWN},FALSE },
+	{ "scrollpageup",	0,	move,			{.i = XT_MOVE_PAGEUP},	FALSE },
 	/* horizontal movement */
-	{ "scrollright",	0,	move,		{.i = XT_MOVE_RIGHT},	FALSE },
-	{ "scrollleft",		0,	move,		{.i = XT_MOVE_LEFT},	FALSE },
-	{ "scrollfarright",	0,	move,		{.i = XT_MOVE_FARRIGHT},FALSE },
-	{ "scrollfarleft",	0,	move,		{.i = XT_MOVE_FARLEFT},	FALSE },
+	{ "scrollright",	0,	move,			{.i = XT_MOVE_RIGHT},	FALSE },
+	{ "scrollleft",		0,	move,			{.i = XT_MOVE_LEFT},	FALSE },
+	{ "scrollfarright",	0,	move,			{.i = XT_MOVE_FARRIGHT},FALSE },
+	{ "scrollfarleft",	0,	move,			{.i = XT_MOVE_FARLEFT},	FALSE },
 
 
-	{ "favorites",		0,	xtp_page_fl,	{0}, FALSE },
-	{ "fav",		0,	xtp_page_fl,	{0}, FALSE },
-	{ "favadd",		0,	add_favorite,	{0}, FALSE },
+	{ "favorites",		0,	xtp_page_fl,		{0}, FALSE },
+	{ "fav",		0,	xtp_page_fl,		{0}, FALSE },
+	{ "favadd",		0,	add_favorite,		{0}, FALSE },
 
 	{ "quit",		0,	quit,			{0}, FALSE },
 	{ "q!",			0,	quit,			{0}, FALSE },
@@ -5100,7 +5100,7 @@ struct cmd {
 	{ "statusshow",		0,	statusaction,		{.i = XT_STATUSBAR_SHOW}, FALSE },
 	{ "statuss",		0,	statusaction,		{.i = XT_STATUSBAR_SHOW}, FALSE },
 
-	{ "print",		0,	print_page,	{0}, FALSE },
+	{ "print",		0,	print_page,		{0}, FALSE },
 
 	/* tabs */
 	{ "o",			0,	tabaction,		{.i = XT_TAB_OPEN},	TRUE },
@@ -5145,10 +5145,10 @@ struct cmd {
 	{ "focusin",		0,	resizetab,		{.i = 1},		FALSE },
 
 	/* command aliases (handy when -S flag is used) */
-	{ "promptopen",		0,	command,	{.i = XT_CMD_OPEN},		FALSE },
-	{ "promptopencurrent",	0,	command,	{.i = XT_CMD_OPEN_CURRENT},	FALSE },
-	{ "prompttabnew",	0,	command,	{.i = XT_CMD_TABNEW},		FALSE },
-	{ "prompttabnewcurrent",0,	command,	{.i = XT_CMD_TABNEW_CURRENT},	FALSE },
+	{ "promptopen",		0,	command,		{.i = XT_CMD_OPEN},		FALSE },
+	{ "promptopencurrent",	0,	command,		{.i = XT_CMD_OPEN_CURRENT},	FALSE },
+	{ "prompttabnew",	0,	command,		{.i = XT_CMD_TABNEW},		FALSE },
+	{ "prompttabnewcurrent",0,	command,		{.i = XT_CMD_TABNEW_CURRENT},	FALSE },
 
 	/* settings */
 	{ "set",		0,	set,			{0}, FALSE },
@@ -6651,7 +6651,7 @@ cmd_tokenize(char *s, char *tokens[])
 	int			i = 0;
 	char			*tok, *last;
 	size_t			len = strlen(s);
-	bool 			blank = len == 0 || (len > 0 && s[len-1] == ' ');
+	bool			blank = len == 0 || (len > 0 && s[len-1] == ' ');
 
 	for (tok = strtok_r(s, " ", &last); tok && i < 3; tok = strtok_r(NULL, " ", &last), i++)
 		tokens[i] = tok;
