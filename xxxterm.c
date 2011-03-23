@@ -2688,7 +2688,7 @@ show_certs(struct tab *t, gnutls_x509_crt_t *certs,
 	char			*tmp, *header, *body, *footer;
 	int			i;
 
-	header = g_strdup_printf("<title>%s</title><html><body>", title);
+	header = g_strdup_printf("<html><head><title>%s</title></head><body>", title);
 	footer = g_strdup("</body></html>");
 	body = g_strdup("");
 
