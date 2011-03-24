@@ -655,6 +655,8 @@ int			js_show_wl(struct tab *, struct karg *);
 int			help(struct tab *, struct karg *);
 int			set(struct tab *, struct karg *);
 int			stats(struct tab *, struct karg *);
+int			marco(struct tab *, struct karg *);
+const char *		marco_message(int *);
 int			xtp_page_cl(struct tab *, struct karg *);
 int			xtp_page_dl(struct tab *, struct karg *);
 int			xtp_page_fl(struct tab *, struct karg *);
@@ -674,6 +676,7 @@ int			xtp_page_hl(struct tab *, struct karg *);
 #define XT_URI_ABOUT_JSWL	("jswl")
 #define XT_URI_ABOUT_SET	("set")
 #define XT_URI_ABOUT_STATS	("stats")
+#define XT_URI_ABOUT_MARCO	("marco")
 
 struct about_type {
 	char		*name;
@@ -690,6 +693,7 @@ struct about_type {
 	{ XT_URI_ABOUT_JSWL,		js_show_wl },
 	{ XT_URI_ABOUT_SET,		set },
 	{ XT_URI_ABOUT_STATS,		stats },
+	{ XT_URI_ABOUT_MARCO,		marco },
 };
 
 /* globals */
@@ -2452,6 +2456,36 @@ stats(struct tab *t, struct karg *args)
 
 	load_webkit_string(t, stats, XT_URI_ABOUT_STATS);
 	g_free(stats);
+
+	return (0);
+}
+
+int
+marco(struct tab *t, struct karg *args)
+{
+	char			*message, line[64 * 1024];
+	int			len;
+
+	if (t == NULL)
+		show_oops_s("marco invalid parameters");
+
+	line[0] = '\0';
+	snprintf(line, sizeof line, "<br>%s", marco_message(&len));
+
+	message = g_strdup_printf(XT_DOCTYPE
+	    "<html>"
+	    "<head>"
+	    "<title>Marco Sez...</title>"
+	    "</head>"
+	    "<h1>Moo</h1>"
+	    "<body>"
+	    "%s"
+	    "</body>"
+	    "</html>",
+	   line);
+
+	load_webkit_string(t, message, XT_URI_ABOUT_MARCO);
+	g_free(message);
 
 	return (0);
 }

@@ -23,6 +23,8 @@ all: ../javascript.h xxxterm
 
 xxxterm.o: ../xxxterm.o
 
+marco.o: ../marco.o
+
 ../xxxterm.o: ../javascript.h
 
 xxxterm: xxxterm.o freebsd.o

@@ -20,7 +20,7 @@ javascript.h: ../js-merge-helper.pl ../hinting.js
 
 xxxterm.o: javascript.h
 
-xxxterm: ../xxxterm.o linux.o
+xxxterm: ../marco.o ../xxxterm.o linux.o
 	$(CC) $(LDFLAGS) -o $@ $+ $(LDADD)
 
 install: all

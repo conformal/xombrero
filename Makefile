@@ -6,7 +6,7 @@ BINDIR=${PREFIX}/bin
 PROG=xxxterm
 MAN=xxxterm.1
 
-SRCS= xxxterm.c
+SRCS= xxxterm.c marco.c
 COPT+= -O2
 DEBUG= -ggdb3
 LDADD= -lutil
