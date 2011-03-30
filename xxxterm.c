@@ -6996,21 +6996,21 @@ create_kiosk_toolbar(struct tab *t)
 	gtk_container_set_border_width(GTK_CONTAINER(toolbar), 0);
 
 	/* backward button */
-	t->backward = create_button("GoBack", GTK_STOCK_GO_BACK, 0);
+	t->backward = create_button("Back", GTK_STOCK_GO_BACK, 0);
 	gtk_widget_set_sensitive(t->backward, FALSE);
 	g_signal_connect(G_OBJECT(t->backward), "clicked",
 	    G_CALLBACK(backward_cb), t);
 	gtk_box_pack_start(GTK_BOX(b), t->backward, TRUE, TRUE, 0);
 
 	/* forward button */
-	t->forward = create_button("GoForward", GTK_STOCK_GO_FORWARD, 0);
+	t->forward = create_button("Forward", GTK_STOCK_GO_FORWARD, 0);
 	gtk_widget_set_sensitive(t->forward, FALSE);
 	g_signal_connect(G_OBJECT(t->forward), "clicked",
 	    G_CALLBACK(forward_cb), t);
 	gtk_box_pack_start(GTK_BOX(b), t->forward, TRUE, TRUE, 0);
 
 	/* home button */
-	t->gohome = create_button("GoForward", GTK_STOCK_HOME, 0);
+	t->gohome = create_button("Home", GTK_STOCK_HOME, 0);
 	gtk_widget_set_sensitive(t->gohome, true);
 	g_signal_connect(G_OBJECT(t->gohome), "clicked",
 	    G_CALLBACK(home_cb), t);
@@ -7036,14 +7036,14 @@ create_toolbar(struct tab *t)
 
 	if (fancy_bar) {
 		/* backward button */
-		t->backward = create_button("GoBack", GTK_STOCK_GO_BACK, 0);
+		t->backward = create_button("Back", GTK_STOCK_GO_BACK, 0);
 		gtk_widget_set_sensitive(t->backward, FALSE);
 		g_signal_connect(G_OBJECT(t->backward), "clicked",
 		    G_CALLBACK(backward_cb), t);
 		gtk_box_pack_start(GTK_BOX(b), t->backward, FALSE, FALSE, 0);
 
 		/* forward button */
-		t->forward = create_button("GoForward",GTK_STOCK_GO_FORWARD, 0);
+		t->forward = create_button("Forward",GTK_STOCK_GO_FORWARD, 0);
 		gtk_widget_set_sensitive(t->forward, FALSE);
 		g_signal_connect(G_OBJECT(t->forward), "clicked",
 		    G_CALLBACK(forward_cb), t);
