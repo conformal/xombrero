@@ -2756,17 +2756,16 @@ ca_cmd(struct tab *t, struct karg *args)
 	gnutls_x509_crt_t	*c = NULL;
 	char			*certs_buf = NULL, *s;
 
-	/* yeah yeah stat race */
-	if (stat(ssl_ca_file, &sb)) {
-		show_oops(t, "no CA file: %s", ssl_ca_file);
-		goto done;
-	}
-
 	if ((f = fopen(ssl_ca_file, "r")) == NULL) {
 		show_oops(t, "Can't open CA file: %s", strerror(errno));
 		return (1);
 	}
 
+	if (fstat(fileno(f), &sb) == -1) {
+		show_oops(t, "Can't stat CA file: %s", strerror(errno));
+		goto done;
+	}
+	
 	certs_buf = g_malloc(sb.st_size + 1);
 	if (fread(certs_buf, 1, sb.st_size, f) != sb.st_size) {
 		show_oops(t, "Can't read CA file: %s", strerror(errno));
