@@ -7546,9 +7546,10 @@ icon_size_map(int icon_size)
 GtkWidget *
 create_button(char *name, char *stockid, int size)
 {
-	GtkWidget *button, *image;
-	gchar *rcstring;
-	int gtk_icon_size;
+	GtkWidget		*button, *image;
+	gchar			*rcstring;
+	int			gtk_icon_size;
+
 	rcstring = g_strdup_printf(
 	    "style \"%s-style\"\n"
 	    "{\n"
@@ -7570,9 +7571,8 @@ create_button(char *name, char *stockid, int size)
 	gtk_container_add(GTK_CONTAINER(button), GTK_WIDGET(image));
 	gtk_widget_set_name(button, name);
 	gtk_button_set_relief(GTK_BUTTON(button), GTK_RELIEF_NONE);
-	gtk_widget_set_tooltip_text(button, name);
 
-	return button;
+	return (button);
 }
 
 void
