@@ -416,6 +416,13 @@ struct karg {
 #define XT_WL_DISABLE		(1<<2)
 #define XT_WL_FQDN		(1<<3) /* default */
 #define XT_WL_TOPLEVEL		(1<<4)
+#define XT_WL_PERSISTENT	(1<<5)
+#define XT_WL_SESSION		(1<<6)
+
+#define XT_SHOW			(1<<7)
+#define XT_DELETE		(1<<8)
+#define XT_SAVE			(1<<9)
+#define XT_OPEN			(1<<10)
 
 #define XT_CMD_OPEN		(0)
 #define XT_CMD_OPEN_CURRENT	(1)
@@ -2696,24 +2703,6 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	return (failed);
 }
 
-char *
-getparams(char *cmd, char *cmp)
-{
-	char			*rv = NULL;
-
-	if (cmd && cmp) {
-		if (!strncmp(cmd, cmp, strlen(cmp))) {
-			rv = cmd + strlen(cmp);
-			while (*rv == ' ')
-				rv++;
-			if (strlen(rv) == 0)
-				rv = NULL;
-		}
-	}
-
-	return (rv);
-}
-
 void
 show_certs(struct tab *t, gnutls_x509_crt_t *certs,
     size_t cert_count, char *title)
@@ -3068,7 +3057,7 @@ int
 cert_cmd(struct tab *t, struct karg *args)
 {
 	const gchar		*uri;
-	char			*action, domain[8182];
+	char			domain[8182];
 	int			s = -1;
 	size_t			cert_count;
 	gnutls_session_t	gsession;
@@ -3077,11 +3066,6 @@ cert_cmd(struct tab *t, struct karg *args)
 
 	if (t == NULL)
 		return (1);
-
-	if ((action = getparams(args->s, "cert")))
-		;
-	else
-		action = "show";
 
 	if ((uri = get_uri(t->wv)) == NULL) {
 		show_oops(t, "Invalid URI");
@@ -3105,12 +3089,10 @@ cert_cmd(struct tab *t, struct karg *args)
 		goto done;
 	}
 
-	if (!strcmp(action, "show"))
+	if (args->i & XT_SHOW)
 		show_certs(t, certs, cert_count, "Certificate Chain");
-	else if (!strcmp(action, "save"))
+	else if (args->i & XT_SAVE)
 		save_certs(t, certs, cert_count, domain);
-	else
-		show_oops(t, "Invalid command: %s", action);
 
 	free_connection_certs(certs, cert_count);
 done:
@@ -3149,28 +3131,13 @@ remove_cookie(int index)
 }
 
 int
-wl_show(struct tab *t, char *args, char *title, struct domain_list *wl)
+wl_show(struct tab *t, struct karg *args, char *title, struct domain_list *wl)
 {
 	struct domain		*d;
 	char			*tmp, *header, *body, *footer;
-	int			p_js = 0, s_js = 0;
 
 	/* we set this to indicate we want to manually do navaction */
 	t->item = webkit_web_back_forward_list_get_current_item(t->bfl);
-
-	if (g_str_has_prefix(args, "show a") ||
-	    !strcmp(args, "show")) {
-		/* show all */
-		p_js = 1;
-		s_js = 1;
-	} else if (g_str_has_prefix(args, "show p")) {
-		/* show persistent */
-		p_js = 1;
-	} else if (g_str_has_prefix(args, "show s")) {
-		/* show session */
-		s_js = 1;
-	} else
-		return (1);
 
 	header = g_strdup_printf("<title>%s</title><html><body><h1>%s</h1>",
 	    title, title);
@@ -3178,7 +3145,7 @@ wl_show(struct tab *t, char *args, char *title, struct domain_list *wl)
 	body = g_strdup("");
 
 	/* p list */
-	if (p_js) {
+	if (args->i & XT_WL_PERSISTENT) {
 		tmp = body;
 		body = g_strdup_printf("%s<h2>Persistent</h2>", body);
 		g_free(tmp);
@@ -3192,7 +3159,7 @@ wl_show(struct tab *t, char *args, char *title, struct domain_list *wl)
 	}
 
 	/* s list */
-	if (s_js) {
+	if (args->i & XT_WL_SESSION) {
 		tmp = body;
 		body = g_strdup_printf("%s<h2>Session</h2>", body);
 		g_free(tmp);
@@ -3230,7 +3197,6 @@ wl_save(struct tab *t, struct karg *args, int js)
 	struct domain		*d;
 	GSList			*cf;
 	SoupCookie		*ci, *c;
-	int			flags;
 
 	if (t == NULL || args == NULL)
 		return (1);
@@ -3250,22 +3216,17 @@ wl_save(struct tab *t, struct karg *args, int js)
 		goto done;
 	}
 
-	if (g_str_has_prefix(args->s, "save d")) {
+	if (args->i & XT_WL_TOPLEVEL) {
 		/* save domain */
 		if ((dom_save = get_toplevel_domain(dom)) == NULL) {
 			show_oops(t, "invalid domain: %s", dom);
 			goto done;
 		}
-		flags = XT_WL_TOPLEVEL;
-	} else if (g_str_has_prefix(args->s, "save f") ||
-	    !strcmp(args->s, "save")) {
+	} else if (args->i & XT_WL_FQDN) {
 		/* save fqdn */
 		dom_save = dom;
-		flags = XT_WL_FQDN;
-	} else {
-		show_oops(t, "invalid command: %s", args->s);
+	} else
 		goto done;
-	}
 
 	lt = g_strdup_printf("%s=%s", js ? "js_wl" : "cookie_wl", dom_save);
 
@@ -3282,7 +3243,7 @@ wl_save(struct tab *t, struct karg *args, int js)
 	fprintf(f, "%s\n", lt);
 
 	a.i = XT_WL_ENABLE;
-	a.i |= flags;
+	a.i |= args->i;
 	if (js) {
 		d = wl_find(dom_save, &js_wl);
 		if (!d) {
@@ -3328,7 +3289,8 @@ done:
 int
 js_show_wl(struct tab *t, struct karg *args)
 {
-	wl_show(t, "show all", "JavaScript White List", &js_wl);
+	args->i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION;
+	wl_show(t, args, "JavaScript White List", &js_wl);
 
 	return (0);
 }
@@ -3336,7 +3298,8 @@ js_show_wl(struct tab *t, struct karg *args)
 int
 cookie_show_wl(struct tab *t, struct karg *args)
 {
-	wl_show(t, "show all", "Cookie White List", &c_wl);
+	args->i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION;
+	wl_show(t, args, "Cookie White List", &c_wl);
 
 	return (0);
 }
@@ -3344,31 +3307,14 @@ cookie_show_wl(struct tab *t, struct karg *args)
 int
 cookie_cmd(struct tab *t, struct karg *args)
 {
-	char			*cmd;
-	struct karg		a;
-
-	if ((cmd = getparams(args->s, "cookie")))
-		;
-	else
-		cmd = "show all";
-
-
-	if (g_str_has_prefix(cmd, "show")) {
-		wl_show(t, cmd, "Cookie White List", &c_wl);
-	} else if (g_str_has_prefix(cmd, "save")) {
-		a.s = cmd;
-		wl_save(t, &a, 0);
-	} else if (g_str_has_prefix(cmd, "toggle")) {
-		a.i = XT_WL_TOGGLE;
-		if (g_str_has_prefix(cmd, "toggle d"))
-			a.i |= XT_WL_TOPLEVEL;
-		else
-			a.i |= XT_WL_FQDN;
-		toggle_cwl(t, &a);
-	} else if (g_str_has_prefix(cmd, "delete")) {
+	if (args->i & XT_SHOW)
+		wl_show(t, args, "Cookie White List", &c_wl);
+	else if (args->i & XT_WL_TOGGLE)
+		toggle_cwl(t, args);
+	else if (args->i & XT_SAVE)
+		wl_save(t, args, 0);
+	else if (args->i & XT_DELETE)
 		show_oops(t, "'cookie delete' currently unimplemented");
-	} else
-		show_oops(t, "unknown cookie command: %s", cmd);
 
 	return (0);
 }
@@ -3376,30 +3322,14 @@ cookie_cmd(struct tab *t, struct karg *args)
 int
 js_cmd(struct tab *t, struct karg *args)
 {
-	char			*cmd;
-	struct karg		a;
-
-	if ((cmd = getparams(args->s, "js")))
-		;
-	else
-		cmd = "show all";
-
-	if (g_str_has_prefix(cmd, "show")) {
-		wl_show(t, cmd, "JavaScript White List", &js_wl);
-	} else if (g_str_has_prefix(cmd, "save")) {
-		a.s = cmd;
-		wl_save(t, &a, 1);
-	} else if (g_str_has_prefix(cmd, "toggle")) {
-		a.i = XT_WL_TOGGLE;
-		if (g_str_has_prefix(cmd, "toggle d"))
-			a.i |= XT_WL_TOPLEVEL;
-		else
-			a.i |= XT_WL_FQDN;
-		toggle_js(t, &a);
-	} else if (g_str_has_prefix(cmd, "delete")) {
+	if (args->i & XT_SHOW)
+		wl_show(t, args, "JavaScript White List", &js_wl);
+	else if (args->i & XT_SAVE)
+		wl_save(t, args, 1);
+	else if (args->i & XT_WL_TOGGLE)
+		toggle_js(t, args);
+	else if (args->i & XT_DELETE)
 		show_oops(t, "'js delete' currently unimplemented");
-	} else
-		show_oops(t, "unknown js command: %s", cmd);
 
 	return (0);
 }
@@ -3721,7 +3651,7 @@ int
 tabaction(struct tab *t, struct karg *args)
 {
 	int			rv = XT_CB_HANDLED;
-	char			*url = NULL;
+	char			*url = args->s;
 	struct undo		*u;
 
 	DNPRINTF(XT_D_TAB, "tabaction: %p %d\n", t, args->i);
@@ -3731,7 +3661,7 @@ tabaction(struct tab *t, struct karg *args)
 
 	switch (args->i) {
 	case XT_TAB_NEW:
-		if ((url = getparams(args->s, "tabnew")))
+		if (strlen(url) > 0)
 			create_new_tab(url, NULL, 1);
 		else
 			create_new_tab(NULL, NULL, 1);
@@ -3746,9 +3676,7 @@ tabaction(struct tab *t, struct karg *args)
 			quit(t, args);
 		break;
 	case XT_TAB_OPEN:
-		if ((url = getparams(args->s, "open")) ||
-		    ((url = getparams(args->s, "op"))) ||
-		    ((url = getparams(args->s, "o"))))
+		if (strlen(url) > 0)
 			;
 		else {
 			rv = XT_CB_PASSTHROUGH;
@@ -4472,72 +4400,64 @@ print_setting(struct settings *s, char *val, void *cb_args)
 int
 set(struct tab *t, struct karg *args)
 {
-	char			*header, *body, *footer, *page, *tmp, *pars;
+	char			*header, *body, *footer, *page, *tmp;
 	int			i = 1;
 	struct settings_args	sa;
 
-	if ((pars = getparams(args->s, "set")) == NULL) {
-		bzero(&sa, sizeof sa);
-		sa.body = &body;
+	bzero(&sa, sizeof sa);
+	sa.body = &body;
 
-		/* header */
-		header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG
-		  "\n<head><title>Settings</title>\n"
-		  "</head><body><h1>Settings</h1>\n");
+	/* header */
+	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG
+	  "\n<head><title>Settings</title>\n"
+	  "</head><body><h1>Settings</h1>\n");
 
-		/* body */
-		body = g_strdup_printf("<div align='center'><table><tr>"
-		    "<th align='left'>Setting</th>"
-		    "<th align='left'>Value</th></tr>\n");
+	/* body */
+	body = g_strdup_printf("<div align='center'><table><tr>"
+	    "<th align='left'>Setting</th>"
+	    "<th align='left'>Value</th></tr>\n");
 
-		settings_walk(print_setting, &sa);
-		i = sa.i;
+	settings_walk(print_setting, &sa);
+	i = sa.i;
 
-		/* small message if there are none */
-		if (i == 1) {
-			tmp = body;
-			body = g_strdup_printf("%s\n<tr><td style='text-align:center'"
-			    "colspan='2'>No settings</td></tr>\n", body);
-			g_free(tmp);
-		}
+	/* small message if there are none */
+	if (i == 1) {
+		tmp = body;
+		body = g_strdup_printf("%s\n<tr><td style='text-align:center'"
+		    "colspan='2'>No settings</td></tr>\n", body);
+		g_free(tmp);
+	}
 
-		/* footer */
-		footer = g_strdup_printf("</table></div></body></html>");
+	/* footer */
+	footer = g_strdup_printf("</table></div></body></html>");
 
-		page = g_strdup_printf("%s%s%s", header, body, footer);
+	page = g_strdup_printf("%s%s%s", header, body, footer);
 
-		g_free(header);
-		g_free(body);
-		g_free(footer);
+	g_free(header);
+	g_free(body);
+	g_free(footer);
 
-		load_webkit_string(t, page, XT_URI_ABOUT_SET);
-	} else
-		show_oops(t, "Invalid command: %s", pars);
+	load_webkit_string(t, page, XT_URI_ABOUT_SET);
 
 	return (XT_CB_PASSTHROUGH);
 }
 
 int
-session_save(struct tab *t, char *filename, char **ret)
+session_save(struct tab *t, char *filename)
 {
 	struct karg		a;
-	char			*f = filename;
 	int			rv = 1;
 
-	f += strlen("save");
-	while (*f == ' ' && *f != '\0')
-		f++;
-	if (strlen(f) == 0)
+	if (strlen(filename) == 0)
 		goto done;
 
-	*ret = f;
-	if (f[0] == '.' || f[0] == '/')
+	if (filename[0] == '.' || filename[0] == '/')
 		goto done;
 
-	a.s = f;
+	a.s = filename;
 	if (save_tabs(t, &a))
 		goto done;
-	strlcpy(named_session, f, sizeof named_session);
+	strlcpy(named_session, filename, sizeof named_session);
 
 	rv = 0;
 done:
@@ -4545,28 +4465,23 @@ done:
 }
 
 int
-session_open(struct tab *t, char *filename, char **ret)
+session_open(struct tab *t, char *filename)
 {
 	struct karg		a;
-	char			*f = filename;
 	int			rv = 1;
 
-	f += strlen("open");
-	while (*f == ' ' && *f != '\0')
-		f++;
-	if (strlen(f) == 0)
+	if (strlen(filename) == 0)
 		goto done;
 
-	*ret = f;
-	if (f[0] == '.' || f[0] == '/')
+	if (filename[0] == '.' || filename[0] == '/')
 		goto done;
 
-	a.s = f;
+	a.s = filename;
 	a.i = XT_SES_CLOSETABS;
 	if (open_tabs(t, &a))
 		goto done;
 
-	strlcpy(named_session, f, sizeof named_session);
+	strlcpy(named_session, filename, sizeof named_session);
 
 	rv = 0;
 done:
@@ -4574,27 +4489,22 @@ done:
 }
 
 int
-session_delete(struct tab *t, char *filename, char **ret)
+session_delete(struct tab *t, char *filename)
 {
 	char			file[PATH_MAX];
-	char			*f = filename;
 	int			rv = 1;
 
-	f += strlen("delete");
-	while (*f == ' ' && *f != '\0')
-		f++;
-	if (strlen(f) == 0)
+	if (strlen(filename) == 0)
 		goto done;
 
-	*ret = f;
-	if (f[0] == '.' || f[0] == '/')
+	if (filename[0] == '.' || filename[0] == '/')
 		goto done;
 
-	snprintf(file, sizeof file, "%s/%s", sessions_dir, f);
+	snprintf(file, sizeof file, "%s/%s", sessions_dir, filename);
 	if (unlink(file))
 		goto done;
 
-	if (!strcmp(f, named_session))
+	if (!strcmp(filename, named_session))
 		strlcpy(named_session, XT_SAVED_TABS_FILE,
 		    sizeof named_session);
 
@@ -4606,40 +4516,33 @@ done:
 int
 session_cmd(struct tab *t, struct karg *args)
 {
-	char			*action = NULL;
-	char			*filename = NULL;
+	char			*filename = args->s;
 
 	if (t == NULL)
 		return (1);
 
-	if ((action = getparams(args->s, "session")))
-		;
-	else
-		action = "show";
-
-	if (!strcmp(action, "show"))
+	if (args->i & XT_SHOW)
 		show_oops(t, "Current session: %s", named_session[0] == '\0' ?
 		    XT_SAVED_TABS_FILE : named_session);
-	else if (g_str_has_prefix(action, "save ")) {
-		if (session_save(t, action, &filename)) {
+	else if (args->i & XT_SAVE) {
+		if (session_save(t, filename)) {
 			show_oops(t, "Can't save session: %s",
 			    filename ? filename : "INVALID");
 			goto done;
 		}
-	} else if (g_str_has_prefix(action, "open ")) {
-		if (session_open(t, action, &filename)) {
+	} else if (args->i & XT_OPEN) {
+		if (session_open(t, filename)) {
 			show_oops(t, "Can't open session: %s",
 			    filename ? filename : "INVALID");
 			goto done;
 		}
-	} else if (g_str_has_prefix(action, "delete ")) {
-		if (session_delete(t, action, &filename)) {
+	} else if (args->i & XT_DELETE) {
+		if (session_delete(t, filename)) {
 			show_oops(t, "Can't delete session: %s",
 			    filename ? filename : "INVALID");
 			goto done;
 		}
-	} else
-		show_oops(t, "Invalid command: %s", action);
+	}
 done:
 	return (XT_CB_PASSTHROUGH);
 }
@@ -5014,7 +4917,7 @@ add_kb(struct settings *s, char *entry)
 
 struct cmd {
 	char		*cmd;
-	int		params;
+	int		level;
 	int		(*func)(struct tab *, struct karg *);
 	struct karg	arg;
 	bool		userarg; /* allow free text arg */
@@ -5086,35 +4989,35 @@ struct cmd {
 	{ "cookiejar",		0,	xtp_page_cl,		{0}, FALSE },
 
 	/* js command */
-	{ "js",			0,	js_cmd,			{0}, FALSE },
-	{ "save",		1,	js_cmd,			{0}, FALSE },
-	{ "domain",		2,	js_cmd,			{0}, FALSE },
-	{ "fqdn",		2,	js_cmd,			{0}, FALSE },
-	{ "toggle",		1,	js_cmd,			{0}, FALSE },
-	{ "domain",		2,	js_cmd,			{0}, FALSE },
-	{ "fqdn",		2,	js_cmd,			{0}, FALSE },
-	{ "show",		1,	js_cmd,			{0}, FALSE },
-	{ "all",		2,	js_cmd,			{0}, FALSE },
-	{ "persistent",		2,	js_cmd,			{0}, FALSE },
-	{ "session",		2,	js_cmd,			{0}, FALSE },
+	{ "js",			0,	js_cmd,			{.i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION}, FALSE },
+	{ "save",		1,	js_cmd,			{.i = XT_SAVE | XT_WL_FQDN}, FALSE },
+	{ "domain",		2,	js_cmd,			{.i = XT_SAVE | XT_WL_TOPLEVEL}, FALSE },
+	{ "fqdn",		2,	js_cmd,			{.i = XT_SAVE | XT_WL_FQDN}, FALSE },
+	{ "show",		1,	js_cmd,			{.i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION}, FALSE },
+	{ "all",		2,	js_cmd,			{.i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION}, FALSE },
+	{ "persistent",		2,	js_cmd,			{.i = XT_SHOW | XT_WL_PERSISTENT}, FALSE },
+	{ "session",		2,	js_cmd,			{.i = XT_SHOW | XT_WL_SESSION}, FALSE },
+	{ "toggle",		1,	js_cmd,			{.i = XT_WL_TOGGLE | XT_WL_FQDN}, FALSE },
+	{ "domain",		2,	js_cmd,			{.i = XT_WL_TOGGLE | XT_WL_TOPLEVEL}, FALSE },
+	{ "fqdn",		2,	js_cmd,			{.i = XT_WL_TOGGLE | XT_WL_FQDN}, FALSE },
 
 	/* cookie command */
 	{ "cookie",		0,	cookie_cmd,		{0}, FALSE },
-	{ "show",		1,	cookie_cmd,		{0}, FALSE },
-	{ "all",		2,	cookie_cmd,		{0}, FALSE },
-	{ "persistent",		2,	cookie_cmd,		{0}, FALSE },
-	{ "session",		2,	cookie_cmd,		{0}, FALSE },
-	{ "save",		1,	cookie_cmd,		{0}, FALSE },
-	{ "fqdn",		2,	cookie_cmd,		{0}, FALSE },
-	{ "domain",		2,	cookie_cmd,		{0}, FALSE },
-	{ "toggle",		1,	cookie_cmd,		{0}, FALSE },
-	{ "domain",		2,	cookie_cmd,		{0}, FALSE },
-	{ "fqdn",		2,	cookie_cmd,		{0}, FALSE },
+	{ "save",		1,	cookie_cmd,		{.i = XT_SAVE | XT_WL_FQDN}, FALSE },
+	{ "domain",		2,	cookie_cmd,		{.i = XT_SAVE | XT_WL_TOPLEVEL}, FALSE },
+	{ "fqdn",		2,	cookie_cmd,		{.i = XT_SAVE | XT_WL_FQDN}, FALSE },
+	{ "show",		1,	cookie_cmd,		{.i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION}, FALSE },
+	{ "all",		2,	cookie_cmd,		{.i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION}, FALSE },
+	{ "persistent",		2,	cookie_cmd,		{.i = XT_SHOW | XT_WL_PERSISTENT}, FALSE },
+	{ "session",		2,	cookie_cmd,		{.i = XT_SHOW | XT_WL_SESSION}, FALSE },
+	{ "toggle",		1,	cookie_cmd,		{.i = XT_WL_TOGGLE  | XT_WL_FQDN}, FALSE },
+	{ "domain",		2,	cookie_cmd,		{.i = XT_WL_TOGGLE | XT_WL_TOPLEVEL}, FALSE },
+	{ "fqdn",		2,	cookie_cmd,		{.i = XT_WL_TOGGLE | XT_WL_FQDN}, FALSE },
 
 	/* cert command */
-	{ "cert",		0,	cert_cmd,		{0}, FALSE },
-	{ "show",		1,	cert_cmd,		{0}, FALSE },
-	{ "save",		1,	cert_cmd,		{0}, FALSE },
+	{ "cert",		0,	cert_cmd,		{.i = XT_SHOW}, FALSE },
+	{ "save",		1,	cert_cmd,		{.i = XT_SAVE}, FALSE },
+	{ "show",		1,	cert_cmd,		{.i = XT_SHOW}, FALSE },
 
 	{ "ca",			0,	ca_cmd,			{0}, FALSE },
 	{ "downloadmgr",	0,	xtp_page_dl,		{0}, FALSE },
@@ -5184,16 +5087,16 @@ struct cmd {
 	{ "prompttabnewcurrent",0,	command,		{.i = XT_CMD_TABNEW_CURRENT},	FALSE },
 
 	/* settings */
-	{ "set",		0,	set,			{0}, FALSE },
-	{ "fullscreen",		0,	fullscreen,		{0}, FALSE },
-	{ "f",			0,	fullscreen,		{0}, FALSE },
+	{ "set",		0,	set,			{0},			FALSE },
+	{ "fullscreen",		0,	fullscreen,		{0},			FALSE },
+	{ "f",			0,	fullscreen,		{0},			FALSE },
 
 	/* sessions */
-	{ "session",		0,	session_cmd,		{0}, FALSE },
-	{ "show",		1,	session_cmd,		{0}, FALSE },
-	{ "delete",		1,	session_cmd,		{0}, TRUE },
-	{ "open",		1,	session_cmd,		{0}, TRUE },
-	{ "save",		1,	session_cmd,		{0}, TRUE },
+	{ "session",		0,	session_cmd,		{.i = XT_SHOW},		FALSE },
+	{ "delete",		1,	session_cmd,		{.i = XT_DELETE},	TRUE },
+	{ "open",		1,	session_cmd,		{.i = XT_OPEN},		TRUE },
+	{ "save",		1,	session_cmd,		{.i = XT_SAVE},		TRUE },
+	{ "show",		1,	session_cmd,		{.i = XT_SHOW},		FALSE },
 };
 
 struct {
@@ -6640,7 +6543,7 @@ cmd_getlist(int id, char *key)
 	int			i,  dep, c = 0;
 	struct history		*h;
 
-	if (id >= 0 && (cmds[id].arg.i == XT_TAB_OPEN || cmds[id].arg.i == XT_TAB_NEW)) {
+	if (id >= 0 && (cmds[id].userarg && (cmds[id].arg.i == XT_TAB_OPEN || cmds[id].arg.i == XT_TAB_NEW))) {
 		RB_FOREACH_REVERSE(h, history_list, &hl)
 			if (match_uri(h->uri, key)) {
 				cmd_status.list[c] = (char *)h->uri;
@@ -6652,12 +6555,12 @@ cmd_getlist(int id, char *key)
 		return;
 	}
 
-	dep = (id == -1) ? 0 : cmds[id].params + 1;
+	dep = (id == -1) ? 0 : cmds[id].level + 1;
 
 	for (i = id + 1; i < LENGTH(cmds); i++) {
-		if(cmds[i].params < dep)
+		if(cmds[i].level < dep)
 			break;
-		if (cmds[i].params == dep && !strncmp(key, cmds[i].cmd, strlen(key)))
+		if (cmds[i].level == dep && !strncmp(key, cmds[i].cmd, strlen(key)))
 			cmd_status.list[c++] = cmds[i].cmd;
 
 	}
@@ -6709,9 +6612,9 @@ cmd_complete(struct tab *t, char *str, int dir)
 	levels = cmd_tokenize(s, tokens);
 
 	for (i = 0; i < levels - 1; i++) {
-		tok=tokens[i];
+		tok = tokens[i];
 		for (j = c; j < LENGTH(cmds); j++)
-			if (cmds[j].params == dep && !strcmp(tok, cmds[j].cmd)) {
+			if (cmds[j].level == dep && !strcmp(tok, cmds[j].cmd)) {
 				strlcat(res, tok, sizeof res);
 				strlcat(res, " ", sizeof res);
 				dep++;
@@ -6734,23 +6637,20 @@ cmd_complete(struct tab *t, char *str, int dir)
 }
 
 gboolean
-cmd_execute(struct tab *t, char *str)
+cmd_valid(char *str)
 {
-	struct cmd		*cmd = NULL;
-	char			*tok, *last, *s = g_strdup(str);
-	int			i, c = 0, dep = 0;
+	char                    *tok, *last, *s = g_strdup(str);
+	int                     i, c = 0, dep = 0;
 
 	for (tok = strtok_r(s, " ", &last); tok;
 	    tok = strtok_r(NULL, " ", &last)) {
 		for (i = c; i < LENGTH(cmds); i++) {
-			if (cmds[i].params < dep) {
-				show_oops(t, "Invalid command: %s", str);
+			if (cmds[i].level < dep) {
 				return (XT_CB_PASSTHROUGH);
 			}
-			if (cmds[i].params == dep && !strcmp(tok, cmds[i].cmd)) {
-				cmd = &cmds[i];
-				if (cmd->userarg) {
-					goto execute_cmd;
+			if (cmds[i].level == dep && !strcmp(tok, cmds[i].cmd)) {
+				if (cmds[i].userarg) {
+					return (XT_CB_HANDLED);
 				}
 				c = i + 1;
 				dep++;
@@ -6758,13 +6658,45 @@ cmd_execute(struct tab *t, char *str)
 			}
 		}
 		if (i == LENGTH(cmds)) {
+			return (XT_CB_PASSTHROUGH);
+		}
+	}
+	return (XT_CB_HANDLED);
+}
+
+gboolean
+cmd_execute(struct tab *t, char *str)
+{
+	struct cmd		*cmd = NULL;
+	char			*tok, *last, *s = g_strdup(str);
+	int			j, c = 0, dep = 0;
+
+	for (tok = strtok_r(s, " ", &last); tok;
+	    tok = strtok_r(NULL, " ", &last)) {
+		for (j = c; j < LENGTH(cmds); j++) {
+			if (cmds[j].level < dep) {
+				show_oops(t, "Invalid command: %s", str);
+				return (XT_CB_PASSTHROUGH);
+			}
+			if (cmds[j].level == dep && !strcmp(tok, cmds[j].cmd)) {
+				cmd = &cmds[j];
+				if (cmd->userarg) {
+					cmd->arg.s = last ? g_strdup(last) : g_strdup("");
+					goto execute_cmd;
+				}
+				c = j + 1;
+				dep++;
+				break;
+			}
+		}
+		if (j == LENGTH(cmds)) {
 			show_oops(t, "Invalid command: %s", str);
 			return (XT_CB_PASSTHROUGH);
 		}
 	}
-
+	cmd->arg.s = g_strdup(tok);
 execute_cmd:
-	cmd->arg.s = g_strdup(str);
+	/* arg->s contains last token */
 	cmd->func(t, &cmd->arg);
 	if (cmd->arg.s)
 		g_free(cmd->arg.s);
