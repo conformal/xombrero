@@ -997,6 +997,7 @@ set_browser_mode(struct settings *s, char *val)
 		enable_scripts = 1;
 		enable_js_whitelist = 0;
 		show_tabs = 0;
+		tabless = 1;
 	} else
 		return (1);
 
