@@ -6041,7 +6041,10 @@ webview_cwv_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 	DNPRINTF(XT_D_NAV, "webview_cwv_cb: %s\n",
 	    webkit_web_view_get_uri(wv));
 
-	if (enable_scripts == 0 && enable_cookie_whitelist == 1) {
+	if (tabless) {
+		/* open in current tab */
+		webview = t->wv;
+	} else if (enable_scripts == 0 && enable_cookie_whitelist == 1) {
 		uri = webkit_web_view_get_uri(wv);
 		if (uri && (d = wl_find_uri(uri, &js_wl)) == NULL)
 			return (NULL);
