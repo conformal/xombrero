@@ -4937,7 +4937,6 @@ struct cmd {
 	/* search */
 	{ "searchnext",		0,	search,			{.i = XT_SEARCH_NEXT},	FALSE },
 	{ "searchprevious",	0,	search,			{.i = XT_SEARCH_PREV},	FALSE },
-	{ "searchprev",		0,	search,			{.i = XT_SEARCH_PREV},	FALSE },
 
 	/* focus */
 	{ "focusaddress",	0,	focus,			{.i = XT_FOCUS_URI},	FALSE },
@@ -5024,49 +5023,33 @@ struct cmd {
 	{ "downloadmgr",	0,	xtp_page_dl,		{0}, FALSE },
 	{ "dl",			0,	xtp_page_dl,		{0}, FALSE },
 	{ "h",			0,	xtp_page_hl,		{0}, FALSE },
-	{ "hist",		0,	xtp_page_hl,		{0}, FALSE },
 	{ "history",		0,	xtp_page_hl,		{0}, FALSE },
 	{ "home",		0,	go_home,		{0}, FALSE },
 	{ "restart",		0,	restart,		{0}, FALSE },
 	{ "urlhide",		0,	urlaction,		{.i = XT_URL_HIDE}, FALSE },
-	{ "urlh",		0,	urlaction,		{.i = XT_URL_HIDE}, FALSE },
 	{ "urlshow",		0,	urlaction,		{.i = XT_URL_SHOW}, FALSE },
-	{ "urls",		0,	urlaction,		{.i = XT_URL_SHOW}, FALSE },
 	{ "statushide",		0,	statusaction,		{.i = XT_STATUSBAR_HIDE}, FALSE },
-	{ "statush",		0,	statusaction,		{.i = XT_STATUSBAR_HIDE}, FALSE },
 	{ "statusshow",		0,	statusaction,		{.i = XT_STATUSBAR_SHOW}, FALSE },
-	{ "statuss",		0,	statusaction,		{.i = XT_STATUSBAR_SHOW}, FALSE },
 
 	{ "print",		0,	print_page,		{0}, FALSE },
 
 	/* tabs */
-	{ "o",			0,	tabaction,		{.i = XT_TAB_OPEN},	TRUE },
-	{ "op",			0,	tabaction,		{.i = XT_TAB_OPEN},	TRUE },
 	{ "open",		0,	tabaction,		{.i = XT_TAB_OPEN},	TRUE },
 	{ "tabnew",		0,	tabaction,		{.i = XT_TAB_NEW},	TRUE },
 	{ "tabedit",		0,	tabaction,		{.i = XT_TAB_NEW},	TRUE },
-	{ "tabe",		0,	tabaction,		{.i = XT_TAB_NEW},	TRUE },
 	{ "tabclose",		0,	tabaction,		{.i = XT_TAB_DELETE},	FALSE },
 	{ "tabundoclose",	0,	tabaction,		{.i = XT_TAB_UNDO_CLOSE} },
-	{ "tabc",		0,	tabaction,		{.i = XT_TAB_DELETE},	FALSE },
 	{ "tabshow",		0,	tabaction,		{.i = XT_TAB_SHOW},	FALSE },
-	{ "tabs",		0,	tabaction,		{.i = XT_TAB_SHOW},	FALSE },
 	{ "tabhide",		0,	tabaction,		{.i = XT_TAB_HIDE},	FALSE },
-	{ "tabh",		0,	tabaction,		{.i = XT_TAB_HIDE},	FALSE },
-	{ "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT},	FALSE },
+	/* { "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT},	FALSE }, */
 	{ "q",			0,	tabaction,		{.i = XT_TAB_DELQUIT},	FALSE },
+	
 	/* XXX add count to these commands */
 	{ "tabfirst",		0,	movetab,		{.i = XT_TAB_FIRST},	FALSE },
-	{ "tabfir",		0,	movetab,		{.i = XT_TAB_FIRST},	FALSE },
 	{ "tabrewind",		0,	movetab,		{.i = XT_TAB_FIRST},	FALSE },
-	{ "tabr",		0,	movetab,		{.i = XT_TAB_FIRST},	FALSE },
 	{ "tablast",		0,	movetab,		{.i = XT_TAB_LAST},	FALSE },
-	{ "tabl",		0,	movetab,		{.i = XT_TAB_LAST},	FALSE },
 	{ "tabprevious",	0,	movetab,		{.i = XT_TAB_PREV},	FALSE },
-	{ "tabprev",		0,	movetab,		{.i = XT_TAB_PREV},	FALSE },
-	{ "tabp",		0,	movetab,		{.i = XT_TAB_PREV},	FALSE },
 	{ "tabnext",		0,	movetab,		{.i = XT_TAB_NEXT},	FALSE },
-	{ "tabn",		0,	movetab,		{.i = XT_TAB_NEXT},	FALSE },
 	{ "tabgoto1",		0,	movetab,		{.i = 1},		FALSE },
 	{ "tabgoto2",		0,	movetab,		{.i = 2},		FALSE },
 	{ "tabgoto3",		0,	movetab,		{.i = 3},		FALSE },
@@ -5078,7 +5061,6 @@ struct cmd {
 	{ "tabgoto9",		0,	movetab,		{.i = 9},		FALSE },
 	{ "tabgoto10",		0,	movetab,		{.i = 10},		FALSE },
 	{ "focusout",		0,	resizetab,		{.i = -1},		FALSE },
-	{ "focusin",		0,	resizetab,		{.i = 1},		FALSE },
 	{ "focusin",		0,	resizetab,		{.i = 1},		FALSE },
 
 	/* command aliases (handy when -S flag is used) */
@@ -6606,27 +6588,40 @@ void
 cmd_complete(struct tab *t, char *str, int dir)
 {
 	GtkEntry		*w = GTK_ENTRY(t->cmd);
-	int			i, j, levels, c = 0, dep = 0, parent = -1;
-	char			*tok, *match, *s = strdup(str);
+	int			i, j, levels, c = 0, dep = 0, parent = -1, matchcount = 0;
+	char			*tok, *match, *s = g_strdup(str);
 	char			*tokens[3];
 	char			res[XT_MAX_URL_LENGTH + 32] = ":";
 
 	DNPRINTF(XT_D_CMD, "cmd_keypress_cb: complete %s\n", str);
 
 	levels = cmd_tokenize(s, tokens);
+	g_free(s);
 
 	for (i = 0; i < levels - 1; i++) {
 		tok = tokens[i];
-		for (j = c; j < LENGTH(cmds); j++)
-			if (cmds[j].level == dep && !strcmp(tok, cmds[j].cmd)) {
-				strlcat(res, tok, sizeof res);
-				strlcat(res, " ", sizeof res);
-				dep++;
-				c = j;
-				break;
+		matchcount = 0;
+		for (j = c; j < LENGTH(cmds); j++) {
+			if (cmds[j].level < dep)
+                                break;
+			if (cmds[j].level == dep && !strncmp(tok, cmds[j].cmd, strlen(tok))) {
+				matchcount++;
+				c = j + 1;
+				if (strlen(tok) == strlen(cmds[j].cmd)) {
+					matchcount = 1;
+					break;
+				}
 			}
+		}
 
-		parent = c;
+		if (matchcount == 1) {
+			strlcat(res, tok, sizeof res);
+			strlcat(res, " ", sizeof res);
+			dep++;
+		} else
+			return;
+
+		parent = c - 1;
 	}
 
 	if (cmd_status.index == -1)
@@ -6641,67 +6636,47 @@ cmd_complete(struct tab *t, char *str, int dir)
 }
 
 gboolean
-cmd_valid(char *str)
-{
-	char                    *tok, *last, *s = g_strdup(str);
-	int                     i, c = 0, dep = 0;
-
-	for (tok = strtok_r(s, " ", &last); tok;
-	    tok = strtok_r(NULL, " ", &last)) {
-		for (i = c; i < LENGTH(cmds); i++) {
-			if (cmds[i].level < dep) {
-				return (XT_CB_PASSTHROUGH);
-			}
-			if (cmds[i].level == dep && !strcmp(tok, cmds[i].cmd)) {
-				if (cmds[i].userarg) {
-					return (XT_CB_HANDLED);
-				}
-				c = i + 1;
-				dep++;
-				break;
-			}
-		}
-		if (i == LENGTH(cmds)) {
-			return (XT_CB_PASSTHROUGH);
-		}
-	}
-	return (XT_CB_HANDLED);
-}
-
-gboolean
 cmd_execute(struct tab *t, char *str)
 {
 	struct cmd		*cmd = NULL;
 	char			*tok, *last, *s = g_strdup(str);
-	int			j, c = 0, dep = 0;
+	int			j, c = 0, dep = 0, matchcount = 0;
 
 	for (tok = strtok_r(s, " ", &last); tok;
 	    tok = strtok_r(NULL, " ", &last)) {
+		matchcount = 0;
 		for (j = c; j < LENGTH(cmds); j++) {
-			if (cmds[j].level < dep) {
-				show_oops(t, "Invalid command: %s", str);
-				return (XT_CB_PASSTHROUGH);
-			}
-			if (cmds[j].level == dep && !strcmp(tok, cmds[j].cmd)) {
-				cmd = &cmds[j];
-				if (cmd->userarg) {
-					cmd->arg.s = last ? g_strdup(last) : g_strdup("");
-					goto execute_cmd;
-				}
-				c = j + 1;
-				dep++;
+			if (cmds[j].level < dep)
 				break;
+			if (cmds[j].level == dep && !strncmp(tok, cmds[j].cmd, strlen(tok))) {
+				matchcount++;
+				c = j + 1;
+				cmd = &cmds[j];
+				if (strlen(tok) == strlen(cmds[j].cmd)) {
+					matchcount = 1;
+					break;
+				}
 			}
 		}
-		if (j == LENGTH(cmds)) {
+		if (matchcount == 1) {
+			if (cmd->userarg)
+				goto execute_cmd;
+			dep++;
+		} else {
 			show_oops(t, "Invalid command: %s", str);
+			g_free(s);
 			return (XT_CB_PASSTHROUGH);
 		}
 	}
-	cmd->arg.s = g_strdup(tok);
 execute_cmd:
+	if (cmd->userarg)
+		cmd->arg.s = last ? g_strdup(last) : g_strdup("");
+	else 
+		cmd->arg.s = g_strdup(tok);
+
 	/* arg->s contains last token */
 	cmd->func(t, &cmd->arg);
+	g_free(s);
 	if (cmd->arg.s)
 		g_free(cmd->arg.s);
 
