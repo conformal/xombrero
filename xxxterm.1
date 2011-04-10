@@ -136,7 +136,7 @@ Each keyboard shortcut requires exactly one entry in the configuration file.
 A shortcut can have multiple entries in the configuration file.
 The format of the keybinding entry is as follows:
 .Pp
-.D1 keybinding = action,keystroke(s)
+.D1 keybinding = action,(!)keystroke(s)
 .Pp
 For example, "keybinding = tabnew,C-t" where
 .Cm tabnew
@@ -144,6 +144,11 @@ is the action and
 .Cm C-t
 are
 the keystrokes.
+GTK has some default keybindings for manipulating text inside input
+fields, such as the URI or search entry widget, for example
+.Cm C-w
+deletes a word. To override these defaults prefix your key with an
+exclamation mark, like this: "keybinding = tabclose,!C-w".
 The
 .Cm clearall
 key word is special and is meant to reset the key binding list to the GTK+

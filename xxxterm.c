@@ -2755,7 +2755,7 @@ ca_cmd(struct tab *t, struct karg *args)
 		show_oops(t, "Can't stat CA file: %s", strerror(errno));
 		goto done;
 	}
-	
+
 	certs_buf = g_malloc(sb.st_size + 1);
 	if (fread(certs_buf, 1, sb.st_size, f) != sb.st_size) {
 		show_oops(t, "Can't read CA file: %s", strerror(errno));
@@ -4771,6 +4771,7 @@ walk_kb(struct settings *s,
 		cb(s, str, cb_args);
 	}
 }
+
 void
 init_keybindings(void)
 {
@@ -4808,73 +4809,73 @@ keybinding_clearall(void)
 }
 
 int
-keybinding_add(char *kb, char *value, struct key_binding *orig)
+keybinding_add(char *cmd, char *key, int use_in_entry)
 {
 	struct key_binding	*k;
 	guint			keyval, mask = 0;
 	int			i;
 
-	DNPRINTF(XT_D_KEYBINDING, "keybinding_add: %s %s %s\n", kb, value, orig->cmd);
+	DNPRINTF(XT_D_KEYBINDING, "keybinding_add: %s %s\n", cmd, key);
 
-	if (orig == NULL)
-		return (1);
-	if (strcmp(kb, orig->cmd))
-		return (1);
+	/* Keys which are to be used in entry have been prefixed with an
+	 * exclamation mark. */
+	if (use_in_entry)
+		key++;
 
 	/* find modifier keys */
-	if (strstr(value, "S-"))
+	if (strstr(key, "S-"))
 		mask |= GDK_SHIFT_MASK;
-	if (strstr(value, "C-"))
+	if (strstr(key, "C-"))
 		mask |= GDK_CONTROL_MASK;
-	if (strstr(value, "M1-"))
+	if (strstr(key, "M1-"))
 		mask |= GDK_MOD1_MASK;
-	if (strstr(value, "M2-"))
+	if (strstr(key, "M2-"))
 		mask |= GDK_MOD2_MASK;
-	if (strstr(value, "M3-"))
+	if (strstr(key, "M3-"))
 		mask |= GDK_MOD3_MASK;
-	if (strstr(value, "M4-"))
+	if (strstr(key, "M4-"))
 		mask |= GDK_MOD4_MASK;
-	if (strstr(value, "M5-"))
+	if (strstr(key, "M5-"))
 		mask |= GDK_MOD5_MASK;
 
 	/* find keyname */
-	for (i = strlen(value) - 1; i > 0; i--)
-		if (value[i] == '-')
-			value = &value[i + 1];
+	for (i = strlen(key) - 1; i > 0; i--)
+		if (key[i] == '-')
+			key = &key[i + 1];
 
 	/* validate keyname */
-	keyval = gdk_keyval_from_name(value);
+	keyval = gdk_keyval_from_name(key);
 	if (keyval == GDK_VoidSymbol) {
-		warnx("invalid keybinding name %s", value);
+		warnx("invalid keybinding name %s", key);
 		return (1);
 	}
 	/* must run this test too, gtk+ doesn't handle 10 for example */
 	if (gdk_keyval_name(keyval) == NULL) {
-		warnx("invalid keybinding name %s", value);
+		warnx("invalid keybinding name %s", key);
 		return (1);
 	}
 
 	/* make sure it isn't a dupe */
 	TAILQ_FOREACH(k, &kbl, entry)
 		if (k->key == keyval && k->mask == mask) {
-			warnx("duplicate keybinding for %s", value);
+			warnx("duplicate keybinding for %s", key);
 			return (1);
 		}
 
 	/* add keyname */
 	k = g_malloc0(sizeof *k);
-	k->cmd = orig->cmd;
+	k->cmd = g_strdup(cmd);
 	k->mask = mask;
-	k->use_in_entry = orig->use_in_entry;
+	k->use_in_entry = use_in_entry;
 	k->key = keyval;
 
 	DNPRINTF(XT_D_KEYBINDING, "keybinding_add: %s 0x%x %d 0x%x\n",
-	    k->name,
+	    k->cmd,
 	    k->mask,
 	    k->use_in_entry,
 	    k->key);
 	DNPRINTF(XT_D_KEYBINDING, "keybinding_add: adding: %s %s\n",
-	    k->name, gdk_keyval_name(keyval));
+	    k->cmd, gdk_keyval_name(keyval));
 
 	TAILQ_INSERT_HEAD(&kbl, k, entry);
 
@@ -4884,8 +4885,7 @@ keybinding_add(char *kb, char *value, struct key_binding *orig)
 int
 add_kb(struct settings *s, char *entry)
 {
-	int			i;
-	char			*kb, *value;
+	char			*kb, *key;
 
 	DNPRINTF(XT_D_KEYBINDING, "add_kb: %s\n", entry);
 
@@ -4899,21 +4899,9 @@ add_kb(struct settings *s, char *entry)
 	if (kb == NULL)
 		return (1);
 	*kb = '\0';
-	value = kb + 1;
+	key = kb + 1;
 
-	/* make sure it is a valid keybinding */
-	for (i = 0; i < LENGTH(keys); i++)
-		if (keys[i].cmd && !strcmp(entry, keys[i].cmd)) {
-			DNPRINTF(XT_D_KEYBINDING, "add_kb: %s 0x%x %d 0x%x\n",
-			    keys[i].cmd,
-			    keys[i].mask,
-			    keys[i].use_in_entry,
-			    keys[i].key);
-
-			return (keybinding_add(entry, value, &keys[i]));
-		}
-
-	return (1);
+	return (keybinding_add(entry, key, key[0] == '!'));
 }
 
 struct cmd {
@@ -5043,7 +5031,7 @@ struct cmd {
 	{ "tabhide",		0,	tabaction,		{.i = XT_TAB_HIDE},	FALSE },
 	/* { "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT},	FALSE }, */
 	{ "q",			0,	tabaction,		{.i = XT_TAB_DELQUIT},	FALSE },
-	
+
 	/* XXX add count to these commands */
 	{ "tabfirst",		0,	movetab,		{.i = XT_TAB_FIRST},	FALSE },
 	{ "tabrewind",		0,	movetab,		{.i = XT_TAB_FIRST},	FALSE },
@@ -6559,8 +6547,8 @@ cmd_getnext(int dir)
 {
 	cmd_status.index += dir;
 
-	if (cmd_status.index<0)
-		cmd_status.index = cmd_status.len-1;
+	if (cmd_status.index < 0)
+		cmd_status.index = cmd_status.len - 1;
 	else if (cmd_status.index >= cmd_status.len)
 		cmd_status.index = 0;
 
@@ -6671,7 +6659,7 @@ cmd_execute(struct tab *t, char *str)
 execute_cmd:
 	if (cmd->userarg)
 		cmd->arg.s = last ? g_strdup(last) : g_strdup("");
-	else 
+	else
 		cmd->arg.s = g_strdup(tok);
 
 	/* arg->s contains last token */
@@ -7588,8 +7576,10 @@ create_canvas(void)
 	gtk_widget_set_size_request(arrow, -1, -1);
 	gtk_container_add(GTK_CONTAINER(abtn), arrow);
 	gtk_widget_set_size_request(abtn, -1, 20);
-	gtk_notebook_set_action_widget(notebook, abtn, GTK_PACK_END);
 
+#if GTK_CHECK_VERSION(2, 20, 0)
+	gtk_notebook_set_action_widget(notebook, abtn, GTK_PACK_END);
+#endif
 	gtk_widget_set_size_request(GTK_WIDGET(notebook), -1, -1);
 	gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(notebook), TRUE, TRUE, 0);
 	gtk_widget_set_size_request(vbox, -1, -1);
