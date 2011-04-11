@@ -4,6 +4,7 @@
  * Copyright (c) 2011 Stevan Andjelkovic <stevan@student.chalmers.se>
  * Copyright (c) 2010 Edd Barrett <vext01@gmail.com>
  * Copyright (c) 2011 Todd T. Fries <todd@fries.net>
+ * Copyright (c) 2011 Raphael Graf <r@undefined.ch>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -3766,12 +3767,31 @@ movetab(struct tab *t, struct karg *args)
 
 		switch (args->i) {
 		case XT_TAB_NEXT:
-			/* if at the last page, loop around to the first */
-			if (gtk_notebook_get_current_page(notebook) ==
-			    gtk_notebook_get_n_pages(notebook) - 1)
-				gtk_notebook_set_current_page(notebook, 0);
-			else
-				gtk_notebook_next_page(notebook);
+			if (strlen(args->s) == 0) {
+				/* if at the last page, loop around to the first */
+				if (gtk_notebook_get_current_page(notebook) ==
+				    gtk_notebook_get_n_pages(notebook) - 1)
+					gtk_notebook_set_current_page(notebook, 0);
+				else
+					gtk_notebook_next_page(notebook);
+			} else {
+				x = atoi(args->s) - 1;
+				if (x < 0)
+					return (XT_CB_PASSTHROUGH);
+
+				if (t->tab_id == x) {
+					DNPRINTF(XT_D_TAB, "movetab: do nothing\n");
+					return (XT_CB_HANDLED);
+				}
+				TAILQ_FOREACH(tt, &tabs, entry) {
+					if (tt->tab_id == x) {
+						gtk_notebook_set_current_page(notebook, x);
+						DNPRINTF(XT_D_TAB, "movetab: going to %d\n", x);
+						break;
+					}
+				}
+
+			}
 			break;
 		case XT_TAB_PREV:
 			/* if at the first page, loop around to the last */
@@ -3792,22 +3812,6 @@ movetab(struct tab *t, struct karg *args)
 		}
 
 		return (XT_CB_HANDLED);
-	}
-
-	/* jump to tab */
-	x = args->i - 1;
-	if (t->tab_id == x) {
-		DNPRINTF(XT_D_TAB, "movetab: do nothing\n");
-		return (XT_CB_HANDLED);
-	}
-
-	TAILQ_FOREACH(tt, &tabs, entry) {
-		if (tt->tab_id == x) {
-			gtk_notebook_set_current_page(notebook, x);
-			DNPRINTF(XT_D_TAB, "movetab: going to %d\n", x);
-			if (tt->focus_wv)
-				focus_webview(tt);
-		}
 	}
 
 	return (XT_CB_HANDLED);
@@ -4702,16 +4706,16 @@ struct key_binding {
 	{ "tabnew",		CTRL,	0,	GDK_t		},
 	{ "tabclose",		CTRL,	1,	GDK_w		},
 	{ "tabundoclose",	0,	0,	GDK_U		},
-	{ "tabgoto1",		CTRL,	0,	GDK_1		},
-	{ "tabgoto2",		CTRL,	0,	GDK_2		},
-	{ "tabgoto3",		CTRL,	0,	GDK_3		},
-	{ "tabgoto4",		CTRL,	0,	GDK_4		},
-	{ "tabgoto5",		CTRL,	0,	GDK_5		},
-	{ "tabgoto6",		CTRL,	0,	GDK_6		},
-	{ "tabgoto7",		CTRL,	0,	GDK_7		},
-	{ "tabgoto8",		CTRL,	0,	GDK_8		},
-	{ "tabgoto9",		CTRL,	0,	GDK_9		},
-	{ "tabgoto10",		CTRL,	0,	GDK_0		},
+	{ "tabnext 1",		CTRL,	0,	GDK_1		},
+	{ "tabnext 2",		CTRL,	0,	GDK_2		},
+	{ "tabnext 3",		CTRL,	0,	GDK_3		},
+	{ "tabnext 4",		CTRL,	0,	GDK_4		},
+	{ "tabnext 5",		CTRL,	0,	GDK_5		},
+	{ "tabnext 6",		CTRL,	0,	GDK_6		},
+	{ "tabnext 7",		CTRL,	0,	GDK_7		},
+	{ "tabnext 8",		CTRL,	0,	GDK_8		},
+	{ "tabnext 9",		CTRL,	0,	GDK_9		},
+	{ "tabnext 10",		CTRL,	0,	GDK_0		},
 	{ "tabfirst",		CTRL,	0,	GDK_less	},
 	{ "tablast",		CTRL,	0,	GDK_greater	},
 	{ "tabprevious",	CTRL,	0,	GDK_Left	},
@@ -5037,17 +5041,7 @@ struct cmd {
 	{ "tabrewind",		0,	movetab,		{.i = XT_TAB_FIRST},	FALSE },
 	{ "tablast",		0,	movetab,		{.i = XT_TAB_LAST},	FALSE },
 	{ "tabprevious",	0,	movetab,		{.i = XT_TAB_PREV},	FALSE },
-	{ "tabnext",		0,	movetab,		{.i = XT_TAB_NEXT},	FALSE },
-	{ "tabgoto1",		0,	movetab,		{.i = 1},		FALSE },
-	{ "tabgoto2",		0,	movetab,		{.i = 2},		FALSE },
-	{ "tabgoto3",		0,	movetab,		{.i = 3},		FALSE },
-	{ "tabgoto4",		0,	movetab,		{.i = 4},		FALSE },
-	{ "tabgoto5",		0,	movetab,		{.i = 5},		FALSE },
-	{ "tabgoto6",		0,	movetab,		{.i = 6},		FALSE },
-	{ "tabgoto7",		0,	movetab,		{.i = 7},		FALSE },
-	{ "tabgoto8",		0,	movetab,		{.i = 8},		FALSE },
-	{ "tabgoto9",		0,	movetab,		{.i = 9},		FALSE },
-	{ "tabgoto10",		0,	movetab,		{.i = 10},		FALSE },
+	{ "tabnext",		0,	movetab,		{.i = XT_TAB_NEXT},	TRUE },
 	{ "focusout",		0,	resizetab,		{.i = -1},		FALSE },
 	{ "focusin",		0,	resizetab,		{.i = 1},		FALSE },
 
