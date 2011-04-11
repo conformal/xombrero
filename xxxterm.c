@@ -4859,11 +4859,12 @@ keybinding_add(char *cmd, char *key, int use_in_entry)
 		return (1);
 	}
 
-	/* make sure it isn't a dupe */
+	/* Remove eventual dupes. */
 	TAILQ_FOREACH(k, &kbl, entry)
 		if (k->key == keyval && k->mask == mask) {
-			warnx("duplicate keybinding for %s", key);
-			return (1);
+			TAILQ_REMOVE(&kbl, k, entry);
+			g_free(k);
+			break;
 		}
 
 	/* add keyname */
