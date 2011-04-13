@@ -4644,7 +4644,7 @@ struct key_binding {
 	{ "search",		0,	0,	GDK_slash	},
 	{ "searchb",		0,	0,	GDK_question	},
 	{ "command",		0,	0,	GDK_colon	},
-	{ "quit",		CTRL,	0,	GDK_q		},
+	{ "qa",			CTRL,	0,	GDK_q		},
 	{ "restart",		MOD1,	0,	GDK_q		},
 	{ "js toggle",		CTRL,	0,	GDK_j		},
 	{ "cookie toggle",	MOD1,	0,	GDK_c		},
@@ -4968,13 +4968,10 @@ struct cmd {
 	{ "fav",		0,	xtp_page_fl,		{0}, FALSE },
 	{ "favadd",		0,	add_favorite,		{0}, FALSE },
 
-	{ "quit",		0,	quit,			{0}, FALSE },
-	{ "q!",			0,	quit,			{0}, FALSE },
-	{ "qa",			0,	quit,			{0}, FALSE },
-	{ "qa!",		0,	quit,			{0}, FALSE },
+	{ "qall",		0,	quit,			{0}, FALSE },
+	{ "quitall",		0,	quit,			{0}, FALSE },
 	{ "w",			0,	save_tabs,		{0}, FALSE },
 	{ "wq",			0,	save_tabs_and_quit,	{0}, FALSE },
-	{ "wq!",		0,	save_tabs_and_quit,	{0}, FALSE },
 	{ "help",		0,	help,			{0}, FALSE },
 	{ "about",		0,	about,			{0}, FALSE },
 	{ "stats",		0,	stats,			{0}, FALSE },
@@ -5034,7 +5031,7 @@ struct cmd {
 	{ "tabundoclose",	0,	tabaction,		{.i = XT_TAB_UNDO_CLOSE} },
 	{ "tabshow",		0,	tabaction,		{.i = XT_TAB_SHOW},	FALSE },
 	{ "tabhide",		0,	tabaction,		{.i = XT_TAB_HIDE},	FALSE },
-	/* { "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT},	FALSE }, */
+	{ "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT},	FALSE },
 	{ "q",			0,	tabaction,		{.i = XT_TAB_DELQUIT},	FALSE },
 
 	/* XXX add count to these commands */
@@ -6623,7 +6620,7 @@ cmd_execute(struct tab *t, char *str)
 {
 	struct cmd		*cmd = NULL;
 	char			*tok, *last, *s = g_strdup(str);
-	int			j, c = 0, dep = 0, matchcount = 0;
+	int			j, len, c = 0, dep = 0, matchcount = 0;
 
 	for (tok = strtok_r(s, " ", &last); tok;
 	    tok = strtok_r(NULL, " ", &last)) {
@@ -6631,11 +6628,12 @@ cmd_execute(struct tab *t, char *str)
 		for (j = c; j < LENGTH(cmds); j++) {
 			if (cmds[j].level < dep)
 				break;
-			if (cmds[j].level == dep && !strncmp(tok, cmds[j].cmd, strlen(tok))) {
+			len = (tok[strlen(tok) - 1] == '!') ? strlen(tok) - 1: strlen(tok);
+			if (cmds[j].level == dep && !strncmp(tok, cmds[j].cmd, len)) {
 				matchcount++;
 				c = j + 1;
 				cmd = &cmds[j];
-				if (strlen(tok) == strlen(cmds[j].cmd)) {
+				if (len == strlen(cmds[j].cmd)) {
 					matchcount = 1;
 					break;
 				}
@@ -6772,6 +6770,8 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 
 	DNPRINTF(XT_D_CMD, "cmd_activate_cb: tab %d %s\n", t->tab_id, c);
 
+	hide_cmd(t);
+
 	/* sanity */
 	if (c == NULL)
 		goto done;
@@ -6794,12 +6794,12 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 		t->search_forward = c[0] == '/';
 
 		goto done;
-	}
-
+	} 
+		
 	cmd_execute(t, s);
 
 done:
-	hide_cmd(t);
+	return;
 }
 
 void
@@ -7151,7 +7151,6 @@ delete_tab(struct tab *t)
 		gtk_widget_destroy(t->uri_entry);
 		gtk_widget_destroy(t->stop);
 		gtk_widget_destroy(t->js_toggle);
-
 	}
 
 	gtk_widget_destroy(t->vbox);
