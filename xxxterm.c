@@ -789,6 +789,9 @@ is_g_object_setting(GObject *o, char *str)
 	return (0);
 }
 
+/*
+ * Display a web page from a HTML string in memory, rather than from a URL
+ */
 void
 load_webkit_string(struct tab *t, const char *str, gchar *title)
 {
@@ -799,7 +802,12 @@ load_webkit_string(struct tab *t, const char *str, gchar *title)
 	/* we set this to indicate we want to manually do navaction */
 	if (t->bfl)
 		t->item = webkit_web_back_forward_list_get_current_item(t->bfl);
-	webkit_web_view_load_string(t->wv, str, NULL, NULL, NULL);
+
+	webkit_web_view_load_string(t->wv, str, NULL, NULL, "");
+#if GTK_CHECK_VERSION(2, 20, 0)
+	gtk_spinner_stop(GTK_SPINNER(t->spinner));
+	gtk_widget_hide(t->spinner);
+#endif
 
 	if (title) {
 		uri = g_strdup_printf("%s%s", XT_URI_ABOUT, title);
@@ -5320,6 +5328,7 @@ parse_xtp_url(struct tab *t, const char *url)
 	char			*tokens[4] = {NULL, NULL, NULL, ""};
 	struct xtp_despatch	*dsp, *dsp_match = NULL;
 	uint8_t			req_class;
+	int			ret = FALSE;
 
 	/*
 	 * tokens array meaning:
@@ -5335,7 +5344,7 @@ parse_xtp_url(struct tab *t, const char *url)
 	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
 
 	if (strncmp(url, XT_XTP_STR, strlen(XT_XTP_STR)))
-		return 0;
+		goto clean;
 
 	dup = g_strdup(url + strlen(XT_XTP_STR));
 
@@ -5368,6 +5377,7 @@ parse_xtp_url(struct tab *t, const char *url)
 
 	/* check session key and call despatch function */
 	if (validate_xtp_session_key(t, *(dsp_match->session_key), tokens[1])) {
+		ret = TRUE; /* all is well, this was a valid xtp request */
 		dsp_match->handle_func(t, atoi(tokens[2]), atoi(tokens[3]));
 	}
 
@@ -5375,7 +5385,7 @@ clean:
 	if (dup)
 		g_free(dup);
 
-	return 1;
+	return (ret);
 }
 
 
@@ -5400,10 +5410,12 @@ activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 	uri += strspn(uri, "\t ");
 
 	/* if xxxt:// treat specially */
-	if (!parse_xtp_url(t, uri)) {
-		load_uri(t, (gchar *)uri);
-		focus_webview(t);
-	}
+	if (parse_xtp_url(t, uri))
+		return;
+
+	/* otherwise continue to load page normally */
+	load_uri(t, (gchar *)uri);
+	focus_webview(t);
 }
 
 void
@@ -5967,7 +5979,11 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 
 	uri = (char *)webkit_network_request_get_uri(request);
 
-	if ((!parse_xtp_url(t, uri) && (t->ctrl_click))) {
+	/* if this is an xtp url, we don't load anything else */
+	if (parse_xtp_url(t, uri))
+		    return (TRUE);
+
+	if (t->ctrl_click) {
 		t->ctrl_click = 0;
 		create_new_tab(uri, NULL, ctrl_click_focus);
 		webkit_web_policy_decision_ignore(pd);
