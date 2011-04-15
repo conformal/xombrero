@@ -5939,8 +5939,10 @@ notify_title_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 	title = webkit_web_view_get_title(wview);
 	set = title ? title: get_uri(wview);
-	gtk_label_set_text(GTK_LABEL(t->label), set);
-	gtk_window_set_title(GTK_WINDOW(main_window), set);
+	if (set) {
+		gtk_label_set_text(GTK_LABEL(t->label), set);
+		gtk_window_set_title(GTK_WINDOW(main_window), set);
+	}
 }
 
 void
