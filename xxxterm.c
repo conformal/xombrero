@@ -330,6 +330,7 @@ struct karg {
 #define XT_XTP_STR		"xxxt://"
 
 /* XTP classes (xxxt://<class>) */
+#define XT_XTP_INVALID		0	/* invalid */
 #define XT_XTP_DL		1	/* downloads */
 #define XT_XTP_HL		2	/* history */
 #define XT_XTP_CL		3	/* cookies */
@@ -5313,7 +5314,7 @@ struct xtp_despatch		xtp_despatches[] = {
 	{ XT_XTP_HL, &hl_session_key, xtp_handle_hl },
 	{ XT_XTP_FL, &fl_session_key, xtp_handle_fl },
 	{ XT_XTP_CL, &cl_session_key, xtp_handle_cl },
-	{ NULL, NULL, NULL }
+	{ XT_XTP_INVALID, NULL, NULL }
 };
 
 /*
@@ -5361,7 +5362,7 @@ parse_xtp_url(struct tab *t, const char *url)
 
 	dsp = xtp_despatches;
 	req_class = atoi(tokens[0]);
-	while (dsp->xtp_class != NULL) {
+	while (dsp->xtp_class) {
 		if (dsp->xtp_class == req_class) {
 			dsp_match = dsp;
 			break;
