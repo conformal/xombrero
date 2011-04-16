@@ -5942,6 +5942,9 @@ notify_title_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	if (set) {
 		gtk_label_set_text(GTK_LABEL(t->label), set);
 		gtk_window_set_title(GTK_WINDOW(main_window), set);
+	} else {
+		gtk_label_set_text(GTK_LABEL(t->label), "(untitled)");
+		gtk_window_set_title(GTK_WINDOW(main_window), XT_NAME);
 	}
 }
 
