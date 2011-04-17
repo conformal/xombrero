@@ -1356,6 +1356,8 @@ load_uri(struct tab *t, gchar *uri)
 			if (!strcmp(&uri[XT_URI_ABOUT_LEN], about_list[i].name)) {
 				bzero(&args, sizeof args);
 				about_list[i].func(t, &args);
+				gtk_widget_set_sensitive(GTK_WIDGET(t->stop),
+				    FALSE);
 				return;
 			}
 		show_oops(t, "invalid about page");
