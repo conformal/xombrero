@@ -4985,7 +4985,6 @@ struct cmd {
 	{ "about",		0,	about,			{0}, FALSE },
 	{ "stats",		0,	stats,			{0}, FALSE },
 	{ "version",		0,	about,			{0}, FALSE },
-	{ "cookiejar",		0,	xtp_page_cl,		{0}, FALSE },
 
 	/* js command */
 	{ "js",			0,	js_cmd,			{.i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION}, FALSE },
@@ -5012,6 +5011,9 @@ struct cmd {
 	{ "toggle",		1,	cookie_cmd,		{.i = XT_WL_TOGGLE  | XT_WL_FQDN}, FALSE },
 	{ "domain",		2,	cookie_cmd,		{.i = XT_WL_TOGGLE | XT_WL_TOPLEVEL}, FALSE },
 	{ "fqdn",		2,	cookie_cmd,		{.i = XT_WL_TOGGLE | XT_WL_FQDN}, FALSE },
+
+	/* cookie jar */
+	{ "cookiejar",		0,	xtp_page_cl,		{0}, FALSE },
 
 	/* cert command */
 	{ "cert",		0,	cert_cmd,		{.i = XT_SHOW}, FALSE },
