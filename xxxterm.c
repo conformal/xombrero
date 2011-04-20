@@ -2201,46 +2201,57 @@ yank_uri(struct tab *t, struct karg *args)
 	return (0);
 }
 
-struct paste_args {
-	struct tab	*t;
-	int		i;
-};
-
-void
-paste_uri_cb(GtkClipboard *clipboard, const gchar *text, gpointer data)
-{
-	struct paste_args	*pap;
-
-	if (data == NULL || text == NULL || !strlen(text))
-		return;
-
-	pap = (struct paste_args *)data;
-
-	switch(pap->i) {
-	case XT_PASTE_CURRENT_TAB:
-		load_uri(pap->t, (gchar *)text);
-		break;
-	case XT_PASTE_NEW_TAB:
-		create_new_tab((gchar *)text, NULL, 1);
-		break;
-	}
-
-	g_free(pap);
-}
-
 int
 paste_uri(struct tab *t, struct karg *args)
 {
 	GtkClipboard		*clipboard;
-	struct paste_args	*pap;
+	GdkAtom			atom = gdk_atom_intern("CUT_BUFFER0", FALSE);
+	gint			len;
+	gchar			*p = NULL, *uri;
 
-	pap = g_malloc(sizeof(struct paste_args));
-
-	pap->t = t;
-	pap->i = args->i;
-
+	/* try primary clipboard first */
 	clipboard = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
-	gtk_clipboard_request_text(clipboard, paste_uri_cb, pap);
+	p = gtk_clipboard_wait_for_text(clipboard);
+
+	/* if it failed get whatever text is in cut_buffer0 */
+	if (p == NULL)
+		if (gdk_property_get(gdk_get_default_root_window(),
+		    atom,
+		    gdk_atom_intern("STRING", FALSE),
+		    0,
+		    65536 /* picked out of my butt */,
+		    FALSE,
+		    NULL,
+		    NULL,
+		    &len,
+		    (guchar **)&p)) {
+			/* yes sir, we need to NUL the string */
+			p[len] = '\0';
+		}
+
+	if (p) {
+		uri = p;
+		while(*uri && isspace(*uri))
+			uri++;
+		if (strlen(uri) == 0) {
+			show_oops(t, "empty paste buffer");
+			goto done;
+		}
+		if (valid_url_type(uri)) {
+			/* we can be clever and paste this in search box */
+			show_oops(t, "not a valid URL");
+			goto done;
+		}
+
+		if (args->i == XT_PASTE_CURRENT_TAB)
+			load_uri(t, uri);
+		else if (args->i == XT_PASTE_NEW_TAB)
+		    create_new_tab(uri, NULL, 1);
+	}
+
+done:
+	if (p)
+		g_free(p);
 
 	return (0);
 }
