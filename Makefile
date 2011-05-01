@@ -21,7 +21,7 @@ LDFLAGS+= $(GTK_LDFLAGS) -pthread
 
 MANDIR= ${PREFIX}/man/cat
 
-CLEANFILES += ${.CURDIR}/javascript.h
+CLEANFILES += ${.CURDIR}/javascript.h xxxterm.cat1
 
 ${.CURDIR}/javascript.h: hinting.js input-focus.js
 	perl ${.CURDIR}/js-merge-helper.pl ${.CURDIR}/hinting.js \
