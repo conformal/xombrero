@@ -7195,7 +7195,6 @@ delete_tab(struct tab *t)
 	g_free(t->stylesheet);
 	g_free(t);
 
-	recalc_tabs();
 	if (TAILQ_EMPTY(&tabs)) {
 		if (browser_mode == XT_BM_KIOSK)
 			create_new_tab(home, NULL, 1);
@@ -7467,6 +7466,9 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkNotebookPage *nbp, guint pn,
 
 	DNPRINTF(XT_D_TAB, "notebook_switchpage_cb: tab: %d\n", pn);
 
+	if (gtk_notebook_get_current_page(notebook) == -1)
+		recalc_tabs();
+
 	TAILQ_FOREACH(t, &tabs, entry) {
 		if (t->tab_id == pn) {
 			DNPRINTF(XT_D_TAB, "notebook_switchpage_cb: going to "
@@ -7484,6 +7486,13 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkNotebookPage *nbp, guint pn,
 				focus_webview(t);
 		}
 	}
+}
+
+void
+notebook_pagereordered_cb(GtkNotebook *nb, GtkNotebookPage *nbp, guint pn,
+    gpointer *udata)
+{
+	recalc_tabs();
 }
 
 void
@@ -7617,6 +7626,9 @@ create_canvas(void)
 
 	g_object_connect(G_OBJECT(notebook),
 	    "signal::switch-page", G_CALLBACK(notebook_switchpage_cb), NULL,
+	    (char *)NULL);
+	g_object_connect(G_OBJECT(notebook),
+	    "signal::page-reordered", G_CALLBACK(notebook_pagereordered_cb), NULL,
 	    (char *)NULL);
 	g_signal_connect(G_OBJECT(abtn), "button_press_event",
 	    G_CALLBACK(arrow_cb), NULL);
