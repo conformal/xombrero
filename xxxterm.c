@@ -6610,7 +6610,7 @@ cmd_complete(struct tab *t, char *str, int dir)
 	char			*tokens[3];
 	char			res[XT_MAX_URL_LENGTH + 32] = ":";
 
-	DNPRINTF(XT_D_CMD, "cmd_keypress_cb: complete %s\n", str);
+	DNPRINTF(XT_D_CMD, "%s: complete %s\n", __func__, str);
 
 	levels = cmd_tokenize(s, tokens);
 	g_free(s);
@@ -7995,7 +7995,7 @@ done:
 	return (-1);
 }
 
-static gboolean
+gboolean
 completion_select_cb(GtkEntryCompletion *widget, GtkTreeModel *model,
     GtkTreeIter *iter, struct tab *t)
 {
@@ -8003,8 +8003,23 @@ completion_select_cb(GtkEntryCompletion *widget, GtkTreeModel *model,
 
 	gtk_tree_model_get(model, iter, 0, &value, -1);
 	load_uri(t, value);
+	g_free(value);
 
 	return (FALSE);
+}
+
+gboolean
+completion_hover_cb(GtkEntryCompletion *widget, GtkTreeModel *model,
+    GtkTreeIter *iter, struct tab *t)
+{
+	gchar			*value;
+
+	gtk_tree_model_get(model, iter, 0, &value, -1);
+	gtk_entry_set_text(GTK_ENTRY(t->uri_entry), value);
+	gtk_editable_set_position(GTK_EDITABLE(t->uri_entry), -1);
+	g_free(value);
+
+	return (TRUE);
 }
 
 void
@@ -8048,8 +8063,11 @@ completion_add(struct tab *t)
 	gtk_entry_completion_set_match_func(t->completion, completion_match,
 	    NULL, NULL);
 	gtk_entry_completion_set_minimum_key_length(t->completion, 1);
+	gtk_entry_completion_set_inline_selection(t->completion, TRUE);
 	g_signal_connect(G_OBJECT (t->completion), "match-selected",
 	    G_CALLBACK(completion_select_cb), t);
+	g_signal_connect(G_OBJECT (t->completion), "cursor-on-match",
+	    G_CALLBACK(completion_hover_cb), t);
 }
 
 void
