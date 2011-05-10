@@ -259,6 +259,7 @@ int				next_download_id = 1;
 struct karg {
 	int		i;
 	char		*s;
+	int		p;
 };
 
 /* defines */
@@ -442,6 +443,10 @@ struct karg {
 #define XT_BM_NORMAL		(0)
 #define XT_BM_WHITELIST		(1)
 #define XT_BM_KIOSK		(2)
+
+#define XT_PREFIX		(1<<0)
+#define XT_USERARG		(1<<1)
+#define XT_URLARG		(1<<2)
 
 /* mime types */
 struct mime_type {
@@ -4935,155 +4940,153 @@ struct cmd {
 	char		*cmd;
 	int		level;
 	int		(*func)(struct tab *, struct karg *);
-	struct karg	arg;
-	bool		userarg; /* allow free text arg */
+	int		arg;
+	int		type;
 } cmds[] = {
-	{ "command",		0,	command,		{.i = ':'},	FALSE },
-	{ "search",		0,	command,		{.i = '/'},	FALSE },
-	{ "searchb",		0,	command,		{.i = '?'},	FALSE },
-	{ "togglesrc",		0,	toggle_src,		{0},		FALSE },
+	{ "command",		0,	command,		':',			0 },
+	{ "search",		0,	command,		'/',			0 },
+	{ "searchb",		0,	command,		'?',			0 },
+	{ "togglesrc",		0,	toggle_src,		0,			0 },
 
 	/* yanking and pasting */
-	{ "yankuri",		0,	yank_uri,		{0},		FALSE },
+	{ "yankuri",		0,	yank_uri,		0,			0 },
 	/* XXX: pasteuri{cur,new} do not work from the cmd_entry? */
-	{ "pasteuricur",	0,	paste_uri,		{.i = XT_PASTE_CURRENT_TAB},	FALSE },
-	{ "pasteurinew",	0,	paste_uri,		{.i = XT_PASTE_NEW_TAB},	FALSE },
+	{ "pasteuricur",	0,	paste_uri,		XT_PASTE_CURRENT_TAB,	0 },
+	{ "pasteurinew",	0,	paste_uri,		XT_PASTE_NEW_TAB,	0 },
 
 	/* search */
-	{ "searchnext",		0,	search,			{.i = XT_SEARCH_NEXT},	FALSE },
-	{ "searchprevious",	0,	search,			{.i = XT_SEARCH_PREV},	FALSE },
+	{ "searchnext",		0,	search,			XT_SEARCH_NEXT,		0 },
+	{ "searchprevious",	0,	search,			XT_SEARCH_PREV,		0 },
 
 	/* focus */
-	{ "focusaddress",	0,	focus,			{.i = XT_FOCUS_URI},	FALSE },
-	{ "focussearch",	0,	focus,			{.i = XT_FOCUS_SEARCH},	FALSE },
+	{ "focusaddress",	0,	focus,			XT_FOCUS_URI,		0 },
+	{ "focussearch",	0,	focus,			XT_FOCUS_SEARCH,	0 },
 
 	/* hinting */
-	{ "hinting",		0,	hint,			{.i = 0},	FALSE },
+	{ "hinting",		0,	hint,			0,			0 },
 
 	/* custom stylesheet */
-	{ "userstyle",		0,	userstyle,		{.i = 0 },	FALSE },
+	{ "userstyle",		0,	userstyle,		0,			0 },
 
 	/* navigation */
-	{ "goback",		0,	navaction,		{.i = XT_NAV_BACK},		FALSE },
-	{ "goforward",		0,	navaction,		{.i = XT_NAV_FORWARD},		FALSE },
-	{ "reload",		0,	navaction,		{.i = XT_NAV_RELOAD},		FALSE },
-	{ "reloadforce",	0,	navaction,		{.i = XT_NAV_RELOAD_CACHE},	FALSE },
+	{ "goback",		0,	navaction,		XT_NAV_BACK,		0 },
+	{ "goforward",		0,	navaction,		XT_NAV_FORWARD,		0 },
+	{ "reload",		0,	navaction,		XT_NAV_RELOAD,		0 },
+	{ "reloadforce",	0,	navaction,		XT_NAV_RELOAD_CACHE,	0 },
 
 	/* vertical movement */
-	{ "scrolldown",		0,	move,			{.i = XT_MOVE_DOWN},	FALSE },
-	{ "scrollup",		0,	move,			{.i = XT_MOVE_UP},	FALSE },
-	{ "scrollbottom",	0,	move,			{.i = XT_MOVE_BOTTOM},	FALSE },
-	{ "scrolltop",		0,	move,			{.i = XT_MOVE_TOP},	FALSE },
-	{ "1",			0,	move,			{.i = XT_MOVE_TOP},	FALSE },
-	{ "scrollhalfdown",	0,	move,			{.i = XT_MOVE_HALFDOWN},FALSE },
-	{ "scrollhalfup",	0,	move,			{.i = XT_MOVE_HALFUP},	FALSE },
-	{ "scrollpagedown",	0,	move,			{.i = XT_MOVE_PAGEDOWN},FALSE },
-	{ "scrollpageup",	0,	move,			{.i = XT_MOVE_PAGEUP},	FALSE },
+	{ "scrolldown",		0,	move,			XT_MOVE_DOWN,		0 },
+	{ "scrollup",		0,	move,			XT_MOVE_UP,		0 },
+	{ "scrollbottom",	0,	move,			XT_MOVE_BOTTOM,		0 },
+	{ "scrolltop",		0,	move,			XT_MOVE_TOP,		0 },
+	{ "1",			0,	move,			XT_MOVE_TOP,		0 },
+	{ "scrollhalfdown",	0,	move,			XT_MOVE_HALFDOWN,	0 },
+	{ "scrollhalfup",	0,	move,			XT_MOVE_HALFUP,		0 },
+	{ "scrollpagedown",	0,	move,			XT_MOVE_PAGEDOWN,	0 },
+	{ "scrollpageup",	0,	move,			XT_MOVE_PAGEUP,		0 },
 	/* horizontal movement */
-	{ "scrollright",	0,	move,			{.i = XT_MOVE_RIGHT},	FALSE },
-	{ "scrollleft",		0,	move,			{.i = XT_MOVE_LEFT},	FALSE },
-	{ "scrollfarright",	0,	move,			{.i = XT_MOVE_FARRIGHT},FALSE },
-	{ "scrollfarleft",	0,	move,			{.i = XT_MOVE_FARLEFT},	FALSE },
+	{ "scrollright",	0,	move,			XT_MOVE_RIGHT,		0 },
+	{ "scrollleft",		0,	move,			XT_MOVE_LEFT,		0 },
+	{ "scrollfarright",	0,	move,			XT_MOVE_FARRIGHT,	0 },
+	{ "scrollfarleft",	0,	move,			XT_MOVE_FARLEFT,	0 },
 
 
-	{ "favorites",		0,	xtp_page_fl,		{0}, FALSE },
-	{ "fav",		0,	xtp_page_fl,		{0}, FALSE },
-	{ "favadd",		0,	add_favorite,		{0}, FALSE },
+	{ "favorites",		0,	xtp_page_fl,		0,			0 },
+	{ "fav",		0,	xtp_page_fl,		0,			0 },
+	{ "favadd",		0,	add_favorite,		0,			0 },
 
-	{ "qall",		0,	quit,			{0}, FALSE },
-	{ "quitall",		0,	quit,			{0}, FALSE },
-	{ "w",			0,	save_tabs,		{0}, FALSE },
-	{ "wq",			0,	save_tabs_and_quit,	{0}, FALSE },
-	{ "help",		0,	help,			{0}, FALSE },
-	{ "about",		0,	about,			{0}, FALSE },
-	{ "stats",		0,	stats,			{0}, FALSE },
-	{ "version",		0,	about,			{0}, FALSE },
+	{ "qall",		0,	quit,			0,			0 },
+	{ "quitall",		0,	quit,			0,			0 },
+	{ "w",			0,	save_tabs,		0,			0 },
+	{ "wq",			0,	save_tabs_and_quit,	0,			0 },
+	{ "help",		0,	help,			0,			0 },
+	{ "about",		0,	about,			0,			0 },
+	{ "stats",		0,	stats,			0,			0 },
+	{ "version",		0,	about,			0,			0 },
 
 	/* js command */
-	{ "js",			0,	js_cmd,			{.i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION}, FALSE },
-	{ "save",		1,	js_cmd,			{.i = XT_SAVE | XT_WL_FQDN}, FALSE },
-	{ "domain",		2,	js_cmd,			{.i = XT_SAVE | XT_WL_TOPLEVEL}, FALSE },
-	{ "fqdn",		2,	js_cmd,			{.i = XT_SAVE | XT_WL_FQDN}, FALSE },
-	{ "show",		1,	js_cmd,			{.i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION}, FALSE },
-	{ "all",		2,	js_cmd,			{.i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION}, FALSE },
-	{ "persistent",		2,	js_cmd,			{.i = XT_SHOW | XT_WL_PERSISTENT}, FALSE },
-	{ "session",		2,	js_cmd,			{.i = XT_SHOW | XT_WL_SESSION}, FALSE },
-	{ "toggle",		1,	js_cmd,			{.i = XT_WL_TOGGLE | XT_WL_FQDN}, FALSE },
-	{ "domain",		2,	js_cmd,			{.i = XT_WL_TOGGLE | XT_WL_TOPLEVEL}, FALSE },
-	{ "fqdn",		2,	js_cmd,			{.i = XT_WL_TOGGLE | XT_WL_FQDN}, FALSE },
+	{ "js",			0,	js_cmd,			XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION,	0 },
+	{ "save",		1,	js_cmd,			XT_SAVE | XT_WL_FQDN,				0 },
+	{ "domain",		2,	js_cmd,			XT_SAVE | XT_WL_TOPLEVEL,			0 },
+	{ "fqdn",		2,	js_cmd,			XT_SAVE | XT_WL_FQDN,				0 },
+	{ "show",		1,	js_cmd,			XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION,	0 },
+	{ "all",		2,	js_cmd,			XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION,	0 },
+	{ "persistent",		2,	js_cmd,			XT_SHOW | XT_WL_PERSISTENT,			0 },
+	{ "session",		2,	js_cmd,			XT_SHOW | XT_WL_SESSION,			0 },
+	{ "toggle",		1,	js_cmd,			XT_WL_TOGGLE | XT_WL_FQDN,			0 },
+	{ "domain",		2,	js_cmd,			XT_WL_TOGGLE | XT_WL_TOPLEVEL,			0 },
+	{ "fqdn",		2,	js_cmd,			XT_WL_TOGGLE | XT_WL_FQDN,			0 },
 
 	/* cookie command */
-	{ "cookie",		0,	cookie_cmd,		{0}, FALSE },
-	{ "save",		1,	cookie_cmd,		{.i = XT_SAVE | XT_WL_FQDN}, FALSE },
-	{ "domain",		2,	cookie_cmd,		{.i = XT_SAVE | XT_WL_TOPLEVEL}, FALSE },
-	{ "fqdn",		2,	cookie_cmd,		{.i = XT_SAVE | XT_WL_FQDN}, FALSE },
-	{ "show",		1,	cookie_cmd,		{.i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION}, FALSE },
-	{ "all",		2,	cookie_cmd,		{.i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION}, FALSE },
-	{ "persistent",		2,	cookie_cmd,		{.i = XT_SHOW | XT_WL_PERSISTENT}, FALSE },
-	{ "session",		2,	cookie_cmd,		{.i = XT_SHOW | XT_WL_SESSION}, FALSE },
-	{ "toggle",		1,	cookie_cmd,		{.i = XT_WL_TOGGLE  | XT_WL_FQDN}, FALSE },
-	{ "domain",		2,	cookie_cmd,		{.i = XT_WL_TOGGLE | XT_WL_TOPLEVEL}, FALSE },
-	{ "fqdn",		2,	cookie_cmd,		{.i = XT_WL_TOGGLE | XT_WL_FQDN}, FALSE },
+	{ "cookie",		0,	cookie_cmd,		0,						0 },
+	{ "save",		1,	cookie_cmd,		XT_SAVE | XT_WL_FQDN,				0 },
+	{ "domain",		2,	cookie_cmd,		XT_SAVE | XT_WL_TOPLEVEL,			0 },
+	{ "fqdn",		2,	cookie_cmd,		XT_SAVE | XT_WL_FQDN,				0 },
+	{ "show",		1,	cookie_cmd,		XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION,	0 },
+	{ "all",		2,	cookie_cmd,		XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION,	0 },
+	{ "persistent",		2,	cookie_cmd,		XT_SHOW | XT_WL_PERSISTENT,			0 },
+	{ "session",		2,	cookie_cmd,		XT_SHOW | XT_WL_SESSION,			0 },
+	{ "toggle",		1,	cookie_cmd,		XT_WL_TOGGLE  | XT_WL_FQDN,			0 },
+	{ "domain",		2,	cookie_cmd,		XT_WL_TOGGLE | XT_WL_TOPLEVEL,			0 },
+	{ "fqdn",		2,	cookie_cmd,		XT_WL_TOGGLE | XT_WL_FQDN,			0 },
 
 	/* cookie jar */
-	{ "cookiejar",		0,	xtp_page_cl,		{0}, FALSE },
+	{ "cookiejar",		0,	xtp_page_cl,		0,			0 },
 
 	/* cert command */
-	{ "cert",		0,	cert_cmd,		{.i = XT_SHOW}, FALSE },
-	{ "save",		1,	cert_cmd,		{.i = XT_SAVE}, FALSE },
-	{ "show",		1,	cert_cmd,		{.i = XT_SHOW}, FALSE },
+	{ "cert",		0,	cert_cmd,		XT_SHOW,		0 },
+	{ "save",		1,	cert_cmd,		XT_SAVE,		0 },
+	{ "show",		1,	cert_cmd,		XT_SHOW,		0 },
 
-	{ "ca",			0,	ca_cmd,			{0}, FALSE },
-	{ "downloadmgr",	0,	xtp_page_dl,		{0}, FALSE },
-	{ "dl",			0,	xtp_page_dl,		{0}, FALSE },
-	{ "h",			0,	xtp_page_hl,		{0}, FALSE },
-	{ "history",		0,	xtp_page_hl,		{0}, FALSE },
-	{ "home",		0,	go_home,		{0}, FALSE },
-	{ "restart",		0,	restart,		{0}, FALSE },
-	{ "urlhide",		0,	urlaction,		{.i = XT_URL_HIDE}, FALSE },
-	{ "urlshow",		0,	urlaction,		{.i = XT_URL_SHOW}, FALSE },
-	{ "statushide",		0,	statusaction,		{.i = XT_STATUSBAR_HIDE}, FALSE },
-	{ "statusshow",		0,	statusaction,		{.i = XT_STATUSBAR_SHOW}, FALSE },
+	{ "ca",			0,	ca_cmd,			0,			0 },
+	{ "downloadmgr",	0,	xtp_page_dl,		0,			0 },
+	{ "dl",			0,	xtp_page_dl,		0,			0 },
+	{ "h",			0,	xtp_page_hl,		0,			0 },
+	{ "history",		0,	xtp_page_hl,		0,			0 },
+	{ "home",		0,	go_home,		0,			0 },
+	{ "restart",		0,	restart,		0,			0 },
+	{ "urlhide",		0,	urlaction,		XT_URL_HIDE,		0 },
+	{ "urlshow",		0,	urlaction,		XT_URL_SHOW,		0 },
+	{ "statushide",		0,	statusaction,		XT_STATUSBAR_HIDE,	0 },
+	{ "statusshow",		0,	statusaction,		XT_STATUSBAR_SHOW,	0 },
 
-	{ "print",		0,	print_page,		{0}, FALSE },
+	{ "print",		0,	print_page,		0,			0 },
 
 	/* tabs */
-	{ "open",		0,	tabaction,		{.i = XT_TAB_OPEN},	TRUE },
-	{ "tabnew",		0,	tabaction,		{.i = XT_TAB_NEW},	TRUE },
-	{ "tabedit",		0,	tabaction,		{.i = XT_TAB_NEW},	TRUE },
-	{ "tabclose",		0,	tabaction,		{.i = XT_TAB_DELETE},	FALSE },
-	{ "tabundoclose",	0,	tabaction,		{.i = XT_TAB_UNDO_CLOSE} },
-	{ "tabshow",		0,	tabaction,		{.i = XT_TAB_SHOW},	FALSE },
-	{ "tabhide",		0,	tabaction,		{.i = XT_TAB_HIDE},	FALSE },
-	{ "quit",		0,	tabaction,		{.i = XT_TAB_DELQUIT},	FALSE },
-	{ "q",			0,	tabaction,		{.i = XT_TAB_DELQUIT},	FALSE },
-
-	/* XXX add count to these commands */
-	{ "tabfirst",		0,	movetab,		{.i = XT_TAB_FIRST},	FALSE },
-	{ "tabrewind",		0,	movetab,		{.i = XT_TAB_FIRST},	FALSE },
-	{ "tablast",		0,	movetab,		{.i = XT_TAB_LAST},	FALSE },
-	{ "tabprevious",	0,	movetab,		{.i = XT_TAB_PREV},	FALSE },
-	{ "tabnext",		0,	movetab,		{.i = XT_TAB_NEXT},	TRUE },
-	{ "focusout",		0,	resizetab,		{.i = -1},		FALSE },
-	{ "focusin",		0,	resizetab,		{.i = 1},		FALSE },
+	{ "focusin",		0,	resizetab,		1,			0 },
+	{ "focusout",		0,	resizetab,		-1,			0 },
+	{ "q",			0,	tabaction,		XT_TAB_DELQUIT,		0 },
+	{ "quit",		0,	tabaction,		XT_TAB_DELQUIT,		0 },
+	{ "open",		0,	tabaction,		XT_TAB_OPEN,		XT_USERARG | XT_URLARG },
+	{ "tabclose",		0,	tabaction,		XT_TAB_DELETE,		XT_PREFIX | XT_USERARG },
+	{ "tabedit",		0,	tabaction,		XT_TAB_NEW,		XT_PREFIX | XT_USERARG | XT_URLARG },
+	{ "tabfirst",		0,	movetab,		XT_TAB_FIRST,		0 },
+	{ "tabhide",		0,	tabaction,		XT_TAB_HIDE,		0 },
+	{ "tablast",		0,	movetab,		XT_TAB_LAST,		0 },
+	{ "tabnew",		0,	tabaction,		XT_TAB_NEW,		XT_PREFIX | XT_USERARG | XT_URLARG },
+	{ "tabnext",		0,	movetab,		XT_TAB_NEXT,		XT_PREFIX | XT_USERARG },
+	{ "tabprevious",	0,	movetab,		XT_TAB_PREV,		XT_PREFIX | XT_USERARG },
+	{ "tabrewind",		0,	movetab,		XT_TAB_FIRST,		0 },
+	{ "tabshow",		0,	tabaction,		XT_TAB_SHOW,		0 },
+	{ "tabundoclose",	0,	tabaction,		XT_TAB_UNDO_CLOSE,	0 },
 
 	/* command aliases (handy when -S flag is used) */
-	{ "promptopen",		0,	command,		{.i = XT_CMD_OPEN},		FALSE },
-	{ "promptopencurrent",	0,	command,		{.i = XT_CMD_OPEN_CURRENT},	FALSE },
-	{ "prompttabnew",	0,	command,		{.i = XT_CMD_TABNEW},		FALSE },
-	{ "prompttabnewcurrent",0,	command,		{.i = XT_CMD_TABNEW_CURRENT},	FALSE },
+	{ "promptopen",		0,	command,		XT_CMD_OPEN,		0 },
+	{ "promptopencurrent",	0,	command,		XT_CMD_OPEN_CURRENT,	0 },
+	{ "prompttabnew",	0,	command,		XT_CMD_TABNEW,		0 },
+	{ "prompttabnewcurrent",0,	command,		XT_CMD_TABNEW_CURRENT,	0 },
 
 	/* settings */
-	{ "set",		0,	set,			{0},			FALSE },
-	{ "fullscreen",		0,	fullscreen,		{0},			FALSE },
-	{ "f",			0,	fullscreen,		{0},			FALSE },
+	{ "set",		0,	set,			0,			0 },
+	{ "fullscreen",		0,	fullscreen,		0,			0 },
+	{ "f",			0,	fullscreen,		0,			0 },
 
 	/* sessions */
-	{ "session",		0,	session_cmd,		{.i = XT_SHOW},		FALSE },
-	{ "delete",		1,	session_cmd,		{.i = XT_DELETE},	TRUE },
-	{ "open",		1,	session_cmd,		{.i = XT_OPEN},		TRUE },
-	{ "save",		1,	session_cmd,		{.i = XT_SAVE},		TRUE },
-	{ "show",		1,	session_cmd,		{.i = XT_SHOW},		FALSE },
+	{ "session",		0,	session_cmd,		XT_SHOW,		0 },
+	{ "delete",		1,	session_cmd,		XT_DELETE,		XT_USERARG },
+	{ "open",		1,	session_cmd,		XT_OPEN,		XT_USERARG },
+	{ "save",		1,	session_cmd,		XT_SAVE,		XT_USERARG },
+	{ "show",		1,	session_cmd,		XT_SHOW,		0 },
 };
 
 struct {
@@ -6546,7 +6549,7 @@ cmd_getlist(int id, char *key)
 	int			i,  dep, c = 0;
 	struct history		*h;
 
-	if (id >= 0 && (cmds[id].userarg && (cmds[id].arg.i == XT_TAB_OPEN || cmds[id].arg.i == XT_TAB_NEW))) {
+	if (id >= 0 && (cmds[id].type & XT_URLARG)) {
 		RB_FOREACH_REVERSE(h, history_list, &hl)
 			if (match_uri(h->uri, key)) {
 				cmd_status.list[c] = (char *)h->uri;
@@ -6612,8 +6615,14 @@ cmd_complete(struct tab *t, char *str, int dir)
 
 	DNPRINTF(XT_D_CMD, "%s: complete %s\n", __func__, str);
 
+	/* copy prefix*/
+	for (i = 0; isdigit(s[i]); i++)
+		res[i + 1] = s[i];
+
 	levels = cmd_tokenize(s, tokens);
 	g_free(s);
+
+	tokens[0]+=i;
 
 	for (i = 0; i < levels - 1; i++) {
 		tok = tokens[i];
@@ -6656,8 +6665,24 @@ gboolean
 cmd_execute(struct tab *t, char *str)
 {
 	struct cmd		*cmd = NULL;
-	char			*tok, *last, *s = g_strdup(str);
-	int			j, len, c = 0, dep = 0, matchcount = 0;
+	char			*tok, *last, *s = g_strdup(str), *sc, prefixstr[4];
+	int			j, len, c = 0, dep = 0, matchcount = 0, prefix = 0;
+	struct karg		arg = {0, NULL, 0};
+
+	sc = s;
+
+	/* copy prefix*/
+	for (j = 0; j<3 && isdigit(s[0]); j++)	{
+		prefixstr[j]=s[0];	
+		s++;
+	}
+
+	prefixstr[j]='\0';
+
+	if (strlen(s) > 0)
+		prefix = atoi(prefixstr);
+	else
+		s = sc;
 
 	for (tok = strtok_r(s, " ", &last); tok;
 	    tok = strtok_r(NULL, " ", &last)) {
@@ -6677,26 +6702,31 @@ cmd_execute(struct tab *t, char *str)
 			}
 		}
 		if (matchcount == 1) {
-			if (cmd->userarg)
+			if (cmd->type & XT_USERARG)
 				goto execute_cmd;
 			dep++;
 		} else {
 			show_oops(t, "Invalid command: %s", str);
-			g_free(s);
+			g_free(sc);
 			return (XT_CB_PASSTHROUGH);
 		}
 	}
 execute_cmd:
-	if (cmd->userarg)
-		cmd->arg.s = last ? g_strdup(last) : g_strdup("");
-	else
-		cmd->arg.s = g_strdup(tok);
+	arg.i = cmd->arg;
+	if (prefix != 0 && !(cmd->type & XT_PREFIX)) {
+		show_oops(t, "No Prefix allowed: %s", str);
+		g_free(sc);
+		return (XT_CB_PASSTHROUGH);
+	}
+	if (cmd->type & XT_PREFIX)
+		arg.p = prefix;
+	if (cmd->type & XT_USERARG)
+		arg.s = last ? g_strdup(last) : g_strdup("");
 
-	/* arg->s contains last token */
-	cmd->func(t, &cmd->arg);
-	g_free(s);
-	if (cmd->arg.s)
-		g_free(cmd->arg.s);
+	cmd->func(t, &arg);
+	g_free(sc);
+	if (arg.s)
+		g_free(arg.s);
 
 	return (XT_CB_HANDLED);
 }
