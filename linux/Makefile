@@ -31,7 +31,7 @@ install: all
 	install -m 644 ../xxxterm.1 $(DESTDIR)$(MANDIR)/man1/xxxterm.1
 
 clean:
-	rm -f xxxterm *.o
+	rm -f xxxterm *.o ../*.o
 	rm -f javascript.h
 
 .PHONY: all install clean
