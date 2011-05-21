@@ -3844,6 +3844,8 @@ movetab(struct tab *t, struct karg *args)
 	return (XT_CB_HANDLED);
 }
 
+int cmd_prefix = 0;
+
 int
 command(struct tab *t, struct karg *args)
 {
@@ -3864,7 +3866,13 @@ command(struct tab *t, struct karg *args)
 		s = "?";
 		break;
 	case ':':
-		s = ":";
+		if (cmd_prefix == 0)
+			s = ":";
+		else {
+			ss = g_strdup_printf(":%d", cmd_prefix);
+			s = ss;
+			cmd_prefix = 0;
+		}
 		break;
 	case XT_CMD_OPEN:
 		s = ":open ";
@@ -6453,7 +6461,13 @@ anum:
 		}
 
 		return (XT_CB_HANDLED);
-	}
+	} else {
+		/* prefix input*/
+		snprintf(s, sizeof s, "%c", e->keyval);
+		if (CLEAN(e->state) == 0 && isdigit(s[0])) {
+			cmd_prefix = 10 * cmd_prefix + atoi(s);
+		}
+	}	
 
 	return (handle_keypress(t, e, 0));
 }
@@ -6612,6 +6626,7 @@ cmd_complete(struct tab *t, char *str, int dir)
 	char			*tok, *match, *s = g_strdup(str);
 	char			*tokens[3];
 	char			res[XT_MAX_URL_LENGTH + 32] = ":";
+	char			*sc = s;
 
 	DNPRINTF(XT_D_CMD, "%s: complete %s\n", __func__, str);
 
@@ -6619,10 +6634,13 @@ cmd_complete(struct tab *t, char *str, int dir)
 	for (i = 0; isdigit(s[i]); i++)
 		res[i + 1] = s[i];
 
-	levels = cmd_tokenize(s, tokens);
-	g_free(s);
+	for (; isspace(s[i]); i++)
+		 res[i + 1] = s[i];
 
-	tokens[0]+=i;
+	s += i;
+
+	levels = cmd_tokenize(s, tokens);
+	g_free(sc);
 
 	for (i = 0; i < levels - 1; i++) {
 		tok = tokens[i];
@@ -6666,20 +6684,23 @@ cmd_execute(struct tab *t, char *str)
 {
 	struct cmd		*cmd = NULL;
 	char			*tok, *last, *s = g_strdup(str), *sc, prefixstr[4];
-	int			j, len, c = 0, dep = 0, matchcount = 0, prefix = 0;
-	struct karg		arg = {0, NULL, 0};
+	int			j, len, c = 0, dep = 0, matchcount = 0, prefix = -1;
+	struct karg		arg = {0, NULL, -1};
+	int			rv = XT_CB_PASSTHROUGH;
 
 	sc = s;
 
 	/* copy prefix*/
-	for (j = 0; j<3 && isdigit(s[0]); j++)	{
-		prefixstr[j]=s[0];	
-		s++;
-	}
+	for (j = 0; j<3 && isdigit(s[j]); j++)
+		prefixstr[j]=s[j];
 
 	prefixstr[j]='\0';
 
-	if (strlen(s) > 0)
+	s += j;
+	while (isspace(s[0]))
+		s++;
+
+	if (strlen(s) > 0 && strlen(prefixstr) > 0)
 		prefix = atoi(prefixstr);
 	else
 		s = sc;
@@ -6707,28 +6728,38 @@ cmd_execute(struct tab *t, char *str)
 			dep++;
 		} else {
 			show_oops(t, "Invalid command: %s", str);
-			g_free(sc);
-			return (XT_CB_PASSTHROUGH);
+			goto done;
 		}
 	}
 execute_cmd:
 	arg.i = cmd->arg;
-	if (prefix != 0 && !(cmd->type & XT_PREFIX)) {
-		show_oops(t, "No Prefix allowed: %s", str);
-		g_free(sc);
-		return (XT_CB_PASSTHROUGH);
-	}
-	if (cmd->type & XT_PREFIX)
+
+	if (prefix != -1)
 		arg.p = prefix;
+	else if (cmd_prefix > 0)
+		arg.p = cmd_prefix;
+
+	if (j > 0 && !(cmd->type & XT_PREFIX) && arg.p > -1) {
+		show_oops(t, "No Prefix allowed: %s", str);
+		goto done;
+	}
+
 	if (cmd->type & XT_USERARG)
 		arg.s = last ? g_strdup(last) : g_strdup("");
 
+	DNPRINTF(XT_D_CMD, "%s: prefix %d arg %s\n", __func__, arg.p, arg.s);
+
 	cmd->func(t, &arg);
+
+	rv = XT_CB_HANDLED;
+done:
+	if (j > 0)
+		cmd_prefix = 0;
 	g_free(sc);
 	if (arg.s)
 		g_free(arg.s);
 
-	return (XT_CB_HANDLED);
+	return (rv);
 }
 
 int
