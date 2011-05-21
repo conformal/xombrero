@@ -6640,7 +6640,6 @@ cmd_complete(struct tab *t, char *str, int dir)
 	s += i;
 
 	levels = cmd_tokenize(s, tokens);
-	g_free(sc);
 
 	for (i = 0; i < levels - 1; i++) {
 		tok = tokens[i];
@@ -6662,8 +6661,10 @@ cmd_complete(struct tab *t, char *str, int dir)
 			strlcat(res, tok, sizeof res);
 			strlcat(res, " ", sizeof res);
 			dep++;
-		} else
+		} else {
+			g_free(sc);
 			return;
+		}
 
 		parent = c - 1;
 	}
@@ -6677,6 +6678,8 @@ cmd_complete(struct tab *t, char *str, int dir)
 		gtk_entry_set_text(w, res);
 		gtk_editable_set_position(GTK_EDITABLE(w), -1);
 	}
+
+	g_free(sc);
 }
 
 gboolean
