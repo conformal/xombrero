@@ -274,6 +274,8 @@ struct karg {
 #define XT_RESTART_TABS_FILE	("restart_tabs")
 #define XT_SOCKET_FILE		("socket")
 #define XT_HISTORY_FILE		("history")
+#define XT_REJECT_FILE		("rejected.txt")
+#define XT_COOKIE_FILE		("cookies.txt")
 #define XT_SAVE_SESSION_ID	("SESSION_NAME=")
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
@@ -1534,9 +1536,7 @@ wl_add(char *str, struct domain_list *wl, int handy)
 	struct domain		*d;
 	int			add_dot = 0;
 
-	if (str == NULL || wl == NULL)
-		return;
-	if (strlen(str) < 2)
+	if (str == NULL || wl == NULL || strlen(str) < 2)
 		return;
 
 	DNPRINTF(XT_D_COOKIE, "wl_add in: %s\n", str);
@@ -2530,7 +2530,7 @@ int
 blank(struct tab *t, struct karg *args)
 {
 	if (t == NULL)
-		show_oops_s("about invalid parameters");
+		show_oops_s("blank invalid parameters");
 
 	load_webkit_string(t, "", XT_URI_ABOUT_BLANK);
 
@@ -5026,7 +5026,7 @@ struct cmd {
 	{ "fqdn",		2,	js_cmd,			XT_WL_TOGGLE | XT_WL_FQDN,			0 },
 
 	/* cookie command */
-	{ "cookie",		0,	cookie_cmd,		0,						0 },
+	{ "cookie",		0,	cookie_cmd,		XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION,	0 },
 	{ "save",		1,	cookie_cmd,		XT_SAVE | XT_WL_FQDN,				0 },
 	{ "domain",		2,	cookie_cmd,		XT_SAVE | XT_WL_TOPLEVEL,			0 },
 	{ "fqdn",		2,	cookie_cmd,		XT_SAVE | XT_WL_FQDN,				0 },
@@ -5236,7 +5236,7 @@ remove_favorite(struct tab *t, int index)
 	}
 
 	/* build a string which will become the new favroites file */
-	new_favs = g_strdup_printf("%s", "");
+	new_favs = g_strdup("");
 
 	for (i = 1;;) {
 		if ((title = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
@@ -7883,10 +7883,10 @@ setup_cookies(void)
 
 	/* rejected cookies */
 	if (save_rejected_cookies)
-		snprintf(rc_fname, sizeof file, "%s/rejected.txt", work_dir);
+		snprintf(rc_fname, sizeof file, "%s/%s", work_dir, XT_REJECT_FILE);
 
 	/* persistent cookies */
-	snprintf(file, sizeof file, "%s/cookies.txt", work_dir);
+	snprintf(file, sizeof file, "%s/%s", work_dir, XT_COOKIE_FILE);
 	p_cookiejar = soup_cookie_jar_text_new(file, read_only_cookies);
 
 	/* session cookies */
