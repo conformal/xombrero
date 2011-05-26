@@ -8232,7 +8232,7 @@ main(int argc, char *argv[])
 	strlcpy(download_dir, pwd->pw_dir, sizeof download_dir);
 
 	/* set default string settings */
-	home = g_strdup("http://www.cyphertite.com");
+	home = g_strdup("https://www.cyphertite.com");
 	search_string = g_strdup("https://ssl.scroogle.org/cgi-bin/nbbwssl.cgi?Gw=%s");
 	resource_dir = g_strdup("/usr/local/share/xxxterm/");
 	strlcpy(runtime_settings,"runtime", sizeof runtime_settings);
