@@ -542,6 +542,8 @@ void		walk_js_wl(struct settings *, void (*)(struct settings *, char *, void *),
 void		walk_kb(struct settings *, void (*)(struct settings *, char *, void *), void *);
 void		walk_mime_type(struct settings *, void (*)(struct settings *, char *, void *), void *);
 
+void		recalc_tabs(void);
+
 struct special {
 	int		(*set)(struct settings *, char *);
 	char		*(*get)(struct settings *);
@@ -3704,6 +3706,7 @@ tabaction(struct tab *t, struct karg *args)
 			TAILQ_FOREACH(tt, &tabs, entry)
 				if (tt->tab_id == args->p - 1) {
 					delete_tab(tt);
+					recalc_tabs();
 					break;
 				}
 		break;
@@ -6745,7 +6748,7 @@ execute_cmd:
 	}
 	if (cmd->type > 1)
 		arg.s = last ? g_strdup(last) : g_strdup("");
-	if (cmd->type & XT_INTARG && last) {
+	if (cmd->type & XT_INTARG && last && strlen(last) > 0) {
 		arg.p = atoi(arg.s);
 		if (arg.p <= 0) {
 			if (arg.s[0]=='0')
