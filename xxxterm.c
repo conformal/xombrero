@@ -449,6 +449,7 @@ struct karg {
 #define XT_PREFIX		(1<<0)
 #define XT_USERARG		(1<<1)
 #define XT_URLARG		(1<<2)
+#define XT_INTARG		(1<<3)
 
 /* mime types */
 struct mime_type {
@@ -3682,6 +3683,7 @@ tabaction(struct tab *t, struct karg *args)
 	int			rv = XT_CB_HANDLED;
 	char			*url = args->s;
 	struct undo		*u;
+	struct tab		*tt;
 
 	DNPRINTF(XT_D_TAB, "tabaction: %p %d\n", t, args->i);
 
@@ -3696,7 +3698,14 @@ tabaction(struct tab *t, struct karg *args)
 			create_new_tab(NULL, NULL, 1);
 		break;
 	case XT_TAB_DELETE:
-		delete_tab(t);
+		if (args->p < 0)
+			delete_tab(t);
+		else
+			TAILQ_FOREACH(tt, &tabs, entry)
+				if (tt->tab_id == args->p - 1) {
+					delete_tab(tt);
+					break;
+				}
 		break;
 	case XT_TAB_DELQUIT:
 		if (gtk_notebook_get_n_pages(notebook) > 1)
@@ -3773,8 +3782,7 @@ resizetab(struct tab *t, struct karg *args)
 int
 movetab(struct tab *t, struct karg *args)
 {
-	struct tab		*tt;
-	int			x;
+	int			n, dest;
 
 	if (t == NULL || args == NULL) {
 		show_oops_s("movetab invalid parameters");
@@ -3784,62 +3792,51 @@ movetab(struct tab *t, struct karg *args)
 	DNPRINTF(XT_D_TAB, "movetab: tab %d opcode %d\n",
 	    t->tab_id, args->i);
 
-	if (args->i == XT_TAB_INVALID)
+	if (args->i >= XT_TAB_INVALID)
 		return (XT_CB_PASSTHROUGH);
 
-	if (args->i < XT_TAB_INVALID) {
-		/* next or previous tab */
-		if (TAILQ_EMPTY(&tabs))
-			return (XT_CB_PASSTHROUGH);
+	if (TAILQ_EMPTY(&tabs))
+		return (XT_CB_PASSTHROUGH);
 
-		switch (args->i) {
-		case XT_TAB_NEXT:
-			if (strlen(args->s) == 0) {
-				/* if at the last page, loop around to the first */
-				if (gtk_notebook_get_current_page(notebook) ==
-				    gtk_notebook_get_n_pages(notebook) - 1)
-					gtk_notebook_set_current_page(notebook, 0);
-				else
-					gtk_notebook_next_page(notebook);
-			} else {
-				x = atoi(args->s) - 1;
-				if (x < 0)
-					return (XT_CB_PASSTHROUGH);
+	n = gtk_notebook_get_n_pages(notebook);
+	dest = gtk_notebook_get_current_page(notebook);
 
-				if (t->tab_id == x) {
-					DNPRINTF(XT_D_TAB, "movetab: do nothing\n");
-					return (XT_CB_HANDLED);
-				}
-				TAILQ_FOREACH(tt, &tabs, entry) {
-					if (tt->tab_id == x) {
-						gtk_notebook_set_current_page(notebook, x);
-						DNPRINTF(XT_D_TAB, "movetab: going to %d\n", x);
-						break;
-					}
-				}
+	switch (args->i) {
+	case XT_TAB_NEXT:
+		if (args->p < 0) 
+			dest = dest == n - 1 ? 0 : dest + 1;
+		else
+			dest = args->p - 1;
 
-			}
-			break;
-		case XT_TAB_PREV:
-			/* if at the first page, loop around to the last */
-			if (gtk_notebook_current_page(notebook) == 0)
-				gtk_notebook_set_current_page(notebook,
-				    gtk_notebook_get_n_pages(notebook) - 1);
-			else
-				gtk_notebook_prev_page(notebook);
-			break;
-		case XT_TAB_FIRST:
-			gtk_notebook_set_current_page(notebook, 0);
-			break;
-		case XT_TAB_LAST:
-			gtk_notebook_set_current_page(notebook, -1);
-			break;
-		default:
-			return (XT_CB_PASSTHROUGH);
-		}
+		break;
+	case XT_TAB_PREV:
+		if (args->p < 0)
+			dest -= 1;
+		else
+			dest -= args->p % n;
 
+		if (dest < 0)
+			dest += n;
+
+		break;
+	case XT_TAB_FIRST:
+		dest = 0;
+		break;
+	case XT_TAB_LAST:
+		dest = n - 1;
+		break;
+	default:
+		return (XT_CB_PASSTHROUGH);
+	}
+
+	if (dest < 0 || dest >= n)
+		return (XT_CB_PASSTHROUGH);
+	if (t->tab_id == dest) {
+		DNPRINTF(XT_D_TAB, "movetab: do nothing\n");
 		return (XT_CB_HANDLED);
 	}
+
+	gtk_notebook_set_current_page(notebook, dest);
 
 	return (XT_CB_HANDLED);
 }
@@ -5065,15 +5062,15 @@ struct cmd {
 	{ "focusout",		0,	resizetab,		-1,			0 },
 	{ "q",			0,	tabaction,		XT_TAB_DELQUIT,		0 },
 	{ "quit",		0,	tabaction,		XT_TAB_DELQUIT,		0 },
-	{ "open",		0,	tabaction,		XT_TAB_OPEN,		XT_USERARG | XT_URLARG },
-	{ "tabclose",		0,	tabaction,		XT_TAB_DELETE,		XT_PREFIX | XT_USERARG },
-	{ "tabedit",		0,	tabaction,		XT_TAB_NEW,		XT_PREFIX | XT_USERARG | XT_URLARG },
+	{ "open",		0,	tabaction,		XT_TAB_OPEN,		XT_URLARG },
+	{ "tabclose",		0,	tabaction,		XT_TAB_DELETE,		XT_PREFIX | XT_INTARG},
+	{ "tabedit",		0,	tabaction,		XT_TAB_NEW,		XT_PREFIX | XT_URLARG },
 	{ "tabfirst",		0,	movetab,		XT_TAB_FIRST,		0 },
 	{ "tabhide",		0,	tabaction,		XT_TAB_HIDE,		0 },
 	{ "tablast",		0,	movetab,		XT_TAB_LAST,		0 },
-	{ "tabnew",		0,	tabaction,		XT_TAB_NEW,		XT_PREFIX | XT_USERARG | XT_URLARG },
-	{ "tabnext",		0,	movetab,		XT_TAB_NEXT,		XT_PREFIX | XT_USERARG },
-	{ "tabprevious",	0,	movetab,		XT_TAB_PREV,		XT_PREFIX | XT_USERARG },
+	{ "tabnew",		0,	tabaction,		XT_TAB_NEW,		XT_PREFIX | XT_URLARG },
+	{ "tabnext",		0,	movetab,		XT_TAB_NEXT,		XT_PREFIX | XT_INTARG},
+	{ "tabprevious",	0,	movetab,		XT_TAB_PREV,		XT_PREFIX | XT_INTARG},
 	{ "tabrewind",		0,	movetab,		XT_TAB_FIRST,		0 },
 	{ "tabshow",		0,	tabaction,		XT_TAB_SHOW,		0 },
 	{ "tabundoclose",	0,	tabaction,		XT_TAB_UNDO_CLOSE,	0 },
@@ -6726,7 +6723,7 @@ cmd_execute(struct tab *t, char *str)
 			}
 		}
 		if (matchcount == 1) {
-			if (cmd->type & XT_USERARG)
+			if (cmd->type > 0)
 				goto execute_cmd;
 			dep++;
 		} else {
@@ -6743,12 +6740,21 @@ execute_cmd:
 		arg.p = cmd_prefix;
 
 	if (j > 0 && !(cmd->type & XT_PREFIX) && arg.p > -1) {
-		show_oops(t, "No Prefix allowed: %s", str);
+		show_oops(t, "No prefix allowed: %s", str);
 		goto done;
 	}
-
-	if (cmd->type & XT_USERARG)
+	if (cmd->type > 1)
 		arg.s = last ? g_strdup(last) : g_strdup("");
+	if (cmd->type & XT_INTARG && last) {
+		arg.p = atoi(arg.s);
+		if (arg.p <= 0) {
+			if (arg.s[0]=='0')
+				show_oops(t, "Zero count");
+			else
+				show_oops(t, "Trailing characters");
+			goto done;
+		}
+	}
 
 	DNPRINTF(XT_D_CMD, "%s: prefix %d arg %s\n", __func__, arg.p, arg.s);
 
