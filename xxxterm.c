@@ -743,6 +743,7 @@ int			icon_size_map(int);
 GtkListStore		*completion_model;
 void			completion_add(struct tab *);
 void			completion_add_uri(const gchar *);
+void			xxx_dir(char *);
 
 void
 sigchild(int sig)
@@ -8144,6 +8145,26 @@ completion_add(struct tab *t)
 }
 
 void
+xxx_dir(char *dir)
+{
+	struct stat		sb;
+
+	if (stat(dir, &sb)) {
+		if (mkdir(dir, S_IRWXU) == -1)
+			err(1, "mkdir %s", dir);
+		if (stat(dir, &sb))
+			err(1, "stat %s", dir);
+	}
+	if (S_ISDIR(sb.st_mode) == 0)
+		errx(1, "%s not a dir", dir);
+	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
+		warnx("fixing invalid permissions on %s", dir);
+		if (chmod(dir, S_IRWXU) == -1)
+			err(1, "chmod %s", dir);
+	}
+}
+
+void
 usage(void)
 {
 	fprintf(stderr,
@@ -8256,68 +8277,21 @@ main(int argc, char *argv[])
 	if (strlen(work_dir) == 0)
 		snprintf(work_dir, sizeof work_dir, "%s/%s",
 		    pwd->pw_dir, XT_DIR);
-	if (stat(work_dir, &sb)) {
-		if (mkdir(work_dir, S_IRWXU) == -1)
-			err(1, "mkdir work_dir");
-		if (stat(work_dir, &sb))
-			err(1, "stat work_dir");
-	}
-	if (S_ISDIR(sb.st_mode) == 0)
-		errx(1, "%s not a dir", work_dir);
-	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
-		warnx("fixing invalid permissions on %s", work_dir);
-		if (chmod(work_dir, S_IRWXU) == -1)
-			err(1, "chmod");
-	}
+	xxx_dir(work_dir);
 
 	/* icon cache dir */
 	snprintf(cache_dir, sizeof cache_dir, "%s/%s", work_dir, XT_CACHE_DIR);
-	if (stat(cache_dir, &sb)) {
-		if (mkdir(cache_dir, S_IRWXU) == -1)
-			err(1, "mkdir cache_dir");
-		if (stat(cache_dir, &sb))
-			err(1, "stat cache_dir");
-	}
-	if (S_ISDIR(sb.st_mode) == 0)
-		errx(1, "%s not a dir", cache_dir);
-	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
-		warnx("fixing invalid permissions on %s", cache_dir);
-		if (chmod(cache_dir, S_IRWXU) == -1)
-			err(1, "chmod");
-	}
+	xxx_dir(cache_dir);
 
 	/* certs dir */
 	snprintf(certs_dir, sizeof certs_dir, "%s/%s", work_dir, XT_CERT_DIR);
-	if (stat(certs_dir, &sb)) {
-		if (mkdir(certs_dir, S_IRWXU) == -1)
-			err(1, "mkdir certs_dir");
-		if (stat(certs_dir, &sb))
-			err(1, "stat certs_dir");
-	}
-	if (S_ISDIR(sb.st_mode) == 0)
-		errx(1, "%s not a dir", certs_dir);
-	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
-		warnx("fixing invalid permissions on %s", certs_dir);
-		if (chmod(certs_dir, S_IRWXU) == -1)
-			err(1, "chmod");
-	}
+	xxx_dir(certs_dir);
 
 	/* sessions dir */
 	snprintf(sessions_dir, sizeof sessions_dir, "%s/%s",
 	    work_dir, XT_SESSIONS_DIR);
-	if (stat(sessions_dir, &sb)) {
-		if (mkdir(sessions_dir, S_IRWXU) == -1)
-			err(1, "mkdir sessions_dir");
-		if (stat(sessions_dir, &sb))
-			err(1, "stat sessions_dir");
-	}
-	if (S_ISDIR(sb.st_mode) == 0)
-		errx(1, "%s not a dir", sessions_dir);
-	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
-		warnx("fixing invalid permissions on %s", sessions_dir);
-		if (chmod(sessions_dir, S_IRWXU) == -1)
-			err(1, "chmod");
-	}
+	xxx_dir(sessions_dir);
+
 	/* runtime settings that can override config file */
 	if (runtime_settings[0] != '\0')
 		config_parse(runtime_settings, 1);
@@ -8325,19 +8299,7 @@ main(int argc, char *argv[])
 	/* download dir */
 	if (!strcmp(download_dir, pwd->pw_dir))
 		strlcat(download_dir, "/downloads", sizeof download_dir);
-	if (stat(download_dir, &sb)) {
-		if (mkdir(download_dir, S_IRWXU) == -1)
-			err(1, "mkdir download_dir");
-		if (stat(download_dir, &sb))
-			err(1, "stat download_dir");
-	}
-	if (S_ISDIR(sb.st_mode) == 0)
-		errx(1, "%s not a dir", download_dir);
-	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
-		warnx("fixing invalid permissions on %s", download_dir);
-		if (chmod(download_dir, S_IRWXU) == -1)
-			err(1, "chmod");
-	}
+	xxx_dir(download_dir);
 
 	/* favorites file */
 	snprintf(file, sizeof file, "%s/%s", work_dir, XT_FAVS_FILE);
