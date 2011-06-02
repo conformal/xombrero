@@ -2178,6 +2178,12 @@ save_tabs(struct tab *t, struct karg *a)
 			fprintf(f, "%s\n", arr[i]);
 
 	g_free(arr);
+	/* try and make sure this gets to disk NOW. XXX Backup first? */
+	if (fflush(f) != 0 || fsync(fileno(f)) != 0) {
+		show_oops(t, "May not have managed to save session: %s",
+		    strerror(errno));
+	}
+
 	fclose(f);
 
 	return (0);
