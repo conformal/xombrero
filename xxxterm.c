@@ -1122,7 +1122,7 @@ struct mime_type_list	mtl;
 struct alias_list	aliases;
 
 /* protos */
-struct tab		*create_new_tab(char *, struct undo *, int);
+struct tab		*create_new_tab(char *, struct undo *, int, int);
 void			delete_tab(struct tab *);
 void			adjustfont_webkit(struct tab *, int);
 int			run_script(struct tab *, char *);
@@ -2082,7 +2082,7 @@ open_tabs(struct tab *t, struct karg *a)
 		}
 
 		if (uri && strlen(uri))
-			create_new_tab(uri, NULL, 1);
+			create_new_tab(uri, NULL, 1, -1);
 
 		free(uri);
 		uri = NULL;
@@ -2261,7 +2261,7 @@ paste_uri(struct tab *t, struct karg *args)
 		if (args->i == XT_PASTE_CURRENT_TAB)
 			load_uri(t, uri);
 		else if (args->i == XT_PASTE_NEW_TAB)
-		    create_new_tab(uri, NULL, 1);
+			create_new_tab(uri, NULL, 1, -1);
 	}
 
 done:
@@ -2568,6 +2568,7 @@ about(struct tab *t, struct karg *args)
 	    "<li>Stevan Andjelkovic &lt;stevan@student.chalmers.se&gt;</li>"
 	    "<li>Edd Barrett &lt;vext01@gmail.com&gt; </li>"
 	    "<li>Todd T. Fries &lt;todd@fries.net&gt; </li>"
+	    "<li>Raphael Graf &lt;r@undefined.ch&gt; </li>"
 	    "</ul>"
 	    "Copyrights and licenses can be found on the XXXterm "
 	    "<a href=\"http://opensource.conformal.com/wiki/XXXTerm\">website</a>"
@@ -3702,9 +3703,9 @@ tabaction(struct tab *t, struct karg *args)
 	switch (args->i) {
 	case XT_TAB_NEW:
 		if (strlen(url) > 0)
-			create_new_tab(url, NULL, 1);
+			create_new_tab(url, NULL, 1, args->p);
 		else
-			create_new_tab(NULL, NULL, 1);
+			create_new_tab(NULL, NULL, 1, args->p);
 		break;
 	case XT_TAB_DELETE:
 		if (args->p < 0)
@@ -3751,7 +3752,7 @@ tabaction(struct tab *t, struct karg *args)
 		} else {
 			undo_count--;
 			u = TAILQ_FIRST(&undos);
-			create_new_tab(u->uri, u, 1);
+			create_new_tab(u->uri, u, 1, -1);
 
 			TAILQ_REMOVE(&undos, u, entry);
 			g_free(u->uri);
@@ -4746,6 +4747,7 @@ struct key_binding {
 
 	/* tabs */
 	{ "tabnew",		CTRL,	0,	GDK_t		},
+	{ "999tabnew",		CTRL,	0,	GDK_T		},
 	{ "tabclose",		CTRL,	1,	GDK_w		},
 	{ "tabundoclose",	0,	0,	GDK_U		},
 	{ "tabnext 1",		CTRL,	0,	GDK_1		},
@@ -6024,7 +6026,7 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 
 	if (t->ctrl_click) {
 		t->ctrl_click = 0;
-		create_new_tab(uri, NULL, ctrl_click_focus);
+		create_new_tab(uri, NULL, ctrl_click_focus, -1);
 		webkit_web_policy_decision_ignore(pd);
 		return (TRUE); /* we made the decission */
 	}
@@ -6066,10 +6068,10 @@ webview_cwv_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 		if (uri && (d = wl_find_uri(uri, &js_wl)) == NULL)
 			return (NULL);
 
-		tt = create_new_tab(NULL, NULL, 1);
+		tt = create_new_tab(NULL, NULL, 1, -1);
 		webview = tt->wv;
 	} else if (enable_scripts == 1) {
-		tt = create_new_tab(NULL, NULL, 1);
+		tt = create_new_tab(NULL, NULL, 1, -1);
 		webview = tt->wv;
 	}
 
@@ -7277,9 +7279,9 @@ delete_tab(struct tab *t)
 
 	if (TAILQ_EMPTY(&tabs)) {
 		if (browser_mode == XT_BM_KIOSK)
-			create_new_tab(home, NULL, 1);
+			create_new_tab(home, NULL, 1, -1);
 		else
-			create_new_tab(NULL, NULL, 1);
+			create_new_tab(NULL, NULL, 1, -1);
 	}
 
 	/* recreate session */
@@ -7330,10 +7332,10 @@ append_tab(struct tab *t)
 }
 
 struct tab *
-create_new_tab(char *title, struct undo *u, int focus)
+create_new_tab(char *title, struct undo *u, int focus, int position)
 {
-	struct tab			*t, *tt;
-	int				load = 1, id, notfound;
+	struct tab			*t;
+	int				load = 1, id;
 	GtkWidget			*b, *bb;
 	WebKitWebHistoryItem		*item;
 	GList				*items;
@@ -7424,20 +7426,14 @@ create_new_tab(char *title, struct undo *u, int focus)
 	if (append_next == 0 || gtk_notebook_get_n_pages(notebook) == 0)
 		append_tab(t);
 	else {
-		notfound = 1;
-		id = gtk_notebook_get_current_page(notebook);
-		TAILQ_FOREACH(tt, &tabs, entry) {
-			if (tt->tab_id == id) {
-				notfound = 0;
-				TAILQ_INSERT_AFTER(&tabs, tt, t, entry);
-				gtk_notebook_insert_page(notebook, t->vbox, b,
-				    id + 1);
-				recalc_tabs();
-				break;
-			}
-		}
-		if (notfound)
+		id = position >= 0 ? position: gtk_notebook_get_current_page(notebook) + 1;
+		if (id > gtk_notebook_get_n_pages(notebook))
 			append_tab(t);
+		else {
+			TAILQ_INSERT_TAIL(&tabs, t, entry);
+			gtk_notebook_insert_page(notebook, t->vbox, b, id);
+			recalc_tabs();
+		}
 	}
 
 #if GTK_CHECK_VERSION(2, 20, 0)
@@ -8394,7 +8390,7 @@ main(int argc, char *argv[])
 	}
 
 	while (argc) {
-		create_new_tab(argv[0], NULL, focus);
+		create_new_tab(argv[0], NULL, focus, -1);
 		focus = 0;
 
 		argc--;
@@ -8402,7 +8398,7 @@ main(int argc, char *argv[])
 	}
 
 	if (TAILQ_EMPTY(&tabs))
-		create_new_tab(home, NULL, 1);
+		create_new_tab(home, NULL, 1, -1);
 
 	if (enable_socket)
 		if ((s = build_socket()) != -1)
