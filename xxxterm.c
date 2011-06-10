@@ -1390,11 +1390,9 @@ load_uri(struct tab *t, gchar *uri)
 const gchar *
 get_uri(WebKitWebView *wv)
 {
-	WebKitWebFrame		*frame;
 	const gchar		*uri;
 
-	frame = webkit_web_view_get_main_frame(wv);
-	uri = webkit_web_frame_get_uri(frame);
+	uri = webkit_web_view_get_uri(wv);
 
 	if (uri && strlen(uri) > 0)
 		return (uri);
@@ -1971,6 +1969,7 @@ restore_global_history(void)
 	struct history		*h;
 	gchar			*uri;
 	gchar			*title;
+	const char		delim[3] = {'\\', '\\', '\0'};
 
 	snprintf(file, sizeof file, "%s/%s", work_dir, XT_HISTORY_FILE);
 
@@ -1980,11 +1979,11 @@ restore_global_history(void)
 	}
 
 	for (;;) {
-		if ((uri = fparseln(f, NULL, NULL, NULL, 0)) == NULL)
+		if ((uri = fparseln(f, NULL, NULL, delim, 0)) == NULL)
 			if (feof(f) || ferror(f))
 				break;
 
-		if ((title = fparseln(f, NULL, NULL, NULL, 0)) == NULL)
+		if ((title = fparseln(f, NULL, NULL, delim, 0)) == NULL)
 			if (feof(f) || ferror(f)) {
 				free(uri);
 				warnx("%s: broken history file\n", __func__);
@@ -2639,6 +2638,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	size_t			len, lineno = 0;
 	int			i, failed = 0;
 	char			*header, *body, *tmp, *html = NULL;
+	const char		delim[3] = {'\\', '\\', '\0'};
 
 	DNPRINTF(XT_D_FAVORITE, "%s:", __func__);
 
@@ -2673,7 +2673,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	    "<th style='width: 15%%'>Remove</th></tr>\n");
 
 	for (i = 1;;) {
-		if ((title = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
+		if ((title = fparseln(f, &len, &lineno, delim, 0)) == NULL)
 			if (feof(f) || ferror(f))
 				break;
 		if (len == 0) {
@@ -2682,7 +2682,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 			continue;
 		}
 
-		if ((uri = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
+		if ((uri = fparseln(f, &len, &lineno, delim, 0)) == NULL)
 			if (feof(f) || ferror(f)) {
 				show_oops(t, "favorites file corrupt");
 				failed = 1;
