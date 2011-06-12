@@ -2786,12 +2786,12 @@ ca_cmd(struct tab *t, struct karg *args)
 	char			*certs_buf = NULL, *s;
 
 	if ((f = fopen(ssl_ca_file, "r")) == NULL) {
-		show_oops(t, "Can't open CA file: %s", strerror(errno));
+		show_oops(t, "Can't open CA file: %s", ssl_ca_file);
 		return (1);
 	}
 
 	if (fstat(fileno(f), &sb) == -1) {
-		show_oops(t, "Can't stat CA file: %s", strerror(errno));
+		show_oops(t, "Can't stat CA file: %s", ssl_ca_file);
 		goto done;
 	}
 
@@ -3107,13 +3107,18 @@ cert_cmd(struct tab *t, struct karg *args)
 	if (t == NULL)
 		return (1);
 
+	if (ssl_ca_file == NULL) {
+		show_oops(t, "Can't open CA file: %s", ssl_ca_file);
+		return (1);
+	}
+
 	if ((uri = get_uri(t->wv)) == NULL) {
 		show_oops(t, "Invalid URI");
 		return (1);
 	}
 
 	if ((s = connect_socket_from_uri(uri, domain, sizeof domain)) == -1) {
-		show_oops(t, "Invalid certidicate URI: %s", uri);
+		show_oops(t, "Invalid certificate URI: %s", uri);
 		return (1);
 	}
 
@@ -8325,7 +8330,7 @@ main(int argc, char *argv[])
 	/* certs */
 	if (ssl_ca_file) {
 		if (stat(ssl_ca_file, &sb)) {
-			warn("no CA file: %s", ssl_ca_file);
+			warnx("no CA file: %s", ssl_ca_file);
 			g_free(ssl_ca_file);
 			ssl_ca_file = NULL;
 		} else
