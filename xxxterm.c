@@ -279,31 +279,31 @@ struct karg {
 #define XT_SAVE_SESSION_ID	("SESSION_NAME=")
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
-#define XT_DOCTYPE		"<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>"
-#define XT_HTML_TAG		"<html xmlns='http://www.w3.org/1999/xhtml'>"
+#define XT_DOCTYPE		"<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>\n"
+#define XT_HTML_TAG		"<html xmlns='http://www.w3.org/1999/xhtml'>\n"
 #define XT_DLMAN_REFRESH	"10"
 #define XT_PAGE_STYLE		"<style type='text/css'>\n"		\
-				"td {overflow: hidden;"			\
-				"  padding: 2px 2px 2px 2px;"		\
-				"  border: 1px solid black}\n"		\
-				"tr:hover {background: #ffff99 ;}\n"	\
-				"th {background-color: #cccccc;"	\
-				"  border: 1px solid black}"		\
-				"table {border-spacing: 0; "		\
-				"  width: 90%%;"			\
-				"  border: 1px black solid;}\n"		\
+				"td{overflow: hidden;"			\
+				" padding: 2px 2px 2px 2px;"		\
+				" border: 1px solid black;"		\
+				" vertical-align:top;"			\
+				" word-wrap: break-word}\n"		\
+				"tr:hover{background: #ffff99}\n"	\
+				"th{background-color: #cccccc;"		\
+				" border: 1px solid black}\n"		\
+				"table{width: 100%%;"			\
+				" border: 1px black solid;"		\
+				" border-collapse:collapse}\n"		\
 				".progress-outer{"			\
-				"  border: 1px solid black;"		\
-				"  height: 8px;"			\
-				"  width: 90%%;}"			\
-				".progress-inner{"			\
-				"  float: left;"			\
-				"  height: 8px;"			\
-				"  background: green;}"			\
-				".dlstatus{"				\
-				"  font-size: small;"			\
-				"  text-align: center;}"		\
-				"</style>\n\n"
+				"border: 1px solid black;"		\
+				" height: 8px;"				\
+				" width: 90%%}\n"			\
+				".progress-inner{float: left;"		\
+				" height: 8px;"				\
+				" background: green}\n"			\
+				".dlstatus{font-size: small;"		\
+				" text-align: center}\n"		\
+				"</style>\n"
 #define XT_MAX_URL_LENGTH	(4096) /* 1 page is atomic, don't make bigger */
 #define XT_MAX_UNDO_CLOSE_TAB	(32)
 #define XT_RESERVED_CHARS	"$&+,/:;=?@ \"<>#%%{}|^~[]`"
@@ -669,6 +669,7 @@ struct settings {
 
 int			about(struct tab *, struct karg *);
 int			blank(struct tab *, struct karg *);
+int			ca_cmd(struct tab *, struct karg *);
 int			cookie_show_wl(struct tab *, struct karg *);
 int			js_show_wl(struct tab *, struct karg *);
 int			help(struct tab *, struct karg *);
@@ -703,6 +704,7 @@ struct about_type {
 } about_list[] = {
 	{ XT_URI_ABOUT_ABOUT,		about },
 	{ XT_URI_ABOUT_BLANK,		blank },
+	{ XT_URI_ABOUT_CERTS,		ca_cmd },
 	{ XT_URI_ABOUT_COOKIEWL,	cookie_show_wl },
 	{ XT_URI_ABOUT_COOKIEJAR,	xtp_page_cl },
 	{ XT_URI_ABOUT_DOWNLOADS,	xtp_page_dl },
@@ -785,8 +787,8 @@ sigchild(int sig)
 int
 is_g_object_setting(GObject *o, char *str)
 {
-	guint		n_props = 0, i;
-	GParamSpec	**proplist;
+	guint			n_props = 0, i;
+	GParamSpec		**proplist;
 
 	if (! G_IS_OBJECT(o))
 		return (0);
@@ -799,6 +801,30 @@ is_g_object_setting(GObject *o, char *str)
 			return (1);
 	}
 	return (0);
+}
+
+gchar *
+get_html_page(gchar *title, gchar *body, gchar *head, bool addstyles)
+{
+	gchar			*r;
+
+	r = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG
+	    "<head>\n"
+	    "<title>%s</title>\n"
+	    "%s" 
+	    "%s"
+	    "</head>\n"	
+	    "<body>\n"
+	    "<h1>%s</h1>\n"
+	    "%s\n</body>\n"
+	    "</html>",
+	    title,
+	    addstyles ? XT_PAGE_STYLE : "",
+	    head,
+	    title,
+	    body);
+
+	return r;
 }
 
 /*
@@ -922,7 +948,7 @@ show_oops_s(const char *fmt, ...)
 		return;
 
 	TAILQ_FOREACH(ti, &tabs, entry)
-		if (ti->tab_id == gtk_notebook_current_page(notebook)) {
+		if (ti->tab_id == gtk_notebook_get_current_page(notebook)) {
 			t = ti;
 			break;
 		}
@@ -2459,7 +2485,7 @@ focus(struct tab *t, struct karg *args)
 int
 stats(struct tab *t, struct karg *args)
 {
-	char			*stats, *s, line[64 * 1024];
+	char			*page, *body, *s, line[64 * 1024];
 	uint64_t		line_count = 0;
 	FILE			*r_cookie_f;
 
@@ -2478,29 +2504,24 @@ stats(struct tab *t, struct karg *args)
 			}
 			fclose(r_cookie_f);
 			snprintf(line, sizeof line,
-			    "<br>Cookies blocked(*) total: %llu", line_count);
+			    "<br/>Cookies blocked(*) total: %llu", line_count);
 		} else
 			show_oops(t, "Can't open blocked cookies file: %s",
 			    strerror(errno));
 	}
 
-	stats = g_strdup_printf(XT_DOCTYPE
-	    "<html>"
-	    "<head>"
-	    "<title>Statistics</title>"
-	    "</head>"
-	    "<h1>Statistics</h1>"
-	    "<body>"
+	body = g_strdup_printf(
 	    "Cookies blocked(*) this session: %llu"
 	    "%s"
-	    "<p><small><b>*</b> results vary based on settings"
-	    "</body>"
-	    "</html>",
-	   blocked_cookies,
-	   line);
+	    "<p><small><b>*</b> results vary based on settings</small></p>",
+	    blocked_cookies,
+	    line);
 
-	load_webkit_string(t, stats, XT_URI_ABOUT_STATS);
-	g_free(stats);
+	page = get_html_page("Statistics", body, "", 0);
+	g_free(body);
+
+	load_webkit_string(t, page, XT_URI_ABOUT_STATS);
+	g_free(page);
 
 	return (0);
 }
@@ -2508,29 +2529,19 @@ stats(struct tab *t, struct karg *args)
 int
 marco(struct tab *t, struct karg *args)
 {
-	char			*message, line[64 * 1024];
+	char			*page, line[64 * 1024];
 	int			len;
 
 	if (t == NULL)
 		show_oops_s("marco invalid parameters");
 
 	line[0] = '\0';
-	snprintf(line, sizeof line, "<br>%s", marco_message(&len));
+	snprintf(line, sizeof line, "%s", marco_message(&len));
 
-	message = g_strdup_printf(XT_DOCTYPE
-	    "<html>"
-	    "<head>"
-	    "<title>Marco Sez...</title>"
-	    "</head>"
-	    "<h1>Moo</h1>"
-	    "<body>"
-	    "%s"
-	    "</body>"
-	    "</html>",
-	   line);
+	page = get_html_page("Marco Sez...", line, "", 0);
 
-	load_webkit_string(t, message, XT_URI_ABOUT_MARCO);
-	g_free(message);
+	load_webkit_string(t, page, XT_URI_ABOUT_MARCO);
+	g_free(page);
 
 	return (0);
 }
@@ -2548,19 +2559,12 @@ blank(struct tab *t, struct karg *args)
 int
 about(struct tab *t, struct karg *args)
 {
-	char			*about;
+	char			*page, *body;
 
 	if (t == NULL)
 		show_oops_s("about invalid parameters");
 
-	about = g_strdup_printf(XT_DOCTYPE
-	    "<html>"
-	    "<head>"
-	    "<title>About</title>"
-	    "</head>"
-	    "<h1>About</h1>"
-	    "<body>"
-	    "<b>Version: %s</b><p>"
+	body = g_strdup_printf("<b>Version: %s</b><p>"
 	    "Authors:"
 	    "<ul>"
 	    "<li>Marco Peereboom &lt;marco@peereboom.us&gt;</li>"
@@ -2570,14 +2574,15 @@ about(struct tab *t, struct karg *args)
 	    "<li>Raphael Graf &lt;r@undefined.ch&gt; </li>"
 	    "</ul>"
 	    "Copyrights and licenses can be found on the XXXterm "
-	    "<a href=\"http://opensource.conformal.com/wiki/XXXTerm\">website</a>"
-	    "</body>"
-	    "</html>",
+	    "<a href=\"http://opensource.conformal.com/wiki/XXXTerm\">website</a>",
 	    version
 	    );
 
-	load_webkit_string(t, about, XT_URI_ABOUT_ABOUT);
-	g_free(about);
+	page = get_html_page("About", body, "", 0);
+	g_free(body);
+
+	load_webkit_string(t, page, XT_URI_ABOUT_ABOUT);
+	g_free(page);
 
 	return (0);
 }
@@ -2585,27 +2590,22 @@ about(struct tab *t, struct karg *args)
 int
 help(struct tab *t, struct karg *args)
 {
-	char			*help;
+	char			*page, *head, *body;
 
 	if (t == NULL)
 		show_oops_s("help invalid parameters");
 
-	help = XT_DOCTYPE
-	    "<html>"
-	    "<head>"
-	    "<title>XXXterm</title>"
-	    "<meta http-equiv=\"REFRESH\" content=\"0;"
-	        "url=http://opensource.conformal.com/cgi-bin/man-cgi?xxxterm\">"
-	    "</head>"
-	    "<body>"
-	    "XXXterm man page <a href=\"http://opensource.conformal.com/"
-	        "cgi-bin/man-cgi?xxxterm\">http://opensource.conformal.com/"
-		"cgi-bin/man-cgi?xxxterm</a>"
-	    "</body>"
-	    "</html>"
-	    ;
+	head = "<meta http-equiv=\"REFRESH\" content=\"0;"
+	    "url=http://opensource.conformal.com/cgi-bin/man-cgi?xxxterm\">"
+	    "</head>\n";
+	body = "XXXterm man page <a href=\"http://opensource.conformal.com/"
+	    "cgi-bin/man-cgi?xxxterm\">http://opensource.conformal.com/"
+	    "cgi-bin/man-cgi?xxxterm</a>";
 
-	load_webkit_string(t, help, XT_URI_ABOUT_HELP);
+	page = get_html_page("XXXterm", body, head, FALSE);
+
+	load_webkit_string(t, page, XT_URI_ABOUT_HELP);
+	g_free(page);
 
 	return (0);
 }
@@ -2637,7 +2637,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	char			*uri = NULL, *title = NULL;
 	size_t			len, lineno = 0;
 	int			i, failed = 0;
-	char			*header, *body, *tmp, *html = NULL;
+	char			*body, *tmp, *page = NULL;
 	const char		delim[3] = {'\\', '\\', '\0'};
 
 	DNPRINTF(XT_D_FAVORITE, "%s:", __func__);
@@ -2659,18 +2659,10 @@ xtp_page_fl(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	/* header */
-	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG "\n<head>"
-	    "<title>Favorites</title>\n"
-	    "%s"
-	    "</head>"
-	    "<h1>Favorites</h1>\n",
-	    XT_PAGE_STYLE);
-
 	/* body */
-	body = g_strdup_printf("<div align='center'><table><tr>"
-	    "<th style='width: 4%%'>&#35;</th><th>Link</th>"
-	    "<th style='width: 15%%'>Remove</th></tr>\n");
+	body = g_strdup_printf("<table style='table-layout:fixed'><tr>"
+	    "<th style='width: 40px'>&#35;</th><th>Link</th>"
+	    "<th style='width: 40px'>Rm</th></tr>\n");
 
 	for (i = 1;;) {
 		if ((title = fparseln(f, &len, &lineno, delim, 0)) == NULL)
@@ -2719,6 +2711,10 @@ xtp_page_fl(struct tab *t, struct karg *args)
 		g_free(tmp);
 	}
 
+	tmp = body;
+	body = g_strdup_printf("%s</table>", body);
+	g_free(tmp);
+
 	if (uri)
 		free(uri);
 	if (title)
@@ -2726,19 +2722,15 @@ xtp_page_fl(struct tab *t, struct karg *args)
 
 	/* render */
 	if (!failed) {
-		html = g_strdup_printf("%s%s</table></div></html>",
-		    header, body);
-		load_webkit_string(t, html, XT_URI_ABOUT_FAVORITES);
+		page = get_html_page("Favorites", body, "", 1);
+		load_webkit_string(t, page, XT_URI_ABOUT_FAVORITES);
+		g_free(page);
 	}
 
 	update_favorite_tabs(t);
 
-	if (header)
-		g_free(header);
 	if (body)
 		g_free(body);
-	if (html)
-		g_free(html);
 
 	return (failed);
 }
@@ -2748,11 +2740,9 @@ show_certs(struct tab *t, gnutls_x509_crt_t *certs,
     size_t cert_count, char *title)
 {
 	gnutls_datum_t		cinfo;
-	char			*tmp, *header, *body, *footer;
+	char			*tmp, *body;
 	int			i;
 
-	header = g_strdup_printf("<html><head><title>%s</title></head><body>", title);
-	footer = g_strdup("</body></html>");
 	body = g_strdup("");
 
 	for (i = 0; i < cert_count; i++) {
@@ -2767,10 +2757,9 @@ show_certs(struct tab *t, gnutls_x509_crt_t *certs,
 		g_free(tmp);
 	}
 
-	tmp = g_strdup_printf("%s%s%s", header, body, footer);
-	g_free(header);
+	tmp = get_html_page(title, body, "", 0);
 	g_free(body);
-	g_free(footer);
+
 	load_webkit_string(t, tmp, XT_URI_ABOUT_CERTS);
 	g_free(tmp);
 }
@@ -3179,14 +3168,8 @@ int
 wl_show(struct tab *t, struct karg *args, char *title, struct domain_list *wl)
 {
 	struct domain		*d;
-	char			*tmp, *header, *body, *footer;
+	char			*tmp, *body;
 
-	/* we set this to indicate we want to manually do navaction */
-	t->item = webkit_web_back_forward_list_get_current_item(t->bfl);
-
-	header = g_strdup_printf("<title>%s</title><html><body><h1>%s</h1>",
-	    title, title);
-	footer = g_strdup("</body></html>");
 	body = g_strdup("");
 
 	/* p list */
@@ -3198,7 +3181,7 @@ wl_show(struct tab *t, struct karg *args, char *title, struct domain_list *wl)
 			if (d->handy == 0)
 				continue;
 			tmp = body;
-			body = g_strdup_printf("%s%s<br>", body, d->d);
+			body = g_strdup_printf("%s%s<br/>", body, d->d);
 			g_free(tmp);
 		}
 	}
@@ -3212,15 +3195,13 @@ wl_show(struct tab *t, struct karg *args, char *title, struct domain_list *wl)
 			if (d->handy == 1)
 				continue;
 			tmp = body;
-			body = g_strdup_printf("%s%s<br>", body, d->d);
+			body = g_strdup_printf("%s%s<br/>", body, d->d);
 			g_free(tmp);
 		}
 	}
 
-	tmp = g_strdup_printf("%s%s%s", header, body, footer);
-	g_free(header);
+	tmp = get_html_page(title, body, "", 0);
 	g_free(body);
-	g_free(footer);
 	if (wl == &js_wl)
 		load_webkit_string(t, tmp, XT_URI_ABOUT_JSWL);
 	else
@@ -4074,7 +4055,7 @@ update_history_tabs(struct tab *apart_from)
 int
 xtp_page_cl(struct tab *t, struct karg *args)
 {
-	char			*header, *body, *footer, *page, *tmp;
+	char			*body, *page, *tmp;
 	int			i = 1; /* all ids start 1 */
 	GSList			*sc, *pc, *pc_start;
 	SoupCookie		*c;
@@ -4094,21 +4075,16 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	if (!updating_cl_tabs)
 		generate_xtp_session_key(&cl_session_key);
 
-	/* header */
-	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG
-	  "\n<head><title>Cookie Jar</title>\n" XT_PAGE_STYLE
-	  "</head><body><h1>Cookie Jar</h1>\n");
-
 	/* table headers */
-	table_headers = g_strdup_printf("<div align='center'><table><tr>"
+	table_headers = g_strdup_printf("<table><tr>"
 	    "<th>Type</th>"
 	    "<th>Name</th>"
-	    "<th>Value</th>"
+	    "<th style='width:200px'>Value</th>"
 	    "<th>Path</th>"
 	    "<th>Expires</th>"
 	    "<th>Secure</th>"
 	    "<th>HTTP<br />only</th>"
-	    "<th>Rm</th></tr>\n");
+	    "<th style='width:40px'>Rm</th></tr>\n");
 
 	sc = soup_cookie_jar_all_cookies(s_cookiejar);
 	pc = soup_cookie_jar_all_cookies(p_cookiejar);
@@ -4125,7 +4101,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 
                         if (body != NULL) {
                                 tmp = body;
-                                body = g_strdup_printf("%s</table></div>"
+                                body = g_strdup_printf("%s</table>"
                                     "<h2>%s</h2>%s\n",
                                     body, c->domain, table_headers);
                                 g_free(tmp);
@@ -4146,16 +4122,16 @@ xtp_page_cl(struct tab *t, struct karg *args)
 		tmp = body;
 		body = g_strdup_printf(
 		    "%s\n<tr>"
-		    "<td style='width: text-align: center'>%s</td>"
-		    "<td style='width: 1px'>%s</td>"
-		    "<td style='width=70%%;overflow: visible'>"
+		    "<td>%s</td>"
+		    "<td style='word-wrap:normal'>%s</td>"
+		    "<td>"
 		    "  <textarea rows='4'>%s</textarea>"
 		    "</td>"
 		    "<td>%s</td>"
 		    "<td>%s</td>"
-		    "<td style='width: 1px; text-align: center'>%d</td>"
-		    "<td style='width: 1px; text-align: center'>%d</td>"
-		    "<td style='width: 1px; text-align: center'>"
+		    "<td>%d</td>"
+		    "<td>%d</td>"
+		    "<td style='text-align:center'>"
 		    "<a href='%s%d/%s/%d/%d'>X</a></td></tr>\n",
 		    body,
 		    type,
@@ -4186,15 +4162,12 @@ xtp_page_cl(struct tab *t, struct karg *args)
 		body = g_strdup_printf("%s\n<tr><td style='text-align:center'"
 		    "colspan='8'>No Cookies</td></tr>\n", table_headers);
 	}
+	tmp = body;
+	body = g_strdup_printf("%s</table>", body);
+	g_free(tmp);
 
-	/* footer */
-	footer = g_strdup_printf("</table></div></body></html>");
-
-	page = g_strdup_printf("%s%s%s", header, body, footer);
-
-	g_free(header);
+	page = get_html_page("Cookie Jar", body, "", TRUE);
 	g_free(body);
-	g_free(footer);
 	g_free(table_headers);
 	g_free(last_domain);
 
@@ -4209,7 +4182,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 int
 xtp_page_hl(struct tab *t, struct karg *args)
 {
-	char			*header, *body, *footer, *page, *tmp;
+	char			*body, *page, *tmp;
 	struct history		*h;
 	int			i = 1; /* all ids start 1 */
 
@@ -4227,17 +4200,9 @@ xtp_page_hl(struct tab *t, struct karg *args)
 	if (!updating_hl_tabs)
 		generate_xtp_session_key(&hl_session_key);
 
-	/* header */
-	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG "\n<head>"
-	    "<title>History</title>\n"
-	    "%s"
-	    "</head>"
-	    "<h1>History</h1>\n",
-	    XT_PAGE_STYLE);
-
 	/* body */
-	body = g_strdup_printf("<div align='center'><table><tr>"
-	    "<th>URI</th><th>Title</th><th style='width: 15%%'>Remove</th></tr>\n");
+	body = g_strdup_printf("<table style='table-layout:fixed'><tr>"
+	    "<th>URI</th><th>Title</th><th style='width: 40px'>Rm</th></tr>\n");
 
 	RB_FOREACH_REVERSE(h, history_list, &hl) {
 		tmp = body;
@@ -4262,11 +4227,13 @@ xtp_page_hl(struct tab *t, struct karg *args)
 		    "colspan='3'>No History</td></tr>\n", body);
 		g_free(tmp);
 	}
+	
+	tmp = body;
+	body = g_strdup_printf("%s</table>", body);
+	g_free(tmp);
 
-	/* footer */
-	footer = g_strdup_printf("</table></div></body></html>");
-
-	page = g_strdup_printf("%s%s%s", header, body, footer);
+	page = get_html_page("History", body, "", TRUE);
+	g_free(body);
 
 	/*
 	 * update all history manager tabs as the xtp session
@@ -4274,10 +4241,6 @@ xtp_page_hl(struct tab *t, struct karg *args)
 	 * Already did that above.
 	 */
 	update_history_tabs(t);
-
-	g_free(header);
-	g_free(body);
-	g_free(footer);
 
 	load_webkit_string(t, page, XT_URI_ABOUT_HISTORY);
 	g_free(page);
@@ -4292,7 +4255,7 @@ int
 xtp_page_dl(struct tab *t, struct karg *args)
 {
 	struct download		*dl;
-	char			*header, *body, *footer, *page, *tmp;
+	char			*body, *page, *tmp;
 	char			*ref;
 	int			n_dl = 1;
 
@@ -4326,15 +4289,7 @@ xtp_page_dl(struct tab *t, struct karg *args)
 		else
 			ref = g_strdup("");
 
-
-	header = g_strdup_printf(
-	    "%s\n<head>"
-	    "<title>Downloads</title>\n%s%s</head>\n",
-	    XT_DOCTYPE XT_HTML_TAG,
-	    ref,
-	    XT_PAGE_STYLE);
-
-	body = g_strdup_printf("<body><h1>Downloads</h1><div align='center'>"
+	body = g_strdup_printf("<div align='center'>"
 	    "<p>\n<a href='%s%d/%s/%d'>\n[ Refresh Downloads ]</a>\n"
 	    "</p><table><tr><th style='width: 60%%'>"
 	    "File</th>\n<th>Progress</th><th>Command</th></tr>\n",
@@ -4354,11 +4309,13 @@ xtp_page_dl(struct tab *t, struct karg *args)
 		g_free(tmp);
 	}
 
-	/* footer */
-	footer = g_strdup_printf("</table></div></body></html>");
-
-	page = g_strdup_printf("%s%s%s", header, body, footer);
-
+	tmp = body;
+	body = g_strdup_printf("%s</table></div>", body);
+	g_free(tmp);
+	
+	page = get_html_page("Downloads", body, ref, 1);
+	g_free(ref);
+	g_free(body);
 
 	/*
 	 * update all download manager tabs as the xtp session
@@ -4366,11 +4323,6 @@ xtp_page_dl(struct tab *t, struct karg *args)
 	 * Already did that above.
 	 */
 	update_download_tabs(t);
-
-	g_free(ref);
-	g_free(header);
-	g_free(body);
-	g_free(footer);
 
 	load_webkit_string(t, page, XT_URI_ABOUT_DOWNLOADS);
 	g_free(page);
@@ -4438,8 +4390,8 @@ print_setting(struct settings *s, char *val, void *cb_args)
 	tmp = *sa->body;
 	*sa->body = g_strdup_printf(
 	    "%s\n<tr>"
-	    "<td style='background-color: %s; width: 10%%; word-break: break-all'>%s</td>"
-	    "<td style='background-color: %s; width: 20%%; word-break: break-all'>%s</td>",
+	    "<td style='background-color: %s; width: 10%%;word-break:break-all'>%s</td>"
+	    "<td style='background-color: %s; width: 20%%;word-break:break-all'>%s</td>",
 	    *sa->body,
 	    color,
 	    s->name,
@@ -4453,17 +4405,12 @@ print_setting(struct settings *s, char *val, void *cb_args)
 int
 set(struct tab *t, struct karg *args)
 {
-	char			*header, *body, *footer, *page, *tmp;
+	char			*body, *page, *tmp;
 	int			i = 1;
 	struct settings_args	sa;
 
 	bzero(&sa, sizeof sa);
 	sa.body = &body;
-
-	/* header */
-	header = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG
-	  "\n<head><title>Settings</title>\n"
-	  "</head><body><h1>Settings</h1>\n");
 
 	/* body */
 	body = g_strdup_printf("<div align='center'><table><tr>"
@@ -4481,16 +4428,17 @@ set(struct tab *t, struct karg *args)
 		g_free(tmp);
 	}
 
-	/* footer */
-	footer = g_strdup_printf("</table></div></body></html>");
+	tmp = body;
+	body = g_strdup_printf("%s</table></div>", body);
+	g_free(tmp);
 
-	page = g_strdup_printf("%s%s%s", header, body, footer);
+	page = get_html_page("Settings", body, "", 0);
 
-	g_free(header);
 	g_free(body);
-	g_free(footer);
 
 	load_webkit_string(t, page, XT_URI_ABOUT_SET);
+	
+	g_free(page);
 
 	return (XT_CB_PASSTHROUGH);
 }
