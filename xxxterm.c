@@ -61,6 +61,12 @@
 
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
+
+#if GTK_CHECK_VERSION(3,0,0)
+/* we still use GDK_* instead of GDK_KEY_* */ 
+#include <gdk/gdkkeysyms-compat.h>
+#endif
+
 #include <webkit/webkit.h>
 #include <libsoup/soup.h>
 #include <gnutls/gnutls.h>
@@ -7320,6 +7326,8 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	t->label = gtk_label_new(title);
 	bb = create_button("Close", GTK_STOCK_CLOSE, 1);
 	gtk_widget_set_size_request(t->label, 100, 0);
+	gtk_label_set_max_width_chars(GTK_LABEL(t->label), 20);
+	gtk_label_set_ellipsize(GTK_LABEL(t->label), PANGO_ELLIPSIZE_END);
 	gtk_widget_set_size_request(b, 130, 0);
 
 	gtk_box_pack_start(GTK_BOX(b), bb, FALSE, FALSE, 0);
@@ -7487,7 +7495,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 }
 
 void
-notebook_switchpage_cb(GtkNotebook *nb, GtkNotebookPage *nbp, guint pn,
+notebook_switchpage_cb(GtkNotebook *nb, GtkWidget *nbp, guint pn,
     gpointer *udata)
 {
 	struct tab		*t;
@@ -7518,7 +7526,7 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkNotebookPage *nbp, guint pn,
 }
 
 void
-notebook_pagereordered_cb(GtkNotebook *nb, GtkNotebookPage *nbp, guint pn,
+notebook_pagereordered_cb(GtkNotebook *nb, GtkWidget *nbp, guint pn,
     gpointer *udata)
 {
 	recalc_tabs();
@@ -7548,11 +7556,11 @@ arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 				/* XXX add gui pages in here to look purdy */
 				uri = "(untitled)";
 			menu_items = gtk_menu_item_new_with_label(uri);
-			gtk_menu_append(GTK_MENU (menu), menu_items);
+			gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_items);
 			gtk_widget_show(menu_items);
 
-			gtk_signal_connect_object(GTK_OBJECT(menu_items),
-			    "activate", GTK_SIGNAL_FUNC(menuitem_response),
+			g_signal_connect_swapped((menu_items),
+			    "activate", G_CALLBACK(menuitem_response),
 			    (gpointer)ti);
 		}
 
@@ -7560,8 +7568,11 @@ arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 		    bevent->button, bevent->time);
 
 		/* unref object so it'll free itself when popped down */
+#if !GTK_CHECK_VERSION(3, 0, 0)
+		/* XXX does not need unref with gtk+3? */
 		g_object_ref_sink(menu);
 		g_object_unref(menu);
+#endif
 
 		return (TRUE /* eat event */);
 	}
@@ -7633,8 +7644,11 @@ create_canvas(void)
 	vbox = gtk_vbox_new(FALSE, 0);
 	gtk_box_set_spacing(GTK_BOX(vbox), 0);
 	notebook = GTK_NOTEBOOK(gtk_notebook_new());
+#if !GTK_CHECK_VERSION(3, 0, 0)
+	/* XXX seems to be needed with gtk+2 */
 	gtk_notebook_set_tab_hborder(notebook, 0);
 	gtk_notebook_set_tab_vborder(notebook, 0);
+#endif
 	gtk_notebook_set_scrollable(notebook, TRUE);
 	notebook_tab_set_visibility(notebook);
 	gtk_notebook_set_show_border(notebook, FALSE);
@@ -7918,8 +7932,8 @@ done:
 	return (rv);
 }
 
-void
-socket_watcher(gpointer data, gint fd, GdkInputCondition cond)
+gboolean
+socket_watcher(GIOChannel *source, GIOCondition condition, gpointer data)
 {
 	int			s, n;
 	char			str[XT_MAX_URL_LENGTH];
@@ -7929,33 +7943,35 @@ socket_watcher(gpointer data, gint fd, GdkInputCondition cond)
 	uid_t			uid;
 	gid_t			gid;
 	struct tab		*tt;
+	gint			fd = g_io_channel_unix_get_fd(source);
 
 	if ((s = accept(fd, (struct sockaddr *)&sa, &t)) == -1) {
 		warn("accept");
-		return;
+		return (FALSE);
 	}
 
 	if (getpeereid(s, &uid, &gid) == -1) {
 		warn("getpeereid");
-		return;
+		return (FALSE);
 	}
 	if (uid != getuid() || gid != getgid()) {
 		warnx("unauthorized user");
-		return;
+		return (FALSE);
 	}
 
 	p = getpwuid(uid);
 	if (p == NULL) {
 		warnx("not a valid user");
-		return;
+		return (FALSE);
 	}
 
 	n = recv(s, str, sizeof(str), 0);
 	if (n <= 0)
-		return;
+		return (FALSE);
 
 	tt = TAILQ_LAST(&tabs, tab_list);
 	cmd_execute(tt, str);
+	return (TRUE);
 }
 
 int
@@ -8127,6 +8143,7 @@ usage(void)
 	exit(0);
 }
 
+
 int
 main(int argc, char *argv[])
 {
@@ -8139,6 +8156,7 @@ main(int argc, char *argv[])
 	struct karg		a;
 	struct sigaction	sact;
 	gchar			*priority = g_strdup("NORMAL");
+	GIOChannel 		*channel;
 
 	start_argv = argv;
 
@@ -8354,8 +8372,10 @@ main(int argc, char *argv[])
 		create_new_tab(home, NULL, 1, -1);
 
 	if (enable_socket)
-		if ((s = build_socket()) != -1)
-			gdk_input_add(s, GDK_INPUT_READ, socket_watcher, NULL);
+		if ((s = build_socket()) != -1) {
+			channel = g_io_channel_unix_new(s);
+			g_io_add_watch(channel, G_IO_IN, socket_watcher, NULL);
+		}
 
 	gtk_main();
 
