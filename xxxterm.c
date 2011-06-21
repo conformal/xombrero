@@ -519,6 +519,8 @@ int		guess_search = 0;
 int		dns_prefetch = FALSE;
 gint		max_connections = 25;
 gint		max_host_connections = 5;
+gint		enable_spell_checking = 0;
+char		*spell_check_languages = NULL;
 
 struct settings;
 struct key_binding;
@@ -664,6 +666,8 @@ struct settings {
 	{ "window_height",		XT_S_INT, 0,		&window_height, NULL, NULL },
 	{ "window_width",		XT_S_INT, 0,		&window_width, NULL, NULL },
 	{ "work_dir",			XT_S_STR, 0, NULL, NULL,&s_work_dir },
+	{ "enable_spell_checking",	XT_S_INT, 0,		&enable_spell_checking, NULL, NULL },
+	{ "spell_check_languages",	XT_S_STR, 0, NULL, &spell_check_languages, NULL },
 
 	/* runtime settings */
 	{ "alias",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_alias },
@@ -6963,6 +6967,10 @@ setup_webkit(struct tab *t)
 	    "enable-plugins", enable_plugins, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
 	    "javascript-can-open-windows-automatically", enable_scripts, (char *)NULL);
+	g_object_set(G_OBJECT(t->settings),
+	    "enable_spell_checking", enable_spell_checking, (char *)NULL);
+	g_object_set(G_OBJECT(t->settings),
+	    "spell_checking_languages", spell_check_languages, (char *)NULL);
 	g_object_set(G_OBJECT(t->wv),
 	    "full-content-zoom", TRUE, (char *)NULL);
 	adjustfont_webkit(t, XT_FONT_SET);
