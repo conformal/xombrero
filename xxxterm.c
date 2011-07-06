@@ -823,9 +823,9 @@ get_html_page(gchar *title, gchar *body, gchar *head, bool addstyles)
 	r = g_strdup_printf(XT_DOCTYPE XT_HTML_TAG
 	    "<head>\n"
 	    "<title>%s</title>\n"
-	    "%s" 
 	    "%s"
-	    "</head>\n"	
+	    "%s"
+	    "</head>\n"
 	    "<body>\n"
 	    "<h1>%s</h1>\n"
 	    "%s\n</body>\n"
@@ -3812,7 +3812,7 @@ movetab(struct tab *t, struct karg *args)
 
 	switch (args->i) {
 	case XT_TAB_NEXT:
-		if (args->p < 0) 
+		if (args->p < 0)
 			dest = dest == n - 1 ? 0 : dest + 1;
 		else
 			dest = args->p - 1;
@@ -6878,8 +6878,8 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 		t->search_forward = c[0] == '/';
 
 		goto done;
-	} 
-		
+	}
+
 	cmd_execute(t, s);
 
 done:
@@ -7529,8 +7529,10 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkWidget *nbp, guint pn,
 			hide_cmd(t);
 			hide_oops(t);
 
-			if (t->focus_wv)
-				focus_webview(t);
+			if (t->focus_wv) {
+				/* can't use focus_webview here */
+				gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+			}
 		}
 	}
 }
