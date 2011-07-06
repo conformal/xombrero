@@ -63,7 +63,7 @@
 #include <gdk/gdkkeysyms.h>
 
 #if GTK_CHECK_VERSION(3,0,0)
-/* we still use GDK_* instead of GDK_KEY_* */ 
+/* we still use GDK_* instead of GDK_KEY_* */
 #include <gdk/gdkkeysyms-compat.h>
 #endif
 
@@ -125,6 +125,7 @@ void		(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
 #define	XT_D_PRINTING		0x0400
 #define	XT_D_COOKIE		0x0800
 #define	XT_D_KEYBINDING		0x1000
+#define	XT_D_CLIP		0x2000
 u_int32_t		swm_debug = 0
 			    | XT_D_MOVE
 			    | XT_D_KEY
@@ -139,6 +140,7 @@ u_int32_t		swm_debug = 0
 			    | XT_D_PRINTING
 			    | XT_D_COOKIE
 			    | XT_D_KEYBINDING
+			    | XT_D_CLIP
 			    ;
 #else
 #define DPRINTF(x...)
@@ -7641,6 +7643,78 @@ button_set_stockid(GtkWidget *button, char *stockid)
 }
 
 void
+clipb_primary_cb(GtkClipboard *primary, GdkEvent *event, gpointer notused)
+{
+	GtkClipboard		*clipboard;
+	gchar			*p = NULL, *s = NULL;
+
+	/*
+	 * This code is very aggressive!
+	 * It basically ensures that the primary and regular clipboard are
+	 * always set the same.  This obviously messes with standard X protocol
+	 * but those clowns should have come up with something better.
+	 */
+
+	/* XXX make this setting? */
+	clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
+	p = gtk_clipboard_wait_for_text(primary);
+	if (p == NULL) {
+		DNPRINTF(XT_D_CLIP, "primary cleaned\n");
+		p = gtk_clipboard_wait_for_text(clipboard);
+		if (p)
+			gtk_clipboard_set_text(primary, p, -1);
+	} else {
+		DNPRINTF(XT_D_CLIP, "primary got selection\n");
+		s = gtk_clipboard_wait_for_text(clipboard);
+		if (s) {
+			/*
+			 * if s and p are the same the string was set by
+			 * clipb_clipboard_cb so do nothing in that case
+			 * to prevent endless loop
+			 */
+			if (!strcmp(s, p))
+				goto done;
+		}
+		gtk_clipboard_set_text(clipboard, p, -1);
+	}
+done:
+	if (p)
+		g_free(p);
+	if (s)
+		g_free(s);
+}
+
+void
+clipb_clipboard_cb(GtkClipboard *clipboard, GdkEvent *event, gpointer notused)
+{
+	GtkClipboard		*primary;
+	gchar			*p = NULL, *s = NULL;
+
+	DNPRINTF(XT_D_CLIP, "clipboard got content\n");
+
+	primary = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
+	p = gtk_clipboard_wait_for_text(clipboard);
+	if (p) {
+		s = gtk_clipboard_wait_for_text(primary);
+		if (s) {
+			/*
+			 * if s and p are the same the string was set by
+			 * clipb_primary_cb so do nothing in that case
+			 * to prevent endless loop and deselection of text
+			 */
+			if (!strcmp(s, p))
+				goto done;
+		}
+		gtk_clipboard_set_text(primary, p, -1);
+	}
+done:
+	if (p)
+		g_free(p);
+	if (s)
+		g_free(s);
+}
+
+void
 create_canvas(void)
 {
 	GtkWidget		*vbox;
@@ -7695,6 +7769,12 @@ create_canvas(void)
 		l = g_list_append(l, pb);
 	}
 	gtk_window_set_default_icon_list(l);
+
+	/* clipboard */
+	g_signal_connect(G_OBJECT(gtk_clipboard_get(GDK_SELECTION_PRIMARY)),
+	    "owner-change", G_CALLBACK(clipb_primary_cb), NULL);
+	g_signal_connect(G_OBJECT(gtk_clipboard_get(GDK_SELECTION_CLIPBOARD)),
+	    "owner-change", G_CALLBACK(clipb_clipboard_cb), NULL);
 
 	gtk_widget_show_all(abtn);
 	gtk_widget_show_all(main_window);
