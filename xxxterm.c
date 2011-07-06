@@ -5840,6 +5840,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), TRUE);
 
+		/* take focus if we are visible */
+		focus_webview(t);
 		t->focus_wv = 1;
 
 		break;
@@ -5927,9 +5929,6 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 	gtk_widget_set_sensitive(GTK_WIDGET(t->forward),
 	    webkit_web_view_can_go_forward(wview));
-
-	/* take focus if we are visible */
-	focus_webview(t);
 }
 
 void
