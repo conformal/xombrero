@@ -8164,7 +8164,7 @@ main(int argc, char *argv[])
 	struct karg		a;
 	struct sigaction	sact;
 	gchar			*priority = g_strdup("NORMAL");
-	GIOChannel 		*channel;
+	GIOChannel		*channel;
 
 	start_argv = argv;
 
