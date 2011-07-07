@@ -19,7 +19,7 @@ GTK_LDFLAGS!= pkg-config --libs $(LIBS)
 CFLAGS+= $(GTK_CFLAGS) -Wall -pthread
 LDFLAGS+= $(GTK_LDFLAGS) -pthread
 
-MANDIR= ${PREFIX}/man/cat
+MANDIR= ${PREFIX}/man/man
 
 CLEANFILES += ${.CURDIR}/javascript.h xxxterm.cat1
 
