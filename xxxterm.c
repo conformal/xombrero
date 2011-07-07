@@ -8268,7 +8268,6 @@ main(int argc, char *argv[])
 	FILE			*f = NULL;
 	struct karg		a;
 	struct sigaction	sact;
-	gchar			*priority = g_strdup("NORMAL");
 	GIOChannel		*channel;
 
 	start_argv = argv;
@@ -8398,12 +8397,6 @@ main(int argc, char *argv[])
 
 	/* cookies */
 	session = webkit_get_default_session();
-	/* XXX ssl-priority property not quite available yet */
-	if (is_g_object_setting(G_OBJECT(session), "ssl-priority"))
-		g_object_set(G_OBJECT(session), "ssl-priority", priority,
-		    (char *)NULL);
-	else
-		warnx("session does not have \"ssl-priority\" property");
 	setup_cookies();
 
 	/* certs */
