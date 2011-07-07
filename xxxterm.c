@@ -4253,7 +4253,7 @@ xtp_page_hl(struct tab *t, struct karg *args)
 		    "colspan='3'>No History</td></tr>\n", body);
 		g_free(tmp);
 	}
-	
+
 	tmp = body;
 	body = g_strdup_printf("%s</table>", body);
 	g_free(tmp);
@@ -4338,7 +4338,7 @@ xtp_page_dl(struct tab *t, struct karg *args)
 	tmp = body;
 	body = g_strdup_printf("%s</table></div>", body);
 	g_free(tmp);
-	
+
 	page = get_html_page("Downloads", body, ref, 1);
 	g_free(ref);
 	g_free(body);
@@ -4463,7 +4463,7 @@ set(struct tab *t, struct karg *args)
 	g_free(body);
 
 	load_webkit_string(t, page, XT_URI_ABOUT_SET);
-	
+
 	g_free(page);
 
 	return (XT_CB_PASSTHROUGH);
@@ -5811,10 +5811,8 @@ notify_icon_loaded_cb(WebKitWebView *wv, gchar *uri, struct tab *t)
 		}
 
 		t->icon_download = webkit_download_new(t->icon_request);
-		if (t->icon_download == NULL) {
-			fprintf(stderr,  "%s: icon_download", __func__);
+		if (t->icon_download == NULL)
 			return;
-		}
 
 		/* we have to free icon_dest_uri later */
 		t->icon_dest_uri = g_strdup_printf("file://%s", file);
@@ -5823,7 +5821,6 @@ notify_icon_loaded_cb(WebKitWebView *wv, gchar *uri, struct tab *t)
 
 		if (webkit_download_get_status(t->icon_download) ==
 		    WEBKIT_DOWNLOAD_STATUS_ERROR) {
-			fprintf(stderr,  "%s: download failed to start", __func__);
 			g_object_unref(t->icon_request);
 			g_free(t->icon_dest_uri);
 			t->icon_request = NULL;
