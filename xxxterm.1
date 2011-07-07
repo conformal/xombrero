@@ -199,6 +199,8 @@ It can be useful when the
 option is used.
 .Pp
 .Bl -tag -width Ds -offset indent -compact
+.It Cm F4
+Alias for ":toplevel toggle"
 .It Cm F9
 Alias for ":open"
 .Pq Cm promptopen
@@ -507,6 +509,10 @@ Go to the next tab.
 Go to the previous tab.
 .It Cm tabshow , tabs
 Show tabs.
+.It Cm toplevel , toplevel toggle
+Toggle the top level domain name cookie and JS session whitelist.
+This is to enable/disable short lived full site functionality without
+permanently adding the top level domain to the persistent whitelist.
 .It Cm urlhide , urlh
 Hide url entry and tool bar.
 .It Cm urlshow , urls

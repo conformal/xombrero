@@ -430,6 +430,7 @@ struct karg {
 #define XT_WL_TOPLEVEL		(1<<4)
 #define XT_WL_PERSISTENT	(1<<5)
 #define XT_WL_SESSION		(1<<6)
+#define XT_WL_RELOAD		(1<<7)
 
 #define XT_SHOW			(1<<7)
 #define XT_DELETE		(1<<8)
@@ -2375,7 +2376,8 @@ toggle_cwl(struct tab *t, struct karg *args)
 		/* disable cookies for domain */
 		RB_REMOVE(domain_list, &c_wl, d);
 
-	webkit_web_view_reload(t->wv);
+	if (args->i & XT_WL_RELOAD)
+		webkit_web_view_reload(t->wv);
 
 	g_free(dom);
 	return (0);
@@ -2430,7 +2432,9 @@ toggle_js(struct tab *t, struct karg *args)
 	g_object_set(G_OBJECT(t->settings),
 	    "javascript-can-open-windows-automatically", es, (char *)NULL);
 	webkit_web_view_set_settings(t->wv, t->settings);
-	webkit_web_view_reload(t->wv);
+
+	if (args->i & XT_WL_RELOAD)
+		webkit_web_view_reload(t->wv);
 done:
 	if (dom)
 		g_free(dom);
@@ -2442,7 +2446,10 @@ js_toggle_cb(GtkWidget *w, struct tab *t)
 {
 	struct karg		a;
 
-	a.i = XT_WL_TOGGLE | XT_WL_FQDN;
+	a.i = XT_WL_TOGGLE | XT_WL_TOPLEVEL;
+	toggle_cwl(t, &a);
+
+	a.i = XT_WL_TOGGLE | XT_WL_TOPLEVEL | XT_WL_RELOAD;
 	toggle_js(t, &a);
 }
 
@@ -3342,11 +3349,13 @@ cookie_cmd(struct tab *t, struct karg *args)
 {
 	if (args->i & XT_SHOW)
 		wl_show(t, args, "Cookie White List", &c_wl);
-	else if (args->i & XT_WL_TOGGLE)
+	else if (args->i & XT_WL_TOGGLE) {
+		args->i |= XT_WL_RELOAD;
 		toggle_cwl(t, args);
-	else if (args->i & XT_SAVE)
+	} else if (args->i & XT_SAVE) {
+		args->i |= XT_WL_RELOAD;
 		wl_save(t, args, 0);
-	else if (args->i & XT_DELETE)
+	} else if (args->i & XT_DELETE)
 		show_oops(t, "'cookie delete' currently unimplemented");
 
 	return (0);
@@ -3357,12 +3366,22 @@ js_cmd(struct tab *t, struct karg *args)
 {
 	if (args->i & XT_SHOW)
 		wl_show(t, args, "JavaScript White List", &js_wl);
-	else if (args->i & XT_SAVE)
+	else if (args->i & XT_SAVE) {
+		args->i |= XT_WL_RELOAD;
 		wl_save(t, args, 1);
-	else if (args->i & XT_WL_TOGGLE)
+	} else if (args->i & XT_WL_TOGGLE) {
+		args->i |= XT_WL_RELOAD;
 		toggle_js(t, args);
-	else if (args->i & XT_DELETE)
+	} else if (args->i & XT_DELETE)
 		show_oops(t, "'js delete' currently unimplemented");
+
+	return (0);
+}
+
+int
+toplevel_cmd(struct tab *t, struct karg *args)
+{
+	js_toggle_cb(t->js_toggle, t);
 
 	return (0);
 }
@@ -4655,6 +4674,7 @@ struct key_binding {
 	{ "yankuri",		0,	0,	GDK_y		},
 	{ "pasteuricur",	0,	0,	GDK_p		},
 	{ "pasteurinew",	0,	0,	GDK_P		},
+	{ "toplevel toggle",	0,	0,	GDK_F4		},
 
 	/* search */
 	{ "searchnext",		0,	0,	GDK_n		},
@@ -5006,6 +5026,10 @@ struct cmd {
 	{ "toggle",		1,	cookie_cmd,		XT_WL_TOGGLE  | XT_WL_FQDN,			0 },
 	{ "domain",		2,	cookie_cmd,		XT_WL_TOGGLE | XT_WL_TOPLEVEL,			0 },
 	{ "fqdn",		2,	cookie_cmd,		XT_WL_TOGGLE | XT_WL_FQDN,			0 },
+
+	/* toplevel (domain) command */
+	{ "toplevel",		0,	toplevel_cmd,		XT_WL_TOGGLE | XT_WL_TOPLEVEL | XT_WL_RELOAD,	0 },
+	{ "toggle",		1,	toplevel_cmd,		XT_WL_TOGGLE | XT_WL_TOPLEVEL | XT_WL_RELOAD,	0 },
 
 	/* cookie jar */
 	{ "cookiejar",		0,	xtp_page_cl,		0,			0 },
