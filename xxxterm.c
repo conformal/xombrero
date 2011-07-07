@@ -4675,6 +4675,7 @@ struct key_binding {
 	{ "pasteuricur",	0,	0,	GDK_p		},
 	{ "pasteurinew",	0,	0,	GDK_P		},
 	{ "toplevel toggle",	0,	0,	GDK_F4		},
+	{ "help",		0,	0,	GDK_F1		},
 
 	/* search */
 	{ "searchnext",		0,	0,	GDK_n		},
