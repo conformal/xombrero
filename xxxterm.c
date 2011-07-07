@@ -6244,21 +6244,37 @@ int
 webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download,
     struct tab *t)
 {
-	const gchar		*filename;
+	struct stat		sb;
+	const gchar		*suggested_name;
+	gchar			*filename = NULL;
 	char			*uri = NULL;
 	struct download		*download_entry;
-	int			ret = TRUE;
+	int			i, ret = TRUE;
 
 	if (wk_download == NULL || t == NULL) {
 		show_oops_s("%s invalid parameters", __func__);
 		return (FALSE);
 	}
 
-	filename = webkit_download_get_suggested_filename(wk_download);
-	if (filename == NULL)
+	suggested_name = webkit_download_get_suggested_filename(wk_download);
+	if (suggested_name == NULL)
 		return (FALSE); /* abort download */
 
-	uri = g_strdup_printf("file://%s/%s", download_dir, filename);
+	i = 0;
+	do {
+		if (filename) {
+			g_free(filename);
+			filename = NULL;
+		}
+		if (i) {
+			g_free(uri);
+			uri = NULL;
+			filename = g_strdup_printf("%d%s", i, suggested_name);
+		}
+		uri = g_strdup_printf("file://%s/%s", download_dir, i ?
+		    filename : suggested_name);
+		i++;
+	} while (!stat(uri + strlen("file://"), &sb));
 
 	DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d filename %s "
 	    "local %s\n", __func__, t->tab_id, filename, uri);
@@ -6289,6 +6305,9 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download,
 
 	if (uri)
 		g_free(uri);
+
+	if (filename)
+		g_free(filename);
 
 	/* sync other download manager tabs */
 	update_download_tabs(NULL);
