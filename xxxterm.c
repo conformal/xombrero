@@ -191,7 +191,6 @@ struct tab {
 	/* favicon */
 	WebKitNetworkRequest	*icon_request;
 	WebKitDownload		*icon_download;
-	GdkPixbuf		*icon_pixbuf;
 	gchar			*icon_dest_uri;
 
 	/* adjustments for browser */
@@ -693,6 +692,7 @@ int			xtp_page_cl(struct tab *, struct karg *);
 int			xtp_page_dl(struct tab *, struct karg *);
 int			xtp_page_fl(struct tab *, struct karg *);
 int			xtp_page_hl(struct tab *, struct karg *);
+void			xt_icon_from_file(struct tab *, char *);
 
 #define XT_URI_ABOUT		("about:")
 #define XT_URI_ABOUT_LEN	(strlen(XT_URI_ABOUT))
@@ -751,7 +751,6 @@ int			updating_fl_tabs = 0;
 char			*global_search;
 uint64_t		blocked_cookies = 0;
 char			named_session[PATH_MAX];
-void			update_favicon(struct tab *);
 int			icon_size_map(int);
 
 GtkListStore		*completion_model;
@@ -847,7 +846,6 @@ load_webkit_string(struct tab *t, const char *str, gchar *title)
 {
 	gchar			*uri;
 	char			file[PATH_MAX];
-	GdkPixbuf		*pb;
 
 	/* we set this to indicate we want to manually do navaction */
 	if (t->bfl)
@@ -865,10 +863,7 @@ load_webkit_string(struct tab *t, const char *str, gchar *title)
 		g_free(uri);
 
 		snprintf(file, sizeof file, "%s/%s", resource_dir, icons[0]);
-		pb = gdk_pixbuf_new_from_file(file, NULL);
-		gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->uri_entry),
-		    GTK_ENTRY_ICON_PRIMARY, pb);
-		gdk_pixbuf_unref(pb);
+		xt_icon_from_file(t, file);
 	}
 }
 
@@ -5548,17 +5543,14 @@ done:
 void
 free_favicon(struct tab *t)
 {
-	DNPRINTF(XT_D_DOWNLOAD, "%s: down %p req %p pix %p\n",
-	    __func__, t->icon_download, t->icon_request, t->icon_pixbuf);
+	DNPRINTF(XT_D_DOWNLOAD, "%s: down %p req %p\n",
+	    __func__, t->icon_download, t->icon_request);
 
 	if (t->icon_request)
 		g_object_unref(t->icon_request);
-	if (t->icon_pixbuf)
-		g_object_unref(t->icon_pixbuf);
 	if (t->icon_dest_uri)
 		g_free(t->icon_dest_uri);
 
-	t->icon_pixbuf = NULL;
 	t->icon_request = NULL;
 	t->icon_dest_uri = NULL;
 }
@@ -5577,16 +5569,42 @@ xt_icon_from_name(struct tab *t, gchar *name)
 }
 
 void
-xt_icon_from_pixbuf(struct tab *t, GdkPixbuf *pixbuf)
+xt_icon_from_pixbuf(struct tab *t, GdkPixbuf *pb)
 {
+	GdkPixbuf		*pb_scaled;
+
+	if (gdk_pixbuf_get_width(pb) > 16 || gdk_pixbuf_get_height(pb) > 16)
+		pb_scaled = gdk_pixbuf_scale_simple(pb, 16, 16, GDK_INTERP_BILINEAR);
+	else
+		pb_scaled = pb;
+
 	gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->uri_entry),
-	    GTK_ENTRY_ICON_PRIMARY, pixbuf);
+	    GTK_ENTRY_ICON_PRIMARY, pb_scaled);
 	if (show_url == 0)
 		gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->statusbar),
-		    GTK_ENTRY_ICON_PRIMARY, pixbuf);
+		    GTK_ENTRY_ICON_PRIMARY, pb_scaled);
 	else
 		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->statusbar),
 		    GTK_ENTRY_ICON_PRIMARY, NULL);
+
+	if (pb_scaled != pb)
+		g_object_unref(pb_scaled);
+}
+
+void
+xt_icon_from_file(struct tab *t, char *file)
+{
+	GdkPixbuf		*pb;
+
+	if (g_str_has_prefix(file, "file://"))
+		file += strlen("file://");
+
+	pb = gdk_pixbuf_new_from_file(file, NULL);
+	if (pb) {
+		xt_icon_from_pixbuf(t, pb);
+		g_object_unref(pb);
+	} else
+		xt_icon_from_name(t, "text-html");
 }
 
 gboolean
@@ -5615,16 +5633,10 @@ is_valid_icon(char *file)
 void
 set_favicon_from_file(struct tab *t, char *file)
 {
-	gint			width, height;
-	GdkPixbuf		*pixbuf, *scaled;
 	struct stat		sb;
 
 	if (t == NULL || file == NULL)
 		return;
-	if (t->icon_pixbuf) {
-		DNPRINTF(XT_D_DOWNLOAD, "%s: icon already set\n", __func__);
-		return;
-	}
 
 	if (g_str_has_prefix(file, "file://"))
 		file += strlen("file://");
@@ -5640,33 +5652,7 @@ set_favicon_from_file(struct tab *t, char *file)
 			return;
 		}
 	}
-
-	pixbuf = gdk_pixbuf_new_from_file(file, NULL);
-	if (pixbuf == NULL) {
-		xt_icon_from_name(t, "text-html");
-		return;
-	}
-
-	g_object_get(pixbuf, "width", &width, "height", &height,
-	    (char *)NULL);
-	DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d icon size %dx%d\n",
-	    __func__, t->tab_id, width, height);
-
-	if (width > 16 || height > 16) {
-		scaled = gdk_pixbuf_scale_simple(pixbuf, 16, 16,
-		    GDK_INTERP_BILINEAR);
-		g_object_unref(pixbuf);
-	} else
-		scaled = pixbuf;
-
-	if (scaled == NULL) {
-		scaled = gdk_pixbuf_scale_simple(pixbuf, 16, 16,
-		    GDK_INTERP_BILINEAR);
-		return;
-	}
-
-	t->icon_pixbuf = scaled;
-	xt_icon_from_pixbuf(t, t->icon_pixbuf);
+	xt_icon_from_file(t, file);
 }
 
 void
@@ -5731,13 +5717,15 @@ abort_favicon_download(struct tab *t)
 {
 	DNPRINTF(XT_D_DOWNLOAD, "%s: down %p\n", __func__, t->icon_download);
 
-	if (t->icon_download) {
-		g_signal_handlers_disconnect_by_func(G_OBJECT(t->icon_download),
-		    G_CALLBACK(favicon_download_status_changed_cb), t->wv);
-		webkit_download_cancel(t->icon_download);
-		t->icon_download = NULL;
-	} else
-		free_favicon(t);
+	if (!WEBKIT_CHECK_VERSION(1, 4, 0)) {
+		if (t->icon_download) {
+			g_signal_handlers_disconnect_by_func(G_OBJECT(t->icon_download),
+			    G_CALLBACK(favicon_download_status_changed_cb), t->wv);
+			webkit_download_cancel(t->icon_download);
+			t->icon_download = NULL;
+		} else
+			free_favicon(t);
+	}
 
 	xt_icon_from_name(t, "text-html");
 }
@@ -5745,71 +5733,84 @@ abort_favicon_download(struct tab *t)
 void
 notify_icon_loaded_cb(WebKitWebView *wv, gchar *uri, struct tab *t)
 {
+	GdkPixbuf		*pb;
 	gchar			*name_hash, file[PATH_MAX];
 	struct stat		sb;
 
-	DNPRINTF(XT_D_DOWNLOAD, "notify_icon_loaded_cb %s\n", uri);
+	DNPRINTF(XT_D_DOWNLOAD, "%s %s\n", __func__, uri);
 
 	if (uri == NULL || t == NULL)
 		return;
 
-	if (t->icon_request) {
-		DNPRINTF(XT_D_DOWNLOAD, "%s: download in progress\n", __func__);
-		return;
-	}
+	if (WEBKIT_CHECK_VERSION(1, 4, 0)) {
+		/* take icon from WebKitIconDatabase */
+		pb = webkit_web_view_get_icon_pixbuf(wv);
+		if (pb) {
+			xt_icon_from_pixbuf(t, pb);
+			g_object_unref(pb);
+		} else
+			xt_icon_from_name(t, "text-html");
 
-	/* check to see if we got the icon in cache */
-	name_hash = g_compute_checksum_for_string(G_CHECKSUM_SHA256, uri, -1);
-	snprintf(file, sizeof file, "%s/%s.ico", cache_dir, name_hash);
-	g_free(name_hash);
-
-	if (!stat(file, &sb)) {
-		if (sb.st_size > 0) {
-			DNPRINTF(XT_D_DOWNLOAD, "%s: loading from cache %s\n",
-			    __func__, file);
-			set_favicon_from_file(t, file);
+	} else if (WEBKIT_CHECK_VERSION(1, 1, 18)) {
+		/* download icon to cache dir */
+		if (t->icon_request) {
+			DNPRINTF(XT_D_DOWNLOAD, "%s: download in progress\n", __func__);
 			return;
 		}
 
-		/* corrupt icon so trash it */
-		DNPRINTF(XT_D_DOWNLOAD, "%s: corrupt icon %s\n",
-		    __func__, file);
-		unlink(file);
+		/* check to see if we got the icon in cache */
+		name_hash = g_compute_checksum_for_string(G_CHECKSUM_SHA256, uri, -1);
+		snprintf(file, sizeof file, "%s/%s.ico", cache_dir, name_hash);
+		g_free(name_hash);
+
+		if (!stat(file, &sb)) {
+			if (sb.st_size > 0) {
+				DNPRINTF(XT_D_DOWNLOAD, "%s: loading from cache %s\n",
+				    __func__, file);
+				set_favicon_from_file(t, file);
+				return;
+			}
+
+			/* corrupt icon so trash it */
+			DNPRINTF(XT_D_DOWNLOAD, "%s: corrupt icon %s\n",
+		   	 __func__, file);
+			unlink(file);
+		}
+
+		/* create download for icon */
+		t->icon_request = webkit_network_request_new(uri);
+		if (t->icon_request == NULL) {
+			DNPRINTF(XT_D_DOWNLOAD, "%s: invalid uri %s\n",
+			    __func__, uri);
+			return;
+		}
+
+		t->icon_download = webkit_download_new(t->icon_request);
+		if (t->icon_download == NULL) {
+			fprintf(stderr,  "%s: icon_download", __func__);
+			return;
+		}
+
+		/* we have to free icon_dest_uri later */
+		t->icon_dest_uri = g_strdup_printf("file://%s", file);
+		webkit_download_set_destination_uri(t->icon_download,
+		    t->icon_dest_uri);
+
+		if (webkit_download_get_status(t->icon_download) ==
+		    WEBKIT_DOWNLOAD_STATUS_ERROR) {
+			fprintf(stderr,  "%s: download failed to start", __func__);
+			g_object_unref(t->icon_request);
+			g_free(t->icon_dest_uri);
+			t->icon_request = NULL;
+			t->icon_dest_uri = NULL;
+			return;
+		}
+
+		g_signal_connect(G_OBJECT(t->icon_download), "notify::status",
+		    G_CALLBACK(favicon_download_status_changed_cb), t->wv);
+
+		webkit_download_start(t->icon_download);
 	}
-
-	/* create download for icon */
-	t->icon_request = webkit_network_request_new(uri);
-	if (t->icon_request == NULL) {
-		DNPRINTF(XT_D_DOWNLOAD, "%s: invalid uri %s\n",
-		    __func__, uri);
-		return;
-	}
-
-	t->icon_download = webkit_download_new(t->icon_request);
-	if (t->icon_download == NULL) {
-		fprintf(stderr,  "%s: icon_download", __func__);
-		return;
-	}
-
-	/* we have to free icon_dest_uri later */
-	t->icon_dest_uri = g_strdup_printf("file://%s", file);
-	webkit_download_set_destination_uri(t->icon_download,
-	    t->icon_dest_uri);
-
-	if (webkit_download_get_status(t->icon_download) ==
-	    WEBKIT_DOWNLOAD_STATUS_ERROR) {
-		fprintf(stderr,  "%s: download failed to start", __func__);
-		g_object_unref(t->icon_request);
-		g_free(t->icon_dest_uri);
-		t->icon_request = NULL;
-		t->icon_dest_uri = NULL;
-		return;
-	}
-
-	g_signal_connect(G_OBJECT(t->icon_download), "notify::status",
-	    G_CALLBACK(favicon_download_status_changed_cb), t->wv);
-
-	webkit_download_start(t->icon_download);
 }
 
 void
@@ -7441,9 +7442,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	    "signal::event", G_CALLBACK(webview_event_cb), t,
 	    "signal::load-finished", G_CALLBACK(webview_load_finished_cb), t,
 	    "signal::load-progress-changed", G_CALLBACK(webview_progress_changed_cb), t,
-#if WEBKIT_CHECK_VERSION(1, 1, 18)
 	    "signal::icon-loaded", G_CALLBACK(notify_icon_loaded_cb), t,
-#endif
 	    "signal::button_press_event", G_CALLBACK(wv_button_cb), t,
 	    (char *)NULL);
 	g_signal_connect(t->wv,
