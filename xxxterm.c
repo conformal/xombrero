@@ -58,6 +58,8 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
@@ -8294,10 +8296,26 @@ main(int argc, char *argv[])
 	struct karg		a;
 	struct sigaction	sact;
 	GIOChannel		*channel;
+	struct rlimit		rlp;
 
 	start_argv = argv;
 
 	strlcpy(named_session, XT_SAVED_TABS_FILE, sizeof named_session);
+
+	/* fiddle with ulimits */
+	if (getrlimit(RLIMIT_NOFILE, &rlp) == -1)
+		warn("getrlimit");
+	else {
+		/* just use them all */
+		rlp.rlim_cur = rlp.rlim_max;
+		if (setrlimit(RLIMIT_NOFILE, &rlp) == -1)
+			warn("setrlimit");
+		if (getrlimit(RLIMIT_NOFILE, &rlp) == -1)
+			warn("getrlimit");
+		else if (rlp.rlim_cur <= 256)
+			warnx("%s requires at least 256 file descriptors",
+			   __progname);
+	}
 
 	while ((c = getopt(argc, argv, "STVf:s:tne")) != -1) {
 		switch (c) {
