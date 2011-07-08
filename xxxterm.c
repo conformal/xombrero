@@ -483,6 +483,7 @@ int		enable_socket = 0;
 int		single_instance = 0; /* only allow one xxxterm to run */
 int		fancy_bar = 1;	/* fancy toolbar */
 int		browser_mode = XT_BM_NORMAL;
+int		enable_localstorage = 0;
 
 /* runtime settings */
 int		show_tabs = 1;	/* show tabs on notebook */
@@ -642,6 +643,7 @@ struct settings {
 	{ "enable_js_whitelist",	XT_S_INT, 0,		&enable_js_whitelist, NULL, NULL },
 	{ "enable_plugins",		XT_S_INT, 0,		&enable_plugins, NULL, NULL },
 	{ "enable_scripts",		XT_S_INT, 0,		&enable_scripts, NULL, NULL },
+	{ "enable_localstorage",	XT_S_INT, 0,		&enable_localstorage, NULL, NULL },
 	{ "enable_socket",		XT_S_INT, XT_SF_RESTART,&enable_socket, NULL, NULL },
 	{ "fancy_bar",			XT_S_INT, XT_SF_RESTART,&fancy_bar, NULL, NULL },
 	{ "home",			XT_S_STR, 0, NULL,	&home, NULL },
@@ -1029,6 +1031,7 @@ set_browser_mode(struct settings *s, char *val)
 		session_timeout = 3600;
 		enable_scripts = 0;
 		enable_js_whitelist = 1;
+		enable_localstorage = 0;
 	} else if (!strcmp(val, "normal")) {
 		browser_mode = XT_BM_NORMAL;
 		allow_volatile_cookies = 0;
@@ -1040,6 +1043,7 @@ set_browser_mode(struct settings *s, char *val)
 		session_timeout = 3600;
 		enable_scripts = 1;
 		enable_js_whitelist = 0;
+		enable_localstorage = 1;
 	} else if (!strcmp(val, "kiosk")) {
 		browser_mode = XT_BM_KIOSK;
 		allow_volatile_cookies = 0;
@@ -1051,6 +1055,7 @@ set_browser_mode(struct settings *s, char *val)
 		session_timeout = 3600;
 		enable_scripts = 1;
 		enable_js_whitelist = 0;
+		enable_localstorage = 1;
 		show_tabs = 0;
 		tabless = 1;
 	} else
@@ -7010,6 +7015,10 @@ setup_webkit(struct tab *t)
 	    "enable-plugins", enable_plugins, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
 	    "javascript-can-open-windows-automatically", enable_scripts, (char *)NULL);
+	g_object_set(G_OBJECT(t->settings),
+	    "enable-html5-database", FALSE, (char *)NULL);
+	g_object_set(G_OBJECT(t->settings),
+	    "enable-html5-local-storage", enable_localstorage, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
 	    "enable_spell_checking", enable_spell_checking, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
