@@ -8405,8 +8405,8 @@ main(int argc, char *argv[])
 	search_string = g_strdup("https://ssl.scroogle.org/cgi-bin/nbbwssl.cgi?Gw=%s");
 	resource_dir = g_strdup("/usr/local/share/xxxterm/");
 	strlcpy(runtime_settings, "runtime", sizeof runtime_settings);
-	cmd_font_name = g_strdup("monospace normal 19");
-	statusbar_font_name = g_strdup("monospace normal 19");
+	cmd_font_name = g_strdup("monospace normal 9");
+	statusbar_font_name = g_strdup("monospace normal 9");
 
 
 	/* read config file */
