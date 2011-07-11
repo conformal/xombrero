@@ -527,6 +527,11 @@ gint		max_host_connections = 5;
 gint		enable_spell_checking = 0;
 char		*spell_check_languages = NULL;
 
+char		*cmd_font_name = NULL;
+char		*statusbar_font_name = NULL;
+PangoFontDescription *cmd_font;
+PangoFontDescription *statusbar_font;
+
 struct settings;
 struct key_binding;
 int		set_download_dir(struct settings *, char *);
@@ -674,6 +679,10 @@ struct settings {
 	{ "work_dir",			XT_S_STR, 0, NULL, NULL,&s_work_dir },
 	{ "enable_spell_checking",	XT_S_INT, 0,		&enable_spell_checking, NULL, NULL },
 	{ "spell_check_languages",	XT_S_STR, 0, NULL, &spell_check_languages, NULL },
+
+	/* font settings */
+	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL },
+	{ "statusbar_font",		XT_S_STR, 0, NULL, &statusbar_font_name, NULL },
 
 	/* runtime settings */
 	{ "alias",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_alias },
@@ -1850,7 +1859,7 @@ config_parse(char *filename, int runtime)
 		if ((val = strsep(&cp, "\0")) == NULL)
 			break;
 
-		DNPRINTF(XT_D_CONFIG, "config_parse: %s=%s\n",var ,val);
+		DNPRINTF(XT_D_CONFIG, "config_parse: %s=%s\n", var, val);
 		handled = settings_add(var, val);
 		if (handled == 0)
 			errx(1, "invalid conf file entry: %s=%s", var, val);
@@ -7424,6 +7433,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_entry_set_inner_border(GTK_ENTRY(t->cmd), NULL);
 	gtk_entry_set_has_frame(GTK_ENTRY(t->cmd), FALSE);
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->cmd, FALSE, FALSE, 0);
+	gtk_widget_modify_font(GTK_WIDGET(t->cmd), cmd_font);
 
 	/* status bar */
 	t->statusbar = gtk_entry_new();
@@ -7434,6 +7444,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL, &color);
 	gdk_color_parse(XT_COLOR_WHITE, &color);
 	gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL, &color);
+	gtk_widget_modify_font(GTK_WIDGET(t->statusbar), statusbar_font);
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->statusbar, FALSE, FALSE, 0);
 
 	/* xtp meaning is normal by default */
@@ -8393,13 +8404,20 @@ main(int argc, char *argv[])
 	home = g_strdup("https://www.cyphertite.com");
 	search_string = g_strdup("https://ssl.scroogle.org/cgi-bin/nbbwssl.cgi?Gw=%s");
 	resource_dir = g_strdup("/usr/local/share/xxxterm/");
-	strlcpy(runtime_settings,"runtime", sizeof runtime_settings);
+	strlcpy(runtime_settings, "runtime", sizeof runtime_settings);
+	cmd_font_name = g_strdup("monospace normal 19");
+	statusbar_font_name = g_strdup("monospace normal 19");
+
 
 	/* read config file */
 	if (strlen(conf) == 0)
 		snprintf(conf, sizeof conf, "%s/.%s",
 		    pwd->pw_dir, XT_CONF_FILE);
 	config_parse(conf, 0);
+
+	/* init fonts */
+	cmd_font = pango_font_description_from_string(cmd_font_name);
+	statusbar_font = pango_font_description_from_string(statusbar_font_name);
 
 	/* working directory */
 	if (strlen(work_dir) == 0)
