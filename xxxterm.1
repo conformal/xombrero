@@ -713,6 +713,10 @@ This setting must be the first entry in
 .Pa ~/.xxxterm.conf
 because it sets advanced settings that can be overridden later in the file.
 See the default config file for more details.
+.It Cm cmd_font
+Set the command prompt font.
+E.g.
+.Pa cmd_font = monospace normal 9 .
 .It Cm cookie_policy
 This field delineates the cookie policy.
 Possible values are: no3rdparty, reject 3rd party cookies.
@@ -894,6 +898,10 @@ If this value is set connections to untrusted sites will be aborted.
 This value is only used if
 .Cm ssl_ca_file
 is set.
+.It Cm statusbar_font
+Set the status bar font.
+E.g.
+.Pa statusbar_font = monospace normal 9 .
 .It Cm user_agent
 Set to override the default
 .Nm
