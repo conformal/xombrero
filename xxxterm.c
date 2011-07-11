@@ -5863,7 +5863,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	    webkit_web_view_get_load_status(wview), get_uri(wview) ? get_uri(wview) : "NOTHING");
 
 	if (t == NULL) {
-		show_oops_s("notify_load_status_cb invalid paramters");
+		show_oops_s("notify_load_status_cb invalid parameters");
 		return;
 	}
 
