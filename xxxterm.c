@@ -953,8 +953,7 @@ sort_tabs_by_page_num(struct tab ***stabs)
 	int			num_tabs = 0;
 	struct tab		*t;
 
-	TAILQ_FOREACH(t, &tabs, entry)
-		num_tabs++;
+	num_tabs = gtk_notebook_get_n_pages(notebook);
 
 	*stabs = g_malloc0(num_tabs * sizeof(struct tab *));
 
@@ -968,6 +967,7 @@ void
 buffers_make_list(void)
 {
 	int			i, num_tabs;
+	const gchar		*title = NULL;
 	GtkTreeIter		iter;
 	struct tab		**stabs = NULL;
 
@@ -976,10 +976,13 @@ buffers_make_list(void)
 	for (i = 0; i < num_tabs; i++)
 		if (stabs[i]) {
 			gtk_list_store_append(buffers_store, &iter);
+			if ((title = webkit_web_view_get_title(stabs[i]->wv)) == NULL)
+				if ((title = webkit_web_view_get_uri(stabs[i]->wv)) == NULL)
+					title = "(untitled)";
 			gtk_list_store_set(buffers_store, &iter,
 			    COL_ID, i + 1, /* Enumerate the tabs starting from 1
 					    * rather than 0. */
-			    COL_TITLE, webkit_web_view_get_title(stabs[i]->wv),
+			    COL_TITLE, title,
 			    -1);
 		}
 
@@ -5192,6 +5195,7 @@ wv_button_cb(GtkWidget *btn, GdkEventButton *e, struct tab *t)
 	struct karg		a;
 
 	hide_oops(t);
+	hide_buffers(t);
 
 	if (e->type == GDK_BUTTON_PRESS && e->button == 8 /* btn 4 */) {
 		/* go backward */
