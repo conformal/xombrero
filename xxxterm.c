@@ -177,6 +177,7 @@ struct tab {
 	GtkWidget		*browser_win;
 	GtkWidget		*statusbar;
 	GtkWidget		*cmd;
+	GtkWidget		*buffers;
 	GtkWidget		*oops;
 	GtkWidget		*backward;
 	GtkWidget		*forward;
@@ -770,6 +771,7 @@ int			icon_size_map(int);
 GtkListStore		*completion_model;
 void			completion_add(struct tab *);
 void			completion_add_uri(const gchar *);
+GtkListStore		*buffers_store;
 void			xxx_dir(char *);
 
 void
@@ -920,12 +922,6 @@ set_status(struct tab *t, gchar *s, int status)
 }
 
 void
-hide_oops(struct tab *t)
-{
-	gtk_widget_hide(t->oops);
-}
-
-void
 hide_cmd(struct tab *t)
 {
 	gtk_widget_hide(t->cmd);
@@ -936,6 +932,89 @@ show_cmd(struct tab *t)
 {
 	gtk_widget_hide(t->oops);
 	gtk_widget_show(t->cmd);
+}
+
+void
+hide_buffers(struct tab *t)
+{
+	gtk_widget_hide(t->buffers);
+	gtk_list_store_clear(buffers_store);
+}
+
+enum {
+	COL_ID		= 0,
+	COL_TITLE,
+	NUM_COLS
+};
+
+int
+sort_tabs_by_page_num(struct tab ***stabs)
+{
+	int			num_tabs = 0;
+	struct tab		*t;
+
+	TAILQ_FOREACH(t, &tabs, entry)
+		num_tabs++;
+
+	*stabs = g_malloc0(num_tabs * sizeof(struct tab *));
+
+	TAILQ_FOREACH(t, &tabs, entry)
+		(*stabs)[gtk_notebook_page_num(notebook, t->vbox)] = t;
+
+	return (num_tabs);
+}
+
+void
+buffers_make_list(void)
+{
+	int			i, num_tabs;
+	GtkTreeIter		iter;
+	struct tab		**stabs = NULL;
+
+	num_tabs = sort_tabs_by_page_num(&stabs);
+
+	for (i = 0; i < num_tabs; i++)
+		if (stabs[i]) {
+			gtk_list_store_append(buffers_store, &iter);
+			gtk_list_store_set(buffers_store, &iter,
+			    COL_ID, i + 1, /* Enumerate the tabs starting from 1
+					    * rather than 0. */
+			    COL_TITLE, webkit_web_view_get_title(stabs[i]->wv),
+			    -1);
+		}
+
+	g_free(stabs);
+}
+
+void
+show_buffers(struct tab *t)
+{
+	buffers_make_list();
+	gtk_widget_show(t->buffers);
+	gtk_widget_grab_focus(GTK_WIDGET(t->buffers));
+}
+
+void
+toggle_buffers(struct tab *t)
+{
+	if (gtk_widget_get_visible(t->buffers))
+		hide_buffers(t);
+	else
+		show_buffers(t);
+}
+
+int
+buffers(struct tab *t, struct karg *args)
+{
+	show_buffers(t);
+
+	return (0);
+}
+
+void
+hide_oops(struct tab *t)
+{
+	gtk_widget_hide(t->oops);
 }
 
 void
@@ -2190,10 +2269,8 @@ save_tabs(struct tab *t, struct karg *a)
 {
 	char			file[PATH_MAX];
 	FILE			*f;
-	struct tab		*ti;
-	const gchar		*uri;
-	int			len = 0, i;
-	const gchar		**arr = NULL;
+	int			num_tabs = 0, i;
+	struct tab		**stabs = NULL;
 
 	if (a == NULL)
 		return (1);
@@ -2211,22 +2288,15 @@ save_tabs(struct tab *t, struct karg *a)
 	/* save session name */
 	fprintf(f, "%s%s\n", XT_SAVE_SESSION_ID, named_session);
 
-	/* save tabs, in the order they are arranged in the notebook */
-	TAILQ_FOREACH(ti, &tabs, entry)
-		len++;
+	/* Save tabs, in the order they are arranged in the notebook. */
+	num_tabs = sort_tabs_by_page_num(&stabs);
 
-	arr = g_malloc0(len * sizeof(gchar *));
+	for (i = 0; i < num_tabs; i++)
+		if (stabs[i] && get_uri(stabs[i]->wv) != NULL)
+			fprintf(f, "%s\n", get_uri(stabs[i]->wv));
 
-	TAILQ_FOREACH(ti, &tabs, entry) {
-		if ((uri = get_uri(ti->wv)) != NULL)
-			arr[gtk_notebook_page_num(notebook, ti->vbox)] = uri;
-	}
+	g_free(stabs);
 
-	for (i = 0; i < len; i++)
-		if (arr[i])
-			fprintf(f, "%s\n", arr[i]);
-
-	g_free(arr);
 	/* try and make sure this gets to disk NOW. XXX Backup first? */
 	if (fflush(f) != 0 || fsync(fileno(f)) != 0) {
 		show_oops(t, "May not have managed to save session: %s",
@@ -5087,6 +5157,9 @@ struct cmd {
 	{ "tabrewind",		0,	movetab,		XT_TAB_FIRST,		0 },
 	{ "tabshow",		0,	tabaction,		XT_TAB_SHOW,		0 },
 	{ "tabundoclose",	0,	tabaction,		XT_TAB_UNDO_CLOSE,	0 },
+	{ "buffers",		0,	buffers,		0,			0 },
+	{ "ls",			0,	buffers,		0,			0 },
+	{ "tabs",		0,	buffers,		0,			0 },
 
 	/* command aliases (handy when -S flag is used) */
 	{ "promptopen",		0,	command,		XT_CMD_OPEN,		0 },
@@ -5976,7 +6049,7 @@ notify_title_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	const gchar		*set = NULL, *title = NULL;
 
 	title = webkit_web_view_get_title(wview);
-	set = title ? title: get_uri(wview);
+	set = title ? title : get_uri(wview);
 	if (set) {
 		gtk_label_set_text(GTK_LABEL(t->label), set);
 		gtk_window_set_title(GTK_WINDOW(main_window), set);
@@ -6498,7 +6571,7 @@ anum:
 		if (CLEAN(e->state) == 0 && isdigit(s[0])) {
 			cmd_prefix = 10 * cmd_prefix + atoi(s);
 		}
-	}	
+	}
 
 	return (handle_keypress(t, e, 0));
 }
@@ -6507,6 +6580,14 @@ int
 wv_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 {
 	hide_oops(t);
+
+	/* Hide buffers, if they are visible, with escape. */
+	if (gtk_widget_get_visible(GTK_WIDGET(t->buffers)) &&
+	    CLEAN(e->state) == 0 && e->keyval == GDK_Escape) {
+		gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+		hide_buffers(t);
+		return (XT_CB_HANDLED);
+	}
 
 	return (XT_CB_PASSTHROUGH);
 }
@@ -7208,6 +7289,48 @@ create_toolbar(struct tab *t)
 	return (toolbar);
 }
 
+GtkWidget *
+create_buffers(struct tab *t)
+{
+	GtkCellRenderer		*renderer;
+	GtkWidget		*view;
+
+	view = gtk_tree_view_new();
+
+	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(view), FALSE);
+
+	renderer = gtk_cell_renderer_text_new();
+	gtk_tree_view_insert_column_with_attributes
+	    (GTK_TREE_VIEW(view), -1, "Id", renderer, "text", COL_ID, NULL);
+
+	renderer = gtk_cell_renderer_text_new();
+	gtk_tree_view_insert_column_with_attributes
+	    (GTK_TREE_VIEW(view), -1, "Title", renderer, "text", COL_TITLE, NULL);
+
+	gtk_tree_view_set_model
+	    (GTK_TREE_VIEW(view), GTK_TREE_MODEL(buffers_store));
+
+	return view;
+}
+
+void
+row_activated_cb(GtkTreeView *view, GtkTreePath *path,
+    GtkTreeViewColumn *col, struct tab *t)
+{
+	GtkTreeIter		iter;
+	guint			id;
+
+	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+
+	if (gtk_tree_model_get_iter(GTK_TREE_MODEL(buffers_store), &iter, path)) {
+		gtk_tree_model_get
+		    (GTK_TREE_MODEL(buffers_store), &iter, COL_ID, &id, -1);
+		gtk_notebook_set_current_page(notebook, id - 1);
+	}
+
+	hide_buffers(t);
+}
+
 void
 recalc_tabs(void)
 {
@@ -7291,9 +7414,11 @@ delete_tab(struct tab *t)
 
 	TAILQ_REMOVE(&tabs, t, entry);
 
-	/* halt all webkit activity */
+	/* Halt all webkit activity. */
 	abort_favicon_download(t);
 	webkit_web_view_stop_loading(t->wv);
+
+	/* Save the tab, so we can undo the close. */
 	undo_close_tab_save(t);
 
 	if (browser_mode == XT_BM_KIOSK) {
@@ -7447,6 +7572,10 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_widget_modify_font(GTK_WIDGET(t->statusbar), statusbar_font);
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->statusbar, FALSE, FALSE, 0);
 
+	/* buffer list */
+	t->buffers = create_buffers(t);
+	gtk_box_pack_end(GTK_BOX(t->vbox), t->buffers, FALSE, FALSE, 0);
+
 	/* xtp meaning is normal by default */
 	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
 
@@ -7492,6 +7621,11 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	    "signal::button_press_event", G_CALLBACK(wv_button_cb), t,
 	    (char *)NULL);
 
+	g_signal_connect(t->buffers,
+	    "row-activated", G_CALLBACK(row_activated_cb), t);
+	g_object_connect(G_OBJECT(t->buffers),
+	    "signal::key-press-event", G_CALLBACK(wv_keypress_cb), t, NULL);
+
 	g_object_connect(G_OBJECT(t->wv),
 	    "signal::key-press-event", G_CALLBACK(wv_keypress_cb), t,
 	    "signal-after::key-press-event", G_CALLBACK(wv_keypress_after_cb), t,
@@ -7524,6 +7658,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	/* hide stuff */
 	hide_cmd(t);
 	hide_oops(t);
+	hide_buffers(t);
 	url_set_visibility();
 	statusbar_set_visibility();
 
@@ -7605,52 +7740,33 @@ notebook_pagereordered_cb(GtkNotebook *nb, GtkWidget *nbp, guint pn,
 	recalc_tabs();
 }
 
-void
-menuitem_response(struct tab *t)
+struct tab *
+get_current_tab(void)
 {
-	gtk_notebook_set_current_page(notebook, t->tab_id);
+	struct tab		*t;
+
+	TAILQ_FOREACH(t, &tabs, entry) {
+		if (t->tab_id == gtk_notebook_get_current_page(notebook))
+			return (t);
+	}
+
+	warnx("%s: no current tab", __func__);
+
+	return (NULL);
 }
 
 gboolean
 arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 {
-	GtkWidget		*menu, *menu_items;
-	GdkEventButton		*bevent;
-	const gchar		*uri;
-	struct tab		*ti;
+	struct tab		*t;
 
 	if (event->type == GDK_BUTTON_PRESS) {
-		bevent = (GdkEventButton *) event;
-		menu = gtk_menu_new();
-
-		TAILQ_FOREACH(ti, &tabs, entry) {
-			if ((uri = get_uri(ti->wv)) == NULL)
-				/* XXX make sure there is something to print */
-				/* XXX add gui pages in here to look purdy */
-				uri = "(untitled)";
-			menu_items = gtk_menu_item_new_with_label(uri);
-			gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_items);
-			gtk_widget_show(menu_items);
-
-			g_signal_connect_swapped((menu_items),
-			    "activate", G_CALLBACK(menuitem_response),
-			    (gpointer)ti);
+		if ((t = get_current_tab()) != NULL) {
+			toggle_buffers(t);
+			return (TRUE);
 		}
-
-		gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
-		    bevent->button, bevent->time);
-
-		/* unref object so it'll free itself when popped down */
-#if !GTK_CHECK_VERSION(3, 0, 0)
-		/* XXX does not need unref with gtk+3? */
-		g_object_ref_sink(menu);
-		g_object_unref(menu);
-#endif
-
-		return (TRUE /* eat event */);
 	}
-
-	return (FALSE /* propagate */);
+	return (FALSE);
 }
 
 int
@@ -8514,6 +8630,10 @@ main(int argc, char *argv[])
 
 	/* uri completion */
 	completion_model = gtk_list_store_new(1, G_TYPE_STRING);
+
+	/* buffers */
+	buffers_store = gtk_list_store_new
+	    (NUM_COLS, G_TYPE_UINT, G_TYPE_STRING);
 
 	/* go graphical */
 	create_canvas();

@@ -380,6 +380,9 @@ The commands and their descriptions are listed below.
 .Bl -tag -width Ds -offset indent
 .It Cm about , version
 Show the "About" page.
+.It Cm buffers , ls , tabs
+Displays the currently open tabs and lets the user switch tab by typing
+the tab number or using the mouse.
 .It Cm ca
 Display CA certificates.
 .It Cm cert , cert show
@@ -501,7 +504,7 @@ Hide status bar.
 Show status bar.
 .It Cm tabclose , tabc
 Close current tab.
-.It Cm tabhide , tabh
+.It Cm tabhide
 Hide tabs.
 .It Cm tabnew , tabedit , tabe URL
 Create new tab and optionally open provided URL.
@@ -509,7 +512,7 @@ Create new tab and optionally open provided URL.
 Go to the next tab.
 .It Cm tabprevious , tabp
 Go to the previous tab.
-.It Cm tabshow , tabs
+.It Cm tabshow
 Show tabs.
 .It Cm toplevel , toplevel toggle
 Toggle the top level domain name cookie and JS session whitelist.
@@ -764,8 +767,8 @@ Only a user with identical UID and GID can use this option.
 .It Cm enable_localstorage
 Enable html5 Local Storage.
 .It Cm enable_spell_checking
-Enables spell checking. Preferred languages can be set using 
-.Cm spell_check_languages 
+Enables spell checking. Preferred languages can be set using
+.Cm spell_check_languages
 option.
 .It Cm fancy_bar
 Enables a backward, forward, and stop button to the toolbar.
