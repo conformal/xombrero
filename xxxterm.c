@@ -8487,6 +8487,7 @@ main(int argc, char *argv[])
 
 	/* set some connection parameters */
 	/* XXX webkit 1.4.X overwrites these values! */
+	/* https://bugs.webkit.org/show_bug.cgi?id=64355 */
 	g_object_set(session, "max-conns", max_connections, (char *)NULL);
 	g_object_set(session, "max-conns-per-host", max_host_connections,
 	    (char *)NULL);
