@@ -502,10 +502,10 @@ gfloat		default_zoom_level = 1.0;
 int		window_height = 768;
 int		window_width = 1024;
 int		icon_size = 2; /* 1 = smallest, 2+ = bigger */
-unsigned	refresh_interval = 10; /* download refresh interval */
+int		refresh_interval = 10; /* download refresh interval */
 int		enable_cookie_whitelist = 0;
 int		enable_js_whitelist = 0;
-time_t		session_timeout = 3600; /* cookie session timeout */
+int		session_timeout = 3600; /* cookie session timeout */
 int		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_ALWAYS;
 char		*ssl_ca_file = NULL;
 char		*resource_dir = NULL;
@@ -520,7 +520,7 @@ int		allow_volatile_cookies = 0;
 int		save_global_history = 0; /* save global history to disk */
 char		*user_agent = NULL;
 int		save_rejected_cookies = 0;
-time_t		session_autosave = 0;
+int		session_autosave = 0;
 int		guess_search = 0;
 int		dns_prefetch = FALSE;
 gint		max_connections = 25;
@@ -2873,7 +2873,7 @@ ca_cmd(struct tab *t, struct karg *args)
 	FILE			*f = NULL;
 	int			rv = 1, certs = 0, certs_read;
 	struct stat		sb;
-	gnutls_datum		dt;
+	gnutls_datum_t		dt;
 	gnutls_x509_crt_t	*c = NULL;
 	char			*certs_buf = NULL, *s;
 
@@ -2901,10 +2901,10 @@ ca_cmd(struct tab *t, struct karg *args)
 	}
 
 	bzero(&dt, sizeof dt);
-	dt.data = certs_buf;
+	dt.data = (unsigned char *)certs_buf;
 	dt.size = sb.st_size;
 	c = g_malloc(sizeof(gnutls_x509_crt_t) * certs);
-	certs_read = gnutls_x509_crt_list_import(c, &certs, &dt,
+	certs_read = gnutls_x509_crt_list_import(c, (unsigned int *)&certs, &dt,
 	    GNUTLS_X509_FMT_PEM, 0);
 	if (certs_read <= 0) {
 		show_oops(t, "No cert(s) available");
@@ -4096,7 +4096,7 @@ xtp_page_dl_row(struct tab *t, char *html, struct download *dl)
 	new_html = g_strdup_printf(
 	    "%s\n<tr><td>%s</td><td>%s</td>"
 	    "<td style='text-align:center'>%s</td></tr>\n",
-	    html, basename(webkit_download_get_destination_uri(dl->download)),
+	    html, basename((char *)webkit_download_get_destination_uri(dl->download)),
 	    status_html, cmd_html);
 	g_free(html);
 
@@ -6390,7 +6390,7 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download,
 		g_object_ref(wk_download);
 		gtk_label_set_text(GTK_LABEL(t->label), "Downloading");
 		show_oops(t, "Download of '%s' started...",
-		    basename(webkit_download_get_destination_uri(wk_download)));
+		    basename((char *)webkit_download_get_destination_uri(wk_download)));
 	}
 
 	if (uri)
