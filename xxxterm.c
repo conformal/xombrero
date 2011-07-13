@@ -2374,7 +2374,7 @@ paste_uri(struct tab *t, struct karg *args)
 			show_oops(t, "empty paste buffer");
 			goto done;
 		}
-		if (valid_url_type(uri)) {
+		if (guess_search == 0 && valid_url_type(uri)) {
 			/* we can be clever and paste this in search box */
 			show_oops(t, "not a valid URL");
 			goto done;
