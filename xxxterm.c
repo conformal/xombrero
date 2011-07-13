@@ -1486,7 +1486,7 @@ load_uri(struct tab *t, gchar *uri)
 		return;
 
 	/* Strip leading spaces. */
-	while(*uri && isspace(*uri))
+	while (*uri && isspace(*uri))
 		uri++;
 
 	if (strlen(uri) == 0) {
@@ -2368,7 +2368,7 @@ paste_uri(struct tab *t, struct karg *args)
 
 	if (p) {
 		uri = p;
-		while(*uri && isspace(*uri))
+		while (*uri && isspace(*uri))
 			uri++;
 		if (strlen(uri) == 0) {
 			show_oops(t, "empty paste buffer");
