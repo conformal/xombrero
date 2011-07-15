@@ -7737,18 +7737,52 @@ notebook_pagereordered_cb(GtkNotebook *nb, GtkWidget *nbp, guint pn,
 	recalc_tabs();
 }
 
+void
+menuitem_response(struct tab *t)
+{
+	gtk_notebook_set_current_page(notebook, t->tab_id);
+}
+
 gboolean
 arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 {
-	struct tab		*t;
+	GtkWidget		*menu, *menu_items;
+	GdkEventButton		*bevent;
+	const gchar		*uri;
+	struct tab		*ti;
 
 	if (event->type == GDK_BUTTON_PRESS) {
-		if ((t = get_current_tab()) != NULL) {
-			toggle_buffers(t);
-			return (TRUE);
+		bevent = (GdkEventButton *) event;
+		menu = gtk_menu_new();
+
+		TAILQ_FOREACH(ti, &tabs, entry) {
+			if ((uri = get_uri(ti->wv)) == NULL)
+				/* XXX make sure there is something to print */
+				/* XXX add gui pages in here to look purdy */
+				uri = "(untitled)";
+			menu_items = gtk_menu_item_new_with_label(uri);
+			gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_items); 
+			gtk_widget_show(menu_items);
+
+			g_signal_connect_swapped((menu_items),
+			    "activate", G_CALLBACK(menuitem_response),
+			    (gpointer)ti);
 		}
+
+		gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
+		    bevent->button, bevent->time);
+
+		/* unref object so it'll free itself when popped down */
+#if !GTK_CHECK_VERSION(3, 0, 0)
+		/* XXX does not need unref with gtk+3? */
+		g_object_ref_sink(menu);
+		g_object_unref(menu);
+#endif
+
+		return (TRUE /* eat event */);
 	}
-	return (FALSE);
+
+	return (FALSE /* propagate */);
 }
 
 int
