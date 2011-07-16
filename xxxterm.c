@@ -114,20 +114,20 @@ void		(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
 #define DNPRINTF(n,x...)	do { if (swm_debug & n) fprintf(stderr, x); } while (0)
-#define	XT_D_MOVE		0x0001
-#define	XT_D_KEY		0x0002
-#define	XT_D_TAB		0x0004
-#define	XT_D_URL		0x0008
-#define	XT_D_CMD		0x0010
-#define	XT_D_NAV		0x0020
-#define	XT_D_DOWNLOAD		0x0040
-#define	XT_D_CONFIG		0x0080
-#define	XT_D_JS			0x0100
-#define	XT_D_FAVORITE		0x0200
-#define	XT_D_PRINTING		0x0400
-#define	XT_D_COOKIE		0x0800
-#define	XT_D_KEYBINDING		0x1000
-#define	XT_D_CLIP		0x2000
+#define XT_D_MOVE		0x0001
+#define XT_D_KEY		0x0002
+#define XT_D_TAB		0x0004
+#define XT_D_URL		0x0008
+#define XT_D_CMD		0x0010
+#define XT_D_NAV		0x0020
+#define XT_D_DOWNLOAD		0x0040
+#define XT_D_CONFIG		0x0080
+#define XT_D_JS			0x0100
+#define XT_D_FAVORITE		0x0200
+#define XT_D_PRINTING		0x0400
+#define XT_D_COOKIE		0x0800
+#define XT_D_KEYBINDING		0x1000
+#define XT_D_CLIP		0x2000
 u_int32_t		swm_debug = 0
 			    | XT_D_MOVE
 			    | XT_D_KEY
@@ -255,8 +255,8 @@ struct domain {
 RB_HEAD(domain_list, domain);
 
 struct undo {
-        TAILQ_ENTRY(undo)	entry;
-        gchar			*uri;
+	TAILQ_ENTRY(undo)	entry;
+	gchar			*uri;
 	GList			*history;
 	int			back; /* Keeps track of how many back
 				       * history items there are. */
@@ -320,12 +320,12 @@ struct karg {
 #define XT_PRINT_EXTRA_MARGIN	10
 
 /* colors */
-#define	XT_COLOR_RED		"#cc0000"
-#define	XT_COLOR_YELLOW		"#ffff66"
-#define	XT_COLOR_BLUE		"lightblue"
-#define	XT_COLOR_GREEN		"#99ff66"
-#define	XT_COLOR_WHITE		"white"
-#define	XT_COLOR_BLACK		"black"
+#define XT_COLOR_RED		"#cc0000"
+#define XT_COLOR_YELLOW		"#ffff66"
+#define XT_COLOR_BLUE		"lightblue"
+#define XT_COLOR_GREEN		"#99ff66"
+#define XT_COLOR_WHITE		"white"
+#define XT_COLOR_BLACK		"black"
 
 /*
  * xxxterm "protocol" (xtp)
@@ -365,13 +365,6 @@ struct karg {
 /* XTP cookie actions */
 #define XT_XTP_FL_LIST		1
 #define XT_XTP_FL_REMOVE	2
-
-/* xtp tab meanings  - identifies which tabs have xtp pages in */
-#define XT_XTP_TAB_MEANING_NORMAL	0 /* normal url */
-#define XT_XTP_TAB_MEANING_DL		1 /* download manager in this tab */
-#define XT_XTP_TAB_MEANING_FL		2 /* favorite manager in this tab */
-#define XT_XTP_TAB_MEANING_HL		3 /* history manager in this tab */
-#define XT_XTP_TAB_MEANING_CL		4 /* cookie manager in this tab */
 
 /* actions */
 #define XT_MOVE_INVALID		(0)
@@ -708,6 +701,8 @@ int			xtp_page_dl(struct tab *, struct karg *);
 int			xtp_page_fl(struct tab *, struct karg *);
 int			xtp_page_hl(struct tab *, struct karg *);
 void			xt_icon_from_file(struct tab *, char *);
+const gchar		*get_uri(struct tab *);
+const gchar		*get_title(struct tab *);
 
 #define XT_URI_ABOUT		("about:")
 #define XT_URI_ABOUT_LEN	(strlen(XT_URI_ABOUT))
@@ -743,6 +738,14 @@ struct about_type {
 	{ XT_URI_ABOUT_STATS,		stats },
 	{ XT_URI_ABOUT_MARCO,		marco },
 };
+
+/* xtp tab meanings  - identifies which tabs have xtp pages in (corresponding to about_list indices) */
+#define XT_XTP_TAB_MEANING_NORMAL	-1 /* normal url */
+#define XT_XTP_TAB_MEANING_BL		1 /* about:blank in this tab */
+#define XT_XTP_TAB_MEANING_CL		4 /* cookie manager in this tab */
+#define XT_XTP_TAB_MEANING_DL		5 /* download manager in this tab */
+#define XT_XTP_TAB_MEANING_FL		6 /* favorite manager in this tab */
+#define XT_XTP_TAB_MEANING_HL		8 /* history manager in this tab */
 
 /* globals */
 extern char		*__progname;
@@ -860,24 +863,27 @@ get_html_page(gchar *title, gchar *body, gchar *head, bool addstyles)
 void
 load_webkit_string(struct tab *t, const char *str, gchar *title)
 {
-	gchar			*uri;
 	char			file[PATH_MAX];
+	int			i;
 
 	/* we set this to indicate we want to manually do navaction */
 	if (t->bfl)
 		t->item = webkit_web_back_forward_list_get_current_item(t->bfl);
 
-	webkit_web_view_load_string(t->wv, str, NULL, NULL, "");
-#if GTK_CHECK_VERSION(2, 20, 0)
-	gtk_spinner_stop(GTK_SPINNER(t->spinner));
-	gtk_widget_hide(t->spinner);
-#endif
-
+	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
 	if (title) {
-		uri = g_strdup_printf("%s%s", XT_URI_ABOUT, title);
-		gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
-		g_free(uri);
+		/* set t->xtp_meaning */
+		for (i = 0; i < LENGTH(about_list); i++)
+			if (!strcmp(title, about_list[i].name)) {
+				t->xtp_meaning = i;
+				break;
+			}
 
+		webkit_web_view_load_string(t->wv, str, NULL, NULL, "file://");
+#if GTK_CHECK_VERSION(2, 20, 0)
+		gtk_spinner_stop(GTK_SPINNER(t->spinner));
+		gtk_widget_hide(t->spinner);
+#endif
 		snprintf(file, sizeof file, "%s/%s", resource_dir, icons[0]);
 		xt_icon_from_file(t, file);
 	}
@@ -991,9 +997,7 @@ buffers_make_list(void)
 	for (i = 0; i < num_tabs; i++)
 		if (stabs[i]) {
 			gtk_list_store_append(buffers_store, &iter);
-			if ((title = webkit_web_view_get_title(stabs[i]->wv)) == NULL)
-				if ((title = webkit_web_view_get_uri(stabs[i]->wv)) == NULL)
-					title = "(untitled)";
+			title = get_title(stabs[i]);
 			gtk_list_store_set(buffers_store, &iter,
 			    COL_ID, i + 1, /* Enumerate the tabs starting from 1
 					    * rather than 0. */
@@ -1487,6 +1491,8 @@ load_uri(struct tab *t, gchar *uri)
 		return;
 	}
 
+	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
+
 	if (!strncmp(uri, XT_URI_ABOUT, XT_URI_ABOUT_LEN)) {
 		for (i = 0; i < LENGTH(about_list); i++)
 			if (!strcmp(&uri[XT_URI_ABOUT_LEN], about_list[i].name)) {
@@ -1513,16 +1519,29 @@ load_uri(struct tab *t, gchar *uri)
 }
 
 const gchar *
-get_uri(WebKitWebView *wv)
+get_uri(struct tab *t)
 {
-	const gchar		*uri;
+	const gchar		*uri = NULL;
 
-	uri = webkit_web_view_get_uri(wv);
-
-	if (uri && strlen(uri) > 0)
-		return (uri);
+	if (t->xtp_meaning == XT_XTP_TAB_MEANING_NORMAL)
+		uri = webkit_web_view_get_uri(t->wv);
 	else
-		return (NULL);
+		uri = g_strdup_printf("%s%s", XT_URI_ABOUT, about_list[t->xtp_meaning].name);
+
+	return uri;
+}
+
+const gchar *
+get_title(struct tab *t)
+{
+	const gchar		*set = NULL, *title = NULL;
+
+	title = webkit_web_view_get_title(t->wv);
+	set = title ? title : get_uri(t);
+	if (!set || t->xtp_meaning == XT_XTP_TAB_MEANING_BL) {
+		set = "(untitled)";
+	}
+	return set;
 }
 
 int
@@ -1879,7 +1898,7 @@ settings_add(char *var, char *val)
 	return (rv);
 }
 
-#define	WS	"\n= \t"
+#define WS	"\n= \t"
 void
 config_parse(char *filename, int runtime)
 {
@@ -2223,6 +2242,7 @@ open_tabs(struct tab *t, struct karg *a)
 			delete_tab(tt);
 			break;
 		}
+		recalc_tabs();
 	}
 
 	rv = 0;
@@ -2288,8 +2308,8 @@ save_tabs(struct tab *t, struct karg *a)
 	num_tabs = sort_tabs_by_page_num(&stabs);
 
 	for (i = 0; i < num_tabs; i++)
-		if (stabs[i] && get_uri(stabs[i]->wv) != NULL)
-			fprintf(f, "%s\n", get_uri(stabs[i]->wv));
+		if (stabs[i] && get_uri(stabs[i]) != NULL)
+			fprintf(f, "%s\n", get_uri(stabs[i]));
 
 	g_free(stabs);
 
@@ -2322,7 +2342,7 @@ yank_uri(struct tab *t, struct karg *args)
 	const gchar		*uri;
 	GtkClipboard		*clipboard;
 
-	if ((uri = get_uri(t->wv)) == NULL)
+	if ((uri = get_uri(t)) == NULL)
 		return (1);
 
 	clipboard = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
@@ -2430,7 +2450,7 @@ toggle_cwl(struct tab *t, struct karg *args)
 	if (args == NULL)
 		return (1);
 
-	uri = get_uri(t->wv);
+	uri = get_uri(t);
 	dom = find_domain(uri, 1);
 	d = wl_find(dom, &c_wl);
 
@@ -2487,7 +2507,7 @@ toggle_js(struct tab *t, struct karg *args)
 	else
 		return (1);
 
-	uri = get_uri(t->wv);
+	uri = get_uri(t);
 	dom = find_domain(uri, 1);
 
 	if (uri == NULL || dom == NULL) {
@@ -2740,9 +2760,6 @@ xtp_page_fl(struct tab *t, struct karg *args)
 
 	if (t == NULL)
 		warn("%s: bad param", __func__);
-
-	/* mark tab as favorite list */
-	t->xtp_meaning = XT_XTP_TAB_MEANING_FL;
 
 	/* new session key */
 	if (!updating_fl_tabs)
@@ -3126,7 +3143,7 @@ load_compare_cert(struct tab *t, struct karg *args)
 	if (t == NULL)
 		return (1);
 
-	if ((uri = get_uri(t->wv)) == NULL)
+	if ((uri = get_uri(t)) == NULL)
 		return (1);
 
 	if ((s = connect_socket_from_uri(uri, domain, sizeof domain)) == -1)
@@ -3197,7 +3214,7 @@ cert_cmd(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	if ((uri = get_uri(t->wv)) == NULL) {
+	if ((uri = get_uri(t)) == NULL) {
 		show_oops(t, "Invalid URI");
 		return (1);
 	}
@@ -3330,7 +3347,7 @@ wl_save(struct tab *t, struct karg *args, int js)
 	if ((f = fopen(file, "r+")) == NULL)
 		return (1);
 
-	uri = get_uri(t->wv);
+	uri = get_uri(t);
 	dom = find_domain(uri, 1);
 	if (uri == NULL || dom == NULL) {
 		show_oops(t, "Can't add domain to %s white list",
@@ -3493,7 +3510,7 @@ add_favorite(struct tab *t, struct karg *args)
 	}
 
 	title = webkit_web_view_get_title(t->wv);
-	uri = get_uri(t->wv);
+	uri = get_uri(t);
 
 	if (title == NULL)
 		title = uri;
@@ -3988,7 +4005,7 @@ command(struct tab *t, struct karg *args)
 	case XT_CMD_TABNEW_CURRENT:
 		if (!s) /* FALL THROUGH? */
 			s = ":tabnew ";
-		if ((uri = get_uri(t->wv)) != NULL) {
+		if ((uri = get_uri(t)) != NULL) {
 			ss = g_strdup_printf("%s%s", s, uri);
 			s = ss;
 		}
@@ -4176,8 +4193,6 @@ xtp_page_cl(struct tab *t, struct karg *args)
 		show_oops(NULL, "%s invalid parameters", __func__);
 		return (1);
 	}
-	/* mark this tab as cookie jar */
-	t->xtp_meaning = XT_XTP_TAB_MEANING_CL;
 
 	/* Generate a new session key */
 	if (!updating_cl_tabs)
@@ -4202,23 +4217,23 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	for (; sc; sc = sc->next) {
 		c = sc->data;
 
-                if (strcmp(last_domain, c->domain) != 0) {
-                        /* new domain */
-                        free(last_domain);
-                        last_domain = strdup(c->domain);
+		if (strcmp(last_domain, c->domain) != 0) {
+			/* new domain */
+			free(last_domain);
+			last_domain = strdup(c->domain);
 
-                        if (body != NULL) {
-                                tmp = body;
-                                body = g_strdup_printf("%s</table>"
-                                    "<h2>%s</h2>%s\n",
-                                    body, c->domain, table_headers);
-                                g_free(tmp);
-                        } else {
-                                /* first domain */
-                                body = g_strdup_printf("<h2>%s</h2>%s\n",
-                                    c->domain, table_headers);
-                        }
-                }
+			if (body != NULL) {
+				tmp = body;
+				body = g_strdup_printf("%s</table>"
+				    "<h2>%s</h2>%s\n",
+				    body, c->domain, table_headers);
+				g_free(tmp);
+			} else {
+				/* first domain */
+				body = g_strdup_printf("<h2>%s</h2>%s\n",
+				    c->domain, table_headers);
+			}
+		}
 
 		type = "Session";
 		for (pc = pc_start; pc; pc = pc->next)
@@ -4301,9 +4316,6 @@ xtp_page_hl(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	/* mark this tab as history manager */
-	t->xtp_meaning = XT_XTP_TAB_MEANING_HL;
-
 	/* Generate a new session key */
 	if (!updating_hl_tabs)
 		generate_xtp_session_key(&hl_session_key);
@@ -4373,8 +4385,6 @@ xtp_page_dl(struct tab *t, struct karg *args)
 		show_oops(NULL, "%s invalid parameters", __func__);
 		return (1);
 	}
-	/* mark as a download manager tab */
-	t->xtp_meaning = XT_XTP_TAB_MEANING_DL;
 
 	/*
 	 * Generate a new session key for next page instance.
@@ -5447,9 +5457,6 @@ parse_xtp_url(struct tab *t, const char *url)
 
 	DNPRINTF(XT_D_URL, "%s: url %s\n", __func__, url);
 
-	/*xtp tab meaning is normal unless proven special */
-	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
-
 	if (strncmp(url, XT_XTP_STR, strlen(XT_XTP_STR)))
 		goto clean;
 
@@ -5930,7 +5937,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	struct karg		a;
 
 	DNPRINTF(XT_D_URL, "notify_load_status_cb: %d  %s\n",
-	    webkit_web_view_get_load_status(wview), get_uri(wview) ? get_uri(wview) : "NOTHING");
+	    webkit_web_view_get_load_status(wview), get_uri(t) ? get_uri(t) : "NOTHING");
 
 	if (t == NULL) {
 		show_oops(NULL, "notify_load_status_cb invalid parameters");
@@ -5957,9 +5964,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 	case WEBKIT_LOAD_COMMITTED:
 		/* 1 */
-		if ((uri = get_uri(wview)) != NULL) {
-			if (strncmp(uri, XT_URI_ABOUT, XT_URI_ABOUT_LEN))
-				gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
+		if ((uri = get_uri(t)) != NULL) {
+			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
 
 			if (t->status) {
 				g_free(t->status);
@@ -5970,7 +5976,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 		/* check if js white listing is enabled */
 		if (enable_js_whitelist) {
-			uri = get_uri(wview);
+			uri = get_uri(t);
 			check_and_set_js(uri, t);
 		}
 
@@ -5992,7 +5998,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 	case WEBKIT_LOAD_FINISHED:
 		/* 2 */
-		uri = get_uri(wview);
+		uri = get_uri(t);
 		if (uri == NULL)
 			return;
 
@@ -6046,7 +6052,7 @@ notify_title_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	const gchar		*set = NULL, *title = NULL;
 
 	title = webkit_web_view_get_title(wview);
-	set = title ? title : get_uri(wview);
+	set = title ? title : get_uri(t);
 	if (set) {
 		gtk_label_set_text(GTK_LABEL(t->label), set);
 		gtk_window_set_title(GTK_WINDOW(main_window), set);
@@ -6111,12 +6117,12 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 	 */
 	reason = webkit_web_navigation_action_get_reason(na);
 	if (reason == WEBKIT_WEB_NAVIGATION_REASON_LINK_CLICKED) {
+		t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
 		if (enable_scripts == 0 && enable_cookie_whitelist == 1)
 			if (uri && (d = wl_find_uri(uri, &js_wl)) == NULL)
 				load_uri(t, uri);
-
 		webkit_web_policy_decision_use(pd);
-		return (TRUE); /* we made the decission */
+		return (TRUE); /* we made the decision */
 	}
 
 	return (FALSE);
@@ -7249,7 +7255,7 @@ create_toolbar(struct tab *t)
 
 		/* JS button */
 		t->js_toggle = create_button("JS-Toggle", enable_scripts ?
-		        GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE, 0);
+		    GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE, 0);
 		gtk_widget_set_sensitive(t->js_toggle, TRUE);
 		g_signal_connect(G_OBJECT(t->js_toggle), "clicked",
 		    G_CALLBACK(js_toggle_cb), t);
@@ -7346,7 +7352,7 @@ undo_close_tab_save(struct tab *t)
 	GList				*items;
 	WebKitWebHistoryItem		*item;
 
-	if ((uri = get_uri(t->wv)) == NULL)
+	if ((uri = get_uri(t)) == NULL)
 		return (1);
 
 	u1 = g_malloc0(sizeof(struct undo));
@@ -7756,7 +7762,7 @@ arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 		menu = gtk_menu_new();
 
 		TAILQ_FOREACH(ti, &tabs, entry) {
-			if ((uri = get_uri(ti->wv)) == NULL)
+			if ((uri = get_uri(ti)) == NULL)
 				/* XXX make sure there is something to print */
 				/* XXX add gui pages in here to look purdy */
 				uri = "(untitled)";
