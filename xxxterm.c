@@ -6261,6 +6261,7 @@ run_download_mimehandler(char *mime_type, char *file)
 	switch (fork()) {
 	case -1:
 		show_oops(NULL, "can't fork download mime handler");
+		return (1);
 		/* NOTREACHED */
 	case 0:
 		break;
