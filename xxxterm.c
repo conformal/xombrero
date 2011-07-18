@@ -1591,7 +1591,7 @@ add_mime_type(struct settings *s, char *line)
 
 	/* XXX this could be smarter */
 
-	if (line == NULL && strlen(line) == 0) {
+	if (line == NULL || strlen(line) == 0) {
 		show_oops(NULL, "add_mime_type invalid parameters");
 		return (1);
 	}
