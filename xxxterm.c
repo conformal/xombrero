@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2010, 2011 Marco Peereboom <marco@peereboom.us>
  * Copyright (c) 2011 Stevan Andjelkovic <stevan@student.chalmers.se>
- * Copyright (c) 2010 Edd Barrett <vext01@gmail.com>
+ * Copyright (c) 2010, 2011 Edd Barrett <vext01@gmail.com>
  * Copyright (c) 2011 Todd T. Fries <todd@fries.net>
  * Copyright (c) 2011 Raphael Graf <r@undefined.ch>
  * Copyright (c) 2011 Michal Mazurek <akfaew@jasminek.net>
