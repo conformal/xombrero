@@ -182,7 +182,11 @@ struct tab {
 	GtkWidget		*search_entry;
 	GtkWidget		*toolbar;
 	GtkWidget		*browser_win;
-	GtkWidget		*statusbar;
+	GtkWidget		*statusbar_box;
+	struct {
+		GtkWidget	*statusbar;
+		GtkWidget	*position;
+	} sbe;
 	GtkWidget		*cmd;
 	GtkWidget		*buffers;
 	GtkWidget		*oops;
@@ -429,9 +433,6 @@ struct karg {
 #define XT_URL_SHOW		(1)
 #define XT_URL_HIDE		(2)
 
-#define XT_STATUSBAR_SHOW	(1)
-#define XT_STATUSBAR_HIDE	(2)
-
 #define XT_WL_TOGGLE		(1<<0)
 #define XT_WL_ENABLE		(1<<1)
 #define XT_WL_DISABLE		(1<<2)
@@ -575,6 +576,7 @@ void		walk_mime_type(struct settings *, void (*)(struct settings *, char *, void
 void		recalc_tabs(void);
 void		recolor_compact_tabs(void);
 void		set_current_tab(int page_num);
+gboolean	update_statusbar_position(GtkAdjustment* adjustment, gpointer data);
 
 struct special {
 	int		(*set)(struct settings *, char *);
@@ -948,7 +950,8 @@ set_status(struct tab *t, gchar *s, int status)
 	case XT_STATUS_LINK:
 		type = g_strdup_printf("Link: %s", s);
 		if (!t->status)
-			t->status = g_strdup(gtk_entry_get_text(GTK_ENTRY(t->statusbar)));
+			t->status = g_strdup(gtk_entry_get_text(
+			    GTK_ENTRY(t->sbe.statusbar)));
 		s = type;
 		break;
 	case XT_STATUS_URI:
@@ -965,7 +968,7 @@ set_status(struct tab *t, gchar *s, int status)
 	default:
 		break;
 	}
-	gtk_entry_set_text(GTK_ENTRY(t->statusbar), s);
+	gtk_entry_set_text(GTK_ENTRY(t->sbe.statusbar), s);
 	if (type)
 		g_free(type);
 }
@@ -3171,9 +3174,11 @@ save_certs(struct tab *t, gnutls_x509_crt_t *certs,
 	/* not the best spot but oh well */
 	gdk_color_parse("lightblue", &color);
 	gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
-	gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL, &color);
+	gtk_widget_modify_base(t->sbe.statusbar, GTK_STATE_NORMAL, &color);
+	gtk_widget_modify_base(t->sbe.position, GTK_STATE_NORMAL, &color);
 	gdk_color_parse(XT_COLOR_BLACK, &color);
-	gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL, &color);
+	gtk_widget_modify_text(t->sbe.statusbar, GTK_STATE_NORMAL, &color);
+	gtk_widget_modify_text(t->sbe.position, GTK_STATE_NORMAL, &color);
 done:
 	fclose(f);
 }
@@ -3751,10 +3756,10 @@ statusbar_set_visibility(void)
 
 	TAILQ_FOREACH(t, &tabs, entry) {
 		if (show_statusbar == 0) {
-			gtk_widget_hide(t->statusbar);
+			gtk_widget_hide(t->statusbar_box);
 			focus_webview(t);
 		} else
-			gtk_widget_show(t->statusbar);
+			gtk_widget_show(t->statusbar_box);
 	}
 }
 
@@ -3767,17 +3772,17 @@ url_set(struct tab *t, int enable_url_entry)
 	show_url = enable_url_entry;
 
 	if (enable_url_entry) {
-		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->statusbar),
+		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->sbe.statusbar),
 		    GTK_ENTRY_ICON_PRIMARY, NULL);
-		gtk_entry_set_progress_fraction(GTK_ENTRY(t->statusbar), 0);
+		gtk_entry_set_progress_fraction(GTK_ENTRY(t->sbe.statusbar), 0);
 	} else {
 		pixbuf = gtk_entry_get_icon_pixbuf(GTK_ENTRY(t->uri_entry),
 		    GTK_ENTRY_ICON_PRIMARY);
 		progress =
 		    gtk_entry_get_progress_fraction(GTK_ENTRY(t->uri_entry));
-		gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->statusbar),
+		gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->sbe.statusbar),
 		    GTK_ENTRY_ICON_PRIMARY, pixbuf);
-		gtk_entry_set_progress_fraction(GTK_ENTRY(t->statusbar),
+		gtk_entry_set_progress_fraction(GTK_ENTRY(t->sbe.statusbar),
 		    progress);
 	}
 }
@@ -3805,30 +3810,18 @@ fullscreen(struct tab *t, struct karg *args)
 }
 
 int
-statusaction(struct tab *t, struct karg *args)
+statustoggle(struct tab *t, struct karg *args)
 {
-	int			rv = XT_CB_HANDLED;
-
 	DNPRINTF(XT_D_TAB, "%s: %p %d\n", __func__, t, args->i);
 
-	if (t == NULL)
-		return (XT_CB_PASSTHROUGH);
-
-	switch (args->i) {
-	case XT_STATUSBAR_SHOW:
-		if (show_statusbar == 0) {
-			show_statusbar = 1;
-			statusbar_set_visibility();
-		}
-		break;
-	case XT_STATUSBAR_HIDE:
-		if (show_statusbar == 1) {
-			show_statusbar = 0;
-			statusbar_set_visibility();
-		}
-		break;
+	if (show_statusbar == 1) {
+		show_statusbar = 0;
+		statusbar_set_visibility();
+	} else if (show_statusbar == 0) {
+		show_statusbar = 1;
+		statusbar_set_visibility();
 	}
-	return (rv);
+	return (XT_CB_HANDLED);
 }
 
 int
@@ -4824,6 +4817,7 @@ struct key_binding {
 	{ "print",		CTRL,	0,	GDK_p		},
 	{ "search",		0,	0,	GDK_slash	},
 	{ "searchb",		0,	0,	GDK_question	},
+	{ "statustoggle",	CTRL,	0,	GDK_n		},
 	{ "command",		0,	0,	GDK_colon	},
 	{ "qa",			CTRL,	0,	GDK_q		},
 	{ "restart",		MOD1,	0,	GDK_q		},
@@ -5183,7 +5177,7 @@ struct cmd {
 	{ "all",		2,	cookie_cmd,		XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION,	0 },
 	{ "persistent",		2,	cookie_cmd,		XT_SHOW | XT_WL_PERSISTENT,			0 },
 	{ "session",		2,	cookie_cmd,		XT_SHOW | XT_WL_SESSION,			0 },
-	{ "toggle",		1,	cookie_cmd,		XT_WL_TOGGLE  | XT_WL_FQDN,			0 },
+	{ "toggle",		1,	cookie_cmd,		XT_WL_TOGGLE | XT_WL_FQDN,			0 },
 	{ "domain",		2,	cookie_cmd,		XT_WL_TOGGLE | XT_WL_TOPLEVEL,			0 },
 	{ "fqdn",		2,	cookie_cmd,		XT_WL_TOGGLE | XT_WL_FQDN,			0 },
 
@@ -5208,8 +5202,7 @@ struct cmd {
 	{ "restart",		0,	restart,		0,			0 },
 	{ "urlhide",		0,	urlaction,		XT_URL_HIDE,		0 },
 	{ "urlshow",		0,	urlaction,		XT_URL_SHOW,		0 },
-	{ "statushide",		0,	statusaction,		XT_STATUSBAR_HIDE,	0 },
-	{ "statusshow",		0,	statusaction,		XT_STATUSBAR_SHOW,	0 },
+	{ "statustoggle",	0,	statustoggle,		0,			0 },
 
 	{ "print",		0,	print_page,		0,			0 },
 
@@ -5711,17 +5704,25 @@ done:
 		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
 
 		if (!strcmp(col_str, XT_COLOR_WHITE)) {
-			gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL,
-			    &color);
+			gtk_widget_modify_text(t->sbe.statusbar,
+			    GTK_STATE_NORMAL, &color);
+			gtk_widget_modify_text(t->sbe.position,
+			    GTK_STATE_NORMAL, &color);
 			gdk_color_parse(XT_COLOR_BLACK, &color);
-			gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL,
-			    &color);
+			gtk_widget_modify_base(t->sbe.statusbar,
+			    GTK_STATE_NORMAL, &color);
+			gtk_widget_modify_base(t->sbe.position,
+			    GTK_STATE_NORMAL, &color);
 		} else {
-			gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL,
-			    &color);
+			gtk_widget_modify_base(t->sbe.statusbar,
+			    GTK_STATE_NORMAL, &color);
+			gtk_widget_modify_base(t->sbe.position,
+			    GTK_STATE_NORMAL, &color);
 			gdk_color_parse(XT_COLOR_BLACK, &color);
-			gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL,
-			    &color);
+			gtk_widget_modify_text(t->sbe.statusbar,
+			    GTK_STATE_NORMAL, &color);
+			gtk_widget_modify_text(t->sbe.position,
+			    GTK_STATE_NORMAL, &color);
 		}
 	}
 }
@@ -5747,10 +5748,10 @@ xt_icon_from_name(struct tab *t, gchar *name)
 	gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->uri_entry),
 	    GTK_ENTRY_ICON_PRIMARY, "text-html");
 	if (show_url == 0)
-		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->statusbar),
+		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->sbe.statusbar),
 		    GTK_ENTRY_ICON_PRIMARY, "text-html");
 	else
-		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->statusbar),
+		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->sbe.statusbar),
 		    GTK_ENTRY_ICON_PRIMARY, NULL);
 }
 
@@ -5760,17 +5761,18 @@ xt_icon_from_pixbuf(struct tab *t, GdkPixbuf *pb)
 	GdkPixbuf		*pb_scaled;
 
 	if (gdk_pixbuf_get_width(pb) > 16 || gdk_pixbuf_get_height(pb) > 16)
-		pb_scaled = gdk_pixbuf_scale_simple(pb, 16, 16, GDK_INTERP_BILINEAR);
+		pb_scaled = gdk_pixbuf_scale_simple(pb, 16, 16,
+		    GDK_INTERP_BILINEAR);
 	else
 		pb_scaled = pb;
 
 	gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->uri_entry),
 	    GTK_ENTRY_ICON_PRIMARY, pb_scaled);
 	if (show_url == 0)
-		gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->statusbar),
+		gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->sbe.statusbar),
 		    GTK_ENTRY_ICON_PRIMARY, pb_scaled);
 	else
-		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->statusbar),
+		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->sbe.statusbar),
 		    GTK_ENTRY_ICON_PRIMARY, NULL);
 
 	if (pb_scaled != pb)
@@ -6144,9 +6146,11 @@ webview_progress_changed_cb(WebKitWebView *wv, int progress, struct tab *t)
 	gtk_entry_set_progress_fraction(GTK_ENTRY(t->uri_entry),
 	    progress == 100 ? 0 : (double)progress / 100);
 	if (show_url == 0) {
-		gtk_entry_set_progress_fraction(GTK_ENTRY(t->statusbar),
+		gtk_entry_set_progress_fraction(GTK_ENTRY(t->sbe.statusbar),
 		    progress == 100 ? 0 : (double)progress / 100);
 	}
+
+	update_statusbar_position(NULL, NULL);
 }
 
 int
@@ -7196,11 +7200,51 @@ setup_webkit(struct tab *t)
 	webkit_web_view_set_settings(t->wv, t->settings);
 }
 
+gboolean
+update_statusbar_position(GtkAdjustment* adjustment, gpointer data)
+{
+	struct tab	*ti, *t = NULL;
+	gdouble		view_size, value, max;
+	gchar		*position;
+
+	TAILQ_FOREACH(ti, &tabs, entry)
+		if (ti->tab_id == gtk_notebook_get_current_page(notebook)) {
+			t = ti;
+			break;
+		}
+
+	if (t == NULL)
+		return FALSE;
+
+	if (adjustment == NULL)
+		adjustment = gtk_scrolled_window_get_vadjustment(
+		    GTK_SCROLLED_WINDOW(t->browser_win));
+
+	view_size = gtk_adjustment_get_page_size(adjustment);
+	value = gtk_adjustment_get_value(adjustment);
+	max = gtk_adjustment_get_upper(adjustment) - view_size;
+
+	if (max == 0)
+		position = g_strdup("All");
+	else if (value == max)
+		position = g_strdup("Bot");
+	else if (value == 0)
+		position = g_strdup("Top");
+	else
+		position = g_strdup_printf("%d%%", (int) ((value / max) * 100));
+
+	gtk_entry_set_text(GTK_ENTRY(t->sbe.position), position);
+	g_free(position);
+
+	return (TRUE);
+}
+
 GtkWidget *
 create_browser(struct tab *t)
 {
 	GtkWidget		*w;
 	gchar			*strval;
+	GtkAdjustment		*adjustment;
 
 	if (t == NULL) {
 		show_oops(NULL, "create_browser invalid parameters");
@@ -7231,6 +7275,11 @@ create_browser(struct tab *t)
 		t->user_agent = g_strdup(user_agent);
 
 	t->stylesheet = g_strdup_printf("file://%s/style.css", resource_dir);
+
+	adjustment =
+	    gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(w));
+	g_signal_connect(G_OBJECT(adjustment), "value-changed",
+	    G_CALLBACK(update_statusbar_position), NULL);
 
 	setup_webkit(t);
 
@@ -7564,7 +7613,7 @@ delete_tab(struct tab *t)
 		a.s = NULL;
 		save_tabs(t, &a);
 	}
-	
+
 	recalc_tabs();
 	recolor_compact_tabs();
 }
@@ -7626,7 +7675,8 @@ page_reordered_cb(GtkWidget *nb, GtkWidget *eventbox, guint pn, gpointer data)
 	DNPRINTF(XT_D_TAB, "page_reordered_cb: tab: %d\n", t->tab_id);
 
 	recalc_tabs();
-	gtk_box_reorder_child(GTK_BOX(tab_bar), t->tab_elems.eventbox, t->tab_id);
+	gtk_box_reorder_child(GTK_BOX(tab_bar), t->tab_elems.eventbox,
+	    t->tab_id);
 
 	return TRUE;
 }
@@ -7716,16 +7766,34 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_widget_modify_font(GTK_WIDGET(t->cmd), cmd_font);
 
 	/* status bar */
-	t->statusbar = gtk_entry_new();
-	gtk_entry_set_inner_border(GTK_ENTRY(t->statusbar), NULL);
-	gtk_entry_set_has_frame(GTK_ENTRY(t->statusbar), FALSE);
-	gtk_widget_set_can_focus(GTK_WIDGET(t->statusbar), FALSE);
+	t->statusbar_box = gtk_hbox_new(FALSE, 0);
+
+	t->sbe.statusbar = gtk_entry_new();
+	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.statusbar), NULL);
+	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.statusbar), FALSE);
+	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.statusbar), FALSE);
+
+	t->sbe.position = gtk_entry_new();
+	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.position), NULL);
+	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.position), FALSE);
+	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.position), FALSE);
+
+	gtk_entry_set_alignment(GTK_ENTRY(t->sbe.position), 1.0);
+	gtk_widget_set_size_request(t->sbe.position, 40, -1);
+
 	gdk_color_parse(XT_COLOR_BLACK, &color);
-	gtk_widget_modify_base(t->statusbar, GTK_STATE_NORMAL, &color);
+	gtk_widget_modify_base(t->sbe.statusbar, GTK_STATE_NORMAL, &color);
+	gtk_widget_modify_base(t->sbe.position, GTK_STATE_NORMAL, &color);
 	gdk_color_parse(XT_COLOR_WHITE, &color);
-	gtk_widget_modify_text(t->statusbar, GTK_STATE_NORMAL, &color);
-	gtk_widget_modify_font(GTK_WIDGET(t->statusbar), statusbar_font);
-	gtk_box_pack_end(GTK_BOX(t->vbox), t->statusbar, FALSE, FALSE, 0);
+	gtk_widget_modify_text(t->sbe.statusbar, GTK_STATE_NORMAL, &color);
+	gtk_widget_modify_text(t->sbe.position, GTK_STATE_NORMAL, &color);
+
+	gtk_box_pack_start(GTK_BOX(t->statusbar_box), t->sbe.statusbar, TRUE,
+	    TRUE, FALSE);
+	gtk_box_pack_start(GTK_BOX(t->statusbar_box), t->sbe.position, FALSE,
+	    FALSE, FALSE);
+
+	gtk_box_pack_end(GTK_BOX(t->vbox), t->statusbar_box, FALSE, FALSE, 0);
 
 	/* buffer list */
 	t->buffers = create_buffers(t);
@@ -7758,11 +7826,15 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gdk_color_parse(XT_COLOR_CT_SEPARATOR, &color);
 	gtk_widget_modify_bg(t->tab_elems.sep, GTK_STATE_NORMAL, &color);
 
-	gtk_box_pack_start(GTK_BOX(t->tab_elems.box), t->tab_elems.label, TRUE, TRUE, 0);
-	gtk_box_pack_start(GTK_BOX(t->tab_elems.box), t->tab_elems.sep, FALSE, FALSE, 0);
-	gtk_container_add(GTK_CONTAINER(t->tab_elems.eventbox), t->tab_elems.box);
+	gtk_box_pack_start(GTK_BOX(t->tab_elems.box), t->tab_elems.label, TRUE,
+	    TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(t->tab_elems.box), t->tab_elems.sep, FALSE,
+	    FALSE, 0);
+	gtk_container_add(GTK_CONTAINER(t->tab_elems.eventbox),
+	    t->tab_elems.box);
 
-	gtk_box_pack_start(GTK_BOX(tab_bar), t->tab_elems.eventbox, TRUE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(tab_bar), t->tab_elems.eventbox, TRUE,
+	    TRUE, 0);
 	gtk_widget_show_all(t->tab_elems.eventbox);
 
 	if (append_next == 0 || gtk_notebook_get_n_pages(notebook) == 0)
