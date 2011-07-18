@@ -4186,8 +4186,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	int			i = 1; /* all ids start 1 */
 	GSList			*sc, *pc, *pc_start;
 	SoupCookie		*c;
-	char			*type, *table_headers;
-	char			*last_domain = strdup("");
+	char			*type, *table_headers, *last_domain;
 
 	DNPRINTF(XT_D_CMD, "%s", __func__);
 
@@ -4216,6 +4215,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	pc_start = pc;
 
 	body = NULL;
+	last_domain = strdup("");
 	for (; sc; sc = sc->next) {
 		c = sc->data;
 
