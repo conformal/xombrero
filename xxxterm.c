@@ -6955,7 +6955,7 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		focus_webview(t);
 
 		/* cancel search */
-		if (c[0] == '/' || c[0] == '?')
+		if (c != NULL && (c[0] == '/' || c[0] == '?'))
 			webkit_web_view_unmark_text_matches(t->wv);
 		goto done;
 	}
