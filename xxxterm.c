@@ -1474,7 +1474,7 @@ match_alias(char *url_in)
 			url_out = g_strdup_printf(a->a_uri, enc_arg);
 			g_free(enc_arg);
 		} else
-			url_out = g_strdup(a->a_uri);
+			url_out = g_strdup_printf(a->a_uri, "");
 	}
 done:
 	g_free(search);
