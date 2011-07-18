@@ -4406,8 +4406,8 @@ xtp_page_dl(struct tab *t, struct karg *args)
 		    XT_XTP_DL,
 		    dl_session_key,
 		    XT_XTP_DL_LIST);
-		else
-			ref = g_strdup("");
+	else
+		ref = g_strdup("");
 
 	body = g_strdup_printf("<div align='center'>"
 	    "<p>\n<a href='%s%d/%s/%d'>\n[ Refresh Downloads ]</a>\n"
