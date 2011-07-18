@@ -544,6 +544,8 @@ char		*statusbar_font_name = NULL;
 PangoFontDescription *cmd_font;
 PangoFontDescription *statusbar_font;
 
+int			btn_down;	/* M1 down in any wv */
+
 struct settings;
 struct key_binding;
 int		set_browser_mode(struct settings *, char *);
@@ -5254,6 +5256,16 @@ struct {
 } cmd_status = {-1, 0};
 
 gboolean
+wv_release_button_cb(GtkWidget *btn, GdkEventButton *e, struct tab *t)
+{
+
+	if (e->type == GDK_BUTTON_RELEASE && e->button == 1)
+		btn_down = 0;
+
+	return (FALSE);
+}
+
+gboolean
 wv_button_cb(GtkWidget *btn, GdkEventButton *e, struct tab *t)
 {
 	struct karg		a;
@@ -5261,7 +5273,9 @@ wv_button_cb(GtkWidget *btn, GdkEventButton *e, struct tab *t)
 	hide_oops(t);
 	hide_buffers(t);
 
-	if (e->type == GDK_BUTTON_PRESS && e->button == 8 /* btn 4 */) {
+	if (e->type == GDK_BUTTON_PRESS && e->button == 1)
+		btn_down = 1;
+	else if (e->type == GDK_BUTTON_PRESS && e->button == 8 /* btn 4 */) {
 		/* go backward */
 		a.i = XT_NAV_BACK;
 		navaction(t, &a);
@@ -7900,6 +7914,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	    "signal::load-progress-changed", G_CALLBACK(webview_progress_changed_cb), t,
 	    "signal::icon-loaded", G_CALLBACK(notify_icon_loaded_cb), t,
 	    "signal::button_press_event", G_CALLBACK(wv_button_cb), t,
+	    "signal::button_release_event", G_CALLBACK(wv_release_button_cb), t,
 	    (char *)NULL);
 	g_signal_connect(t->wv,
 	    "notify::load-status", G_CALLBACK(notify_load_status_cb), t);
@@ -8114,7 +8129,9 @@ clipb_primary_cb(GtkClipboard *primary, GdkEvent *event, gpointer notused)
 	 * but those clowns should have come up with something better.
 	 */
 
-	/* XXX make this setting? */
+	if (btn_down)
+		return;
+
 	clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
 	p = gtk_clipboard_wait_for_text(primary);
 	if (p == NULL) {
@@ -8148,6 +8165,9 @@ clipb_clipboard_cb(GtkClipboard *clipboard, GdkEvent *event, gpointer notused)
 {
 	GtkClipboard		*primary;
 	gchar			*p = NULL, *s = NULL;
+
+	if (btn_down)
+		return;
 
 	DNPRINTF(XT_D_CLIP, "clipboard got content\n");
 
