@@ -169,6 +169,12 @@ struct tab {
 	TAILQ_ENTRY(tab)	entry;
 	GtkWidget		*vbox;
 	GtkWidget		*tab_content;
+	struct {
+		GtkWidget	*label;
+		GtkWidget	*eventbox;
+		GtkWidget	*box;
+		GtkWidget	*sep;
+	} tab_elems;
 	GtkWidget		*label;
 	GtkWidget		*spinner;
 	GtkWidget		*uri_entry;
@@ -327,6 +333,11 @@ struct karg {
 #define XT_COLOR_WHITE		"white"
 #define XT_COLOR_BLACK		"black"
 
+#define	XT_COLOR_CT_BACKGROUND	"#000000"
+#define	XT_COLOR_CT_INACTIVE	"#dddddd"
+#define	XT_COLOR_CT_ACTIVE	"#bbbb00"
+#define	XT_COLOR_CT_SEPARATOR	"#555555"
+
 /*
  * xxxterm "protocol" (xtp)
  * We use this for managing stuff like downloads and favorites. They
@@ -393,6 +404,7 @@ struct karg {
 #define XT_TAB_UNDO_CLOSE	(5)
 #define XT_TAB_SHOW		(6)
 #define XT_TAB_HIDE		(7)
+#define XT_TAB_NEXTSTYLE	(8)
 
 #define XT_NAV_INVALID		(0)
 #define XT_NAV_BACK		(1)
@@ -455,6 +467,9 @@ struct karg {
 #define XT_URLARG		(1<<2)
 #define XT_INTARG		(1<<3)
 
+#define XT_TABS_NORMAL		0
+#define XT_TABS_COMPACT		1
+
 /* mime types */
 struct mime_type {
 	char			*mt_type;
@@ -483,6 +498,7 @@ int		enable_localstorage = 0;
 
 /* runtime settings */
 int		show_tabs = 1;	/* show tabs on notebook */
+int		tab_style = XT_TABS_NORMAL; /* tab bar style */
 int		show_url = 1;	/* show url toolbar on notebook */
 int		show_statusbar = 0; /* vimperator style status bar */
 int		ctrl_click_focus = 0; /* ctrl click gets focus */
@@ -528,11 +544,12 @@ PangoFontDescription *statusbar_font;
 
 struct settings;
 struct key_binding;
-int		set_download_dir(struct settings *, char *);
-int		set_work_dir(struct settings *, char *);
-int		set_runtime_dir(struct settings *, char *);
 int		set_browser_mode(struct settings *, char *);
 int		set_cookie_policy(struct settings *, char *);
+int		set_download_dir(struct settings *, char *);
+int		set_runtime_dir(struct settings *, char *);
+int		set_tab_style(struct settings *, char *);
+int		set_work_dir(struct settings *, char *);
 int		add_alias(struct settings *, char *);
 int		add_mime_type(struct settings *, char *);
 int		add_cookie_wl(struct settings *, char *);
@@ -543,10 +560,10 @@ GtkWidget *	create_button(char *, char *, int);
 
 char		*get_browser_mode(struct settings *);
 char		*get_cookie_policy(struct settings *);
-
 char		*get_download_dir(struct settings *);
-char		*get_work_dir(struct settings *);
 char		*get_runtime_dir(struct settings *);
+char		*get_tab_style(struct settings *);
+char		*get_work_dir(struct settings *);
 
 void		walk_alias(struct settings *, void (*)(struct settings *, char *, void *), void *);
 void		walk_cookie_wl(struct settings *, void (*)(struct settings *, char *, void *), void *);
@@ -555,6 +572,8 @@ void		walk_kb(struct settings *, void (*)(struct settings *, char *, void *), vo
 void		walk_mime_type(struct settings *, void (*)(struct settings *, char *, void *), void *);
 
 void		recalc_tabs(void);
+void		recolor_compact_tabs(void);
+void		set_current_tab(int page_num);
 
 struct special {
 	int		(*set)(struct settings *, char *);
@@ -616,6 +635,12 @@ struct special		s_work_dir = {
 	NULL
 };
 
+struct special		s_tab_style = {
+	set_tab_style,
+	get_tab_style,
+	NULL
+};
+
 struct settings {
 	char		*name;
 	int		type;
@@ -642,11 +667,13 @@ struct settings {
 	{ "download_dir",		XT_S_STR, 0, NULL, NULL,&s_download_dir },
 	{ "enable_cookie_whitelist",	XT_S_INT, 0,		&enable_cookie_whitelist, NULL, NULL },
 	{ "enable_js_whitelist",	XT_S_INT, 0,		&enable_js_whitelist, NULL, NULL },
+	{ "enable_localstorage",	XT_S_INT, 0,		&enable_localstorage, NULL, NULL },
 	{ "enable_plugins",		XT_S_INT, 0,		&enable_plugins, NULL, NULL },
 	{ "enable_scripts",		XT_S_INT, 0,		&enable_scripts, NULL, NULL },
-	{ "enable_localstorage",	XT_S_INT, 0,		&enable_localstorage, NULL, NULL },
 	{ "enable_socket",		XT_S_INT, XT_SF_RESTART,&enable_socket, NULL, NULL },
+	{ "enable_spell_checking",	XT_S_INT, 0,		&enable_spell_checking, NULL, NULL },
 	{ "fancy_bar",			XT_S_INT, XT_SF_RESTART,&fancy_bar, NULL, NULL },
+	{ "guess_search",		XT_S_INT, 0,		&guess_search, NULL, NULL },
 	{ "home",			XT_S_STR, 0, NULL,	&home, NULL },
 	{ "http_proxy",			XT_S_STR, 0, NULL,	&http_proxy, NULL },
 	{ "icon_size",			XT_S_INT, 0,		&icon_size, NULL, NULL },
@@ -663,16 +690,15 @@ struct settings {
 	{ "single_instance",		XT_S_INT, XT_SF_RESTART,&single_instance, NULL, NULL },
 	{ "show_tabs",			XT_S_INT, 0,		&show_tabs, NULL, NULL },
 	{ "show_url",			XT_S_INT, 0,		&show_url, NULL, NULL },
-	{ "guess_search",		XT_S_INT, 0,		&guess_search, NULL, NULL },
 	{ "show_statusbar",		XT_S_INT, 0,		&show_statusbar, NULL, NULL },
+	{ "spell_check_languages",	XT_S_STR, 0, NULL, &spell_check_languages, NULL },
 	{ "ssl_ca_file",		XT_S_STR, 0, NULL,	&ssl_ca_file, NULL },
 	{ "ssl_strict_certs",		XT_S_INT, 0,		&ssl_strict_certs, NULL, NULL },
+	{ "tab_style",			XT_S_STR, 0, NULL, NULL,&s_tab_style },
 	{ "user_agent",			XT_S_STR, 0, NULL,	&user_agent, NULL },
 	{ "window_height",		XT_S_INT, 0,		&window_height, NULL, NULL },
 	{ "window_width",		XT_S_INT, 0,		&window_width, NULL, NULL },
 	{ "work_dir",			XT_S_STR, 0, NULL, NULL,&s_work_dir },
-	{ "enable_spell_checking",	XT_S_INT, 0,		&enable_spell_checking, NULL, NULL },
-	{ "spell_check_languages",	XT_S_STR, 0, NULL, &spell_check_languages, NULL },
 
 	/* font settings */
 	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL },
@@ -753,6 +779,7 @@ char			**start_argv;
 struct passwd		*pwd;
 GtkWidget		*main_window;
 GtkNotebook		*notebook;
+GtkWidget		*tab_bar;
 GtkWidget		*arrow, *abtn;
 struct tab_list		tabs;
 struct history_list	hl;
@@ -1288,6 +1315,28 @@ set_work_dir(struct settings *s, char *val)
 		    pwd->pw_dir, &val[1]);
 	else
 		strlcpy(work_dir, val, sizeof work_dir);
+
+	return (0);
+}
+
+char *
+get_tab_style(struct settings *s)
+{
+	if (tab_style == XT_TABS_NORMAL)
+		return (g_strdup("normal"));
+	else
+		return (g_strdup("compact"));
+}
+
+int
+set_tab_style(struct settings *s, char *val)
+{
+	if (!strcmp(val, "normal"))
+		tab_style = XT_TABS_NORMAL;
+	else if (!strcmp(val, "compact"))
+		tab_style = XT_TABS_COMPACT;
+	else
+		return (1);
 
 	return (0);
 }
@@ -3678,12 +3727,20 @@ url_set_visibility(void)
 }
 
 void
-notebook_tab_set_visibility(GtkNotebook *notebook)
+notebook_tab_set_visibility()
 {
-	if (show_tabs == 0)
+	if (show_tabs == 0) {
+		gtk_widget_hide(tab_bar);
 		gtk_notebook_set_show_tabs(notebook, FALSE);
-	else
-		gtk_notebook_set_show_tabs(notebook, TRUE);
+	} else {
+		if (tab_style == XT_TABS_NORMAL) {
+			gtk_widget_hide(tab_bar);
+			gtk_notebook_set_show_tabs(notebook, TRUE);
+		} else if (tab_style == XT_TABS_COMPACT) {
+			gtk_widget_show(tab_bar);
+			gtk_notebook_set_show_tabs(notebook, FALSE);
+		}
+	}
 }
 
 void
@@ -3741,7 +3798,7 @@ fullscreen(struct tab *t, struct karg *args)
 	}
 
 	url_set_visibility();
-	notebook_tab_set_visibility(notebook);
+	notebook_tab_set_visibility();
 
 	return (XT_CB_HANDLED);
 }
@@ -3849,14 +3906,21 @@ tabaction(struct tab *t, struct karg *args)
 	case XT_TAB_SHOW:
 		if (show_tabs == 0) {
 			show_tabs = 1;
-			notebook_tab_set_visibility(notebook);
+			notebook_tab_set_visibility();
 		}
 		break;
 	case XT_TAB_HIDE:
 		if (show_tabs == 1) {
 			show_tabs = 0;
-			notebook_tab_set_visibility(notebook);
+			notebook_tab_set_visibility();
 		}
+		break;
+	case XT_TAB_NEXTSTYLE:
+		if (tab_style == XT_TABS_NORMAL)
+			tab_style = XT_TABS_COMPACT;
+		else
+			tab_style = XT_TABS_NORMAL;
+		notebook_tab_set_visibility();
 		break;
 	case XT_TAB_UNDO_CLOSE:
 		if (undo_count == 0) {
@@ -3960,7 +4024,7 @@ movetab(struct tab *t, struct karg *args)
 		return (XT_CB_HANDLED);
 	}
 
-	gtk_notebook_set_current_page(notebook, dest);
+	set_current_tab(dest);
 
 	return (XT_CB_HANDLED);
 }
@@ -5161,6 +5225,7 @@ struct cmd {
 	{ "tablast",		0,	movetab,		XT_TAB_LAST,		0 },
 	{ "tabnew",		0,	tabaction,		XT_TAB_NEW,		XT_PREFIX | XT_URLARG },
 	{ "tabnext",		0,	movetab,		XT_TAB_NEXT,		XT_PREFIX | XT_INTARG},
+	{ "tabnextstyle",	0,	tabaction,		XT_TAB_NEXTSTYLE,	0 },
 	{ "tabprevious",	0,	movetab,		XT_TAB_PREV,		XT_PREFIX | XT_INTARG},
 	{ "tabrewind",		0,	movetab,		XT_TAB_FIRST,		0 },
 	{ "tabshow",		0,	tabaction,		XT_TAB_SHOW,		0 },
@@ -6057,9 +6122,11 @@ notify_title_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	set = title ? title : get_uri(t);
 	if (set) {
 		gtk_label_set_text(GTK_LABEL(t->label), set);
+		gtk_label_set_text(GTK_LABEL(t->tab_elems.label), set);
 		gtk_window_set_title(GTK_WINDOW(main_window), set);
 	} else {
 		gtk_label_set_text(GTK_LABEL(t->label), "(untitled)");
+		gtk_label_set_text(GTK_LABEL(t->tab_elems.label), "(untitled)");
 		gtk_window_set_title(GTK_WINDOW(main_window), XT_NAME);
 	}
 }
@@ -7331,19 +7398,63 @@ row_activated_cb(GtkTreeView *view, GtkTreePath *path,
 	if (gtk_tree_model_get_iter(GTK_TREE_MODEL(buffers_store), &iter, path)) {
 		gtk_tree_model_get
 		    (GTK_TREE_MODEL(buffers_store), &iter, COL_ID, &id, -1);
-		gtk_notebook_set_current_page(notebook, id - 1);
+		set_current_tab(id - 1);
 	}
 
 	hide_buffers(t);
 }
 
+/* after tab reordering/creation/removal */
 void
 recalc_tabs(void)
 {
 	struct tab		*t;
+	int			 maxid = 0;
+	int			 curid = 0;
 
-	TAILQ_FOREACH(t, &tabs, entry)
+	TAILQ_FOREACH(t, &tabs, entry) {
 		t->tab_id = gtk_notebook_page_num(notebook, t->vbox);
+		if (t->tab_id > maxid)
+			maxid = t->tab_id;
+
+		gtk_widget_show(t->tab_elems.sep);
+	}
+
+	curid = gtk_notebook_get_current_page(notebook);
+	TAILQ_FOREACH(t, &tabs, entry) {
+		if (t->tab_id == maxid) {
+			gtk_widget_hide(t->tab_elems.sep);
+			break;
+		}
+	}
+}
+
+/* after active tab change */
+void
+recolor_compact_tabs(void)
+{
+	struct tab		*t;
+	int			 curid = 0;
+	GdkColor		 color;
+
+	gdk_color_parse(XT_COLOR_CT_INACTIVE, &color);
+	TAILQ_FOREACH(t, &tabs, entry)
+		gtk_widget_modify_fg(t->tab_elems.label, GTK_STATE_NORMAL, &color);
+
+	curid = gtk_notebook_get_current_page(notebook);
+	TAILQ_FOREACH(t, &tabs, entry)
+		if (t->tab_id == curid) {
+			gdk_color_parse(XT_COLOR_CT_ACTIVE, &color);
+			gtk_widget_modify_fg(t->tab_elems.label, GTK_STATE_NORMAL, &color);
+			break;
+		}
+}
+
+void
+set_current_tab(int page_num)
+{
+	gtk_notebook_set_current_page(notebook, page_num);
+	recolor_compact_tabs();
 }
 
 int
@@ -7433,7 +7544,9 @@ delete_tab(struct tab *t)
 		gtk_widget_destroy(t->js_toggle);
 	}
 
+	gtk_widget_destroy(t->tab_elems.eventbox);
 	gtk_widget_destroy(t->vbox);
+
 	g_free(t->user_agent);
 	g_free(t->stylesheet);
 	g_free(t);
@@ -7450,6 +7563,9 @@ delete_tab(struct tab *t)
 		a.s = NULL;
 		save_tabs(t, &a);
 	}
+	
+	recalc_tabs();
+	recolor_compact_tabs();
 }
 
 void
@@ -7480,6 +7596,38 @@ adjustfont_webkit(struct tab *t, int adjust)
 	}
 	g_object_set(G_OBJECT(t->wv), "zoom-level", zoom, (char *)NULL);
 	g_object_get(G_OBJECT(t->wv), "zoom-level", &zoom, (char *)NULL);
+}
+
+gboolean
+tab_clicked_cb(GtkWidget *widget, GdkEventButton *event, gpointer data)
+{
+	struct tab *t = (struct tab *) data;
+
+	DNPRINTF(XT_D_TAB, "tab_clicked_cb: tab: %d\n", t->tab_id);
+
+	switch (event->button) {
+	case 1:
+		set_current_tab(t->tab_id);
+		break;
+	case 2:
+		delete_tab(t);
+		break;
+	}
+
+	return TRUE;
+}
+
+gboolean
+page_reordered_cb(GtkWidget *nb, GtkWidget *eventbox, guint pn, gpointer data)
+{
+	struct tab *t = (struct tab *) data;
+
+	DNPRINTF(XT_D_TAB, "page_reordered_cb: tab: %d\n", t->tab_id);
+
+	recalc_tabs();
+	gtk_box_reorder_child(GTK_BOX(tab_bar), t->tab_elems.eventbox, t->tab_id);
+
+	return TRUE;
 }
 
 void
@@ -7523,7 +7671,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	t->tab_content = b;
 
 #if GTK_CHECK_VERSION(2, 20, 0)
-	t->spinner = gtk_spinner_new ();
+	t->spinner = gtk_spinner_new();
 #endif
 	t->label = gtk_label_new(title);
 	bb = create_button("Close", GTK_STOCK_CLOSE, 1);
@@ -7592,6 +7740,30 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_widget_show_all(b);
 	gtk_widget_show_all(t->vbox);
 
+	/* compact tab bar */
+	t->tab_elems.label = gtk_label_new(title);
+	gtk_label_set_width_chars(GTK_LABEL(t->tab_elems.label), 1.0);
+	gtk_misc_set_alignment(GTK_MISC(t->tab_elems.label), 0.0, 0.0);
+	gtk_misc_set_padding(GTK_MISC(t->tab_elems.label), 4.0, 4.0);
+
+	t->tab_elems.eventbox = gtk_event_box_new();
+	t->tab_elems.box = gtk_hbox_new(FALSE, 0);
+	t->tab_elems.sep = gtk_vseparator_new();
+
+	gdk_color_parse(XT_COLOR_CT_BACKGROUND, &color);
+	gtk_widget_modify_bg(t->tab_elems.eventbox, GTK_STATE_NORMAL, &color);
+	gdk_color_parse(XT_COLOR_CT_INACTIVE, &color);
+	gtk_widget_modify_fg(t->tab_elems.label, GTK_STATE_NORMAL, &color);
+	gdk_color_parse(XT_COLOR_CT_SEPARATOR, &color);
+	gtk_widget_modify_bg(t->tab_elems.sep, GTK_STATE_NORMAL, &color);
+
+	gtk_box_pack_start(GTK_BOX(t->tab_elems.box), t->tab_elems.label, TRUE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(t->tab_elems.box), t->tab_elems.sep, FALSE, FALSE, 0);
+	gtk_container_add(GTK_CONTAINER(t->tab_elems.eventbox), t->tab_elems.box);
+
+	gtk_box_pack_start(GTK_BOX(tab_bar), t->tab_elems.eventbox, TRUE, TRUE, 0);
+	gtk_widget_show_all(t->tab_elems.eventbox);
+
 	if (append_next == 0 || gtk_notebook_get_n_pages(notebook) == 0)
 		append_tab(t);
 	else {
@@ -7601,6 +7773,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 		else {
 			TAILQ_INSERT_TAIL(&tabs, t, entry);
 			gtk_notebook_insert_page(notebook, t->vbox, b, id);
+			gtk_box_reorder_child(GTK_BOX(tab_bar), t->tab_elems.eventbox, id);
 			recalc_tabs();
 		}
 	}
@@ -7614,6 +7787,13 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 #endif
 	/* make notebook tabs reorderable */
 	gtk_notebook_set_tab_reorderable(notebook, t->vbox, TRUE);
+
+	/* compact tabs clickable */
+	g_signal_connect(GTK_OBJECT(t->tab_elems.eventbox),
+	    "button_press_event", G_CALLBACK(tab_clicked_cb), t);
+
+	g_signal_connect(GTK_OBJECT(notebook),
+	    "page_reordered", G_CALLBACK(page_reordered_cb), t);
 
 	g_object_connect(G_OBJECT(t->cmd),
 	    "signal::key-press-event", G_CALLBACK(cmd_keypress_cb), t,
@@ -7669,7 +7849,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	statusbar_set_visibility();
 
 	if (focus) {
-		gtk_notebook_set_current_page(notebook, t->tab_id);
+		set_current_tab(t->tab_id);
 		DNPRINTF(XT_D_TAB, "create_new_tab: going to tab: %d\n",
 		    t->tab_id);
 	}
@@ -7703,6 +7883,8 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	} else
 		webkit_web_back_forward_list_clear(t->bfl);
 
+	recalc_tabs();
+	recolor_compact_tabs();
 	return (t);
 }
 
@@ -7936,7 +8118,6 @@ create_canvas(void)
 	gtk_notebook_set_tab_vborder(notebook, 0);
 #endif
 	gtk_notebook_set_scrollable(notebook, TRUE);
-	notebook_tab_set_visibility(notebook);
 	gtk_notebook_set_show_border(notebook, FALSE);
 	gtk_widget_set_can_focus(GTK_WIDGET(notebook), FALSE);
 
@@ -7950,6 +8131,11 @@ create_canvas(void)
 	gtk_notebook_set_action_widget(notebook, abtn, GTK_PACK_END);
 #endif
 	gtk_widget_set_size_request(GTK_WIDGET(notebook), -1, -1);
+
+	/* compact tab bar */
+	tab_bar = gtk_hbox_new(TRUE, 0);
+
+	gtk_box_pack_start(GTK_BOX(vbox), tab_bar, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(notebook), TRUE, TRUE, 0);
 	gtk_widget_set_size_request(vbox, -1, -1);
 
@@ -7982,6 +8168,7 @@ create_canvas(void)
 
 	gtk_widget_show_all(abtn);
 	gtk_widget_show_all(main_window);
+	notebook_tab_set_visibility();
 }
 
 void
@@ -8662,6 +8849,7 @@ main(int argc, char *argv[])
 
 	/* go graphical */
 	create_canvas();
+	notebook_tab_set_visibility();
 
 	if (save_global_history)
 		restore_global_history();
