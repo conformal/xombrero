@@ -1663,8 +1663,10 @@ walk_mime_type(struct settings *s,
 	struct mime_type	*m;
 	char			*str;
 
-	if (s == NULL || cb == NULL)
+	if (s == NULL || cb == NULL) {
 		show_oops(NULL, "walk_mime_type invalid parameters");
+		return;
+	}
 
 	TAILQ_FOREACH(m, &mtl, entry) {
 		str = g_strdup_printf("%s%s --> %s",
