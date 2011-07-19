@@ -6136,6 +6136,7 @@ notify_title_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	title = get_title(t, FALSE);
 	win_title = get_title(t, TRUE);
 	gtk_label_set_text(GTK_LABEL(t->label), title);
+	gtk_label_set_text(GTK_LABEL(t->tab_elems.label), title);
 	if (t->tab_id == gtk_notebook_get_current_page(notebook))
 		gtk_window_set_title(GTK_WINDOW(main_window), win_title);
 }
@@ -7868,10 +7869,10 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_notebook_set_tab_reorderable(notebook, t->vbox, TRUE);
 
 	/* compact tabs clickable */
-	g_signal_connect(GTK_OBJECT(t->tab_elems.eventbox),
+	g_signal_connect(G_OBJECT(t->tab_elems.eventbox),
 	    "button_press_event", G_CALLBACK(tab_clicked_cb), t);
 
-	g_signal_connect(GTK_OBJECT(notebook),
+	g_signal_connect(G_OBJECT(notebook),
 	    "page_reordered", G_CALLBACK(page_reordered_cb), t);
 
 	g_object_connect(G_OBJECT(t->cmd),
