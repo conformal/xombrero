@@ -733,13 +733,13 @@ int			xtp_page_fl(struct tab *, struct karg *);
 int			xtp_page_hl(struct tab *, struct karg *);
 void			xt_icon_from_file(struct tab *, char *);
 const gchar		*get_uri(struct tab *);
-const gchar		*get_title(struct tab *);
+const gchar		*get_title(struct tab *, bool);
 
 #define XT_URI_ABOUT		("about:")
 #define XT_URI_ABOUT_LEN	(strlen(XT_URI_ABOUT))
 #define XT_URI_ABOUT_ABOUT	("about")
 #define XT_URI_ABOUT_BLANK	("blank")
-#define XT_URI_ABOUT_CERTS	("certs")	/* XXX NOT YET */
+#define XT_URI_ABOUT_CERTS	("certs")
 #define XT_URI_ABOUT_COOKIEWL	("cookiewl")
 #define XT_URI_ABOUT_COOKIEJAR	("cookiejar")
 #define XT_URI_ABOUT_DOWNLOADS	("downloads")
@@ -1030,7 +1030,7 @@ buffers_make_list(void)
 	for (i = 0; i < num_tabs; i++)
 		if (stabs[i]) {
 			gtk_list_store_append(buffers_store, &iter);
-			title = get_title(stabs[i]);
+			title = get_title(stabs[i], FALSE);
 			gtk_list_store_set(buffers_store, &iter,
 			    COL_ID, i + 1, /* Enumerate the tabs starting from 1
 					    * rather than 0. */
@@ -1587,15 +1587,17 @@ get_uri(struct tab *t)
 }
 
 const gchar *
-get_title(struct tab *t)
+get_title(struct tab *t, bool window)
 {
 	const gchar		*set = NULL, *title = NULL;
 
 	title = webkit_web_view_get_title(t->wv);
 	set = title ? title : get_uri(t);
+
 	if (!set || t->xtp_meaning == XT_XTP_TAB_MEANING_BL) {
-		set = "(untitled)";
+		set = window ? XT_NAME : "(untitled)";
 	}
+
 	return set;
 }
 
@@ -2746,7 +2748,7 @@ about(struct tab *t, struct karg *args)
 	    "<li>Todd T. Fries &lt;todd@fries.net&gt; </li>"
 	    "<li>Raphael Graf &lt;r@undefined.ch&gt; </li>"
 	    "</ul>"
-	    "Copyrights and licenses can be found on the XXXterm "
+	    "Copyrights and licenses can be found on the XXXTerm "
 	    "<a href=\"http://opensource.conformal.com/wiki/XXXTerm\">website</a>",
 	    version
 	    );
@@ -2771,11 +2773,11 @@ help(struct tab *t, struct karg *args)
 	head = "<meta http-equiv=\"REFRESH\" content=\"0;"
 	    "url=http://opensource.conformal.com/cgi-bin/man-cgi?xxxterm\">"
 	    "</head>\n";
-	body = "XXXterm man page <a href=\"http://opensource.conformal.com/"
+	body = "XXXTerm man page <a href=\"http://opensource.conformal.com/"
 	    "cgi-bin/man-cgi?xxxterm\">http://opensource.conformal.com/"
 	    "cgi-bin/man-cgi?xxxterm</a>";
 
-	page = get_html_page("XXXterm", body, head, FALSE);
+	page = get_html_page(XT_NAME, body, head, FALSE);
 
 	load_webkit_string(t, page, XT_URI_ABOUT_HELP);
 	g_free(page);
@@ -3568,11 +3570,8 @@ add_favorite(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	title = webkit_web_view_get_title(t->wv);
+	title = get_title(t, FALSE);
 	uri = get_uri(t);
-
-	if (title == NULL)
-		title = uri;
 
 	if (title == NULL || uri == NULL) {
 		show_oops(t, "can't add page to favorites");
@@ -3725,13 +3724,12 @@ url_set_visibility(void)
 {
 	struct tab		*t;
 
-	TAILQ_FOREACH(t, &tabs, entry) {
+	TAILQ_FOREACH(t, &tabs, entry)
 		if (show_url == 0) {
 			gtk_widget_hide(t->toolbar);
 			focus_webview(t);
 		} else
 			gtk_widget_show(t->toolbar);
-	}
 }
 
 void
@@ -3756,13 +3754,12 @@ statusbar_set_visibility(void)
 {
 	struct tab		*t;
 
-	TAILQ_FOREACH(t, &tabs, entry) {
+	TAILQ_FOREACH(t, &tabs, entry)
 		if (show_statusbar == 0) {
 			gtk_widget_hide(t->statusbar_box);
 			focus_webview(t);
 		} else
 			gtk_widget_show(t->statusbar_box);
-	}
 }
 
 void
@@ -5626,6 +5623,8 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 		return;
 	}
 
+	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
+
 	enc_search = soup_uri_encode(search, XT_RESERVED_CHARS);
 	newuri = g_strdup_printf(search_string, enc_search);
 	g_free(enc_search);
@@ -6015,7 +6014,7 @@ notify_icon_loaded_cb(WebKitWebView *wv, gchar *uri, struct tab *t)
 void
 notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 {
-	const gchar		*set = NULL, *uri = NULL, *title = NULL;
+	const gchar		*uri = NULL, *title = NULL;
 	struct history		*h, find;
 	const gchar		*s_loading;
 	struct karg		a;
@@ -6092,11 +6091,10 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 			find.uri = uri;
 			h = RB_FIND(history_list, &hl, &find);
 			if (!h) {
-				title = webkit_web_view_get_title(wview);
-				set = title ? title: uri;
+				title = get_title(t, FALSE);
 				h = g_malloc(sizeof *h);
 				h->uri = g_strdup(uri);
-				h->title = g_strdup(set);
+				h->title = g_strdup(title);
 				RB_INSERT(history_list, &hl, h);
 				completion_add_uri(h->uri);
 				update_history_tabs(NULL);
@@ -6133,19 +6131,13 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 void
 notify_title_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 {
-	const gchar		*set = NULL, *title = NULL;
+	const gchar		*title = NULL, *win_title = NULL;
 
-	title = webkit_web_view_get_title(wview);
-	set = title ? title : get_uri(t);
-	if (set) {
-		gtk_label_set_text(GTK_LABEL(t->label), set);
-		gtk_label_set_text(GTK_LABEL(t->tab_elems.label), set);
-		gtk_window_set_title(GTK_WINDOW(main_window), set);
-	} else {
-		gtk_label_set_text(GTK_LABEL(t->label), "(untitled)");
-		gtk_label_set_text(GTK_LABEL(t->tab_elems.label), "(untitled)");
-		gtk_window_set_title(GTK_WINDOW(main_window), XT_NAME);
-	}
+	title = get_title(t, FALSE);
+	win_title = get_title(t, TRUE);
+	gtk_label_set_text(GTK_LABEL(t->label), title);
+	if (t->tab_id == gtk_notebook_get_current_page(notebook))
+		gtk_window_set_title(GTK_WINDOW(main_window), win_title);
 }
 
 void
@@ -6782,7 +6774,7 @@ cmd_getlist(int id, char *key)
 	dep = (id == -1) ? 0 : cmds[id].level + 1;
 
 	for (i = id + 1; i < LENGTH(cmds); i++) {
-		if(cmds[i].level < dep)
+		if (cmds[i].level < dep)
 			break;
 		if (cmds[i].level == dep && !strncmp(key, cmds[i].cmd, strlen(key)))
 			cmd_status.list[c++] = cmds[i].cmd;
@@ -7993,9 +7985,7 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkWidget *nbp, guint pn,
 			DNPRINTF(XT_D_TAB, "notebook_switchpage_cb: going to "
 			    "%d\n", pn);
 
-			uri = webkit_web_view_get_title(t->wv);
-			if (uri == NULL)
-				uri = XT_NAME;
+			uri = get_title(t, TRUE);
 			gtk_window_set_title(GTK_WINDOW(main_window), uri);
 
 			hide_cmd(t);
@@ -8040,7 +8030,7 @@ arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 				/* XXX add gui pages in here to look purdy */
 				uri = "(untitled)";
 			menu_items = gtk_menu_item_new_with_label(uri);
-			gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_items); 
+			gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_items);
 			gtk_widget_show(menu_items);
 
 			g_signal_connect_swapped((menu_items),
@@ -8243,7 +8233,6 @@ create_canvas(void)
 
 	main_window = create_window();
 	gtk_container_add(GTK_CONTAINER(main_window), vbox);
-	gtk_window_set_title(GTK_WINDOW(main_window), XT_NAME);
 
 	/* icons */
 	for (i = 0; i < LENGTH(icons); i++) {
