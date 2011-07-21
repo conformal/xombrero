@@ -3877,7 +3877,6 @@ tabaction(struct tab *t, struct karg *args)
 			TAILQ_FOREACH(tt, &tabs, entry)
 				if (tt->tab_id == args->p - 1) {
 					delete_tab(tt);
-					recalc_tabs();
 					break;
 				}
 		break;
@@ -3909,8 +3908,10 @@ tabaction(struct tab *t, struct karg *args)
 		}
 		break;
 	case XT_TAB_NEXTSTYLE:
-		if (tab_style == XT_TABS_NORMAL)
+		if (tab_style == XT_TABS_NORMAL) {
 			tab_style = XT_TABS_COMPACT;
+			recolor_compact_tabs();
+		}
 		else
 			tab_style = XT_TABS_NORMAL;
 		notebook_tab_set_visibility();
@@ -5934,8 +5935,6 @@ abort_favicon_download(struct tab *t)
 void
 notify_icon_loaded_cb(WebKitWebView *wv, gchar *uri, struct tab *t)
 {
-	GdkPixbuf		*pb;
-
 	DNPRINTF(XT_D_DOWNLOAD, "%s %s\n", __func__, uri);
 
 	if (uri == NULL || t == NULL)
@@ -5943,6 +5942,8 @@ notify_icon_loaded_cb(WebKitWebView *wv, gchar *uri, struct tab *t)
 
 #if WEBKIT_CHECK_VERSION(1, 4, 0)
 	/* take icon from WebKitIconDatabase */
+	GdkPixbuf		*pb;
+
 	pb = webkit_web_view_get_icon_pixbuf(wv);
 	if (pb) {
 		xt_icon_from_pixbuf(t, pb);
@@ -6531,7 +6532,6 @@ wv_keypress_after_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 {
 	char			s[2], buf[128];
 	const char		*errstr = NULL;
-	long long		link;
 
 	/* don't use w directly; use t->whatever instead */
 
@@ -6552,7 +6552,6 @@ wv_keypress_after_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 
 		/* RETURN */
 		if (CLEAN(e->state) == 0 && e->keyval == GDK_Return) {
-			link = strtonum(t->hint_num, 1, 1000, &errstr);
 			if (errstr) {
 				/* we have a string */
 			} else {
@@ -6609,7 +6608,6 @@ wv_keypress_after_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 			DNPRINTF(XT_D_JS, "wv_keypress_after_cb: numerical %s\n",
 			    t->hint_num);
 num:
-			link = strtonum(t->hint_num, 1, 1000, &errstr);
 			if (errstr) {
 				DNPRINTF(XT_D_JS, "wv_keypress_after_cb: invalid link number\n");
 				disable_hints(t);
@@ -7467,7 +7465,6 @@ recalc_tabs(void)
 {
 	struct tab		*t;
 	int			 maxid = 0;
-	int			 curid = 0;
 
 	TAILQ_FOREACH(t, &tabs, entry) {
 		t->tab_id = gtk_notebook_page_num(notebook, t->vbox);
@@ -7477,7 +7474,6 @@ recalc_tabs(void)
 		gtk_widget_show(t->tab_elems.sep);
 	}
 
-	curid = gtk_notebook_get_current_page(notebook);
 	TAILQ_FOREACH(t, &tabs, entry) {
 		if (t->tab_id == maxid) {
 			gtk_widget_hide(t->tab_elems.sep);
@@ -7674,20 +7670,6 @@ tab_clicked_cb(GtkWidget *widget, GdkEventButton *event, gpointer data)
 	return TRUE;
 }
 
-gboolean
-page_reordered_cb(GtkWidget *nb, GtkWidget *eventbox, guint pn, gpointer data)
-{
-	struct tab *t = (struct tab *) data;
-
-	DNPRINTF(XT_D_TAB, "page_reordered_cb: tab: %d\n", t->tab_id);
-
-	recalc_tabs();
-	gtk_box_reorder_child(GTK_BOX(tab_bar), t->tab_elems.eventbox,
-	    t->tab_id);
-
-	return TRUE;
-}
-
 void
 append_tab(struct tab *t)
 {
@@ -7872,9 +7854,6 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	g_signal_connect(G_OBJECT(t->tab_elems.eventbox),
 	    "button_press_event", G_CALLBACK(tab_clicked_cb), t);
 
-	g_signal_connect(G_OBJECT(notebook),
-	    "page_reordered", G_CALLBACK(page_reordered_cb), t);
-
 	g_object_connect(G_OBJECT(t->cmd),
 	    "signal::key-press-event", G_CALLBACK(cmd_keypress_cb), t,
 	    "signal::key-release-event", G_CALLBACK(cmd_keyrelease_cb), t,
@@ -7964,7 +7943,6 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	} else
 		webkit_web_back_forward_list_clear(t->bfl);
 
-	recalc_tabs();
 	recolor_compact_tabs();
 	return (t);
 }
@@ -8004,7 +7982,20 @@ void
 notebook_pagereordered_cb(GtkNotebook *nb, GtkWidget *nbp, guint pn,
     gpointer *udata)
 {
+	struct tab *t = NULL, *tt; 
+
 	recalc_tabs();
+
+	TAILQ_FOREACH(tt, &tabs, entry)
+		if (tt->tab_id == pn) {
+			t = tt;
+			break;
+		}
+
+	DNPRINTF(XT_D_TAB, "page_reordered_cb: tab: %d\n", t->tab_id);
+
+	gtk_box_reorder_child(GTK_BOX(tab_bar), t->tab_elems.eventbox,
+	    t->tab_id);
 }
 
 void
