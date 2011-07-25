@@ -540,9 +540,13 @@ gint		enable_spell_checking = 0;
 char		*spell_check_languages = NULL;
 
 char		*cmd_font_name = NULL;
+char		*oops_font_name = NULL;
 char		*statusbar_font_name = NULL;
+char		*tabbar_font_name = NULL;
 PangoFontDescription *cmd_font;
+PangoFontDescription *oops_font;
 PangoFontDescription *statusbar_font;
+PangoFontDescription *tabbar_font;
 
 int			btn_down;	/* M1 down in any wv */
 
@@ -707,7 +711,9 @@ struct settings {
 
 	/* font settings */
 	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL },
+	{ "oops_font",			XT_S_STR, 0, NULL, &oops_font_name, NULL },
 	{ "statusbar_font",		XT_S_STR, 0, NULL, &statusbar_font_name, NULL },
+	{ "tabbar_font",		XT_S_STR, 0, NULL, &tabbar_font_name, NULL },
 
 	/* runtime settings */
 	{ "alias",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_alias },
@@ -7746,6 +7752,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gdk_color_parse(XT_COLOR_RED, &color);
 	gtk_widget_modify_base(t->oops, GTK_STATE_NORMAL, &color);
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->oops, FALSE, FALSE, 0);
+	gtk_widget_modify_font(GTK_WIDGET(t->oops), oops_font);
 
 	/* command entry */
 	t->cmd = gtk_entry_new();
@@ -7761,12 +7768,13 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.statusbar), NULL);
 	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.statusbar), FALSE);
 	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.statusbar), FALSE);
+	gtk_widget_modify_font(GTK_WIDGET(t->sbe.statusbar), statusbar_font);
 
 	t->sbe.position = gtk_entry_new();
 	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.position), NULL);
 	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.position), FALSE);
 	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.position), FALSE);
-
+	gtk_widget_modify_font(GTK_WIDGET(t->sbe.position), statusbar_font);
 	gtk_entry_set_alignment(GTK_ENTRY(t->sbe.position), 1.0);
 	gtk_widget_set_size_request(t->sbe.position, 40, -1);
 
@@ -7803,6 +7811,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_label_set_width_chars(GTK_LABEL(t->tab_elems.label), 1.0);
 	gtk_misc_set_alignment(GTK_MISC(t->tab_elems.label), 0.0, 0.0);
 	gtk_misc_set_padding(GTK_MISC(t->tab_elems.label), 4.0, 4.0);
+	gtk_widget_modify_font(GTK_WIDGET(t->tab_elems.label), tabbar_font);
 
 	t->tab_elems.eventbox = gtk_event_box_new();
 	t->tab_elems.box = gtk_hbox_new(FALSE, 0);
@@ -8808,7 +8817,9 @@ main(int argc, char *argv[])
 	resource_dir = g_strdup("/usr/local/share/xxxterm/");
 	strlcpy(runtime_settings, "runtime", sizeof runtime_settings);
 	cmd_font_name = g_strdup("monospace normal 9");
+	oops_font_name = g_strdup("monospace normal 9");
 	statusbar_font_name = g_strdup("monospace normal 9");
+	tabbar_font_name = g_strdup("monospace normal 9");
 
 
 	/* read config file */
@@ -8819,7 +8830,9 @@ main(int argc, char *argv[])
 
 	/* init fonts */
 	cmd_font = pango_font_description_from_string(cmd_font_name);
+	oops_font = pango_font_description_from_string(oops_font_name);
 	statusbar_font = pango_font_description_from_string(statusbar_font_name);
+	tabbar_font = pango_font_description_from_string(tabbar_font_name);
 
 	/* working directory */
 	if (strlen(work_dir) == 0)
