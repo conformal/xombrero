@@ -510,6 +510,7 @@ int		enable_scripts = 1;
 int		enable_plugins = 0;
 int		default_font_size = 12;
 gfloat		default_zoom_level = 1.0;
+char		default_script[PATH_MAX];
 int		window_height = 768;
 int		window_width = 1024;
 int		icon_size = 2; /* 1 = smallest, 2+ = bigger */
@@ -555,6 +556,7 @@ struct key_binding;
 int		set_browser_mode(struct settings *, char *);
 int		set_cookie_policy(struct settings *, char *);
 int		set_download_dir(struct settings *, char *);
+int		set_default_script(struct settings *, char *);
 int		set_runtime_dir(struct settings *, char *);
 int		set_tab_style(struct settings *, char *);
 int		set_work_dir(struct settings *, char *);
@@ -569,6 +571,7 @@ GtkWidget *	create_button(char *, char *, int);
 char		*get_browser_mode(struct settings *);
 char		*get_cookie_policy(struct settings *);
 char		*get_download_dir(struct settings *);
+char		*get_default_script(struct settings *);
 char		*get_runtime_dir(struct settings *);
 char		*get_tab_style(struct settings *);
 char		*get_work_dir(struct settings *);
@@ -632,6 +635,12 @@ struct special		s_cookie_wl = {
 	walk_cookie_wl
 };
 
+struct special		s_default_script = {
+	set_default_script,
+	get_default_script,
+	NULL
+};
+
 struct special		s_download_dir = {
 	set_download_dir,
 	get_download_dir,
@@ -673,6 +682,7 @@ struct settings {
 	{ "ctrl_click_focus",		XT_S_INT, 0,		&ctrl_click_focus, NULL, NULL },
 	{ "default_font_size",		XT_S_INT, 0,		&default_font_size, NULL, NULL },
 	{ "default_zoom_level",		XT_S_FLOAT, 0,		NULL, NULL, NULL, &default_zoom_level },
+	{ "default_script",		XT_S_STR, 0, NULL, NULL,&s_default_script },
 	{ "download_dir",		XT_S_STR, 0, NULL, NULL,&s_download_dir },
 	{ "enable_cookie_whitelist",	XT_S_INT, 0,		&enable_cookie_whitelist, NULL, NULL },
 	{ "enable_js_whitelist",	XT_S_INT, 0,		&enable_js_whitelist, NULL, NULL },
@@ -1240,6 +1250,26 @@ get_cookie_policy(struct settings *s)
 		return (NULL);
 
 	return (r);
+}
+
+char *
+get_default_script(struct settings *s)
+{
+	if (default_script[0] == '\0')
+		return (0);
+	return (g_strdup(default_script));
+}
+
+int
+set_default_script(struct settings *s, char *val)
+{
+	if (val[0] == '~')
+		snprintf(default_script, sizeof default_script, "%s/%s",
+		    pwd->pw_dir, &val[1]);
+	else
+		strlcpy(default_script, val, sizeof default_script);
+
+	return (0);
 }
 
 char *
@@ -2399,6 +2429,50 @@ save_tabs_and_quit(struct tab *t, struct karg *args)
 	quit(t, NULL);
 
 	return (1);
+}
+
+int
+run_page_script(struct tab *t, struct karg *args)
+{
+	const gchar		*uri;
+	char			*tmp, script[PATH_MAX];
+
+	tmp = args->s != NULL && strlen(args->s) > 0 ? args->s : default_script;
+	if (tmp[0] == '\0') {
+		show_oops(t, "no script specified");
+		return (1);
+	}
+
+	if ((uri = get_uri(t)) == NULL) {
+		show_oops(t, "tab is empty, not running script");
+		return (1);
+	}
+
+	if (tmp[0] == '~')
+		snprintf(script, sizeof script, "%s/%s",
+		    pwd->pw_dir, &tmp[1]);
+	else
+		strlcpy(script, tmp, sizeof script);
+
+	switch (fork()) {
+	case -1:
+		show_oops(t, "can't fork to run script");
+		return (1);
+		/* NOTREACHED */
+	case 0:
+		break;
+	default:
+		return (0);
+	}
+
+	/* child */
+	execlp(script, script, uri, (void *)NULL);
+
+	_exit(0);
+
+	/* NOTREACHED */
+
+	return (0);
 }
 
 int
@@ -4835,6 +4909,7 @@ struct key_binding {
 	{ "pasteurinew",	0,	0,	GDK_P		},
 	{ "toplevel toggle",	0,	0,	GDK_F4		},
 	{ "help",		0,	0,	GDK_F1		},
+	{ "run_script",		MOD1,	0,	GDK_r		},
 
 	/* search */
 	{ "searchnext",		0,	0,	GDK_n		},
@@ -5147,7 +5222,6 @@ struct cmd {
 	{ "scrollfarright",	0,	move,			XT_MOVE_FARRIGHT,	0 },
 	{ "scrollfarleft",	0,	move,			XT_MOVE_FARLEFT,	0 },
 
-
 	{ "favorites",		0,	xtp_page_fl,		0,			0 },
 	{ "fav",		0,	xtp_page_fl,		0,			0 },
 	{ "favadd",		0,	add_favorite,		0,			0 },
@@ -5209,6 +5283,7 @@ struct cmd {
 	{ "urlhide",		0,	urlaction,		XT_URL_HIDE,		0 },
 	{ "urlshow",		0,	urlaction,		XT_URL_SHOW,		0 },
 	{ "statustoggle",	0,	statustoggle,		0,			0 },
+	{ "run_script",		0,	run_page_script,	0,			XT_USERARG },
 
 	{ "print",		0,	print_page,		0,			0 },
 
@@ -6300,6 +6375,7 @@ run_mimehandler(struct tab *t, char *mime_type, WebKitNetworkRequest *request)
 	switch (fork()) {
 	case -1:
 		show_oops(t, "can't fork mime handler");
+		return (1);
 		/* NOTREACHED */
 	case 0:
 		break;
