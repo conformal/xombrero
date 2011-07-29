@@ -238,7 +238,6 @@ struct tab {
 
 	/* settings */
 	WebKitWebSettings	*settings;
-	int			font_size;
 	gchar			*user_agent;
 };
 TAILQ_HEAD(tab_list, tab);
@@ -428,7 +427,10 @@ struct karg {
 #define XT_PASTE_CURRENT_TAB	(0)
 #define XT_PASTE_NEW_TAB	(1)
 
-#define XT_FONT_SET		(0)
+#define XT_ZOOM_SETDEFAULTS	(-1)
+#define XT_ZOOM_IN		(-2)
+#define XT_ZOOM_OUT		(-3)
+#define XT_ZOOM_NORMAL		(100)
 
 #define XT_URL_SHOW		(1)
 #define XT_URL_HIDE		(2)
@@ -4974,7 +4976,6 @@ struct key_binding {
 	{ "tabnext 7",		CTRL,	0,	GDK_7		},
 	{ "tabnext 8",		CTRL,	0,	GDK_8		},
 	{ "tabnext 9",		CTRL,	0,	GDK_9		},
-	{ "tabnext 10",		CTRL,	0,	GDK_0		},
 	{ "tabfirst",		CTRL,	0,	GDK_less	},
 	{ "tablast",		CTRL,	0,	GDK_greater	},
 	{ "tabprevious",	CTRL,	0,	GDK_Left	},
@@ -4982,6 +4983,7 @@ struct key_binding {
 	{ "focusout",		CTRL,	0,	GDK_minus	},
 	{ "focusin",		CTRL,	0,	GDK_plus	},
 	{ "focusin",		CTRL,	0,	GDK_equal	},
+	{ "focusreset",		CTRL,	0,	GDK_0		},
 
 	/* command aliases (handy when -S flag is used) */
 	{ "promptopen",		0,	0,	GDK_F9		},
@@ -5288,8 +5290,9 @@ struct cmd {
 	{ "print",		0,	print_page,		0,			0 },
 
 	/* tabs */
-	{ "focusin",		0,	resizetab,		1,			0 },
-	{ "focusout",		0,	resizetab,		-1,			0 },
+	{ "focusin",		0,	resizetab,		XT_ZOOM_IN,		0 },
+	{ "focusout",		0,	resizetab,		XT_ZOOM_OUT,		0 },
+	{ "focusreset",		0,	resizetab,		XT_ZOOM_NORMAL,		0 },
 	{ "q",			0,	tabaction,		XT_TAB_DELQUIT,		0 },
 	{ "quit",		0,	tabaction,		XT_TAB_DELQUIT,		0 },
 	{ "open",		0,	tabaction,		XT_TAB_OPEN,		XT_URLARG },
@@ -7282,7 +7285,7 @@ setup_webkit(struct tab *t)
 	    "spell_checking_languages", spell_check_languages, (char *)NULL);
 	g_object_set(G_OBJECT(t->wv),
 	    "full-content-zoom", TRUE, (char *)NULL);
-	adjustfont_webkit(t, XT_FONT_SET);
+	adjustfont_webkit(t, XT_ZOOM_SETDEFAULTS);
 
 	webkit_web_view_set_settings(t->wv, t->settings);
 }
@@ -7706,6 +7709,8 @@ delete_tab(struct tab *t)
 void
 adjustfont_webkit(struct tab *t, int adjust)
 {
+#define XT_ZOOMPERCENT		0.04
+
 	gfloat			zoom;
 
 	if (t == NULL) {
@@ -7714,23 +7719,24 @@ adjustfont_webkit(struct tab *t, int adjust)
 	}
 
 	g_object_get(G_OBJECT(t->wv), "zoom-level", &zoom, (char *)NULL);
-	if (adjust == XT_FONT_SET) {
-		t->font_size = default_font_size;
+	if (adjust == XT_ZOOM_SETDEFAULTS) {
 		zoom = default_zoom_level;
-		t->font_size += adjust;
 		g_object_set(G_OBJECT(t->settings), "default-font-size",
-		    t->font_size, (char *)NULL);
-		g_object_get(G_OBJECT(t->settings), "default-font-size",
-		    &t->font_size, (char *)NULL);
-	} else {
-		t->font_size += adjust;
-		zoom += adjust/25.0;
-		if (zoom < 0.0) {
-			zoom = 0.04;
-		}
+		    default_font_size, (char *)NULL);
+	} else if (adjust == XT_ZOOM_IN)
+		zoom += XT_ZOOMPERCENT;
+	else if (adjust == XT_ZOOM_OUT)
+		zoom -= XT_ZOOMPERCENT;
+	else if (adjust > 0)
+		zoom = default_zoom_level + adjust / 100.0 - 1.0;
+	else {
+		show_oops(t, "adjustfont_webkit invalid zoom value");
+		return;
 	}
+
+	if (zoom < XT_ZOOMPERCENT)
+		zoom = XT_ZOOMPERCENT;
 	g_object_set(G_OBJECT(t->wv), "zoom-level", zoom, (char *)NULL);
-	g_object_get(G_OBJECT(t->wv), "zoom-level", &zoom, (char *)NULL);
 }
 
 gboolean

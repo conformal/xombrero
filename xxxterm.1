@@ -315,16 +315,19 @@ Go to the previous tab
 .It Cm C-Right
 Go to the next tab
 .Pq Cm tabnext
-.It Cm C-[1..0]
+.It Cm C-[1..9]
 Jump to page
 .Ar N
-.Pq Cm tabnext [1..0]
+.Pq Cm tabnext [1..9]
 .It Cm C-minus
-Shrink font size by one point
+Zoom out by 4%
 .Pq Cm focusout
 .It Cm C-plus, C-equal
-Grow font size by one point
+Zoom in by 4%
 .Pq Cm focusin
+.It Cm C-0
+Set zoom level to 100%
+.Pq Cm focusreset
 .El
 .Ss Yanking and pasting
 These commands copy and paste text to and from the clipboard.
