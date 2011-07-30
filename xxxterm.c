@@ -429,9 +429,8 @@ struct karg {
 #define XT_PASTE_CURRENT_TAB	(0)
 #define XT_PASTE_NEW_TAB	(1)
 
-#define XT_ZOOM_SETDEFAULTS	(-1)
-#define XT_ZOOM_IN		(-2)
-#define XT_ZOOM_OUT		(-3)
+#define XT_ZOOM_IN		(-1)
+#define XT_ZOOM_OUT		(-2)
 #define XT_ZOOM_NORMAL		(100)
 
 #define XT_URL_SHOW		(1)
@@ -513,7 +512,6 @@ int		cookies_enabled = 1; /* enable cookies */
 int		read_only_cookies = 0; /* enable to not write cookies */
 int		enable_scripts = 1;
 int		enable_plugins = 0;
-int		default_font_size = 12;
 gfloat		default_zoom_level = 1.0;
 char		default_script[PATH_MAX];
 int		window_height = 768;
@@ -685,7 +683,6 @@ struct settings {
 	{ "cookie_policy",		XT_S_INT, 0, NULL, NULL,&s_cookie },
 	{ "cookies_enabled",		XT_S_INT, 0,		&cookies_enabled, NULL, NULL },
 	{ "ctrl_click_focus",		XT_S_INT, 0,		&ctrl_click_focus, NULL, NULL },
-	{ "default_font_size",		XT_S_INT, 0,		&default_font_size, NULL, NULL },
 	{ "default_zoom_level",		XT_S_FLOAT, 0,		NULL, NULL, NULL, &default_zoom_level },
 	{ "default_script",		XT_S_STR, 0, NULL, NULL,&s_default_script },
 	{ "download_dir",		XT_S_STR, 0, NULL, NULL,&s_download_dir },
@@ -1328,7 +1325,7 @@ struct alias_list	aliases;
 /* protos */
 struct tab		*create_new_tab(char *, struct undo *, int, int);
 void			delete_tab(struct tab *);
-void			adjustfont_webkit(struct tab *, int);
+void			setzoom_webkit(struct tab *, int);
 int			run_script(struct tab *, char *);
 int			download_rb_cmp(struct download *, struct download *);
 gboolean		cmd_execute(struct tab *t, char *str);
@@ -4053,7 +4050,7 @@ resizetab(struct tab *t, struct karg *args)
 	DNPRINTF(XT_D_TAB, "resizetab: tab %d %d\n",
 	    t->tab_id, args->i);
 
-	adjustfont_webkit(t, args->i);
+	setzoom_webkit(t, args->i);
 
 	return (XT_CB_HANDLED);
 }
@@ -7283,7 +7280,6 @@ setup_webkit(struct tab *t)
 	    "spell_checking_languages", spell_check_languages, (char *)NULL);
 	g_object_set(G_OBJECT(t->wv),
 	    "full-content-zoom", TRUE, (char *)NULL);
-	adjustfont_webkit(t, XT_ZOOM_SETDEFAULTS);
 
 	webkit_web_view_set_settings(t->wv, t->settings);
 }
@@ -7705,30 +7701,26 @@ delete_tab(struct tab *t)
 }
 
 void
-adjustfont_webkit(struct tab *t, int adjust)
+setzoom_webkit(struct tab *t, int adjust)
 {
 #define XT_ZOOMPERCENT		0.04
 
 	gfloat			zoom;
 
 	if (t == NULL) {
-		show_oops(NULL, "adjustfont_webkit invalid parameters");
+		show_oops(NULL, "setzoom_webkit invalid parameters");
 		return;
 	}
 
 	g_object_get(G_OBJECT(t->wv), "zoom-level", &zoom, (char *)NULL);
-	if (adjust == XT_ZOOM_SETDEFAULTS) {
-		zoom = default_zoom_level;
-		g_object_set(G_OBJECT(t->settings), "default-font-size",
-		    default_font_size, (char *)NULL);
-	} else if (adjust == XT_ZOOM_IN)
+	if (adjust == XT_ZOOM_IN)
 		zoom += XT_ZOOMPERCENT;
 	else if (adjust == XT_ZOOM_OUT)
 		zoom -= XT_ZOOMPERCENT;
 	else if (adjust > 0)
 		zoom = default_zoom_level + adjust / 100.0 - 1.0;
 	else {
-		show_oops(t, "adjustfont_webkit invalid zoom value");
+		show_oops(t, "setzoom_webkit invalid zoom value");
 		return;
 	}
 
