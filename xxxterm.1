@@ -911,6 +911,13 @@ If this value is set connections to untrusted sites will be aborted.
 This value is only used if
 .Cm ssl_ca_file
 is set.
+.It Cm statusbar_elems
+Define the components of the status bar. The possible components are:
+.Bd -literal -offset indent
+| - separator
+P - page progress percent
+.Ed
+The default is "P".
 .It Cm statusbar_font
 Set the status bar font.
 E.g.

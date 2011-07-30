@@ -29,18 +29,18 @@
  *		- encrypted local data
  */
 
+#include <ctype.h>
+#include <dlfcn.h>
+#include <err.h>
+#include <errno.h>
+#include <libgen.h>
+#include <pthread.h>
+#include <pwd.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <err.h>
-#include <pwd.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
-#include <dlfcn.h>
-#include <errno.h>
-#include <signal.h>
-#include <libgen.h>
-#include <ctype.h>
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -56,11 +56,11 @@
 #include <sys/tree.h>
 #endif
 #include <sys/queue.h>
-#include <sys/stat.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/un.h>
 
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
@@ -337,10 +337,12 @@ struct karg {
 #define XT_COLOR_WHITE		"white"
 #define XT_COLOR_BLACK		"black"
 
-#define	XT_COLOR_CT_BACKGROUND	"#000000"
-#define	XT_COLOR_CT_INACTIVE	"#dddddd"
-#define	XT_COLOR_CT_ACTIVE	"#bbbb00"
-#define	XT_COLOR_CT_SEPARATOR	"#555555"
+#define XT_COLOR_CT_BACKGROUND	"#000000"
+#define XT_COLOR_CT_INACTIVE	"#dddddd"
+#define XT_COLOR_CT_ACTIVE	"#bbbb00"
+#define XT_COLOR_CT_SEPARATOR	"#555555"
+
+#define XT_COLOR_SB_SEPARATOR	"#555555"
 
 /*
  * xxxterm "protocol" (xtp)
@@ -499,6 +501,7 @@ int		single_instance = 0; /* only allow one xxxterm to run */
 int		fancy_bar = 1;	/* fancy toolbar */
 int		browser_mode = XT_BM_NORMAL;
 int		enable_localstorage = 0;
+char		*statusbar_elems = NULL;
 
 /* runtime settings */
 int		show_tabs = 1;	/* show tabs on notebook */
@@ -551,7 +554,7 @@ PangoFontDescription *oops_font;
 PangoFontDescription *statusbar_font;
 PangoFontDescription *tabbar_font;
 
-int			btn_down;	/* M1 down in any wv */
+int		btn_down;	/* M1 down in any wv */
 
 struct settings;
 struct key_binding;
@@ -715,6 +718,7 @@ struct settings {
 	{ "spell_check_languages",	XT_S_STR, 0, NULL, &spell_check_languages, NULL },
 	{ "ssl_ca_file",		XT_S_STR, 0, NULL,	&ssl_ca_file, NULL },
 	{ "ssl_strict_certs",		XT_S_INT, 0,		&ssl_strict_certs, NULL, NULL },
+	{ "statusbar_elems",		XT_S_STR, 0, NULL,	&statusbar_elems, NULL },
 	{ "tab_style",			XT_S_STR, 0, NULL, NULL,&s_tab_style },
 	{ "user_agent",			XT_S_STR, 0, NULL,	&user_agent, NULL },
 	{ "window_height",		XT_S_INT, 0,		&window_height, NULL, NULL },
@@ -3225,6 +3229,21 @@ free_connection_certs(gnutls_x509_crt_t *certs, size_t cert_count)
 }
 
 void
+statusbar_modify_attr(struct tab *t, const char *text, const char *base)
+{
+	GdkColor                c_text, c_base;
+
+	gdk_color_parse(text, &c_text);
+	gdk_color_parse(base, &c_base);
+
+	gtk_widget_modify_text(t->sbe.statusbar, GTK_STATE_NORMAL, &c_text);
+	gtk_widget_modify_text(t->sbe.position, GTK_STATE_NORMAL, &c_text);
+
+	gtk_widget_modify_base(t->sbe.statusbar, GTK_STATE_NORMAL, &c_base);
+	gtk_widget_modify_base(t->sbe.position, GTK_STATE_NORMAL, &c_base);
+}
+
+void
 save_certs(struct tab *t, gnutls_x509_crt_t *certs,
     size_t cert_count, char *domain)
 {
@@ -3260,11 +3279,7 @@ save_certs(struct tab *t, gnutls_x509_crt_t *certs,
 	/* not the best spot but oh well */
 	gdk_color_parse("lightblue", &color);
 	gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
-	gtk_widget_modify_base(t->sbe.statusbar, GTK_STATE_NORMAL, &color);
-	gtk_widget_modify_base(t->sbe.position, GTK_STATE_NORMAL, &color);
-	gdk_color_parse(XT_COLOR_BLACK, &color);
-	gtk_widget_modify_text(t->sbe.statusbar, GTK_STATE_NORMAL, &color);
-	gtk_widget_modify_text(t->sbe.position, GTK_STATE_NORMAL, &color);
+	statusbar_modify_attr(t, XT_COLOR_BLACK, "lightblue");
 done:
 	fclose(f);
 }
@@ -5801,27 +5816,10 @@ done:
 		gdk_color_parse(col_str, &color);
 		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
 
-		if (!strcmp(col_str, XT_COLOR_WHITE)) {
-			gtk_widget_modify_text(t->sbe.statusbar,
-			    GTK_STATE_NORMAL, &color);
-			gtk_widget_modify_text(t->sbe.position,
-			    GTK_STATE_NORMAL, &color);
-			gdk_color_parse(XT_COLOR_BLACK, &color);
-			gtk_widget_modify_base(t->sbe.statusbar,
-			    GTK_STATE_NORMAL, &color);
-			gtk_widget_modify_base(t->sbe.position,
-			    GTK_STATE_NORMAL, &color);
-		} else {
-			gtk_widget_modify_base(t->sbe.statusbar,
-			    GTK_STATE_NORMAL, &color);
-			gtk_widget_modify_base(t->sbe.position,
-			    GTK_STATE_NORMAL, &color);
-			gdk_color_parse(XT_COLOR_BLACK, &color);
-			gtk_widget_modify_text(t->sbe.statusbar,
-			    GTK_STATE_NORMAL, &color);
-			gtk_widget_modify_text(t->sbe.position,
-			    GTK_STATE_NORMAL, &color);
-		}
+		if (!strcmp(col_str, XT_COLOR_WHITE))
+			statusbar_modify_attr(t, col_str, XT_COLOR_BLACK);
+		else
+			statusbar_modify_attr(t, XT_COLOR_BLACK, col_str);
 	}
 }
 
@@ -7777,6 +7775,8 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	WebKitWebHistoryItem		*item;
 	GList				*items;
 	GdkColor			color;
+	char				*p;
+	int				sbe_p = 0;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
@@ -7860,17 +7860,40 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_entry_set_alignment(GTK_ENTRY(t->sbe.position), 1.0);
 	gtk_widget_set_size_request(t->sbe.position, 40, -1);
 
-	gdk_color_parse(XT_COLOR_BLACK, &color);
-	gtk_widget_modify_base(t->sbe.statusbar, GTK_STATE_NORMAL, &color);
-	gtk_widget_modify_base(t->sbe.position, GTK_STATE_NORMAL, &color);
-	gdk_color_parse(XT_COLOR_WHITE, &color);
-	gtk_widget_modify_text(t->sbe.statusbar, GTK_STATE_NORMAL, &color);
-	gtk_widget_modify_text(t->sbe.position, GTK_STATE_NORMAL, &color);
+	statusbar_modify_attr(t, XT_COLOR_WHITE, XT_COLOR_BLACK);
 
 	gtk_box_pack_start(GTK_BOX(t->statusbar_box), t->sbe.statusbar, TRUE,
 	    TRUE, FALSE);
-	gtk_box_pack_start(GTK_BOX(t->statusbar_box), t->sbe.position, FALSE,
-	    FALSE, FALSE);
+
+	/* gtk widgets cannot be added to a box twice. sbe_* variables
+	   make sure of this */
+	for (p = statusbar_elems; *p != '\0'; p++) {
+		switch (*p) {
+		case '|':
+		{
+			GtkWidget *sep = gtk_vseparator_new();
+
+			gdk_color_parse(XT_COLOR_SB_SEPARATOR, &color);
+			gtk_widget_modify_bg(sep, GTK_STATE_NORMAL, &color);
+			gtk_box_pack_start(GTK_BOX(t->statusbar_box), sep, FALSE,
+			    FALSE, FALSE);
+			break;
+		}
+		case 'P':
+			if (sbe_p) {
+				warnx("flag \"%c\" specified more than "
+				    "once in statusbar_elems\n", *p);
+				break;
+			}
+			sbe_p = 1;
+			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
+			    t->sbe.position, FALSE, FALSE, FALSE);
+			break;
+		default:
+			warnx("illegal flag \"%c\" in statusbar_elems\n", *p);
+			break;
+		}
+	}
 
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->statusbar_box, FALSE, FALSE, 0);
 
@@ -8902,7 +8925,7 @@ main(int argc, char *argv[])
 	oops_font_name = g_strdup("monospace normal 9");
 	statusbar_font_name = g_strdup("monospace normal 9");
 	tabbar_font_name = g_strdup("monospace normal 9");
-
+	statusbar_elems = g_strdup("P");
 
 	/* read config file */
 	if (strlen(conf) == 0)
