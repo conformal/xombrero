@@ -218,6 +218,7 @@ struct tab {
 	int			ctrl_click;
 	gchar			*status;
 	int			xtp_meaning; /* identifies dls/favorites */
+	gchar			*tmp_uri;
 
 	/* hints */
 	int			hints_on;
@@ -1617,11 +1618,17 @@ get_uri(struct tab *t)
 {
 	const gchar		*uri = NULL;
 
-	if (t->xtp_meaning == XT_XTP_TAB_MEANING_NORMAL)
+	if (webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED)
+		return t->tmp_uri;
+	if (t->xtp_meaning == XT_XTP_TAB_MEANING_NORMAL) {
 		uri = webkit_web_view_get_uri(t->wv);
-	else
-		uri = g_strdup_printf("%s%s", XT_URI_ABOUT, about_list[t->xtp_meaning].name);
-
+	} else {
+		/* use tmp_uri to make sure it is g_freed */
+		if (t->tmp_uri)
+			g_free(t->tmp_uri);
+		t->tmp_uri = g_strdup_printf("%s%s", XT_URI_ABOUT, about_list[t->xtp_meaning].name);
+		uri = t->tmp_uri;
+	}
 	return uri;
 }
 
@@ -1629,13 +1636,18 @@ const gchar *
 get_title(struct tab *t, bool window)
 {
 	const gchar		*set = NULL, *title = NULL;
+	WebKitLoadStatus	status = webkit_web_view_get_load_status(t->wv);
+
+	if (status == WEBKIT_LOAD_PROVISIONAL || status == WEBKIT_LOAD_FAILED ||
+	    t->xtp_meaning == XT_XTP_TAB_MEANING_BL)
+		goto notitle;
 
 	title = webkit_web_view_get_title(t->wv);
-	set = title ? title : get_uri(t);
+	if ((set = title ? title : get_uri(t)))
+		return set;
 
-	if (!set || t->xtp_meaning == XT_XTP_TAB_MEANING_BL) {
-		set = window ? XT_NAME : "(untitled)";
-	}
+notitle:
+	set = window ? XT_NAME : "(untitled)";	
 
 	return set;
 }
@@ -1917,33 +1929,6 @@ wl_find_uri(const gchar *s, struct domain_list *wl)
 			g_free(ss);
 			return (r);
 		}
-
-	return (NULL);
-}
-
-char *
-get_toplevel_domain(char *domain)
-{
-	char			*s;
-	int			found = 0;
-
-	if (domain == NULL)
-		return (NULL);
-	if (strlen(domain) < 2)
-		return (NULL);
-
-	s = &domain[strlen(domain) - 1];
-	while (s != domain) {
-		if (*s == '.') {
-			found++;
-			if (found == 2)
-				return (s);
-		}
-		s--;
-	}
-
-	if (found)
-		return (domain);
 
 	return (NULL);
 }
@@ -2548,37 +2533,38 @@ done:
 	return (0);
 }
 
-char *
-find_domain(const gchar *s, int add_dot)
+gchar *
+find_domain(const gchar *s, int toplevel)
 {
-	int			i;
-	char			*r = NULL, *ss = NULL;
+	SoupURI			*uri;
+	gchar			*ret, *p;
 
 	if (s == NULL)
 		return (NULL);
 
-	if (!strncmp(s, "http://", strlen("http://")))
-		s = &s[strlen("http://")];
-	else if (!strncmp(s, "https://", strlen("https://")))
-		s = &s[strlen("https://")];
+	uri = soup_uri_new(s);	
 
-	if (strlen(s) < 2)
+	if (uri == NULL || !SOUP_URI_VALID_FOR_HTTP(uri)) {
 		return (NULL);
+	}
 
-	ss = g_strdup(s);
-	for (i = 0; i < strlen(ss) + 1 /* yes er need this */; i++)
-		/* chop string at first slash */
-		if (ss[i] == '/' || ss[i] == '\0') {
-			ss[i] = '\0';
-			if (add_dot)
-				r = g_strdup_printf(".%s", ss);
-			else
-				r = g_strdup(ss);
-			break;
-		}
-	g_free(ss);
+	if (toplevel && !isdigit(uri->host[strlen(uri->host) - 1])) {
+		if ((p = strrchr(uri->host, '.')) != NULL) {
+			while(--p >= uri->host && *p != '.');
+			p++;
+		} else
+			p = uri->host;
+	} else
+		p = uri->host;
 
-	return (r);
+	if (uri->port == 80)
+		ret = g_strdup_printf(".%s", p);
+	else
+		ret = g_strdup_printf(".%s:%d", p, uri->port);
+
+	soup_uri_free(uri);
+
+	return ret;
 }
 
 int
@@ -2586,14 +2572,19 @@ toggle_cwl(struct tab *t, struct karg *args)
 {
 	struct domain		*d;
 	const gchar		*uri;
-	char			*dom = NULL, *dom_toggle = NULL;
+	char			*dom = NULL;
 	int			es;
 
 	if (args == NULL)
 		return (1);
 
 	uri = get_uri(t);
-	dom = find_domain(uri, 1);
+	dom = find_domain(uri, args->i & XT_WL_TOPLEVEL);
+
+	if (uri == NULL || dom == NULL || webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED) {
+		show_oops(t, "Can't toggle domain in cookie white list");
+		goto done;
+	}	
 	d = wl_find(dom, &c_wl);
 
 	if (d == NULL)
@@ -2608,14 +2599,9 @@ toggle_cwl(struct tab *t, struct karg *args)
 	else if ((args->i & XT_WL_DISABLE) && es != 0)
 		es = 0;
 
-	if (args->i & XT_WL_TOPLEVEL)
-		dom_toggle = get_toplevel_domain(dom);
-	else
-		dom_toggle = dom;
-
 	if (es)
 		/* enable cookies for domain */
-		wl_add(dom_toggle, &c_wl, 0);
+		wl_add(dom, &c_wl, 0);
 	else
 		/* disable cookies for domain */
 		RB_REMOVE(domain_list, &c_wl, d);
@@ -2623,6 +2609,7 @@ toggle_cwl(struct tab *t, struct karg *args)
 	if (args->i & XT_WL_RELOAD)
 		webkit_web_view_reload(t->wv);
 
+done:
 	g_free(dom);
 	return (0);
 }
@@ -2633,7 +2620,7 @@ toggle_js(struct tab *t, struct karg *args)
 	int			es;
 	const gchar		*uri;
 	struct domain		*d;
-	char			*dom = NULL, *dom_toggle = NULL;
+	char			*dom = NULL;
 
 	if (args == NULL)
 		return (1);
@@ -2650,23 +2637,18 @@ toggle_js(struct tab *t, struct karg *args)
 		return (1);
 
 	uri = get_uri(t);
-	dom = find_domain(uri, 1);
+	dom = find_domain(uri, args->i & XT_WL_TOPLEVEL);
 
-	if (uri == NULL || dom == NULL) {
+	if (uri == NULL || dom == NULL || webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED) {
 		show_oops(t, "Can't toggle domain in JavaScript white list");
 		goto done;
 	}
 
-	if (args->i & XT_WL_TOPLEVEL)
-		dom_toggle = get_toplevel_domain(dom);
-	else
-		dom_toggle = dom;
-
 	if (es) {
 		button_set_stockid(t->js_toggle, GTK_STOCK_MEDIA_PLAY);
-		wl_add(dom_toggle, &js_wl, 0 /* session */);
+		wl_add(dom, &js_wl, 0 /* session */);
 	} else {
-		d = wl_find(dom_toggle, &js_wl);
+		d = wl_find(dom, &js_wl);
 		if (d)
 			RB_REMOVE(domain_list, &js_wl, d);
 		button_set_stockid(t->js_toggle, GTK_STOCK_MEDIA_PAUSE);
@@ -3483,10 +3465,9 @@ wl_save(struct tab *t, struct karg *args, int js)
 {
 	char			file[PATH_MAX];
 	FILE			*f;
-	char			*line = NULL, *lt = NULL;
+	char			*line = NULL, *lt = NULL, *dom = NULL;
 	size_t			linelen;
 	const gchar		*uri;
-	char			*dom = NULL, *dom_save = NULL;
 	struct karg		a;
 	struct domain		*d;
 	GSList			*cf;
@@ -3503,26 +3484,14 @@ wl_save(struct tab *t, struct karg *args, int js)
 		return (1);
 
 	uri = get_uri(t);
-	dom = find_domain(uri, 1);
-	if (uri == NULL || dom == NULL) {
+	dom = find_domain(uri, args->i & XT_WL_TOPLEVEL);
+	if (uri == NULL || dom == NULL || webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED) {
 		show_oops(t, "Can't add domain to %s white list",
 		  js ? "JavaScript" : "cookie");
 		goto done;
 	}
 
-	if (args->i & XT_WL_TOPLEVEL) {
-		/* save domain */
-		if ((dom_save = get_toplevel_domain(dom)) == NULL) {
-			show_oops(t, "invalid domain: %s", dom);
-			goto done;
-		}
-	} else if (args->i & XT_WL_FQDN) {
-		/* save fqdn */
-		dom_save = dom;
-	} else
-		goto done;
-
-	lt = g_strdup_printf("%s=%s", js ? "js_wl" : "cookie_wl", dom_save);
+	lt = g_strdup_printf("%s=%s", js ? "js_wl" : "cookie_wl", dom);
 
 	while (!feof(f)) {
 		line = fparseln(f, &linelen, NULL, NULL, 0);
@@ -3539,17 +3508,17 @@ wl_save(struct tab *t, struct karg *args, int js)
 	a.i = XT_WL_ENABLE;
 	a.i |= args->i;
 	if (js) {
-		d = wl_find(dom_save, &js_wl);
+		d = wl_find(dom, &js_wl);
 		if (!d) {
-			settings_add("js_wl", dom_save);
-			d = wl_find(dom_save, &js_wl);
+			settings_add("js_wl", dom);
+			d = wl_find(dom, &js_wl);
 		}
 		toggle_js(t, &a);
 	} else {
-		d = wl_find(dom_save, &c_wl);
+		d = wl_find(dom, &c_wl);
 		if (!d) {
-			settings_add("cookie_wl", dom_save);
-			d = wl_find(dom_save, &c_wl);
+			settings_add("cookie_wl", dom);
+			d = wl_find(dom, &c_wl);
 		}
 		toggle_cwl(t, &a);
 
@@ -3557,8 +3526,8 @@ wl_save(struct tab *t, struct karg *args, int js)
 		cf = soup_cookie_jar_all_cookies(s_cookiejar);
 		for (;cf; cf = cf->next) {
 			ci = cf->data;
-			if (!strcmp(dom_save, ci->domain) ||
-			    !strcmp(&dom_save[1], ci->domain)) /* deal with leading . */ {
+			if (!strcmp(dom, ci->domain) ||
+			    !strcmp(&dom[1], ci->domain)) /* deal with leading . */ {
 				c = soup_cookie_copy(ci);
 				_soup_cookie_jar_add_cookie(p_cookiejar, c);
 			}
@@ -3704,6 +3673,8 @@ navaction(struct tab *t, struct karg *args)
 
 	DNPRINTF(XT_D_NAV, "navaction: tab %d opcode %d\n",
 	    t->tab_id, args->i);
+
+	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
 
 	if (t->item) {
 		if (args->i == XT_NAV_BACK)
@@ -6096,7 +6067,6 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 {
 	const gchar		*uri = NULL, *title = NULL;
 	struct history		*h, find;
-	const gchar		*s_loading;
 	struct karg		a;
 
 	DNPRINTF(XT_D_URL, "notify_load_status_cb: %d  %s\n",
@@ -6127,19 +6097,19 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 	case WEBKIT_LOAD_COMMITTED:
 		/* 1 */
-		if ((uri = get_uri(t)) != NULL) {
-			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
+		uri = get_uri(t);
+		if (uri == NULL)
+			return;
+		gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
 
-			if (t->status) {
-				g_free(t->status);
-				t->status = NULL;
-			}
-			set_status(t, (char *)uri, XT_STATUS_LOADING);
+		if (t->status) {
+			g_free(t->status);
+			t->status = NULL;
 		}
+		set_status(t, (char *)uri, XT_STATUS_LOADING);
 
 		/* check if js white listing is enabled */
 		if (enable_js_whitelist) {
-			uri = get_uri(t);
 			check_and_set_js(uri, t);
 		}
 
@@ -6190,9 +6160,6 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		gtk_spinner_stop(GTK_SPINNER(t->spinner));
 		gtk_widget_hide(t->spinner);
 #endif
-		s_loading = gtk_label_get_text(GTK_LABEL(t->label));
-		if (s_loading && !strcmp(s_loading, "Loading"))
-			gtk_label_set_text(GTK_LABEL(t->label), "(untitled)");
 	default:
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 		break;
@@ -6206,6 +6173,20 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 	gtk_widget_set_sensitive(GTK_WIDGET(t->forward),
 	    webkit_web_view_can_go_forward(wview));
+}
+
+gboolean
+notify_load_error_cb(WebKitWebView* wview, WebKitWebFrame *web_frame, gchar *uri, gpointer web_error,struct tab *t)
+{
+	if (t->tmp_uri)
+		g_free(t->tmp_uri);
+	t->tmp_uri = g_strdup(uri);
+	gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
+	gtk_label_set_text(GTK_LABEL(t->label), "(untitled)");
+	gtk_window_set_title(GTK_WINDOW(main_window), XT_NAME);
+	set_status(t, uri, XT_STATUS_NOTHING);
+
+	return FALSE;
 }
 
 void
@@ -6921,7 +6902,7 @@ cmd_complete(struct tab *t, char *str, int dir)
 		matchcount = 0;
 		for (j = c; j < LENGTH(cmds); j++) {
 			if (cmds[j].level < dep)
-                                break;
+				break;
 			if (cmds[j].level == dep && !strncmp(tok, cmds[j].cmd, strlen(tok))) {
 				matchcount++;
 				c = j + 1;
@@ -7681,6 +7662,7 @@ delete_tab(struct tab *t)
 
 	g_free(t->user_agent);
 	g_free(t->stylesheet);
+	g_free(t->tmp_uri);
 	g_free(t);
 
 	if (TAILQ_EMPTY(&tabs)) {
@@ -7997,6 +7979,8 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	g_signal_connect(t->wv,
 	    "notify::load-status", G_CALLBACK(notify_load_status_cb), t);
 	g_signal_connect(t->wv,
+	    "load-error", G_CALLBACK(notify_load_error_cb), t);
+	g_signal_connect(t->wv,
 	    "notify::title", G_CALLBACK(notify_title_cb), t);
 
 	/* hijack the unused keys as if we were the browser */
@@ -8088,7 +8072,7 @@ void
 notebook_pagereordered_cb(GtkNotebook *nb, GtkWidget *nbp, guint pn,
     gpointer *udata)
 {
-	struct tab *t = NULL, *tt; 
+	struct tab		*t = NULL, *tt;
 
 	recalc_tabs();
 
