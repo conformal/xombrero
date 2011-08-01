@@ -538,6 +538,40 @@ The tabs will be restored next time
 the session is opened.
 See the session command for additional details.
 .El
+.Sh BUFFER COMMANDS
+In addition to shortcuts and commands 
+.Nm
+provides buffer commands. Buffer commands are short, multi character
+vi-like commands, often requiring an argument. Partial buffer commands
+are
+displayed in the buffer command statusbar element (see
+.Cm statusbar_elems ) .
+Pressing Esc or switching to another tab cancels a partially entered
+buffer command. In the following list
+.Cm arg
+denotes the argument a buffer command accepts. Buffer commands are
+defined as extended regular experssions.
+.Pp
+.Bl -tag -width "[`'][a-zA-Z0-9]XXX" -offset indent -compact
+.It Cm gg
+go to the top of the page
+.It Cm gG
+go to the bottom of the page
+percent of the page
+.It Cm gh
+open the home page in the current tab
+.It Cm ZZ
+quit
+.Nm
+.It Cm ZR
+restart
+.Nm
+.It Cm zi
+zoom in by 4%
+.It Cm zi
+zoom out by 4%
+.It Cm z0
+set zoom level to 100%
 .Sh ABOUT SCREENS
 The about screens are internally generated web pages by
 .Nm
@@ -914,8 +948,9 @@ Define the components of the status bar. The possible components are:
 .Bd -literal -offset indent
 | - separator
 P - page progress percent
+B - buffer command
 .Ed
-The default is "P".
+The default is "BP".
 .It Cm statusbar_font
 Set the status bar font.
 E.g.
