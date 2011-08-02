@@ -8740,7 +8740,7 @@ socket_watcher(GIOChannel *source, GIOCondition condition, gpointer data)
 
 	n = recv(s, str, sizeof(str), 0);
 	if (n <= 0)
-		return (FALSE);
+		return (TRUE);
 
 	tt = TAILQ_LAST(&tabs, tab_list);
 	cmd_execute(tt, str);
