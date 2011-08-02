@@ -4948,6 +4948,7 @@ struct key_binding {
 	{ "scrollleft",		0,	0,	GDK_Left	},
 	{ "scrollleft",		0,	0,	GDK_h		},
 	{ "scrollfarright",	0,	0,	GDK_dollar	},
+	{ "scrollfarleft",	0,	0,	GDK_0		},
 
 	/* tabs */
 	{ "tabnew",		CTRL,	0,	GDK_t		},

@@ -551,6 +551,9 @@ buffer command. In the following list
 .Cm arg
 denotes the argument a buffer command accepts. Buffer commands are
 defined as extended regular experssions.
+Note that if a character is used as a shortcut it will not be interpreted
+as the beginning of a buffer command. This is the case with
+.Cm 0 .
 .Pp
 .Bl -tag -width "[`'][a-zA-Z0-9]XXX" -offset indent -compact
 .It Cm gg
