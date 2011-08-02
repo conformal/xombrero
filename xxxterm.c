@@ -402,6 +402,7 @@ struct karg {
 #define XT_MOVE_FARLEFT		(10)
 #define XT_MOVE_RIGHT		(11)
 #define XT_MOVE_FARRIGHT	(12)
+#define XT_MOVE_PERCENT		(13)
 
 #define XT_TAB_LAST		(-4)
 #define XT_TAB_FIRST		(-3)
@@ -3726,6 +3727,7 @@ move(struct tab *t, struct karg *args)
 	case XT_MOVE_PAGEUP:
 	case XT_MOVE_HALFDOWN:
 	case XT_MOVE_HALFUP:
+	case XT_MOVE_PERCENT:
 		adjust = t->adjust_v;
 		break;
 	default:
@@ -3781,6 +3783,18 @@ move(struct tab *t, struct karg *args)
 		pos -= pi / 2;
 		gtk_adjustment_set_value(adjust, MAX(pos, lower));
 		break;
+	case XT_MOVE_PERCENT:
+		{
+			double		percent;
+
+			percent = atoi(args->s) / 100.0;
+			pos = max * percent;
+			if (pos < 0.0 || pos > max)
+				break;
+
+			gtk_adjustment_set_value(adjust, pos);
+			break;
+		}
 	default:
 		return (XT_CB_PASSTHROUGH);
 	}
@@ -6612,6 +6626,7 @@ struct buffercmd {
 } buffercmds[] = {
 	{ "^gg$",               move,           XT_MOVE_TOP },
 	{ "^gG$",               move,           XT_MOVE_BOTTOM },
+	{ "^[0-9]+%$",		move,		XT_MOVE_PERCENT },
 	{ "^gh$",               go_home,        0 },
 	{ "^[0-9]+t$",		gototab,	0 },
 	{ "^ZR$",               restart,        0 },
