@@ -2553,7 +2553,7 @@ paste_uri(struct tab *t, struct karg *args)
 		    atom,
 		    gdk_atom_intern("STRING", FALSE),
 		    0,
-		    65536 /* picked out of my butt */,
+		    1024 * 1024 /* picked out of my butt */,
 		    FALSE,
 		    NULL,
 		    NULL,
@@ -8554,78 +8554,38 @@ button_set_stockid(GtkWidget *button, char *stockid)
 void
 clipb_primary_cb(GtkClipboard *primary, GdkEvent *event, gpointer notused)
 {
-	GtkClipboard		*clipboard;
-	gchar			*p = NULL, *s = NULL;
+	gchar			*p = NULL;
+	GdkAtom			atom = gdk_atom_intern("CUT_BUFFER0", FALSE);
+	gint			len;
 
 	/*
-	 * This code is very aggressive!
-	 * It basically ensures that the primary and regular clipboard are
-	 * always set the same.  This obviously messes with standard X protocol
-	 * but those clowns should have come up with something better.
+	 * xterm doesn't play nice with clipboards because it clears the
+	 * primary when clicked.  We rely on primary being set to properly
+	 * handle middle mouse button clicks (paste).  So when someone clears
+	 * primary copy whatever is in CUT_BUFFER0 into primary to simualte
+	 * other application behavior (as in DON'T clear primary).
 	 */
 
-	if (btn_down)
-		return;
-
-	clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
 	p = gtk_clipboard_wait_for_text(primary);
 	if (p == NULL) {
-		DNPRINTF(XT_D_CLIP, "primary cleaned\n");
-		p = gtk_clipboard_wait_for_text(clipboard);
-		if (p)
+		if (gdk_property_get(gdk_get_default_root_window(),
+		    atom,
+		    gdk_atom_intern("STRING", FALSE),
+		    0,
+		    1024 * 1024 /* picked out of my butt */,
+		    FALSE,
+		    NULL,
+		    NULL,
+		    &len,
+		    (guchar **)&p)) {
+			/* yes sir, we need to NUL the string */
+			p[len] = '\0';
 			gtk_clipboard_set_text(primary, p, -1);
-	} else {
-		DNPRINTF(XT_D_CLIP, "primary got selection\n");
-		s = gtk_clipboard_wait_for_text(clipboard);
-		if (s) {
-			/*
-			 * if s and p are the same the string was set by
-			 * clipb_clipboard_cb so do nothing in that case
-			 * to prevent endless loop
-			 */
-			if (!strcmp(s, p))
-				goto done;
 		}
-		gtk_clipboard_set_text(clipboard, p, -1);
 	}
-done:
+
 	if (p)
 		g_free(p);
-	if (s)
-		g_free(s);
-}
-
-void
-clipb_clipboard_cb(GtkClipboard *clipboard, GdkEvent *event, gpointer notused)
-{
-	GtkClipboard		*primary;
-	gchar			*p = NULL, *s = NULL;
-
-	if (btn_down)
-		return;
-
-	DNPRINTF(XT_D_CLIP, "clipboard got content\n");
-
-	primary = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
-	p = gtk_clipboard_wait_for_text(clipboard);
-	if (p) {
-		s = gtk_clipboard_wait_for_text(primary);
-		if (s) {
-			/*
-			 * if s and p are the same the string was set by
-			 * clipb_primary_cb so do nothing in that case
-			 * to prevent endless loop and deselection of text
-			 */
-			if (!strcmp(s, p))
-				goto done;
-		}
-		gtk_clipboard_set_text(primary, p, -1);
-	}
-done:
-	if (p)
-		g_free(p);
-	if (s)
-		g_free(s);
 }
 
 void
@@ -8690,8 +8650,6 @@ create_canvas(void)
 	/* clipboard */
 	g_signal_connect(G_OBJECT(gtk_clipboard_get(GDK_SELECTION_PRIMARY)),
 	    "owner-change", G_CALLBACK(clipb_primary_cb), NULL);
-	g_signal_connect(G_OBJECT(gtk_clipboard_get(GDK_SELECTION_CLIPBOARD)),
-	    "owner-change", G_CALLBACK(clipb_clipboard_cb), NULL);
 
 	gtk_widget_show_all(abtn);
 	gtk_widget_show_all(main_window);
