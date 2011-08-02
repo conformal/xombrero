@@ -36,7 +36,6 @@
 #include <libgen.h>
 #include <pthread.h>
 #include <pwd.h>
-#include <regex.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -130,7 +129,6 @@ void		(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
 #define XT_D_COOKIE		0x0800
 #define XT_D_KEYBINDING		0x1000
 #define XT_D_CLIP		0x2000
-#define XT_D_BUFFERCMD		0x4000
 u_int32_t		swm_debug = 0
 			    | XT_D_MOVE
 			    | XT_D_KEY
@@ -146,7 +144,6 @@ u_int32_t		swm_debug = 0
 			    | XT_D_COOKIE
 			    | XT_D_KEYBINDING
 			    | XT_D_CLIP
-			    | XT_D_BUFFERCMD
 			    ;
 #else
 #define DPRINTF(x...)
@@ -188,7 +185,6 @@ struct tab {
 	GtkWidget		*statusbar_box;
 	struct {
 		GtkWidget	*statusbar;
-		GtkWidget	*buffercmd;
 		GtkWidget	*position;
 	} sbe;
 	GtkWidget		*cmd;
@@ -3220,11 +3216,9 @@ statusbar_modify_attr(struct tab *t, const char *text, const char *base)
 	gdk_color_parse(base, &c_base);
 
 	gtk_widget_modify_text(t->sbe.statusbar, GTK_STATE_NORMAL, &c_text);
-	gtk_widget_modify_text(t->sbe.buffercmd, GTK_STATE_NORMAL, &c_text);
 	gtk_widget_modify_text(t->sbe.position, GTK_STATE_NORMAL, &c_text);
 
 	gtk_widget_modify_base(t->sbe.statusbar, GTK_STATE_NORMAL, &c_base);
-	gtk_widget_modify_base(t->sbe.buffercmd, GTK_STATE_NORMAL, &c_base);
 	gtk_widget_modify_base(t->sbe.position, GTK_STATE_NORMAL, &c_base);
 }
 
@@ -4935,6 +4929,7 @@ struct key_binding {
 	{ "scrollbottom",	0,	0,	GDK_G		},
 	{ "scrollbottom",	0,	0,	GDK_End		},
 	{ "scrolltop",		0,	0,	GDK_Home	},
+	{ "scrolltop",		0,	0,	GDK_g		},
 	{ "scrollpagedown",	0,	0,	GDK_space	},
 	{ "scrollpagedown",	CTRL,	0,	GDK_f		},
 	{ "scrollhalfdown",	CTRL,	0,	GDK_d		},
@@ -4948,6 +4943,7 @@ struct key_binding {
 	{ "scrollleft",		0,	0,	GDK_Left	},
 	{ "scrollleft",		0,	0,	GDK_h		},
 	{ "scrollfarright",	0,	0,	GDK_dollar	},
+	{ "scrollfarleft",	0,	0,	GDK_0		},
 
 	/* tabs */
 	{ "tabnew",		CTRL,	0,	GDK_t		},
@@ -6574,126 +6570,20 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 	}
 }
 
-/* buffer commands receive the regex that triggered them in arg.s */
-char bcmd[8];
-struct buffercmd {
-	char            *regex;
-	int             (*func)(struct tab *, struct karg *);
-	int             arg;
-	regex_t		cregex;
-} buffercmds[] = {
-	{ "^gg$",               move,           XT_MOVE_TOP },
-	{ "^gG$",               move,           XT_MOVE_BOTTOM },
-	{ "^gh$",               go_home,        0 },
-	{ "^ZR$",               restart,        0 },
-	{ "^ZZ$",               quit,           0 },
-	{ "^zi$",               resizetab,      XT_ZOOM_IN },
-	{ "^zo$",               resizetab,      XT_ZOOM_OUT },
-	{ "^z0$",               resizetab,      XT_ZOOM_NORMAL },
-};
-
-void
-buffercmd_init()
-{
-	int			i;
-
-	for (i = 0; i < LENGTH(buffercmds); i++)
-		regcomp(&buffercmds[i].cregex, buffercmds[i].regex, REG_EXTENDED);
-}
-
-void
-buffercmd_abort(struct tab *t)
-{
-	int			i;
-
-	DNPRINTF(XT_D_BUFFERCMD, "buffercmd_abort: clearing buffer\n");
-	for (i = 0; i < LENGTH(bcmd); i++)
-		bcmd[i] = '\0';
-
-	cmd_prefix = 0; /* clear prefix for non-buffer commands */
-	gtk_entry_set_text(GTK_ENTRY(t->sbe.buffercmd), bcmd);
-}
-
-void
-buffercmd_execute(struct tab *t, struct buffercmd *cmd)
-{
-	struct karg		arg = {0, NULL, -1};
-
-	arg.i = cmd->arg;
-	arg.s = g_strdup(bcmd);
-
-	DNPRINTF(XT_D_BUFFERCMD, "buffercmd_execute: buffer \"%s\" "
-	    "matches regex \"%s\", executing\n", bcmd, cmd->regex);
-	cmd->func(t, &arg);
-
-	if (arg.s)
-		g_free(arg.s);
-
-	buffercmd_abort(t);
-}
-
-gboolean
-buffercmd_addkey(struct tab *t, guint keyval)
-{
-	int			i;
-
-	if (keyval == GDK_Escape) {
-		buffercmd_abort(t);
-		return XT_CB_HANDLED;
-	}
-
-	/* key with modifier or non-ascii character */
-	if (!isascii(keyval))
-		return XT_CB_PASSTHROUGH;
-
-	DNPRINTF(XT_D_BUFFERCMD, "buffercmd_addkey: adding key \"%c\" "
-	    "to buffer \"%s\"\n", keyval, bcmd);
-
-	for (i = 0; i < LENGTH(bcmd); i++)
-		if (bcmd[i] == '\0') {
-			bcmd[i] = keyval;
-			break;
-		}
-
-	/* buffer full, ignore input */
-	if (i == LENGTH(bcmd)) {
-		DNPRINTF(XT_D_BUFFERCMD, "buffercmd_addkey: buffer full\n");
-		return XT_CB_HANDLED;
-	}
-
-	gtk_entry_set_text(GTK_ENTRY(t->sbe.buffercmd), bcmd);
-
-	for (i = 0; i < LENGTH(buffercmds); i++)
-		if (regexec(&buffercmds[i].cregex, bcmd,
-		    (size_t) 0, NULL, 0) == 0) {
-			buffercmd_execute(t, &buffercmds[i]);
-			break;
-		}
-
-	return XT_CB_HANDLED;
-}
-
 gboolean
 handle_keypress(struct tab *t, GdkEventKey *e, int entry)
 {
 	struct key_binding	*k;
 
-	/* handle keybindings if buffercmd is empty.
-	   if not empty, allow commands like C-n */
-	if (bcmd[0] == '\0' || ((e->state & (CTRL | MOD1)) != 0))
-		TAILQ_FOREACH(k, &kbl, entry)
-			if (e->keyval == k->key
-			    && (entry ? k->use_in_entry : 1)) {
-				if (k->mask == 0) {
-					if ((e->state & (CTRL | MOD1)) == 0)
-						return (cmd_execute(t, k->cmd));
-				} else if ((e->state & k->mask) == k->mask) {
+	TAILQ_FOREACH(k, &kbl, entry)
+		if (e->keyval == k->key && (entry ? k->use_in_entry : 1)) {
+			if (k->mask == 0) {
+				if ((e->state & (CTRL | MOD1)) == 0)
 					return (cmd_execute(t, k->cmd));
-				}
+			} else if ((e->state & k->mask) == k->mask) {
+				return (cmd_execute(t, k->cmd));
 			}
-
-	if ((e->state & (CTRL | MOD1)) == 0)
-		return buffercmd_addkey(t, e->keyval);
+		}
 
 	return (XT_CB_PASSTHROUGH);
 }
@@ -7676,7 +7566,6 @@ recolor_compact_tabs(void)
 void
 set_current_tab(int page_num)
 {
-	buffercmd_abort(get_current_tab());
 	gtk_notebook_set_current_page(notebook, page_num);
 	recolor_compact_tabs();
 }
@@ -7861,7 +7750,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	GList				*items;
 	GdkColor			color;
 	char				*p;
-	int				sbe_p = 0, sbe_b = 0;
+	int				sbe_p = 0;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
@@ -7937,7 +7826,6 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.statusbar), FALSE);
 	gtk_widget_modify_font(GTK_WIDGET(t->sbe.statusbar), statusbar_font);
 
-	/* XXX create these widgets only if specified in statusbar_elems */
 	t->sbe.position = gtk_entry_new();
 	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.position), NULL);
 	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.position), FALSE);
@@ -7945,14 +7833,6 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_widget_modify_font(GTK_WIDGET(t->sbe.position), statusbar_font);
 	gtk_entry_set_alignment(GTK_ENTRY(t->sbe.position), 1.0);
 	gtk_widget_set_size_request(t->sbe.position, 40, -1);
-
-	t->sbe.buffercmd = gtk_entry_new();
-	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.buffercmd), NULL);
-	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.buffercmd), FALSE);
-	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.buffercmd), FALSE);
-	gtk_widget_modify_font(GTK_WIDGET(t->sbe.buffercmd), statusbar_font);
-	gtk_entry_set_alignment(GTK_ENTRY(t->sbe.buffercmd), 1.0);
-	gtk_widget_set_size_request(t->sbe.buffercmd, 60, -1);
 
 	statusbar_modify_attr(t, XT_COLOR_WHITE, XT_COLOR_BLACK);
 
@@ -7982,16 +7862,6 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 			sbe_p = 1;
 			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
 			    t->sbe.position, FALSE, FALSE, FALSE);
-			break;
-		case 'B':
-			if (sbe_b) {
-				warnx("flag \"%c\" specified more than "
-				    "once in statusbar_elems\n", *p);
-				break;
-			}
-			sbe_b = 1;
-			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
-			    t->sbe.buffercmd, FALSE, FALSE, FALSE);
 			break;
 		default:
 			warnx("illegal flag \"%c\" in statusbar_elems\n", *p);
@@ -9022,9 +8892,6 @@ main(int argc, char *argv[])
 		errx(1, "invalid user %d", getuid());
 	strlcpy(download_dir, pwd->pw_dir, sizeof download_dir);
 
-	/* compile buffer command regexes */
-	buffercmd_init();
-
 	/* set default string settings */
 	home = g_strdup("https://www.cyphertite.com");
 	search_string = g_strdup("https://ssl.scroogle.org/cgi-bin/nbbwssl.cgi?Gw=%s");
@@ -9034,7 +8901,7 @@ main(int argc, char *argv[])
 	oops_font_name = g_strdup("monospace normal 9");
 	statusbar_font_name = g_strdup("monospace normal 9");
 	tabbar_font_name = g_strdup("monospace normal 9");
-	statusbar_elems = g_strdup("BP");
+	statusbar_elems = g_strdup("P");
 
 	/* read config file */
 	if (strlen(conf) == 0)
