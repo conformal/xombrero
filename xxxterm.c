@@ -352,6 +352,8 @@ struct karg {
 
 #define XT_COLOR_SB_SEPARATOR	"#555555"
 
+#define XT_PROTO_DELIM		"://"
+
 /*
  * xxxterm "protocol" (xtp)
  * We use this for managing stuff like downloads and favorites. They
@@ -6737,6 +6739,42 @@ qmark(struct tab *t, struct karg *arg)
 }
 
 int
+go_up(struct tab *t, struct karg *args)
+{
+	int		 levels;
+	char		*uri;
+	char		*tmp;
+
+	levels = atoi(args->s);
+	if (levels == 0)
+		levels = 1;
+
+	uri = g_strdup(webkit_web_view_get_uri(t->wv));
+	if ((tmp = strstr(uri, XT_PROTO_DELIM)) == NULL)
+		return 1;
+	tmp += strlen(XT_PROTO_DELIM);
+
+	/* if an uri starts with a slash, leave it alone (for file:///) */
+	if (tmp[0] == '/')
+		tmp++;
+
+	while (levels--) {
+		char	*p;
+
+		p = strrchr(tmp, '/');
+		if (p != NULL)
+			*p = '\0';
+		else
+			break;
+	}
+
+	load_uri(t, uri);
+	g_free(uri);
+
+	return 0;
+}
+
+int
 gototab(struct tab *t, struct karg *args)
 {
 	int		tab;
@@ -6771,6 +6809,7 @@ struct buffercmd {
 	int             arg;
 	regex_t		cregex;
 } buffercmds[] = {
+	{ "^[0-9]*gu$",		go_up,		0 },
 	{ "^gg$",               move,           XT_MOVE_TOP },
 	{ "^gG$",               move,           XT_MOVE_BOTTOM },
 	{ "^[0-9]+%$",		move,		XT_MOVE_PERCENT },

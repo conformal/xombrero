@@ -564,6 +564,14 @@ go to the bottom of the page
 go to the 
 .Cm arg
 percent of the page
+.It Cm [0-9]*gU
+go
+.Cm arg
+levels up. If
+.Cm arg
+is missing, 1 is assumed. Going a
+level up means going to a uri obtained from the current one by removing
+the last slash ('/') character and everything that follows it
 .It Cm gh
 open the home page in the current tab
 .It Cm M[a-zA-Z0-9]
