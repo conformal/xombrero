@@ -36,11 +36,11 @@
 #include <libgen.h>
 #include <pthread.h>
 #include <pwd.h>
+#include <regex.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <regex.h>
 #include <unistd.h>
 
 #include <sys/types.h>
@@ -6574,6 +6574,7 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 	}
 }
 
+/* buffer commands receive the regex that triggered them in arg.s */
 char bcmd[8];
 struct buffercmd {
 	char            *regex;
