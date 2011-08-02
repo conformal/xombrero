@@ -566,6 +566,17 @@ go to the
 percent of the page
 .It Cm gh
 open the home page in the current tab
+.It Cm M[a-zA-Z0-9]
+set the current uri as quickmark
+.Cm arg
+.It Cm go[a-zA-Z0-9]
+open the uri marked as quickmark
+.Cm arg
+in the current tab
+.It Cm gn[a-zA-Z0-9]
+open the uri marked as quickmark
+.Cm arg
+in a new tab
 .It Cm [0-9]+t
 activate tab number
 .Cm arg
@@ -585,6 +596,18 @@ set zoom level to 100%
 set zoom level to
 .Cm arg
 %
+.Sh QUICKMARKS
+Quickmarks are like bookmarks, except they are refered to by a single
+character (a letter or a digit), instead of a longer name. See the
+.Cm M[a-zA-Z0-9] ,
+.Cm go[a-zA-Z0-9]
+and
+.Cm gn[a-zA-Z0-9]
+buffer commands for usage. Quickmarks are stored in
+.Pa ~/.xxxterm/quickmarks
+and are saved automatically after each
+.Cm M[a-zA-Z0-9]
+buffer command.
 .Sh ABOUT SCREENS
 The about screens are internally generated web pages by
 .Nm

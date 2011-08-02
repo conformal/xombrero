@@ -1,0 +1,12 @@
+#
+# $xxxterm$
+#
+# Each line is a character from the set [a-zA-Z0-9], some nonzero number
+# of spaces or tabs, and the uri. Anything after and including any additional
+# spaces or tabs is ignored, and will be deleted when xxxterm writes to
+# this file.
+#
+O http://www.openbsd.org
+w http://en.wikipedia.org
+g http://www.google.com
+d http://www.duckduckgo.com

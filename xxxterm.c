@@ -161,6 +161,8 @@ u_int32_t		swm_debug = 0
 				    ~(GDK_BUTTON4_MASK) &	\
 				    ~(GDK_BUTTON5_MASK))
 
+#define XT_NOMARKS		(('z' - 'a' + 1) * 2 + 10)
+
 char		*icons[] = {
 	"xxxtermicon16.png",
 	"xxxtermicon32.png",
@@ -295,6 +297,7 @@ struct karg {
 #define XT_SESSIONS_DIR		("sessions/")
 #define XT_CONF_FILE		("xxxterm.conf")
 #define XT_FAVS_FILE		("favorites")
+#define XT_QMARKS_FILE		("quickmarks")
 #define XT_SAVED_TABS_FILE	("main_session")
 #define XT_RESTART_TABS_FILE	("restart_tabs")
 #define XT_SOCKET_FILE		("socket")
@@ -403,6 +406,10 @@ struct karg {
 #define XT_MOVE_RIGHT		(11)
 #define XT_MOVE_FARRIGHT	(12)
 #define XT_MOVE_PERCENT		(13)
+
+#define XT_QMARK_SET		(0)
+#define XT_QMARK_OPEN		(1)
+#define XT_QMARK_TAB		(2)
 
 #define XT_TAB_LAST		(-4)
 #define XT_TAB_FIRST		(-3)
@@ -557,6 +564,7 @@ PangoFontDescription *cmd_font;
 PangoFontDescription *oops_font;
 PangoFontDescription *statusbar_font;
 PangoFontDescription *tabbar_font;
+char		*qmarks[XT_NOMARKS];
 
 int		btn_down;	/* M1 down in any wv */
 
@@ -833,6 +841,48 @@ void			completion_add(struct tab *);
 void			completion_add_uri(const gchar *);
 GtkListStore		*buffers_store;
 void			xxx_dir(char *);
+
+/* marks and quickmarks array storage.
+ * first a-z, then A-Z, then 0-9 */
+char
+indextomark(int i)
+{
+	if (i < 0)
+		return 0;
+
+	if (i >= 0 && i <= 'z' - 'a')
+		return 'a' + i;
+
+	i -= 'z' - 'a' + 1;
+	if (i >= 0 && i <= 'Z' - 'A')
+		return 'A' + i;
+
+	i -= 'Z' - 'A' + 1;
+	if (i >= 10)
+		return 0;
+
+	return i + '0';
+}
+
+int
+marktoindex(char m)
+{
+	int ret = 0;
+
+	if (m >= 'a' && m <= 'z')
+		return ret + m - 'a';
+
+	ret += 'z' - 'a' + 1;
+	if (m >= 'A' && m <= 'Z')
+		return ret + m - 'A';
+
+	ret += 'Z' - 'A' + 1;
+	if (m >= '0' && m <= '9')
+		return ret + m - '0';
+
+	return -1;
+}
+
 
 void
 sigchild(int sig)
@@ -6590,6 +6640,103 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 }
 
 int
+qmarks_load()
+{
+	char			file[PATH_MAX];
+	char			*line = NULL, *p, mark;
+	int			index, i;
+	FILE			*f;
+	size_t			linelen;
+
+	snprintf(file, sizeof file, "%s/%s", work_dir, XT_QMARKS_FILE);
+	if ((f = fopen(file, "r+")) == NULL) {
+		show_oops(NULL, "Can't open quickmarks file: %s", strerror(errno));
+		return (1);
+	}
+
+	for (i = 0; ; i++) {
+		if ((line = fparseln(f, &linelen, NULL, NULL, 0)) == NULL)
+			if (feof(f) || ferror(f))
+				break;
+		p = strtok(line, " \t");
+
+		if (p == NULL || strlen(p) != 1 || (index = marktoindex(*p)) == -1) {
+			warnx("corrupt quickmarks file, line %d", i);
+			break;
+		}
+
+		mark = *p;
+		p = strtok(NULL, " \t");
+		if (qmarks[index] != NULL)
+			g_free(qmarks[index]);
+		qmarks[index] = g_strdup(p);
+	}
+
+	fclose(f);
+
+	return (0);
+}
+
+int
+qmarks_save()
+{
+	char			 file[PATH_MAX];
+	int			 i;
+	FILE			*f;
+
+	snprintf(file, sizeof file, "%s/%s", work_dir, XT_QMARKS_FILE);
+	if ((f = fopen(file, "r+")) == NULL) {
+		show_oops(NULL, "Can't open quickmarks file: %s", strerror(errno));
+		return (1);
+	}
+
+	for (i = 0; i < XT_NOMARKS; i++)
+		if (qmarks[i] != NULL)
+			fprintf(f, "%c %s\n", indextomark(i), qmarks[i]);
+
+	fclose(f);
+
+	return (0);
+}
+
+int
+qmark(struct tab *t, struct karg *arg)
+{
+	char		mark;
+	int		index;
+
+	mark = arg->s[strlen(arg->s)-1];
+	index = marktoindex(mark);
+	if (index == -1)
+		return (-1);
+
+	switch (arg->i) {
+	case XT_QMARK_SET:
+		if (qmarks[index] != NULL)
+			g_free(qmarks[index]);
+
+		qmarks_load(); /* sync if multiple instances */
+		qmarks[index] = g_strdup(get_uri(t));
+		qmarks_save();
+		break;
+	case XT_QMARK_OPEN:
+		if (qmarks[index] != NULL)
+			load_uri(t, qmarks[index]);
+		else
+			return (-1);
+		break;
+	case XT_QMARK_TAB:
+		if (qmarks[index] != NULL)
+			create_new_tab(qmarks[index], NULL, 1, -1);
+		else
+			return (-1);
+		break;
+	}
+
+	return (0);
+}
+
+int
 gototab(struct tab *t, struct karg *args)
 {
 	int		tab;
@@ -6629,6 +6776,9 @@ struct buffercmd {
 	{ "^[0-9]+%$",		move,		XT_MOVE_PERCENT },
 	{ "^gh$",               go_home,        0 },
 	{ "^[0-9]+t$",		gototab,	0 },
+	{ "^M[a-zA-Z0-9]$",	qmark,		XT_QMARK_SET },
+	{ "^go[a-zA-Z0-9]$",	qmark,		XT_QMARK_OPEN },
+	{ "^gn[a-zA-Z0-9]$",	qmark,		XT_QMARK_TAB },
 	{ "^ZR$",               restart,        0 },
 	{ "^ZZ$",               quit,           0 },
 	{ "^zi$",               resizetab,      XT_ZOOM_IN },
@@ -9129,6 +9279,15 @@ main(int argc, char *argv[])
 		fclose(f);
 	}
 
+	/* quickmarks file */
+	snprintf(file, sizeof file, "%s/%s", work_dir, XT_QMARKS_FILE);
+	if (stat(file, &sb)) {
+		warnx("quickmarks file doesn't exist, creating it");
+		if ((f = fopen(file, "w")) == NULL)
+			err(1, "quickmarks");
+		fclose(f);
+	}
+
 	/* cookies */
 	session = webkit_get_default_session();
 	setup_cookies();
@@ -9191,6 +9350,8 @@ main(int argc, char *argv[])
 	/* buffers */
 	buffers_store = gtk_list_store_new
 	    (NUM_COLS, G_TYPE_UINT, G_TYPE_STRING);
+
+	qmarks_load();
 
 	/* go graphical */
 	create_canvas();
