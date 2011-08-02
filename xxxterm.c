@@ -6575,6 +6575,17 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 	}
 }
 
+int
+zoom_amount(struct tab *t, struct karg *arg)
+{
+	struct karg	narg = {0, NULL, -1};
+
+	narg.i = atoi(arg->s);
+	resizetab(t, &narg);
+
+	return 0;
+}
+
 /* buffer commands receive the regex that triggered them in arg.s */
 char bcmd[8];
 struct buffercmd {
@@ -6591,6 +6602,7 @@ struct buffercmd {
 	{ "^zi$",               resizetab,      XT_ZOOM_IN },
 	{ "^zo$",               resizetab,      XT_ZOOM_OUT },
 	{ "^z0$",               resizetab,      XT_ZOOM_NORMAL },
+	{ "^[0-9]+Z$",		zoom_amount,	0 },
 };
 
 void
