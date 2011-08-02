@@ -6576,6 +6576,22 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 }
 
 int
+gototab(struct tab *t, struct karg *args)
+{
+	int		tab;
+	struct karg	arg = {0, NULL, -1};
+
+	tab = atoi(args->s);
+
+	arg.i = XT_TAB_NEXT;
+	arg.p = tab;
+
+	movetab(t, &arg);
+
+	return 0;
+}
+
+int
 zoom_amount(struct tab *t, struct karg *arg)
 {
 	struct karg	narg = {0, NULL, -1};
@@ -6597,6 +6613,7 @@ struct buffercmd {
 	{ "^gg$",               move,           XT_MOVE_TOP },
 	{ "^gG$",               move,           XT_MOVE_BOTTOM },
 	{ "^gh$",               go_home,        0 },
+	{ "^[0-9]+t$",		gototab,	0 },
 	{ "^ZR$",               restart,        0 },
 	{ "^ZZ$",               quit,           0 },
 	{ "^zi$",               resizetab,      XT_ZOOM_IN },
