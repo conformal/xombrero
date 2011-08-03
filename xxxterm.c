@@ -6884,7 +6884,8 @@ buffercmd_init()
 	int			i;
 
 	for (i = 0; i < LENGTH(buffercmds); i++)
-		regcomp(&buffercmds[i].cregex, buffercmds[i].regex, REG_EXTENDED);
+		regcomp(&buffercmds[i].cregex, buffercmds[i].regex,
+		    REG_EXTENDED);
 }
 
 void
@@ -6925,12 +6926,12 @@ buffercmd_addkey(struct tab *t, guint keyval)
 
 	if (keyval == GDK_Escape) {
 		buffercmd_abort(t);
-		return XT_CB_HANDLED;
+		return (XT_CB_HANDLED);
 	}
 
 	/* key with modifier or non-ascii character */
 	if (!isascii(keyval))
-		return XT_CB_PASSTHROUGH;
+		return (XT_CB_PASSTHROUGH);
 
 	DNPRINTF(XT_D_BUFFERCMD, "buffercmd_addkey: adding key \"%c\" "
 	    "to buffer \"%s\"\n", keyval, bcmd);
@@ -6944,7 +6945,7 @@ buffercmd_addkey(struct tab *t, guint keyval)
 	/* buffer full, ignore input */
 	if (i == LENGTH(bcmd)) {
 		DNPRINTF(XT_D_BUFFERCMD, "buffercmd_addkey: buffer full\n");
-		return XT_CB_HANDLED;
+		return (XT_CB_HANDLED);
 	}
 
 	gtk_entry_set_text(GTK_ENTRY(t->sbe.buffercmd), bcmd);
@@ -6956,7 +6957,7 @@ buffercmd_addkey(struct tab *t, guint keyval)
 			break;
 		}
 
-	return XT_CB_HANDLED;
+	return (XT_CB_HANDLED);
 }
 
 gboolean
@@ -7013,8 +7014,8 @@ wv_keypress_after_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 				/* we have a string */
 			} else {
 				/* we have a number */
-				snprintf(buf, sizeof buf, "vimprobable_fire(%s)",
-				    t->hint_num);
+				snprintf(buf, sizeof buf,
+				    "vimprobable_fire(%s)", t->hint_num);
 				run_script(t, buf);
 			}
 			disable_hints(t);
@@ -7059,17 +7060,20 @@ wv_keypress_after_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 
 		/* numerical input */
 		if (CLEAN(e->state) == 0 &&
-		    ((e->keyval >= GDK_0 && e->keyval <= GDK_9) || (e->keyval >= GDK_KP_0 && e->keyval <= GDK_KP_9))) {
+		    ((e->keyval >= GDK_0 && e->keyval <= GDK_9) ||
+		    (e->keyval >= GDK_KP_0 && e->keyval <= GDK_KP_9))) {
 			snprintf(s, sizeof s, "%c", e->keyval);
 			strlcat(t->hint_num, s, sizeof t->hint_num);
-			DNPRINTF(XT_D_JS, "wv_keypress_after_cb: numerical %s\n",
+			DNPRINTF(XT_D_JS, "wv_keypress_after_cb: num %s\n",
 			    t->hint_num);
 num:
 			if (errstr) {
-				DNPRINTF(XT_D_JS, "wv_keypress_after_cb: invalid link number\n");
+				DNPRINTF(XT_D_JS, "wv_keypress_after_cb: "
+				    "invalid link number\n");
 				disable_hints(t);
 			} else {
-				snprintf(buf, sizeof buf, "vimprobable_update_hints(%s)",
+				snprintf(buf, sizeof buf,
+				    "vimprobable_update_hints(%s)",
 				    t->hint_num);
 				t->hint_mode = XT_HINT_NUMERICAL;
 				run_script(t, buf);
@@ -7081,21 +7085,24 @@ num:
 		}
 
 		/* alphanumerical input */
-		if (
-		    (CLEAN(e->state) == 0 && e->keyval >= GDK_a && e->keyval <= GDK_z) ||
-		    (CLEAN(e->state) == GDK_SHIFT_MASK && e->keyval >= GDK_A && e->keyval <= GDK_Z) ||
-		    (CLEAN(e->state) == 0 && ((e->keyval >= GDK_0 && e->keyval <= GDK_9) ||
-		    ((e->keyval >= GDK_KP_0 && e->keyval <= GDK_KP_9) && (t->hint_mode != XT_HINT_NUMERICAL))))) {
+		if ((CLEAN(e->state) == 0 && e->keyval >= GDK_a &&
+		    e->keyval <= GDK_z) ||
+		    (CLEAN(e->state) == GDK_SHIFT_MASK &&
+		    e->keyval >= GDK_A && e->keyval <= GDK_Z) ||
+		    (CLEAN(e->state) == 0 && ((e->keyval >= GDK_0 &&
+		    e->keyval <= GDK_9) ||
+		    ((e->keyval >= GDK_KP_0 && e->keyval <= GDK_KP_9) &&
+		    (t->hint_mode != XT_HINT_NUMERICAL))))) {
 			snprintf(s, sizeof s, "%c", e->keyval);
 			strlcat(t->hint_buf, s, sizeof t->hint_buf);
-			DNPRINTF(XT_D_JS, "wv_keypress_after_cb: alphanumerical %s\n",
-			    t->hint_buf);
+			DNPRINTF(XT_D_JS, "wv_keypress_after_cb: alphanumerical"
+			    " %s\n", t->hint_buf);
 anum:
 			snprintf(buf, sizeof buf, "vimprobable_cleanup()");
 			run_script(t, buf);
 
-			snprintf(buf, sizeof buf, "vimprobable_show_hints('%s')",
-			    t->hint_buf);
+			snprintf(buf, sizeof buf,
+			    "vimprobable_show_hints('%s')", t->hint_buf);
 			t->hint_mode = XT_HINT_ALPHANUM;
 			run_script(t, buf);
 
@@ -7231,7 +7238,8 @@ cmd_getlist(int id, char *key)
 	for (i = id + 1; i < LENGTH(cmds); i++) {
 		if (cmds[i].level < dep)
 			break;
-		if (cmds[i].level == dep && !strncmp(key, cmds[i].cmd, strlen(key)))
+		if (cmds[i].level == dep && !strncmp(key, cmds[i].cmd,
+		    strlen(key)))
 			cmd_status.list[c++] = cmds[i].cmd;
 
 	}
@@ -7260,7 +7268,8 @@ cmd_tokenize(char *s, char *tokens[])
 	size_t			len = strlen(s);
 	bool			blank = len == 0 || (len > 0 && s[len-1] == ' ');
 
-	for (tok = strtok_r(s, " ", &last); tok && i < 3; tok = strtok_r(NULL, " ", &last), i++)
+	for (tok = strtok_r(s, " ", &last); tok && i < 3;
+	    tok = strtok_r(NULL, " ", &last), i++)
 		tokens[i] = tok;
 
 	if (blank && i < 3)
@@ -7273,7 +7282,8 @@ void
 cmd_complete(struct tab *t, char *str, int dir)
 {
 	GtkEntry		*w = GTK_ENTRY(t->cmd);
-	int			i, j, levels, c = 0, dep = 0, parent = -1, matchcount = 0;
+	int			i, j, levels, c = 0, dep = 0, parent = -1;
+	int			matchcount = 0;
 	char			*tok, *match, *s = g_strdup(str);
 	char			*tokens[3];
 	char			res[XT_MAX_URL_LENGTH + 32] = ":";
