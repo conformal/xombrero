@@ -6788,14 +6788,20 @@ qmark(struct tab *t, struct karg *arg)
 	case XT_QMARK_OPEN:
 		if (qmarks[index] != NULL)
 			load_uri(t, qmarks[index]);
-		else
+		else {
+			show_oops(t, "quickmark \"%c\" does not exist",
+			    mark);
 			return (-1);
+		}
 		break;
 	case XT_QMARK_TAB:
 		if (qmarks[index] != NULL)
 			create_new_tab(qmarks[index], NULL, 1, -1);
-		else
+		else {
+			show_oops(t, "quickmark \"%c\" does not exist",
+			    mark);
 			return (-1);
+		}
 		break;
 	}
 
