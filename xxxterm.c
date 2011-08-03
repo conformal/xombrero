@@ -2975,7 +2975,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 		if ((title = fparseln(f, &len, &lineno, delim, 0)) == NULL)
 			if (feof(f) || ferror(f))
 				break;
-		if (len == 0) {
+		if (strlen(title) == 0 || title[0] == '#') {
 			free(title);
 			title = NULL;
 			continue;
@@ -6713,13 +6713,20 @@ qmarks_load()
 		return (1);
 	}
 
-	for (i = 0; ; i++) {
+	for (i = 1; ; i++) {
 		if ((line = fparseln(f, &linelen, NULL, NULL, 0)) == NULL)
 			if (feof(f) || ferror(f))
 				break;
+		if (strlen(line) == 0 || line[0] == '#') {
+			free(line);
+			line = NULL;
+			continue;
+		}
+
 		p = strtok(line, " \t");
 
-		if (p == NULL || strlen(p) != 1 || (index = marktoindex(*p)) == -1) {
+		if (p == NULL || strlen(p) != 1 ||
+		    (index = marktoindex(*p)) == -1) {
 			warnx("corrupt quickmarks file, line %d", i);
 			break;
 		}

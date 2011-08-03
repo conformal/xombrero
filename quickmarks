@@ -6,7 +6,7 @@
 # spaces or tabs is ignored, and will be deleted when xxxterm writes to
 # this file.
 #
+c http://www.cyphertite.com
+C http://www.conformal.com
+p http://www.peereboom.us
 O http://www.openbsd.org
-w http://en.wikipedia.org
-g http://www.google.com
-d http://www.duckduckgo.com
