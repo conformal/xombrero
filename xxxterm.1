@@ -993,8 +993,11 @@ Define the components of the status bar. The possible components are:
 | - separator
 P - page progress percent
 B - buffer command
+Z - page zoom level
 .Ed
 The default is "BP".
+These components show nothing if there is nothing worth showing, like
+zoom amount 100%.
 .It Cm statusbar_font
 Set the status bar font.
 E.g.

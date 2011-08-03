@@ -191,6 +191,7 @@ struct tab {
 	struct {
 		GtkWidget	*statusbar;
 		GtkWidget	*buffercmd;
+		GtkWidget	*zoom;
 		GtkWidget	*position;
 	} sbe;
 	GtkWidget		*cmd;
@@ -3274,10 +3275,12 @@ statusbar_modify_attr(struct tab *t, const char *text, const char *base)
 
 	gtk_widget_modify_text(t->sbe.statusbar, GTK_STATE_NORMAL, &c_text);
 	gtk_widget_modify_text(t->sbe.buffercmd, GTK_STATE_NORMAL, &c_text);
+	gtk_widget_modify_text(t->sbe.zoom, GTK_STATE_NORMAL, &c_text);
 	gtk_widget_modify_text(t->sbe.position, GTK_STATE_NORMAL, &c_text);
 
 	gtk_widget_modify_base(t->sbe.statusbar, GTK_STATE_NORMAL, &c_base);
 	gtk_widget_modify_base(t->sbe.buffercmd, GTK_STATE_NORMAL, &c_base);
+	gtk_widget_modify_base(t->sbe.zoom, GTK_STATE_NORMAL, &c_base);
 	gtk_widget_modify_base(t->sbe.position, GTK_STATE_NORMAL, &c_base);
 }
 
@@ -8027,6 +8030,18 @@ delete_tab(struct tab *t)
 }
 
 void
+update_statusbar_zoom(struct tab *t)
+{
+	gfloat			zoom;
+	char			s[16] = { '\0' };
+
+	g_object_get(G_OBJECT(t->wv), "zoom-level", &zoom, (char *)NULL);
+	if ((zoom <= 0.99 || zoom >= 1.01))
+		snprintf(s, sizeof s, "%d%%", (int)(zoom * 100));
+	gtk_entry_set_text(GTK_ENTRY(t->sbe.zoom), s);
+}
+
+void
 setzoom_webkit(struct tab *t, int adjust)
 {
 #define XT_ZOOMPERCENT		0.04
@@ -8053,6 +8068,7 @@ setzoom_webkit(struct tab *t, int adjust)
 	if (zoom < XT_ZOOMPERCENT)
 		zoom = XT_ZOOMPERCENT;
 	g_object_set(G_OBJECT(t->wv), "zoom-level", zoom, (char *)NULL);
+	update_statusbar_zoom(t);
 }
 
 gboolean
@@ -8094,7 +8110,8 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	GList				*items;
 	GdkColor			color;
 	char				*p;
-	int				sbe_p = 0, sbe_b = 0;
+	int				sbe_p = 0, sbe_b = 0,
+					sbe_z = 0;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
@@ -8179,6 +8196,14 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_entry_set_alignment(GTK_ENTRY(t->sbe.position), 1.0);
 	gtk_widget_set_size_request(t->sbe.position, 40, -1);
 
+	t->sbe.zoom = gtk_entry_new();
+	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.zoom), NULL);
+	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.zoom), FALSE);
+	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.zoom), FALSE);
+	gtk_widget_modify_font(GTK_WIDGET(t->sbe.zoom), statusbar_font);
+	gtk_entry_set_alignment(GTK_ENTRY(t->sbe.zoom), 1.0);
+	gtk_widget_set_size_request(t->sbe.zoom, 40, -1);
+
 	t->sbe.buffercmd = gtk_entry_new();
 	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.buffercmd), NULL);
 	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.buffercmd), FALSE);
@@ -8225,6 +8250,16 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 			sbe_b = 1;
 			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
 			    t->sbe.buffercmd, FALSE, FALSE, FALSE);
+			break;
+		case 'Z':
+			if (sbe_z) {
+				warnx("flag \"%c\" specified more than "
+				    "once in statusbar_elems\n", *p);
+				break;
+			}
+			sbe_z = 1;
+			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
+			    t->sbe.zoom, FALSE, FALSE, FALSE);
 			break;
 		default:
 			warnx("illegal flag \"%c\" in statusbar_elems\n", *p);
