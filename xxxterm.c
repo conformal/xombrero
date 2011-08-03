@@ -9234,6 +9234,7 @@ main(int argc, char *argv[])
 	char			conf[PATH_MAX] = { '\0' };
 	char			file[PATH_MAX];
 	char			*env_proxy = NULL;
+	char			*cmd = NULL;
 	FILE			*f = NULL;
 	struct karg		a;
 	struct sigaction	sact;
@@ -9443,7 +9444,6 @@ main(int argc, char *argv[])
 		warnx("already running");
 	}
 
-	char *cmd = NULL;
 	if (optn) {
 		while (argc) {
 			cmd = g_strdup_printf("%s %s", "tabnew", argv[0]);
