@@ -247,6 +247,9 @@ struct tab {
 	/* settings */
 	WebKitWebSettings	*settings;
 	gchar			*user_agent;
+
+	/* marks */
+	double			mark[XT_NOMARKS];
 };
 TAILQ_HEAD(tab_list, tab);
 
@@ -337,6 +340,7 @@ struct karg {
 #define XT_MAX_UNDO_CLOSE_TAB	(32)
 #define XT_RESERVED_CHARS	"$&+,/:;=?@ \"<>#%%{}|^~[]`"
 #define XT_PRINT_EXTRA_MARGIN	10
+#define XT_INVALID_MARK		(-1) /* XXX this is a double, maybe use something else, like a nan */
 
 /* colors */
 #define XT_COLOR_RED		"#cc0000"
@@ -413,6 +417,9 @@ struct karg {
 #define XT_QMARK_SET		(0)
 #define XT_QMARK_OPEN		(1)
 #define XT_QMARK_TAB		(2)
+
+#define XT_MARK_SET		(0)
+#define XT_MARK_GOTO		(1)
 
 #define XT_TAB_LAST		(-4)
 #define XT_TAB_FIRST		(-3)
@@ -606,6 +613,7 @@ void		recalc_tabs(void);
 void		recolor_compact_tabs(void);
 void		set_current_tab(int page_num);
 gboolean	update_statusbar_position(GtkAdjustment* adjustment, gpointer data);
+void		marks_clear(struct tab *t);
 
 struct special {
 	int		(*set)(struct settings *, char *);
@@ -1665,6 +1673,7 @@ load_uri(struct tab *t, gchar *uri)
 	}
 
 	set_status(t, (char *)uri, XT_STATUS_LOADING);
+	marks_clear(t);
 	webkit_web_view_load_uri(t->wv, uri);
 
 	if (newuri)
@@ -2184,6 +2193,7 @@ run_script(struct tab *t, char *s)
 		/* handle return value right here */
 		if (!strncmp(es, XT_JS_OPEN, XT_JS_OPEN_LEN)) {
 			disable_hints(t);
+			marks_clear(t);
 			webkit_web_view_load_uri(t->wv, &es[XT_JS_OPEN_LEN]);
 		}
 
@@ -3752,9 +3762,11 @@ navaction(struct tab *t, struct karg *args)
 
 	switch (args->i) {
 	case XT_NAV_BACK:
+		marks_clear(t);
 		webkit_web_view_go_back(t->wv);
 		break;
 	case XT_NAV_FORWARD:
+		marks_clear(t);
 		webkit_web_view_go_forward(t->wv);
 		break;
 	case XT_NAV_RELOAD:
@@ -5771,6 +5783,7 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 	newuri = g_strdup_printf(search_string, enc_search);
 	g_free(enc_search);
 
+	marks_clear(t);
 	webkit_web_view_load_uri(t->wv, newuri);
 	focus_webview(t);
 
@@ -6645,6 +6658,40 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 }
 
 int
+mark(struct tab *t, struct karg *arg)
+{
+	char                    mark;
+	int                     index;
+
+	mark = arg->s[1];
+	if ((index = marktoindex(mark)) == -1)
+		return -1;
+
+	if (arg->i == XT_MARK_SET)
+		t->mark[index] = gtk_adjustment_get_value(t->adjust_v);
+	else if (arg->i == XT_MARK_GOTO) {
+		if (t->mark[index] == XT_INVALID_MARK) {
+			show_oops(t, "mark '%c' does not exist", mark);
+			return -1;
+		}
+		/* XXX t->mark[index] can be bigger than the maximum if ajax or
+		   something changes the document size */
+		gtk_adjustment_set_value(t->adjust_v, t->mark[index]);
+	}
+
+	return 0;
+}
+
+void
+marks_clear(struct tab *t)
+{
+	int			i;
+
+	for (i = 0; i < LENGTH(t->mark); i++)
+		t->mark[i] = XT_INVALID_MARK;
+}
+
+int
 qmarks_load()
 {
 	char			file[PATH_MAX];
@@ -6817,6 +6864,8 @@ struct buffercmd {
 	{ "^gG$",               move,           XT_MOVE_BOTTOM },
 	{ "^[0-9]+%$",		move,		XT_MOVE_PERCENT },
 	{ "^gh$",               go_home,        0 },
+	{ "^m[a-zA-Z0-9]$",	mark,		XT_MARK_SET },
+	{ "^[`'][a-zA-Z0-9]$",	mark,		XT_MARK_GOTO },
 	{ "^[0-9]+t$",		gototab,	0 },
 	{ "^M[a-zA-Z0-9]$",	qmark,		XT_QMARK_SET },
 	{ "^go[a-zA-Z0-9]$",	qmark,		XT_QMARK_OPEN },
@@ -8156,6 +8205,9 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 		t->toolbar = create_toolbar(t);
 
 	gtk_box_pack_start(GTK_BOX(t->vbox), t->toolbar, FALSE, FALSE, 0);
+
+	/* marks */
+	marks_clear(t);
 
 	/* browser */
 	t->browser_win = create_browser(t);

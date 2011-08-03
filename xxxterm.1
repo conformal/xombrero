@@ -574,6 +574,15 @@ level up means going to a uri obtained from the current one by removing
 the last slash ('/') character and everything that follows it
 .It Cm gh
 open the home page in the current tab
+.It Cm m[a-zA-Z0-9]
+set a mark denoted by
+.Cm arg
+at the current page position. These marks behave like those in vi or
+less.
+.It Cm [`'][a-zA-Z0-9]
+go to the position where mark
+.Cm arg
+was set
 .It Cm M[a-zA-Z0-9]
 set the current uri as quickmark
 .Cm arg
