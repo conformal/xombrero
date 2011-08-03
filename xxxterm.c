@@ -1693,7 +1693,8 @@ get_uri(struct tab *t)
 		/* use tmp_uri to make sure it is g_freed */
 		if (t->tmp_uri)
 			g_free(t->tmp_uri);
-		t->tmp_uri = g_strdup_printf("%s%s", XT_URI_ABOUT, about_list[t->xtp_meaning].name);
+		t->tmp_uri =g_strdup_printf("%s%s", XT_URI_ABOUT,
+		    about_list[t->xtp_meaning].name);
 		uri = t->tmp_uri;
 	}
 	return uri;
@@ -1714,7 +1715,7 @@ get_title(struct tab *t, bool window)
 		return set;
 
 notitle:
-	set = window ? XT_NAME : "(untitled)";	
+	set = window ? XT_NAME : "(untitled)";
 
 	return set;
 }
@@ -2610,7 +2611,7 @@ find_domain(const gchar *s, int toplevel)
 	if (s == NULL)
 		return (NULL);
 
-	uri = soup_uri_new(s);	
+	uri = soup_uri_new(s);
 
 	if (uri == NULL || !SOUP_URI_VALID_FOR_HTTP(uri)) {
 		return (NULL);
@@ -2649,10 +2650,11 @@ toggle_cwl(struct tab *t, struct karg *args)
 	uri = get_uri(t);
 	dom = find_domain(uri, args->i & XT_WL_TOPLEVEL);
 
-	if (uri == NULL || dom == NULL || webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED) {
+	if (uri == NULL || dom == NULL ||
+	    webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED) {
 		show_oops(t, "Can't toggle domain in cookie white list");
 		goto done;
-	}	
+	}
 	d = wl_find(dom, &c_wl);
 
 	if (d == NULL)
@@ -2707,7 +2709,8 @@ toggle_js(struct tab *t, struct karg *args)
 	uri = get_uri(t);
 	dom = find_domain(uri, args->i & XT_WL_TOPLEVEL);
 
-	if (uri == NULL || dom == NULL || webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED) {
+	if (uri == NULL || dom == NULL ||
+	    webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED) {
 		show_oops(t, "Can't toggle domain in JavaScript white list");
 		goto done;
 	}
@@ -3557,7 +3560,8 @@ wl_save(struct tab *t, struct karg *args, int js)
 
 	uri = get_uri(t);
 	dom = find_domain(uri, args->i & XT_WL_TOPLEVEL);
-	if (uri == NULL || dom == NULL || webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED) {
+	if (uri == NULL || dom == NULL ||
+	    webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED) {
 		show_oops(t, "Can't add domain to %s white list",
 		  js ? "JavaScript" : "cookie");
 		goto done;
@@ -4070,7 +4074,8 @@ tabaction(struct tab *t, struct karg *args)
 		break;
 	case XT_TAB_UNDO_CLOSE:
 		if (undo_count == 0) {
-			DNPRINTF(XT_D_TAB, "%s: no tabs to undo close", __func__);
+			DNPRINTF(XT_D_TAB, "%s: no tabs to undo close",
+			    __func__);
 			goto done;
 		} else {
 			undo_count--;
@@ -6112,7 +6117,7 @@ notify_icon_loaded_cb(WebKitWebView *wv, gchar *uri, struct tab *t)
 
 		/* corrupt icon so trash it */
 		DNPRINTF(XT_D_DOWNLOAD, "%s: corrupt icon %s\n",
-	   	 __func__, file);
+		    __func__, file);
 		unlink(file);
 	}
 
@@ -6157,7 +6162,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	struct karg		a;
 
 	DNPRINTF(XT_D_URL, "notify_load_status_cb: %d  %s\n",
-	    webkit_web_view_get_load_status(wview), get_uri(t) ? get_uri(t) : "NOTHING");
+	    webkit_web_view_get_load_status(wview),
+	    get_uri(t) ? get_uri(t) : "NOTHING");
 
 	if (t == NULL) {
 		show_oops(NULL, "notify_load_status_cb invalid parameters");
@@ -6263,7 +6269,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 }
 
 gboolean
-notify_load_error_cb(WebKitWebView* wview, WebKitWebFrame *web_frame, gchar *uri, gpointer web_error,struct tab *t)
+notify_load_error_cb(WebKitWebView* wview, WebKitWebFrame *web_frame,
+    gchar *uri, gpointer web_error,struct tab *t)
 {
 	if (t->tmp_uri)
 		g_free(t->tmp_uri);
@@ -6273,7 +6280,7 @@ notify_load_error_cb(WebKitWebView* wview, WebKitWebFrame *web_frame, gchar *uri
 	gtk_window_set_title(GTK_WINDOW(main_window), XT_NAME);
 	set_status(t, uri, XT_STATUS_NOTHING);
 
-	return FALSE;
+	return (FALSE);
 }
 
 void
@@ -7266,8 +7273,9 @@ cmd_tokenize(char *s, char *tokens[])
 	int			i = 0;
 	char			*tok, *last;
 	size_t			len = strlen(s);
-	bool			blank = len == 0 || (len > 0 && s[len-1] == ' ');
+	bool			blank;
 
+	blank = len == 0 || (len > 0 && s[len - 1] == ' ');
 	for (tok = strtok_r(s, " ", &last); tok && i < 3;
 	    tok = strtok_r(NULL, " ", &last), i++)
 		tokens[i] = tok;
@@ -7308,7 +7316,8 @@ cmd_complete(struct tab *t, char *str, int dir)
 		for (j = c; j < LENGTH(cmds); j++) {
 			if (cmds[j].level < dep)
 				break;
-			if (cmds[j].level == dep && !strncmp(tok, cmds[j].cmd, strlen(tok))) {
+			if (cmds[j].level == dep && !strncmp(tok, cmds[j].cmd,
+			    strlen(tok))) {
 				matchcount++;
 				c = j + 1;
 				if (strlen(tok) == strlen(cmds[j].cmd)) {
@@ -7347,10 +7356,11 @@ gboolean
 cmd_execute(struct tab *t, char *str)
 {
 	struct cmd		*cmd = NULL;
-	char			*tok, *last, *s = g_strdup(str), *sc, prefixstr[4];
-	int			j, len, c = 0, dep = 0, matchcount = 0, prefix = -1;
+	char			*tok, *last, *s = g_strdup(str), *sc;
+	char			prefixstr[4];
+	int			j, len, c = 0, dep = 0, matchcount = 0;
+	int			prefix = -1, rv = XT_CB_PASSTHROUGH;
 	struct karg		arg = {0, NULL, -1};
-	int			rv = XT_CB_PASSTHROUGH;
 
 	sc = s;
 
@@ -7375,8 +7385,10 @@ cmd_execute(struct tab *t, char *str)
 		for (j = c; j < LENGTH(cmds); j++) {
 			if (cmds[j].level < dep)
 				break;
-			len = (tok[strlen(tok) - 1] == '!') ? strlen(tok) - 1: strlen(tok);
-			if (cmds[j].level == dep && !strncmp(tok, cmds[j].cmd, len)) {
+			len = (tok[strlen(tok) - 1] == '!') ? strlen(tok) - 1 :
+			    strlen(tok);
+			if (cmds[j].level == dep &&
+			    !strncmp(tok, cmds[j].cmd, len)) {
 				matchcount++;
 				c = j + 1;
 				cmd = &cmds[j];
@@ -7476,7 +7488,8 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	else if (!(c[0] == ':' || c[0] == '/' || c[0] == '?'))
 		e->keyval = GDK_Escape;
 
-	if (e->keyval != GDK_Tab && e->keyval != GDK_Shift_L && e->keyval != GDK_ISO_Left_Tab)
+	if (e->keyval != GDK_Tab && e->keyval != GDK_Shift_L &&
+	    e->keyval != GDK_ISO_Left_Tab)
 		cmd_status.index = -1;
 
 	switch (e->keyval) {
@@ -7655,7 +7668,8 @@ setup_webkit(struct tab *t)
 	g_object_set(G_OBJECT(t->settings),
 	    "enable-plugins", enable_plugins, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
-	    "javascript-can-open-windows-automatically", enable_scripts, (char *)NULL);
+	    "javascript-can-open-windows-automatically", enable_scripts,
+	    (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
 	    "enable-html5-database", FALSE, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
@@ -7898,7 +7912,8 @@ create_buffers(struct tab *t)
 
 	renderer = gtk_cell_renderer_text_new();
 	gtk_tree_view_insert_column_with_attributes
-	    (GTK_TREE_VIEW(view), -1, "Title", renderer, "text", COL_TITLE, NULL);
+	    (GTK_TREE_VIEW(view), -1, "Title", renderer, "text", COL_TITLE,
+	    NULL);
 
 	gtk_tree_view_set_model
 	    (GTK_TREE_VIEW(view), GTK_TREE_MODEL(buffers_store));
@@ -7915,7 +7930,8 @@ row_activated_cb(GtkTreeView *view, GtkTreePath *path,
 
 	gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 
-	if (gtk_tree_model_get_iter(GTK_TREE_MODEL(buffers_store), &iter, path)) {
+	if (gtk_tree_model_get_iter(GTK_TREE_MODEL(buffers_store), &iter,
+	    path)) {
 		gtk_tree_model_get
 		    (GTK_TREE_MODEL(buffers_store), &iter, COL_ID, &id, -1);
 		set_current_tab(id - 1);
@@ -7957,13 +7973,15 @@ recolor_compact_tabs(void)
 
 	gdk_color_parse(XT_COLOR_CT_INACTIVE, &color);
 	TAILQ_FOREACH(t, &tabs, entry)
-		gtk_widget_modify_fg(t->tab_elems.label, GTK_STATE_NORMAL, &color);
+		gtk_widget_modify_fg(t->tab_elems.label, GTK_STATE_NORMAL,
+		    &color);
 
 	curid = gtk_notebook_get_current_page(notebook);
 	TAILQ_FOREACH(t, &tabs, entry)
 		if (t->tab_id == curid) {
 			gdk_color_parse(XT_COLOR_CT_ACTIVE, &color);
-			gtk_widget_modify_fg(t->tab_elems.label, GTK_STATE_NORMAL, &color);
+			gtk_widget_modify_fg(t->tab_elems.label,
+			    GTK_STATE_NORMAL, &color);
 			break;
 		}
 }
@@ -8289,8 +8307,8 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 
 			gdk_color_parse(XT_COLOR_SB_SEPARATOR, &color);
 			gtk_widget_modify_bg(sep, GTK_STATE_NORMAL, &color);
-			gtk_box_pack_start(GTK_BOX(t->statusbar_box), sep, FALSE,
-			    FALSE, FALSE);
+			gtk_box_pack_start(GTK_BOX(t->statusbar_box), sep,
+			    FALSE, FALSE, FALSE);
 			break;
 		}
 		case 'P':
@@ -8377,13 +8395,15 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	if (append_next == 0 || gtk_notebook_get_n_pages(notebook) == 0)
 		append_tab(t);
 	else {
-		id = position >= 0 ? position: gtk_notebook_get_current_page(notebook) + 1;
+		id = position >= 0 ? position :
+		    gtk_notebook_get_current_page(notebook) + 1;
 		if (id > gtk_notebook_get_n_pages(notebook))
 			append_tab(t);
 		else {
 			TAILQ_INSERT_TAIL(&tabs, t, entry);
 			gtk_notebook_insert_page(notebook, t->vbox, b, id);
-			gtk_box_reorder_child(GTK_BOX(tab_bar), t->tab_elems.eventbox, id);
+			gtk_box_reorder_child(GTK_BOX(tab_bar),
+			    t->tab_elems.eventbox, id);
 			recalc_tabs();
 		}
 	}
@@ -8728,8 +8748,8 @@ create_canvas(void)
 	    "signal::switch-page", G_CALLBACK(notebook_switchpage_cb), NULL,
 	    (char *)NULL);
 	g_object_connect(G_OBJECT(notebook),
-	    "signal::page-reordered", G_CALLBACK(notebook_pagereordered_cb), NULL,
-	    (char *)NULL);
+	    "signal::page-reordered", G_CALLBACK(notebook_pagereordered_cb),
+	    NULL, (char *)NULL);
 	g_signal_connect(G_OBJECT(abtn), "button_press_event",
 	    G_CALLBACK(arrow_cb), NULL);
 
@@ -8923,7 +8943,8 @@ setup_cookies(void)
 
 	/* rejected cookies */
 	if (save_rejected_cookies)
-		snprintf(rc_fname, sizeof file, "%s/%s", work_dir, XT_REJECT_FILE);
+		snprintf(rc_fname, sizeof file, "%s/%s", work_dir,
+		    XT_REJECT_FILE);
 
 	/* persistent cookies */
 	snprintf(file, sizeof file, "%s/%s", work_dir, XT_COOKIE_FILE);
