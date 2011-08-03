@@ -439,7 +439,6 @@ struct karg {
 #define XT_NAV_BACK		(1)
 #define XT_NAV_FORWARD		(2)
 #define XT_NAV_RELOAD		(3)
-#define XT_NAV_RELOAD_CACHE	(4)
 
 #define XT_FOCUS_INVALID	(0)
 #define XT_FOCUS_URI		(1)
@@ -3759,7 +3758,7 @@ navaction(struct tab *t, struct karg *args)
 			item = webkit_web_back_forward_list_get_forward_item(t->bfl);
 		if (item == NULL)
 			return (XT_CB_PASSTHROUGH);
-		webkit_web_view_load_uri(t->wv, webkit_web_history_item_get_uri(item));
+		webkit_web_view_go_to_back_forward_item(t->wv, item);
 		t->item = NULL;
 		return (XT_CB_PASSTHROUGH);
 	}
@@ -3767,17 +3766,20 @@ navaction(struct tab *t, struct karg *args)
 	switch (args->i) {
 	case XT_NAV_BACK:
 		marks_clear(t);
-		webkit_web_view_go_back(t->wv);
+		item = webkit_web_back_forward_list_get_back_item(t->bfl);
+		if (item)
+			webkit_web_view_go_to_back_forward_item(t->wv, item);
 		break;
 	case XT_NAV_FORWARD:
 		marks_clear(t);
-		webkit_web_view_go_forward(t->wv);
+		item = webkit_web_back_forward_list_get_forward_item(t->bfl);
+		if (item)
+			webkit_web_view_go_to_back_forward_item(t->wv, item);
 		break;
 	case XT_NAV_RELOAD:
-		webkit_web_view_reload(t->wv);
-		break;
-	case XT_NAV_RELOAD_CACHE:
-		webkit_web_view_reload_bypass_cache(t->wv);
+		item = webkit_web_back_forward_list_get_current_item(t->bfl);
+		if (item)
+			webkit_web_view_go_to_back_forward_item(t->wv, item);
 		break;
 	}
 	return (XT_CB_PASSTHROUGH);
@@ -5009,7 +5011,6 @@ struct key_binding {
 	{ "goforward",		MOD1,	0,	GDK_Right	},
 	{ "reload",		0,	0,	GDK_F5		},
 	{ "reload",		CTRL,	0,	GDK_r		},
-	{ "reloadforce",	CTRL,	0,	GDK_R		},
 	{ "reload",		CTRL,	0,	GDK_l		},
 	{ "favorites",		MOD1,	1,	GDK_f		},
 
@@ -5280,7 +5281,6 @@ struct cmd {
 	{ "goback",		0,	navaction,		XT_NAV_BACK,		0 },
 	{ "goforward",		0,	navaction,		XT_NAV_FORWARD,		0 },
 	{ "reload",		0,	navaction,		XT_NAV_RELOAD,		0 },
-	{ "reloadforce",	0,	navaction,		XT_NAV_RELOAD_CACHE,	0 },
 
 	/* vertical movement */
 	{ "scrolldown",		0,	move,			XT_MOVE_DOWN,		0 },
