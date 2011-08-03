@@ -2195,7 +2195,7 @@ run_script(struct tab *t, char *s)
 		if (!strncmp(es, XT_JS_OPEN, XT_JS_OPEN_LEN)) {
 			disable_hints(t);
 			marks_clear(t);
-			webkit_web_view_load_uri(t->wv, &es[XT_JS_OPEN_LEN]);
+			load_uri(t, &es[XT_JS_OPEN_LEN]);
 		}
 
 		if (!strncmp(es, XT_JS_FIRE, XT_JS_FIRE_LEN)) {
