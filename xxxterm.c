@@ -3891,7 +3891,7 @@ url_set_visibility(void)
 }
 
 void
-notebook_tab_set_visibility()
+notebook_tab_set_visibility(void)
 {
 	if (show_tabs == 0) {
 		gtk_widget_hide(tab_bar);
@@ -6699,7 +6699,7 @@ marks_clear(struct tab *t)
 }
 
 int
-qmarks_load()
+qmarks_load(void)
 {
 	char			file[PATH_MAX];
 	char			*line = NULL, *p, mark;
@@ -6744,7 +6744,7 @@ qmarks_load()
 }
 
 int
-qmarks_save()
+qmarks_save(void)
 {
 	char			 file[PATH_MAX];
 	int			 i;
@@ -6893,7 +6893,7 @@ struct buffercmd {
 };
 
 void
-buffercmd_init()
+buffercmd_init(void)
 {
 	int			i;
 
