@@ -8283,7 +8283,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.statusbar), FALSE);
 	gtk_widget_modify_font(GTK_WIDGET(t->sbe.statusbar), statusbar_font);
 
-	/* XXX create these widgets only if specified in statusbar_elems */
+	/* create these widgets only if specified in statusbar_elems */
 	t->sbe.position = gtk_entry_new();
 	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.position), NULL);
 	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.position), FALSE);
