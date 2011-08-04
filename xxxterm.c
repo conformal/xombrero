@@ -5860,6 +5860,11 @@ show_ca_status(struct tab *t, const char *uri)
 	if (message && (soup_message_get_flags(message) &
 	    SOUP_MESSAGE_CERTIFICATE_TRUSTED)) {
 		col_str = XT_COLOR_GREEN;
+
+		/* see if we need to override green */
+		r = load_compare_cert(t, NULL);
+		if (r == 0)
+			col_str = XT_COLOR_BLUE;
 		goto done;
 	} else {
 		r = load_compare_cert(t, NULL);
@@ -6209,13 +6214,14 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		if (t->styled)
 			apply_style(t);
 
-		show_ca_status(t, uri);
 
 		/* we know enough to autosave the session */
 		if (session_autosave) {
 			a.s = NULL;
 			save_tabs(t, &a);
 		}
+
+		show_ca_status(t, uri);
 		break;
 
 	case WEBKIT_LOAD_FIRST_VISUALLY_NON_EMPTY_LAYOUT:
