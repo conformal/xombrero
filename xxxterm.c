@@ -7846,38 +7846,36 @@ create_toolbar(struct tab *t)
 	toolbar = b;
 	gtk_container_set_border_width(GTK_CONTAINER(toolbar), 0);
 
-	if (fancy_bar) {
-		/* backward button */
-		t->backward = create_button("Back", GTK_STOCK_GO_BACK, 0);
-		gtk_widget_set_sensitive(t->backward, FALSE);
-		g_signal_connect(G_OBJECT(t->backward), "clicked",
-		    G_CALLBACK(backward_cb), t);
-		gtk_box_pack_start(GTK_BOX(b), t->backward, FALSE, FALSE, 0);
+	/* backward button */
+	t->backward = create_button("Back", GTK_STOCK_GO_BACK, 0);
+	gtk_widget_set_sensitive(t->backward, FALSE);
+	g_signal_connect(G_OBJECT(t->backward), "clicked",
+	    G_CALLBACK(backward_cb), t);
+	gtk_box_pack_start(GTK_BOX(b), t->backward, FALSE, FALSE, 0);
 
-		/* forward button */
-		t->forward = create_button("Forward",GTK_STOCK_GO_FORWARD, 0);
-		gtk_widget_set_sensitive(t->forward, FALSE);
-		g_signal_connect(G_OBJECT(t->forward), "clicked",
-		    G_CALLBACK(forward_cb), t);
-		gtk_box_pack_start(GTK_BOX(b), t->forward, FALSE,
-		    FALSE, 0);
+	/* forward button */
+	t->forward = create_button("Forward",GTK_STOCK_GO_FORWARD, 0);
+	gtk_widget_set_sensitive(t->forward, FALSE);
+	g_signal_connect(G_OBJECT(t->forward), "clicked",
+	    G_CALLBACK(forward_cb), t);
+	gtk_box_pack_start(GTK_BOX(b), t->forward, FALSE,
+	    FALSE, 0);
 
-		/* stop button */
-		t->stop = create_button("Stop", GTK_STOCK_STOP, 0);
-		gtk_widget_set_sensitive(t->stop, FALSE);
-		g_signal_connect(G_OBJECT(t->stop), "clicked",
-		    G_CALLBACK(stop_cb), t);
-		gtk_box_pack_start(GTK_BOX(b), t->stop, FALSE,
-		    FALSE, 0);
+	/* stop button */
+	t->stop = create_button("Stop", GTK_STOCK_STOP, 0);
+	gtk_widget_set_sensitive(t->stop, FALSE);
+	g_signal_connect(G_OBJECT(t->stop), "clicked",
+	    G_CALLBACK(stop_cb), t);
+	gtk_box_pack_start(GTK_BOX(b), t->stop, FALSE,
+	    FALSE, 0);
 
-		/* JS button */
-		t->js_toggle = create_button("JS-Toggle", enable_scripts ?
-		    GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE, 0);
-		gtk_widget_set_sensitive(t->js_toggle, TRUE);
-		g_signal_connect(G_OBJECT(t->js_toggle), "clicked",
-		    G_CALLBACK(js_toggle_cb), t);
-		gtk_box_pack_start(GTK_BOX(b), t->js_toggle, FALSE, FALSE, 0);
-	}
+	/* JS button */
+	t->js_toggle = create_button("JS-Toggle", enable_scripts ?
+	    GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE, 0);
+	gtk_widget_set_sensitive(t->js_toggle, TRUE);
+	g_signal_connect(G_OBJECT(t->js_toggle), "clicked",
+	    G_CALLBACK(js_toggle_cb), t);
+	gtk_box_pack_start(GTK_BOX(b), t->js_toggle, FALSE, FALSE, 0);
 
 	t->uri_entry = gtk_entry_new();
 	g_signal_connect(G_OBJECT(t->uri_entry), "activate",
@@ -7891,7 +7889,7 @@ create_toolbar(struct tab *t)
 	gtk_box_pack_start(GTK_BOX(b), eb1, TRUE, TRUE, 0);
 
 	/* search entry */
-	if (fancy_bar && search_string) {
+	if (search_string) {
 		GtkWidget *eb2;
 		t->search_entry = gtk_entry_new();
 		gtk_entry_set_width_chars(GTK_ENTRY(t->search_entry), 30);
@@ -7906,6 +7904,7 @@ create_toolbar(struct tab *t)
 		    0);
 		gtk_box_pack_start(GTK_BOX(b), eb2, FALSE, FALSE, 0);
 	}
+
 	return (toolbar);
 }
 
@@ -8240,12 +8239,16 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 #endif
 
 	/* toolbar */
-	if (browser_mode == XT_BM_KIOSK)
+	if (browser_mode == XT_BM_KIOSK) {
 		t->toolbar = create_kiosk_toolbar(t);
-	else
+		gtk_box_pack_start(GTK_BOX(t->vbox), t->toolbar, FALSE, FALSE,
+		    0);
+	} else {
 		t->toolbar = create_toolbar(t);
-
-	gtk_box_pack_start(GTK_BOX(t->vbox), t->toolbar, FALSE, FALSE, 0);
+		if (fancy_bar)
+			gtk_box_pack_start(GTK_BOX(t->vbox), t->toolbar, FALSE,
+			    FALSE, 0);
+	}
 
 	/* marks */
 	marks_clear(t);
