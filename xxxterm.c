@@ -209,6 +209,9 @@ struct tab {
 	WebKitWebHistoryItem		*item;
 	WebKitWebBackForwardList	*bfl;
 
+	/* cert colors */
+	gchar			*col_str;
+
 	/* favicon */
 	WebKitNetworkRequest	*icon_request;
 	WebKitDownload		*icon_download;
@@ -5823,6 +5826,52 @@ check_and_set_js(const gchar *uri, struct tab *t)
 	    es ? GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE);
 }
 
+gboolean
+color_address_bar(gpointer p)
+{
+	GdkColor		color;
+	int			r;
+	struct tab		*tt, *t = p;
+
+	DNPRINTF(XT_D_URL, "%s:\n", __func__);
+
+	/* make sure t still exists */
+	if (t == NULL)
+		goto done;
+	TAILQ_FOREACH(tt, &tabs, entry)
+		if (t == tt)
+			break;
+	if (t != tt)
+		goto done;
+
+	if (!strcmp(t->col_str, XT_COLOR_GREEN)) {
+		/* see if we need to override green */
+		r = load_compare_cert(t, NULL);
+		if (r == 0)
+			t->col_str = XT_COLOR_BLUE;
+	} else {
+		r = load_compare_cert(t, NULL);
+		if (r == 0)
+			t->col_str = XT_COLOR_BLUE;
+		else if (r == 1)
+			t->col_str = XT_COLOR_YELLOW;
+		else
+			t->col_str = XT_COLOR_RED;
+	}
+
+	gdk_color_parse(t->col_str, &color);
+	gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
+
+	if (!strcmp(t->col_str, XT_COLOR_WHITE))
+		statusbar_modify_attr(t, t->col_str, XT_COLOR_BLACK);
+	else
+		statusbar_modify_attr(t, XT_COLOR_BLACK, t->col_str);
+
+	t->col_str = NULL;
+done:
+	return (FALSE /* kill thread */);
+}
+
 void
 show_ca_status(struct tab *t, const char *uri)
 {
@@ -5831,11 +5880,13 @@ show_ca_status(struct tab *t, const char *uri)
 	WebKitNetworkRequest	*request;
 	SoupMessage		*message;
 	GdkColor		color;
-	gchar			*col_str = XT_COLOR_WHITE;
-	int			r;
 
 	DNPRINTF(XT_D_URL, "show_ca_status: %d %s %s\n",
 	    ssl_strict_certs, ssl_ca_file, uri);
+
+	if (t == NULL)
+		return;
+	t->col_str = XT_COLOR_WHITE;
 
 	if (uri == NULL)
 		goto done;
@@ -5843,7 +5894,7 @@ show_ca_status(struct tab *t, const char *uri)
 		if (g_str_has_prefix(uri, "http://"))
 			goto done;
 		if (g_str_has_prefix(uri, "https://")) {
-			col_str = XT_COLOR_RED;
+			t->col_str = XT_COLOR_RED;
 			goto done;
 		}
 		return;
@@ -5858,33 +5909,25 @@ show_ca_status(struct tab *t, const char *uri)
 	message = webkit_network_request_get_message(request);
 
 	if (message && (soup_message_get_flags(message) &
-	    SOUP_MESSAGE_CERTIFICATE_TRUSTED)) {
-		col_str = XT_COLOR_GREEN;
+	    SOUP_MESSAGE_CERTIFICATE_TRUSTED))
+		t->col_str = XT_COLOR_GREEN;
+	else
+		t->col_str = XT_COLOR_RED;
 
-		/* see if we need to override green */
-		r = load_compare_cert(t, NULL);
-		if (r == 0)
-			col_str = XT_COLOR_BLUE;
-		goto done;
-	} else {
-		r = load_compare_cert(t, NULL);
-		if (r == 0)
-			col_str = XT_COLOR_BLUE;
-		else if (r == 1)
-			col_str = XT_COLOR_YELLOW;
-		else
-			col_str = XT_COLOR_RED;
-		goto done;
-	}
+	/* thread the coloring of the address bar */
+	gdk_threads_add_idle_full(G_PRIORITY_DEFAULT_IDLE,
+	    color_address_bar, t, NULL);
+	return;
+
 done:
-	if (col_str) {
-		gdk_color_parse(col_str, &color);
+	if (t->col_str) {
+		gdk_color_parse(t->col_str, &color);
 		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
 
-		if (!strcmp(col_str, XT_COLOR_WHITE))
-			statusbar_modify_attr(t, col_str, XT_COLOR_BLACK);
+		if (!strcmp(t->col_str, XT_COLOR_WHITE))
+			statusbar_modify_attr(t, t->col_str, XT_COLOR_BLACK);
 		else
-			statusbar_modify_attr(t, XT_COLOR_BLACK, col_str);
+			statusbar_modify_attr(t, XT_COLOR_BLACK, t->col_str);
 	}
 }
 
@@ -9337,9 +9380,12 @@ main(int argc, char *argv[])
 	generate_xtp_session_key(&fl_session_key);
 
 	/* prepare gtk */
-	gtk_init(&argc, &argv);
-	if (!g_thread_supported())
+	if (!g_thread_supported()) {
 		g_thread_init(NULL);
+		gdk_threads_init();
+		gdk_threads_enter();
+	}
+	gtk_init(&argc, &argv);
 
 	/* signals */
 	bzero(&sact, sizeof(sact));
@@ -9521,6 +9567,10 @@ main(int argc, char *argv[])
 		}
 
 	gtk_main();
+
+	if (!g_thread_supported()) {
+		gdk_threads_leave();
+	}
 
 	gnutls_global_deinit();
 
