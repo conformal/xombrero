@@ -209,9 +209,6 @@ struct tab {
 	WebKitWebHistoryItem		*item;
 	WebKitWebBackForwardList	*bfl;
 
-	/* cert colors */
-	gchar			*col_str;
-
 	/* favicon */
 	WebKitNetworkRequest	*icon_request;
 	WebKitDownload		*icon_download;
@@ -3209,6 +3206,7 @@ start_tls(struct tab *t, int s, gnutls_session_t *gs,
 	gnutls_certificate_allocate_credentials(&xcred);
 	gnutls_certificate_set_x509_trust_file(xcred, ssl_ca_file,
 	    GNUTLS_X509_FMT_PEM);
+
 	gnutls_init(&gsession, GNUTLS_CLIENT);
 	gnutls_priority_set_direct(gsession, "PERFORMANCE", NULL);
 	gnutls_credentials_set(gsession, GNUTLS_CRD_CERTIFICATE, xcred);
@@ -3340,34 +3338,45 @@ done:
 	fclose(f);
 }
 
-int
+enum cert_trust {
+	CERT_LOCAL,
+	CERT_TRUSTED,
+	CERT_UNTRUSTED,
+	CERT_BAD
+};
+
+enum cert_trust
 load_compare_cert(struct tab *t, struct karg *args)
 {
 	const gchar		*uri;
 	char			domain[8182], file[PATH_MAX];
 	char			cert_buf[64 * 1024], r_cert_buf[64 * 1024];
-	int			s = -1, rv = 1, i;
+	int			s = -1, i, error;
 	size_t			cert_count;
 	FILE			*f = NULL;
 	size_t			cert_buf_sz;
+	enum cert_trust		rv = CERT_UNTRUSTED;
 	gnutls_session_t	gsession;
 	gnutls_x509_crt_t	*certs;
 	gnutls_certificate_credentials_t xcred;
 
 	if (t == NULL)
-		return (1);
+		return (rv);
 
 	if ((uri = get_uri(t)) == NULL)
-		return (1);
+		return (rv);
 
 	if ((s = connect_socket_from_uri(uri, domain, sizeof domain)) == -1)
-		return (1);
+		return (rv);
 
 	/* go ssl/tls */
 	if (start_tls(t, s, &gsession, &xcred)) {
 		show_oops(t, "Start TLS failed");
 		goto done;
 	}
+
+	/* verify certs in case cert file doesn't exist */
+	gnutls_certificate_verify_peers2(gsession, &error);
 
 	/* get certs */
 	if (get_connection_certs(gsession, &certs, &cert_count)) {
@@ -3376,8 +3385,11 @@ load_compare_cert(struct tab *t, struct karg *args)
 	}
 
 	snprintf(file, sizeof file, "%s/%s", certs_dir, domain);
-	if ((f = fopen(file, "r")) == NULL)
+	if ((f = fopen(file, "r")) == NULL) {
+		if (!error)
+			rv = CERT_TRUSTED;
 		goto freeit;
+	}
 
 	for (i = 0; i < cert_count; i++) {
 		cert_buf_sz = sizeof cert_buf;
@@ -3386,16 +3398,16 @@ load_compare_cert(struct tab *t, struct karg *args)
 			goto freeit;
 		}
 		if (fread(r_cert_buf, cert_buf_sz, 1, f) != 1) {
-			rv = -1; /* critical */
+			rv = CERT_BAD; /* critical */
 			goto freeit;
 		}
 		if (bcmp(r_cert_buf, cert_buf, sizeof cert_buf_sz)) {
-			rv = -1; /* critical */
+			rv = CERT_BAD; /* critical */
 			goto freeit;
 		}
+		rv = CERT_LOCAL;
 	}
 
-	rv = 0;
 freeit:
 	if (f)
 		fclose(f);
@@ -5830,8 +5842,8 @@ gboolean
 color_address_bar(gpointer p)
 {
 	GdkColor		color;
-	int			r;
 	struct tab		*tt, *t = p;
+	gchar			*col_str = XT_COLOR_YELLOW;
 
 	DNPRINTF(XT_D_URL, "%s:\n", __func__);
 
@@ -5844,30 +5856,30 @@ color_address_bar(gpointer p)
 	if (t != tt)
 		goto done;
 
-	if (!strcmp(t->col_str, XT_COLOR_GREEN)) {
-		/* see if we need to override green */
-		r = load_compare_cert(t, NULL);
-		if (r == 0)
-			t->col_str = XT_COLOR_BLUE;
-	} else {
-		r = load_compare_cert(t, NULL);
-		if (r == 0)
-			t->col_str = XT_COLOR_BLUE;
-		else if (r == 1)
-			t->col_str = XT_COLOR_YELLOW;
-		else
-			t->col_str = XT_COLOR_RED;
+	switch (load_compare_cert(t, NULL)) {
+	case CERT_LOCAL:
+		col_str = XT_COLOR_BLUE;
+		break;
+	case CERT_TRUSTED:
+		col_str = XT_COLOR_GREEN;
+		break;
+	case CERT_UNTRUSTED:
+		col_str = XT_COLOR_YELLOW;
+		break;
+	case CERT_BAD:
+		col_str = XT_COLOR_RED;
+		break;
 	}
 
-	gdk_color_parse(t->col_str, &color);
+	gdk_color_parse(col_str, &color);
 	gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
 
-	if (!strcmp(t->col_str, XT_COLOR_WHITE))
-		statusbar_modify_attr(t, t->col_str, XT_COLOR_BLACK);
+	if (!strcmp(col_str, XT_COLOR_WHITE))
+		statusbar_modify_attr(t, col_str, XT_COLOR_BLACK);
 	else
-		statusbar_modify_attr(t, XT_COLOR_BLACK, t->col_str);
+		statusbar_modify_attr(t, XT_COLOR_BLACK, col_str);
 
-	t->col_str = NULL;
+	col_str = NULL;
 done:
 	return (FALSE /* kill thread */);
 }
@@ -5875,18 +5887,14 @@ done:
 void
 show_ca_status(struct tab *t, const char *uri)
 {
-	WebKitWebFrame		*frame;
-	WebKitWebDataSource	*source;
-	WebKitNetworkRequest	*request;
-	SoupMessage		*message;
 	GdkColor		color;
+	gchar			*col_str = XT_COLOR_WHITE;
 
 	DNPRINTF(XT_D_URL, "show_ca_status: %d %s %s\n",
 	    ssl_strict_certs, ssl_ca_file, uri);
 
 	if (t == NULL)
 		return;
-	t->col_str = XT_COLOR_WHITE;
 
 	if (uri == NULL)
 		goto done;
@@ -5894,7 +5902,7 @@ show_ca_status(struct tab *t, const char *uri)
 		if (g_str_has_prefix(uri, "http://"))
 			goto done;
 		if (g_str_has_prefix(uri, "https://")) {
-			t->col_str = XT_COLOR_RED;
+			col_str = XT_COLOR_RED;
 			goto done;
 		}
 		return;
@@ -5903,31 +5911,20 @@ show_ca_status(struct tab *t, const char *uri)
 	    !g_str_has_prefix(uri, "https://"))
 		goto done;
 
-	frame = webkit_web_view_get_main_frame(t->wv);
-	source = webkit_web_frame_get_data_source(frame);
-	request = webkit_web_data_source_get_request(source);
-	message = webkit_network_request_get_message(request);
-
-	if (message && (soup_message_get_flags(message) &
-	    SOUP_MESSAGE_CERTIFICATE_TRUSTED))
-		t->col_str = XT_COLOR_GREEN;
-	else
-		t->col_str = XT_COLOR_RED;
-
 	/* thread the coloring of the address bar */
 	gdk_threads_add_idle_full(G_PRIORITY_DEFAULT_IDLE,
 	    color_address_bar, t, NULL);
 	return;
 
 done:
-	if (t->col_str) {
-		gdk_color_parse(t->col_str, &color);
+	if (col_str) {
+		gdk_color_parse(col_str, &color);
 		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
 
-		if (!strcmp(t->col_str, XT_COLOR_WHITE))
-			statusbar_modify_attr(t, t->col_str, XT_COLOR_BLACK);
+		if (!strcmp(col_str, XT_COLOR_WHITE))
+			statusbar_modify_attr(t, col_str, XT_COLOR_BLACK);
 		else
-			statusbar_modify_attr(t, XT_COLOR_BLACK, t->col_str);
+			statusbar_modify_attr(t, XT_COLOR_BLACK, col_str);
 	}
 }
 
