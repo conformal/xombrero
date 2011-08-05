@@ -8592,6 +8592,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 		webkit_web_back_forward_list_clear(t->bfl);
 
 	recolor_compact_tabs();
+	setzoom_webkit(t, XT_ZOOM_NORMAL);
 	return (t);
 }
 
