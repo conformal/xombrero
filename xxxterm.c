@@ -3127,21 +3127,28 @@ done:
 }
 
 int
-connect_socket_from_uri(const gchar *uri, char *domain, size_t domain_sz)
+connect_socket_from_uri(struct tab *t, const gchar *uri, char *domain,
+    size_t domain_sz)
 {
 	SoupURI			*su = NULL;
 	struct addrinfo		hints, *res = NULL, *ai;
-	int			s = -1, on;
+	int			rv = -1, s = -1, on, error;
 	char			port[8];
 
-	if (uri && !g_str_has_prefix(uri, "https://"))
+	if (uri && !g_str_has_prefix(uri, "https://")) {
+		show_oops(t, "invalid URI");
 		goto done;
+	}
 
 	su = soup_uri_new(uri);
-	if (su == NULL)
+	if (su == NULL) {
+		show_oops(t, "invalid soup URI");
 		goto done;
-	if (!SOUP_URI_VALID_FOR_HTTP(su))
+	}
+	if (!SOUP_URI_VALID_FOR_HTTP(su)) {
+		show_oops(t, "invalid HTTPS URI");
 		goto done;
+	}
 
 	snprintf(port, sizeof port, "%d", su->port);
 	bzero(&hints, sizeof(struct addrinfo));
@@ -3149,33 +3156,41 @@ connect_socket_from_uri(const gchar *uri, char *domain, size_t domain_sz)
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 
-	if (getaddrinfo(su->host, port, &hints, &res))
+	if ((error = getaddrinfo(su->host, port, &hints, &res))) {
+		show_oops(t, "getaddrinfo failed %s", gai_strerror(errno));
 		goto done;
+	}
 
 	for (ai = res; ai; ai = ai->ai_next) {
 		if (ai->ai_family != AF_INET && ai->ai_family != AF_INET6)
 			continue;
 
 		s = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-		if (s < 0)
+		if (s < 0) {
+			show_oops(t, "socket failed %s", strerror(errno));
 			goto done;
+		}
 		if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on,
-			    sizeof(on)) == -1)
+			    sizeof(on)) == -1) {
+			show_oops(t, "setsockopt failed %s", strerror(errno));
 			goto done;
-
-		if (connect(s, ai->ai_addr, ai->ai_addrlen) < 0)
+		}
+		if (connect(s, ai->ai_addr, ai->ai_addrlen) < 0) {
+			show_oops(t, "connect failed %s", strerror(errno));
 			goto done;
+		}
 	}
 
 	if (domain)
 		strlcpy(domain, su->host, domain_sz);
+	rv = s;
 done:
 	if (su)
 		soup_uri_free(su);
 	if (res)
 		freeaddrinfo(res);
 
-	return (s);
+	return (rv);
 }
 
 int
@@ -3367,7 +3382,7 @@ load_compare_cert(struct tab *t, struct karg *args)
 	if ((uri = get_uri(t)) == NULL)
 		return (rv);
 
-	if ((s = connect_socket_from_uri(uri, domain, sizeof domain)) == -1)
+	if ((s = connect_socket_from_uri(t, uri, domain, sizeof domain)) == -1)
 		return (rv);
 
 	/* go ssl/tls */
@@ -3444,7 +3459,7 @@ cert_cmd(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	if ((s = connect_socket_from_uri(uri, domain, sizeof domain)) == -1) {
+	if ((s = connect_socket_from_uri(t, uri, domain, sizeof domain)) == -1) {
 		show_oops(t, "Invalid certificate URI: %s", uri);
 		return (1);
 	}
