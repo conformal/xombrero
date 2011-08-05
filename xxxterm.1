@@ -990,6 +990,15 @@ trusted and yellow when untrusted.
 If
 .Cm ssl_ca_file
 is not set then the URL bar will color all HTTPS connections red.
+.Pp
+WebKit only supports a single PEM file.
+Many OS' or distributions have many PEM files.
+One can simply concatenate all separate files into one large one.
+E.g.
+.Cm for i in `ls`; do cat $i >> cert.pem; done
+and use the resulting cert.pem file as the input to
+.Cm ssl_ca_file .
+It is advisable to periodically recreate the cert.pem file.
 .It Cm ssl_strict_certs
 If this value is set connections to untrusted sites will be aborted.
 This value is only used if
