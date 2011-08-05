@@ -3157,7 +3157,7 @@ connect_socket_from_uri(struct tab *t, const gchar *uri, char *domain,
 	hints.ai_socktype = SOCK_STREAM;
 
 	if ((error = getaddrinfo(su->host, port, &hints, &res))) {
-		show_oops(t, "getaddrinfo failed %s", gai_strerror(errno));
+		show_oops(t, "getaddrinfo failed: %s", gai_strerror(errno));
 		goto done;
 	}
 
@@ -3166,19 +3166,21 @@ connect_socket_from_uri(struct tab *t, const gchar *uri, char *domain,
 			continue;
 
 		s = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-		if (s < 0) {
-			show_oops(t, "socket failed %s", strerror(errno));
+		if (s == -1) {
+			show_oops(t, "socket failed: %s", strerror(errno));
 			goto done;
 		}
 		if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on,
-			    sizeof(on)) == -1) {
-			show_oops(t, "setsockopt failed %s", strerror(errno));
+		    sizeof(on)) == -1) {
+			show_oops(t, "setsockopt failed: %s", strerror(errno));
 			goto done;
 		}
-		if (connect(s, ai->ai_addr, ai->ai_addrlen) < 0) {
-			show_oops(t, "connect failed %s", strerror(errno));
+		if (connect(s, ai->ai_addr, ai->ai_addrlen) == -1) {
+			show_oops(t, "connect failed: %s", strerror(errno));
 			goto done;
 		}
+
+		break;
 	}
 
 	if (domain)
@@ -3189,6 +3191,8 @@ done:
 		soup_uri_free(su);
 	if (res)
 		freeaddrinfo(res);
+	if (rv == -1 && s != -1)
+		close(s);
 
 	return (rv);
 }
