@@ -3223,6 +3223,7 @@ start_tls(struct tab *t, int s, gnutls_session_t *gs,
 	gnutls_credentials_type_t cred;
 	cred = gnutls_auth_get_type(gsession);
 	if (cred != GNUTLS_CRD_CERTIFICATE) {
+		show_oops(t, "gnutls_auth_get_type failed %d", (int)cred);
 		stop_tls(gsession, xcred);
 		goto done;
 	}
@@ -3370,10 +3371,8 @@ load_compare_cert(struct tab *t, struct karg *args)
 		return (rv);
 
 	/* go ssl/tls */
-	if (start_tls(t, s, &gsession, &xcred)) {
-		show_oops(t, "Start TLS failed");
+	if (start_tls(t, s, &gsession, &xcred))
 		goto done;
-	}
 
 	/* verify certs in case cert file doesn't exist */
 	gnutls_certificate_verify_peers2(gsession, &error);
@@ -3451,10 +3450,8 @@ cert_cmd(struct tab *t, struct karg *args)
 	}
 
 	/* go ssl/tls */
-	if (start_tls(t, s, &gsession, &xcred)) {
-		show_oops(t, "Start TLS failed");
+	if (start_tls(t, s, &gsession, &xcred))
 		goto done;
-	}
 
 	/* get certs */
 	if (get_connection_certs(gsession, &certs, &cert_count)) {
