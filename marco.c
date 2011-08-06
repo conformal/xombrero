@@ -1,3 +1,4 @@
+/* $xxxterm$ */
 /*
  * Copyright (c) 2011 Todd T. Fries <todd@fries.net>
  *

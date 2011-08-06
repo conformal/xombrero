@@ -1,3 +1,4 @@
+/* $xxxterm$ */
 /*	$OpenBSD: tree.h,v 1.12 2009/03/02 09:42:55 mikeb Exp $	*/
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>

@@ -22,9 +22,6 @@
 
 /*
  * TODO:
- *	multi letter commands
- *	pre and post counts for commands
- *	autocompletion on various inputs
  *	create privacy browsing
  *		- encrypted local data
  */
