@@ -7492,7 +7492,7 @@ execute_cmd:
 	if (cmd->type & XT_INTARG && last && strlen(last) > 0) {
 		arg.precount = atoi(arg.s);
 		if (arg.precount <= 0) {
-			if (arg.s[0]=='0')
+			if (arg.s[0] == '0')
 				show_oops(t, "Zero count");
 			else
 				show_oops(t, "Trailing characters");
