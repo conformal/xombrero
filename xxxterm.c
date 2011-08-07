@@ -287,7 +287,7 @@ int				next_download_id = 1;
 struct karg {
 	int		i;
 	char		*s;
-	int		p;
+	int		precount;
 };
 
 /* defines */
@@ -4048,16 +4048,16 @@ tabaction(struct tab *t, struct karg *args)
 	switch (args->i) {
 	case XT_TAB_NEW:
 		if (strlen(url) > 0)
-			create_new_tab(url, NULL, 1, args->p);
+			create_new_tab(url, NULL, 1, args->precount);
 		else
-			create_new_tab(NULL, NULL, 1, args->p);
+			create_new_tab(NULL, NULL, 1, args->precount);
 		break;
 	case XT_TAB_DELETE:
-		if (args->p < 0)
+		if (args->precount < 0)
 			delete_tab(t);
 		else
 			TAILQ_FOREACH(tt, &tabs, entry)
-				if (tt->tab_id == args->p - 1) {
+				if (tt->tab_id == args->precount - 1) {
 					delete_tab(tt);
 					break;
 				}
@@ -4168,17 +4168,17 @@ movetab(struct tab *t, struct karg *args)
 
 	switch (args->i) {
 	case XT_TAB_NEXT:
-		if (args->p < 0)
+		if (args->precount < 0)
 			dest = dest == n - 1 ? 0 : dest + 1;
 		else
-			dest = args->p - 1;
+			dest = args->precount - 1;
 
 		break;
 	case XT_TAB_PREV:
-		if (args->p < 0)
+		if (args->precount < 0)
 			dest -= 1;
 		else
-			dest -= args->p % n;
+			dest -= args->precount % n;
 
 		if (dest < 0)
 			dest += n;
@@ -6908,7 +6908,7 @@ gototab(struct tab *t, struct karg *args)
 	tab = atoi(args->s);
 
 	arg.i = XT_TAB_NEXT;
-	arg.p = tab;
+	arg.precount = tab;
 
 	movetab(t, &arg);
 
@@ -7479,19 +7479,19 @@ execute_cmd:
 	arg.i = cmd->arg;
 
 	if (prefix != -1)
-		arg.p = prefix;
+		arg.precount = prefix;
 	else if (cmd_prefix > 0)
-		arg.p = cmd_prefix;
+		arg.precount = cmd_prefix;
 
-	if (j > 0 && !(cmd->type & XT_PREFIX) && arg.p > -1) {
+	if (j > 0 && !(cmd->type & XT_PREFIX) && arg.precount > -1) {
 		show_oops(t, "No prefix allowed: %s", str);
 		goto done;
 	}
 	if (cmd->type > 1)
 		arg.s = last ? g_strdup(last) : g_strdup("");
 	if (cmd->type & XT_INTARG && last && strlen(last) > 0) {
-		arg.p = atoi(arg.s);
-		if (arg.p <= 0) {
+		arg.precount = atoi(arg.s);
+		if (arg.precount <= 0) {
 			if (arg.s[0]=='0')
 				show_oops(t, "Zero count");
 			else
