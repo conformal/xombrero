@@ -8137,6 +8137,7 @@ delete_tab(struct tab *t)
 	if (t == NULL)
 		return;
 
+	buffercmd_abort(t);
 	TAILQ_REMOVE(&tabs, t, entry);
 
 	/* Halt all webkit activity. */
