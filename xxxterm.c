@@ -3818,6 +3818,7 @@ move(struct tab *t, struct karg *args)
 {
 	GtkAdjustment		*adjust;
 	double			pi, si, pos, ps, upper, lower, max;
+	double			percent;
 
 	switch (args->i) {
 	case XT_MOVE_DOWN:
@@ -3885,17 +3886,12 @@ move(struct tab *t, struct karg *args)
 		gtk_adjustment_set_value(adjust, MAX(pos, lower));
 		break;
 	case XT_MOVE_PERCENT:
-		{
-			double		percent;
-
-			percent = atoi(args->s) / 100.0;
-			pos = max * percent;
-			if (pos < 0.0 || pos > max)
-				break;
-
-			gtk_adjustment_set_value(adjust, pos);
+		percent = atoi(args->s) / 100.0;
+		pos = max * percent;
+		if (pos < 0.0 || pos > max)
 			break;
-		}
+		gtk_adjustment_set_value(adjust, pos);
+		break;
 	default:
 		return (XT_CB_PASSTHROUGH);
 	}
