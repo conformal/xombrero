@@ -6323,10 +6323,16 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	    webkit_web_view_can_go_forward(wview));
 }
 
+#if 0
 gboolean
 notify_load_error_cb(WebKitWebView* wview, WebKitWebFrame *web_frame,
     gchar *uri, gpointer web_error,struct tab *t)
 {
+	/*
+	 * XXX this function is wrong
+	 * it overwrites perfectly good urls with garbage on load errors
+	 * those happen often when popups fail to resolve dns
+	 */
 	if (t->tmp_uri)
 		g_free(t->tmp_uri);
 	t->tmp_uri = g_strdup(uri);
@@ -6337,6 +6343,7 @@ notify_load_error_cb(WebKitWebView* wview, WebKitWebFrame *web_frame,
 
 	return (FALSE);
 }
+#endif
 
 void
 notify_title_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
@@ -8530,8 +8537,13 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	    (char *)NULL);
 	g_signal_connect(t->wv,
 	    "notify::load-status", G_CALLBACK(notify_load_status_cb), t);
+	/*
+	 * XXX this puts invalid url in uri_entry and that is undesirable
+	 */
+#if 0
 	g_signal_connect(t->wv,
 	    "load-error", G_CALLBACK(notify_load_error_cb), t);
+#endif
 	g_signal_connect(t->wv,
 	    "notify::title", G_CALLBACK(notify_title_cb), t);
 
