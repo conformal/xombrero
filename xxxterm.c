@@ -3369,29 +3369,38 @@ load_compare_cert(struct tab *t, struct karg *args)
 	char			domain[8182], file[PATH_MAX];
 	char			cert_buf[64 * 1024], r_cert_buf[64 * 1024];
 	int			s = -1, i, error;
-	size_t			cert_count;
 	FILE			*f = NULL;
-	size_t			cert_buf_sz;
+	size_t			cert_buf_sz, cert_count;
 	enum cert_trust		rv = CERT_UNTRUSTED;
+	char			serr[80];
 	gnutls_session_t	gsession;
 	gnutls_x509_crt_t	*certs;
 	gnutls_certificate_credentials_t xcred;
+
+	DNPRINTF(XT_D_URL, "%s: %p %p\n", __func__, t, args);
 
 	if (t == NULL)
 		return (rv);
 
 	if ((uri = get_uri(t)) == NULL)
 		return (rv);
+	DNPRINTF(XT_D_URL, "%s: %s\n", __func__, uri);
 
 	if ((s = connect_socket_from_uri(t, uri, domain, sizeof domain)) == -1)
 		return (rv);
+	DNPRINTF(XT_D_URL, "%s: fd %d\n", __func__, s);
 
 	/* go ssl/tls */
 	if (start_tls(t, s, &gsession, &xcred))
 		goto done;
+	DNPRINTF(XT_D_URL, "%s: got tls\n", __func__);
 
 	/* verify certs in case cert file doesn't exist */
-	gnutls_certificate_verify_peers2(gsession, &error);
+	if (gnutls_certificate_verify_peers2(gsession, &error) !=
+	    GNUTLS_E_SUCCESS) {
+		show_oops(t, "Invalid certificates");
+		goto done;
+	}
 
 	/* get certs */
 	if (get_connection_certs(gsession, &certs, &cert_count)) {
@@ -3431,6 +3440,32 @@ done:
 	/* we close the socket first for speed */
 	if (s != -1)
 		close(s);
+
+	/* only complain if we didn't save it locally */
+	if (error && rv != CERT_LOCAL) {
+		strlcpy(serr, "Certificate exception(s): ", sizeof serr);
+		if (error & GNUTLS_CERT_INVALID)
+			strlcat(serr, "invalid, ", sizeof serr);
+		if (error & GNUTLS_CERT_REVOKED)
+			strlcat(serr, "revoked, ", sizeof serr);
+		if (error & GNUTLS_CERT_SIGNER_NOT_FOUND)
+			strlcat(serr, "signer not found, ", sizeof serr);
+		if (error & GNUTLS_CERT_SIGNER_NOT_CA)
+			strlcat(serr, "not signed by CA, ", sizeof serr);
+		if (error & GNUTLS_CERT_INSECURE_ALGORITHM)
+			strlcat(serr, "insecure algorithm, ", sizeof serr);
+		if (error & GNUTLS_CERT_NOT_ACTIVATED)
+			strlcat(serr, "not activated, ", sizeof serr);
+		if (error & GNUTLS_CERT_EXPIRED)
+			strlcat(serr, "expired, ", sizeof serr);
+		for (i = strlen(serr) - 1; i > 0; i--)
+			if (serr[i] == ',') {
+				serr[i] = '\0';
+				break;
+			}
+		show_oops(t, serr);
+	}
+
 	stop_tls(gsession, xcred);
 
 	return (rv);
@@ -6214,6 +6249,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	const gchar		*uri = NULL, *title = NULL;
 	struct history		*h, find;
 	struct karg		a;
+	GdkColor		color;
 
 	DNPRINTF(XT_D_URL, "notify_load_status_cb: %d  %s\n",
 	    webkit_web_view_get_load_status(wview),
@@ -6235,6 +6271,11 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		gtk_label_set_text(GTK_LABEL(t->label), "Loading");
 
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), TRUE);
+
+		/* assume we are a new address */
+		gdk_color_parse("white", &color);
+		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
+		statusbar_modify_attr(t, XT_COLOR_BLACK, "white");
 
 		/* take focus if we are visible */
 		focus_webview(t);
@@ -7507,7 +7548,8 @@ execute_cmd:
 		}
 	}
 
-	DNPRINTF(XT_D_CMD, "%s: prefix %d arg %s\n", __func__, arg.p, arg.s);
+	DNPRINTF(XT_D_CMD, "%s: prefix %d arg %s\n",
+	    __func__, arg.precount, arg.s);
 
 	cmd->func(t, &arg);
 
