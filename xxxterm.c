@@ -6275,7 +6275,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		/* assume we are a new address */
 		gdk_color_parse("white", &color);
 		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
-		statusbar_modify_attr(t, XT_COLOR_BLACK, "white");
+		statusbar_modify_attr(t, "white", XT_COLOR_BLACK);
 
 		/* take focus if we are visible */
 		focus_webview(t);
