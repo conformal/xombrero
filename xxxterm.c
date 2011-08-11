@@ -8294,6 +8294,22 @@ append_tab(struct tab *t)
 	t->tab_id = gtk_notebook_append_page(notebook, t->vbox, t->tab_content);
 }
 
+GtkWidget *
+create_sbe(int width)
+{
+	GtkWidget		*sbe;
+
+	sbe = gtk_entry_new();
+	gtk_entry_set_inner_border(GTK_ENTRY(sbe), NULL);
+	gtk_entry_set_has_frame(GTK_ENTRY(sbe), FALSE);
+	gtk_widget_set_can_focus(GTK_WIDGET(sbe), FALSE);
+	gtk_widget_modify_font(GTK_WIDGET(sbe), statusbar_font);
+	gtk_entry_set_alignment(GTK_ENTRY(sbe), 1.0);
+	gtk_widget_set_size_request(sbe, width, -1);
+
+	return sbe;
+}
+
 struct tab *
 create_new_tab(char *title, struct undo *u, int focus, int position)
 {
@@ -8389,29 +8405,10 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_widget_modify_font(GTK_WIDGET(t->sbe.statusbar), statusbar_font);
 
 	/* create these widgets only if specified in statusbar_elems */
-	t->sbe.position = gtk_entry_new();
-	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.position), NULL);
-	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.position), FALSE);
-	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.position), FALSE);
-	gtk_widget_modify_font(GTK_WIDGET(t->sbe.position), statusbar_font);
-	gtk_entry_set_alignment(GTK_ENTRY(t->sbe.position), 1.0);
-	gtk_widget_set_size_request(t->sbe.position, 40, -1);
 
-	t->sbe.zoom = gtk_entry_new();
-	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.zoom), NULL);
-	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.zoom), FALSE);
-	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.zoom), FALSE);
-	gtk_widget_modify_font(GTK_WIDGET(t->sbe.zoom), statusbar_font);
-	gtk_entry_set_alignment(GTK_ENTRY(t->sbe.zoom), 1.0);
-	gtk_widget_set_size_request(t->sbe.zoom, 40, -1);
-
-	t->sbe.buffercmd = gtk_entry_new();
-	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.buffercmd), NULL);
-	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.buffercmd), FALSE);
-	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.buffercmd), FALSE);
-	gtk_widget_modify_font(GTK_WIDGET(t->sbe.buffercmd), statusbar_font);
-	gtk_entry_set_alignment(GTK_ENTRY(t->sbe.buffercmd), 1.0);
-	gtk_widget_set_size_request(t->sbe.buffercmd, 60, -1);
+	t->sbe.position = create_sbe(40);
+	t->sbe.zoom = create_sbe(40);
+	t->sbe.buffercmd = create_sbe(60);
 
 	statusbar_modify_attr(t, XT_COLOR_WHITE, XT_COLOR_BLACK);
 
