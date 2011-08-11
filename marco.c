@@ -22,6 +22,11 @@ static const char *message[] = {
 	"I fully support your right to put restrictions on how I can modify"
 	" or distribute something you created. Calling these restrictions "
 	"\"liberty,\" however, is just Orwellian doublespeak",
+	"GET OFF MY INTERNET LAWN!!!!",
+	"here is your list of restrictions -> freedom!!!!",
+	"i am all for it being free; i am all for not allowing abuse",
+	"webkit 1.4 is a huge step backwards",
+	"i honestly dont get how people equate gpl with liberty or freedom",
 };
 
 const char *
