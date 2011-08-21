@@ -561,6 +561,7 @@ gint		max_connections = 25;
 gint		max_host_connections = 5;
 gint		enable_spell_checking = 0;
 char		*spell_check_languages = NULL;
+int		xterm_workaround = 0;
 
 char		*cmd_font_name = NULL;
 char		*oops_font_name = NULL;
@@ -742,6 +743,7 @@ struct settings {
 	{ "window_height",		XT_S_INT, 0,		&window_height, NULL, NULL },
 	{ "window_width",		XT_S_INT, 0,		&window_width, NULL, NULL },
 	{ "work_dir",			XT_S_STR, 0, NULL, NULL,&s_work_dir },
+	{ "xterm_workaround",		XT_S_INT, 0,		&xterm_workaround, NULL, NULL },
 
 	/* font settings */
 	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL },
@@ -2556,7 +2558,7 @@ paste_uri(struct tab *t, struct karg *args)
 	p = gtk_clipboard_wait_for_text(clipboard);
 
 	/* if it failed get whatever text is in cut_buffer0 */
-	if (p == NULL)
+	if (p == NULL && xterm_workaround)
 		if (gdk_property_get(gdk_get_default_root_window(),
 		    atom,
 		    gdk_atom_intern("STRING", FALSE),
@@ -8799,6 +8801,9 @@ clipb_primary_cb(GtkClipboard *primary, GdkEvent *event, gpointer notused)
 	GdkAtom			atom = gdk_atom_intern("CUT_BUFFER0", FALSE);
 	gint			len;
 
+	if (xterm_workaround == 0)
+		return;
+
 	/*
 	 * xterm doesn't play nice with clipboards because it clears the
 	 * primary when clicked.  We rely on primary being set to properly
@@ -8888,9 +8893,11 @@ create_canvas(void)
 	}
 	gtk_window_set_default_icon_list(l);
 
-	/* clipboard */
-	g_signal_connect(G_OBJECT(gtk_clipboard_get(GDK_SELECTION_PRIMARY)),
-	    "owner-change", G_CALLBACK(clipb_primary_cb), NULL);
+	/* clipboard work around */
+	if (xterm_workaround)
+		g_signal_connect(
+		    G_OBJECT(gtk_clipboard_get(GDK_SELECTION_PRIMARY)),
+		    "owner-change", G_CALLBACK(clipb_primary_cb), NULL);
 
 	gtk_widget_show_all(abtn);
 	gtk_widget_show_all(main_window);
