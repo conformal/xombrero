@@ -494,6 +494,8 @@ struct karg {
 #define XT_TABS_NORMAL		0
 #define XT_TABS_COMPACT		1
 
+#define XT_BUFCMD_SZ		(8)
+
 /* mime types */
 struct mime_type {
 	char			*mt_type;
@@ -6946,7 +6948,7 @@ go_up(struct tab *t, struct karg *args)
 	load_uri(t, uri);
 	g_free(uri);
 
-	return 0;
+	return (0);
 }
 
 int
@@ -6962,7 +6964,7 @@ gototab(struct tab *t, struct karg *args)
 
 	movetab(t, &arg);
 
-	return 0;
+	return (0);
 }
 
 int
@@ -6976,31 +6978,58 @@ zoom_amount(struct tab *t, struct karg *arg)
 	return 0;
 }
 
+int
+flip_colon(struct tab *t, struct karg *arg)
+{
+	struct karg	narg = {0, NULL, -1};
+	char		*p;
+
+	if (t == NULL || arg == NULL)
+		return (1);
+
+	p = strstr(arg->s, ":");
+	if (p == NULL)
+		return (1);
+	*p = '\0';
+
+	narg.i = ':';
+	narg.s = arg->s;
+	command(t, &narg);
+
+	return (0);
+}
+
 /* buffer commands receive the regex that triggered them in arg.s */
-char bcmd[8];
+char bcmd[XT_BUFCMD_SZ];
 struct buffercmd {
-	char            *regex;
-	int             (*func)(struct tab *, struct karg *);
-	int             arg;
+	char		*regex;
+	int		precount;
+#define XT_PRE_NO	(0)
+#define XT_PRE_YES	(1)
+#define XT_PRE_MAYBE	(2)
+	char		*cmd;
+	int		(*func)(struct tab *, struct karg *);
+	int		arg;
 	regex_t		cregex;
 } buffercmds[] = {
-	{ "^[0-9]*gu$",		go_up,		0 },
-	{ "^gg$",               move,           XT_MOVE_TOP },
-	{ "^gG$",               move,           XT_MOVE_BOTTOM },
-	{ "^[0-9]+%$",		move,		XT_MOVE_PERCENT },
-	{ "^gh$",               go_home,        0 },
-	{ "^m[a-zA-Z0-9]$",	mark,		XT_MARK_SET },
-	{ "^[`'][a-zA-Z0-9]$",	mark,		XT_MARK_GOTO },
-	{ "^[0-9]+t$",		gototab,	0 },
-	{ "^M[a-zA-Z0-9]$",	qmark,		XT_QMARK_SET },
-	{ "^go[a-zA-Z0-9]$",	qmark,		XT_QMARK_OPEN },
-	{ "^gn[a-zA-Z0-9]$",	qmark,		XT_QMARK_TAB },
-	{ "^ZR$",               restart,        0 },
-	{ "^ZZ$",               quit,           0 },
-	{ "^zi$",               resizetab,      XT_ZOOM_IN },
-	{ "^zo$",               resizetab,      XT_ZOOM_OUT },
-	{ "^z0$",               resizetab,      XT_ZOOM_NORMAL },
-	{ "^[0-9]+Z$",		zoom_amount,	0 },
+	{ "^[0-9]*gu$",		XT_PRE_MAYBE,	"gu",	go_up,		0 },
+	{ "^gg$",		XT_PRE_NO,	"gg",	move,		XT_MOVE_TOP },
+	{ "^gG$",		XT_PRE_NO,	"gG",	move,		XT_MOVE_BOTTOM },
+	{ "^[0-9]+%$",		XT_PRE_YES,	"%",	move,		XT_MOVE_PERCENT },
+	{ "^gh$",		XT_PRE_NO,	"gh",	go_home,	0 },
+	{ "^m[a-zA-Z0-9]$",	XT_PRE_NO,	"m",	mark,		XT_MARK_SET },
+	{ "^['][a-zA-Z0-9]$",	XT_PRE_NO,	"'",	mark,		XT_MARK_GOTO },
+	{ "^[0-9]+t$",		XT_PRE_YES,	"t",	gototab,	0 },
+	{ "^M[a-zA-Z0-9]$",	XT_PRE_NO,	"M",	qmark,		XT_QMARK_SET },
+	{ "^go[a-zA-Z0-9]$",	XT_PRE_NO,	"go",	qmark,		XT_QMARK_OPEN },
+	{ "^gn[a-zA-Z0-9]$",	XT_PRE_NO,	"gn",	qmark,		XT_QMARK_TAB },
+	{ "^ZR$",		XT_PRE_NO,	"ZR",	restart,	0 },
+	{ "^ZZ$",		XT_PRE_NO,	"ZZ",	quit,		0 },
+	{ "^zi$",		XT_PRE_NO,	"zi",	resizetab,	XT_ZOOM_IN },
+	{ "^zo$",		XT_PRE_NO,	"zo",	resizetab,	XT_ZOOM_OUT },
+	{ "^z0$",		XT_PRE_NO,	"z0",	resizetab,	XT_ZOOM_NORMAL },
+	{ "^[0-9]+Z$",		XT_PRE_YES,	"Z",	zoom_amount,	0 },
+	{ "^[0-9]+:$",		XT_PRE_YES,	":",	flip_colon,	0 },
 };
 
 void
@@ -7047,7 +7076,8 @@ buffercmd_execute(struct tab *t, struct buffercmd *cmd)
 gboolean
 buffercmd_addkey(struct tab *t, guint keyval)
 {
-	int			i;
+	int			i, c, match ;
+	char			s[XT_BUFCMD_SZ];
 
 	if (keyval == GDK_Escape) {
 		buffercmd_abort(t);
@@ -7068,20 +7098,57 @@ buffercmd_addkey(struct tab *t, guint keyval)
 		}
 
 	/* buffer full, ignore input */
-	if (i == LENGTH(bcmd)) {
+	if (i >= LENGTH(bcmd) -1) {
 		DNPRINTF(XT_D_BUFFERCMD, "buffercmd_addkey: buffer full\n");
+		buffercmd_abort(t);
 		return (XT_CB_HANDLED);
 	}
 
 	gtk_entry_set_text(GTK_ENTRY(t->sbe.buffercmd), bcmd);
 
+	/* find exact match */
 	for (i = 0; i < LENGTH(buffercmds); i++)
 		if (regexec(&buffercmds[i].cregex, bcmd,
 		    (size_t) 0, NULL, 0) == 0) {
 			buffercmd_execute(t, &buffercmds[i]);
-			break;
+			goto done;
 		}
 
+	/* find non exact matches to see if we need to abort ot not */
+	for (i = 0, match = 0; i < LENGTH(buffercmds); i++) {
+		DNPRINTF(XT_D_BUFFERCMD, "trying: %s\n", bcmd);
+		c = -1;
+		s[0] = '\0';
+		if (buffercmds[i].precount == XT_PRE_MAYBE) {
+			if (isdigit(bcmd[0])) {
+				if (sscanf(bcmd, "%d%s", &c, s) == 0)
+					continue;
+			} else {
+				c = 0;
+				if (sscanf(bcmd, "%s", s) == 0)
+					continue;
+			}
+		} else if (buffercmds[i].precount == XT_PRE_YES) {
+			if (sscanf(bcmd, "%d%s", &c, s) == 0)
+				continue;
+		} else {
+			if (sscanf(bcmd, "%s", s) == 0)
+				continue;
+		}
+		if (c == -1 && buffercmds[i].precount)
+			continue;
+		if (!strncmp(s, buffercmds[i].cmd, strlen(s)))
+			match++;
+
+		DNPRINTF(XT_D_BUFFERCMD, "got[%d] %d <%s>: %d %s\n",
+		    i, match, buffercmds[i].cmd, c, s);
+	}
+	if (match == 0) {
+		DNPRINTF(XT_D_BUFFERCMD, "aborting: %s\n", bcmd);
+		buffercmd_abort(t);
+	}
+
+done:
 	return (XT_CB_HANDLED);
 }
 
