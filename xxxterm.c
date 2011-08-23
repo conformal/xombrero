@@ -622,6 +622,8 @@ void		set_current_tab(int page_num);
 gboolean	update_statusbar_position(GtkAdjustment* adjustment, gpointer data);
 void		marks_clear(struct tab *t);
 
+int		set_http_proxy(char *);
+
 struct special {
 	int		(*set)(struct settings *, char *);
 	char		*(*get)(struct settings *);
@@ -708,6 +710,7 @@ struct settings {
 	char		**sval;
 	struct special	*s;
 	gfloat		*fval;
+	int		(*activate)(char *);
 } rs[] = {
 	{ "append_next",		XT_S_INT, 0,		&append_next, NULL, NULL },
 	{ "allow_volatile_cookies",	XT_S_INT, 0,		&allow_volatile_cookies, NULL, NULL },
@@ -728,7 +731,7 @@ struct settings {
 	{ "fancy_bar",			XT_S_INT, XT_SF_RESTART,&fancy_bar, NULL, NULL },
 	{ "guess_search",		XT_S_INT, 0,		&guess_search, NULL, NULL },
 	{ "home",			XT_S_STR, 0, NULL,	&home, NULL },
-	{ "http_proxy",			XT_S_STR, 0, NULL,	&http_proxy, NULL },
+	{ "http_proxy",			XT_S_STR, 0, NULL,	&http_proxy, NULL, NULL, set_http_proxy },
 	{ "icon_size",			XT_S_INT, 0,		&icon_size, NULL, NULL },
 	{ "max_connections",		XT_S_INT, XT_SF_RESTART,&max_connections, NULL, NULL },
 	{ "max_host_connections",	XT_S_INT, XT_SF_RESTART,&max_host_connections, NULL, NULL },
@@ -4874,7 +4877,7 @@ print_setting(struct settings *s, char *val, void *cb_args)
 }
 
 int
-set(struct tab *t, struct karg *args)
+set_show(struct tab *t, struct karg *args)
 {
 	char			*body, *page, *tmp;
 	int			i = 1;
@@ -4911,6 +4914,74 @@ set(struct tab *t, struct karg *args)
 
 	g_free(page);
 
+	return (XT_CB_PASSTHROUGH);
+}
+
+int
+set(struct tab *t, struct karg *args)
+{
+	char			*p, *val;
+	int			i;
+
+	if (args == NULL || args->s == NULL)
+		return (set_show(t, args));
+
+	/* strip spaces */
+	p = g_strstrip(args->s);
+
+	if (strlen(p) == 0)
+		return (set_show(t, args));
+
+	/* we got some sort of string */
+	val = g_strrstr(p, "=");
+	if (val) {
+		show_oops(t, "can't activate runtime settings yet");
+	} else {
+		p = g_strchomp(p);
+
+		for (i = 0; i < LENGTH(rs); i++) {
+			if (strcmp(rs[i].name, p))
+				continue;
+
+			switch (rs[i].type) {
+			case XT_S_INT:
+				if (rs[i].ival)
+					show_oops(t, "%s = %d",
+					    rs[i].name, *rs[i].ival);
+				else
+					show_oops(t, "%s = ", rs[i].name);
+				break;
+			case XT_S_FLOAT:
+				if (rs[i].fval)
+					show_oops(t, "%s = %f",
+					    rs[i].name, *rs[i].fval);
+				else
+					show_oops(t, "%s = ", rs[i].name);
+				break;
+			case XT_S_STR:
+				/* XXX this could use some cleanup */
+				if (rs[i].sval && *rs[i].sval)
+					show_oops(t, "%s = %s",
+					    rs[i].name, *rs[i].sval);
+				else if (rs[i].s && rs[i].s->get)
+					show_oops(t, "%s = %s",
+					    rs[i].name,
+					    rs[i].s->get(&rs[i]));
+				else if (rs[i].s && rs[i].s->get == NULL)
+					show_oops(t, "%s = ...", rs[i].name);
+				else
+					show_oops(t, "%s = ", rs[i].name);
+				break;
+			default:
+				show_oops(t, "unknown type for %s", rs[i].name);
+				goto done;
+			}
+
+			goto done;
+		}
+		show_oops(t, "unknown option: %s", p);
+	}
+done:
 	return (XT_CB_PASSTHROUGH);
 }
 
@@ -5527,7 +5598,8 @@ struct cmd {
 	{ "prompttabnewcurrent",0,	command,		XT_CMD_TABNEW_CURRENT,	0 },
 
 	/* settings */
-	{ "set",		0,	set,			0,			0 },
+	{ "set",		0,	set,			0,			XT_USERARG },
+
 	{ "fullscreen",		0,	fullscreen,		0,			0 },
 	{ "f",			0,	fullscreen,		0,			0 },
 
@@ -9321,6 +9393,14 @@ setup_proxy(char *uri)
 		proxy_uri = soup_uri_new(http_proxy);
 		g_object_set(session, "proxy-uri", proxy_uri, (char *)NULL);
 	}
+}
+
+int
+set_http_proxy(char *proxy)
+{
+	fprintf(stderr, "%s %s\n", __func__, proxy);
+
+	return (0);
 }
 
 int
