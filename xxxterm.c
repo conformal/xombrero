@@ -5925,6 +5925,28 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 }
 
 void
+check_and_set_cookie(const gchar *uri, struct tab *t)
+{
+	struct domain		*d = NULL;
+	int			es = 0;
+
+	if (uri == NULL || t == NULL)
+		return;
+
+	if ((d = wl_find_uri(uri, &c_wl)) == NULL)
+		es = 0;
+	else
+		es = 1;
+
+	DNPRINTF(XT_D_COOKIE, "check_and_set_cookie: %s %s\n",
+	    es ? "enable" : "disable", uri);
+
+	g_object_set(G_OBJECT(t->settings),
+	    "enable-html5-local-storage", es, (char *)NULL);
+	webkit_web_view_set_settings(t->wv, t->settings);
+}
+
+void
 check_and_set_js(const gchar *uri, struct tab *t)
 {
 	struct domain		*d = NULL;
@@ -6366,9 +6388,10 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		set_status(t, (char *)uri, XT_STATUS_LOADING);
 
 		/* check if js white listing is enabled */
-		if (enable_js_whitelist) {
+		if (enable_cookie_whitelist)
+			check_and_set_cookie(uri, t);
+		if (enable_js_whitelist)
 			check_and_set_js(uri, t);
-		}
 
 		if (t->styled)
 			apply_style(t);
