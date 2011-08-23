@@ -2477,8 +2477,14 @@ save_tabs(struct tab *t, struct karg *a)
 	num_tabs = sort_tabs_by_page_num(&stabs);
 
 	for (i = 0; i < num_tabs; i++)
-		if (stabs[i] && get_uri(stabs[i]) != NULL)
-			fprintf(f, "%s\n", get_uri(stabs[i]));
+		if (stabs[i]) {
+			if (get_uri(stabs[i]) != NULL)
+				fprintf(f, "%s\n", get_uri(stabs[i]));
+			else if (gtk_entry_get_text(GTK_ENTRY(
+			    stabs[i]->uri_entry)))
+				fprintf(f, "%s\n", gtk_entry_get_text(GTK_ENTRY(
+				    stabs[i]->uri_entry)));
+		}
 
 	g_free(stabs);
 
