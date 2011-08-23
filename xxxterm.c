@@ -282,6 +282,12 @@ struct undo {
 };
 TAILQ_HEAD(undo_tailq, undo);
 
+struct sp {
+	char			*line;
+	TAILQ_ENTRY(sp)		entry;
+};
+TAILQ_HEAD(sp_list, sp);
+
 /* starts from 1 to catch atoi() failures when calling xtp_handle_dl() */
 int				next_download_id = 1;
 
@@ -602,6 +608,7 @@ char		*get_default_script(struct settings *);
 char		*get_runtime_dir(struct settings *);
 char		*get_tab_style(struct settings *);
 char		*get_work_dir(struct settings *);
+void		startpage_add(const char *, ...);
 
 void		walk_alias(struct settings *, void (*)(struct settings *, char *, void *), void *);
 void		walk_cookie_wl(struct settings *, void (*)(struct settings *, char *, void *), void *);
@@ -771,6 +778,7 @@ int			help(struct tab *, struct karg *);
 int			set(struct tab *, struct karg *);
 int			stats(struct tab *, struct karg *);
 int			marco(struct tab *, struct karg *);
+int			startpage(struct tab *, struct karg *);
 const char *		marco_message(int *);
 int			xtp_page_cl(struct tab *, struct karg *);
 int			xtp_page_dl(struct tab *, struct karg *);
@@ -795,6 +803,7 @@ const gchar		*get_title(struct tab *, bool);
 #define XT_URI_ABOUT_SET	("set")
 #define XT_URI_ABOUT_STATS	("stats")
 #define XT_URI_ABOUT_MARCO	("marco")
+#define XT_URI_ABOUT_STARTPAGE	("startpage")
 
 struct about_type {
 	char		*name;
@@ -813,6 +822,7 @@ struct about_type {
 	{ XT_URI_ABOUT_SET,		set },
 	{ XT_URI_ABOUT_STATS,		stats },
 	{ XT_URI_ABOUT_MARCO,		marco },
+	{ XT_URI_ABOUT_STARTPAGE,	startpage },
 };
 
 /* xtp tab meanings  - identifies which tabs have xtp pages in (corresponding to about_list indices) */
@@ -838,6 +848,7 @@ struct domain_list	c_wl;
 struct domain_list	js_wl;
 struct undo_tailq	undos;
 struct keybinding_list	kbl;
+struct sp_list		spl;
 int			undo_count;
 int			updating_dl_tabs = 0;
 int			updating_hl_tabs = 0;
@@ -1163,7 +1174,7 @@ void
 show_oops(struct tab *at, const char *fmt, ...)
 {
 	va_list			ap;
-	char			*msg;
+	char			*msg = NULL;
 	struct tab		*t = NULL;
 
 	if (fmt == NULL)
@@ -1183,6 +1194,9 @@ show_oops(struct tab *at, const char *fmt, ...)
 	gtk_entry_set_text(GTK_ENTRY(t->oops), msg);
 	gtk_widget_hide(t->cmd);
 	gtk_widget_show(t->oops);
+
+	if (msg)
+		free(msg);
 }
 
 char *
@@ -2098,7 +2112,8 @@ config_parse(char *filename, int runtime)
 		}
 
 		if ((var = strsep(&cp, WS)) == NULL || cp == NULL)
-			errx(1, "invalid config file entry: %s", line);
+			startpage_add("invalid configuration file entry: %s",
+			    line);
 
 		cp += (long)strspn(cp, WS);
 
@@ -2108,7 +2123,8 @@ config_parse(char *filename, int runtime)
 		DNPRINTF(XT_D_CONFIG, "config_parse: %s=%s\n", var, val);
 		handled = settings_add(var, val);
 		if (handled == 0)
-			errx(1, "invalid conf file entry: %s=%s", var, val);
+			startpage_add("invalid configuration file entry: %s=%s",
+			    var, val);
 
 		free(line);
 	}
@@ -2868,6 +2884,7 @@ blank(struct tab *t, struct karg *args)
 
 	return (0);
 }
+
 int
 about(struct tab *t, struct karg *args)
 {
@@ -2920,6 +2937,53 @@ help(struct tab *t, struct karg *args)
 	g_free(page);
 
 	return (0);
+}
+
+int
+startpage(struct tab *t, struct karg *args)
+{
+	char			*page, *body, *b;
+	struct sp		*s;
+
+	if (t == NULL)
+		show_oops(NULL, "startpage invalid parameters");
+
+	body = g_strdup_printf("<b>Startup Exception(s):</b><p>");
+
+	TAILQ_FOREACH(s, &spl, entry) {
+		b = body;
+		body = g_strdup_printf("%s%s<br>", body, s->line);
+		g_free(b);
+	}
+
+	page = get_html_page("Startup Exception", body, "", 0);
+	g_free(body);
+
+	load_webkit_string(t, page, XT_URI_ABOUT_STARTPAGE);
+	g_free(page);
+
+	return (0);
+}
+
+void
+startpage_add(const char *fmt, ...)
+{
+	va_list			ap;
+	char			*msg;
+	struct sp		*s;
+
+	if (fmt == NULL)
+		return;
+
+	va_start(ap, fmt);
+	if (vasprintf(&msg, fmt, ap) == -1)
+		errx(1, "startpage_add failed");
+	va_end(ap);
+
+	s = g_malloc0(sizeof *s);
+	s->line = msg;
+
+	TAILQ_INSERT_TAIL(&spl, s, entry);
 }
 
 /*
@@ -8317,8 +8381,8 @@ delete_tab(struct tab *t)
 	gtk_widget_destroy(t->vbox);
 
 	/* just in case */
-	g_source_remove(t->search_id);
-	t->search_id = 0;
+	if (t->search_id)
+		g_source_remove(t->search_id);
 
 	g_free(t->user_agent);
 	g_free(t->stylesheet);
@@ -9493,6 +9557,17 @@ main(int argc, char *argv[])
 
 	strlcpy(named_session, XT_SAVED_TABS_FILE, sizeof named_session);
 
+	RB_INIT(&hl);
+	RB_INIT(&js_wl);
+	RB_INIT(&downloads);
+
+	TAILQ_INIT(&tabs);
+	TAILQ_INIT(&mtl);
+	TAILQ_INIT(&aliases);
+	TAILQ_INIT(&undos);
+	TAILQ_INIT(&kbl);
+	TAILQ_INIT(&spl);
+
 	/* fiddle with ulimits */
 	if (getrlimit(RLIMIT_NOFILE, &rlp) == -1)
 		warn("getrlimit");
@@ -9504,8 +9579,9 @@ main(int argc, char *argv[])
 		if (getrlimit(RLIMIT_NOFILE, &rlp) == -1)
 			warn("getrlimit");
 		else if (rlp.rlim_cur <= 256)
-			warnx("%s requires at least 256 file descriptors",
-			   __progname);
+			startpage_add("%s requires at least 256 file "
+			    "descriptors, currently it has up to %d available",
+			   __progname, rlp.rlim_cur);
 	}
 
 	while ((c = getopt(argc, argv, "STVf:s:tne")) != -1) {
@@ -9541,16 +9617,6 @@ main(int argc, char *argv[])
 	}
 	argc -= optind;
 	argv += optind;
-
-	RB_INIT(&hl);
-	RB_INIT(&js_wl);
-	RB_INIT(&downloads);
-
-	TAILQ_INIT(&tabs);
-	TAILQ_INIT(&mtl);
-	TAILQ_INIT(&aliases);
-	TAILQ_INIT(&undos);
-	TAILQ_INIT(&kbl);
 
 	init_keybindings();
 
@@ -9730,6 +9796,12 @@ main(int argc, char *argv[])
 		a.s = named_session;
 		a.i = XT_SES_DONOTHING;
 		open_tabs(NULL, &a);
+	}
+
+	/* see if we have an exception */
+	if (!TAILQ_EMPTY(&spl)) {
+		create_new_tab("about:startpage", NULL, focus, -1);
+		focus = 0;
 	}
 
 	while (argc) {
