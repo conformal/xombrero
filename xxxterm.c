@@ -240,6 +240,7 @@ struct tab {
 	/* search */
 	char			*search_text;
 	int			search_forward;
+	guint			search_id;
 
 	/* settings */
 	WebKitWebSettings	*settings;
@@ -7330,23 +7331,11 @@ wv_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	return (XT_CB_PASSTHROUGH);
 }
 
-int
-cmd_keyrelease_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
+gboolean
+search_continue(struct tab *t)
 {
-	const gchar		*c = gtk_entry_get_text(w);
-	GdkColor		color;
-	int			forward = TRUE;
-
-	DNPRINTF(XT_D_CMD, "cmd_keyrelease_cb: keyval 0x%x mask 0x%x t %p\n",
-	    e->keyval, e->state, t);
-
-	if (t == NULL) {
-		show_oops(NULL, "cmd_keyrelease_cb invalid parameters");
-		return (XT_CB_PASSTHROUGH);
-	}
-
-	DNPRINTF(XT_D_CMD, "cmd_keyrelease_cb: keyval 0x%x mask 0x%x t %p\n",
-	    e->keyval, e->state, t);
+	const gchar		*c = gtk_entry_get_text(GTK_ENTRY(t->cmd));
+	gboolean		rv = FALSE;
 
 	if (c[0] == ':')
 		goto done;
@@ -7356,15 +7345,29 @@ cmd_keyrelease_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	}
 
 	if (c[0] == '/')
-		forward = TRUE;
+		t->search_forward = TRUE;
 	else if (c[0] == '?')
-		forward = FALSE;
+		t->search_forward = FALSE;
 	else
 		goto done;
 
+	rv = TRUE;
+done:
+	return (rv);
+}
+
+gboolean
+search_cb(struct tab *t)
+{
+	const gchar		*c = gtk_entry_get_text(GTK_ENTRY(t->cmd));
+	GdkColor		color;
+
+	if (search_continue(t) == FALSE)
+		goto done;
+
 	/* search */
-	if (webkit_web_view_search_text(t->wv, &c[1], FALSE, forward, TRUE) ==
-	    FALSE) {
+	if (webkit_web_view_search_text(t->wv, &c[1], FALSE, t->search_forward,
+	    TRUE) == FALSE) {
 		/* not found, mark red */
 		gdk_color_parse(XT_COLOR_RED, &color);
 		gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL, &color);
@@ -7379,6 +7382,42 @@ cmd_keyrelease_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		gdk_color_parse(XT_COLOR_WHITE, &color);
 		gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL, &color);
 	}
+done:
+	t->search_id = 0;
+	return (FALSE);
+}
+
+int
+cmd_keyrelease_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
+{
+	const gchar		*c = gtk_entry_get_text(w);
+
+	if (t == NULL) {
+		show_oops(NULL, "cmd_keyrelease_cb invalid parameters");
+		return (XT_CB_PASSTHROUGH);
+	}
+
+	DNPRINTF(XT_D_CMD, "cmd_keyrelease_cb: keyval 0x%x mask 0x%x t %p\n",
+	    e->keyval, e->state, t);
+
+	if (search_continue(t) == FALSE)
+		goto done;
+
+	/* if search length is > 4 then no longer play timeout games */
+	if (strlen(c) > 4) {
+		if (t->search_id) {
+			g_source_remove(t->search_id);
+			t->search_id = 0;
+		}
+		search_cb(t);
+		goto done;
+	}
+
+	/* reestablish a new timer if the user types fast */
+	if (t->search_id)
+		g_source_remove(t->search_id);
+	t->search_id = g_timeout_add(250, (GSourceFunc)search_cb, (gpointer)t);
+
 done:
 	return (XT_CB_PASSTHROUGH);
 }
@@ -7752,6 +7791,13 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 	s = (char *)&c[1];
 
 	if (c[0] == '/' || c[0] == '?') {
+		/* see if there is a timer pending */
+		if (t->search_id) {
+			g_source_remove(t->search_id);
+			t->search_id = 0;
+			search_cb(t);
+		}
+
 		if (t->search_text) {
 			g_free(t->search_text);
 			t->search_text = NULL;
@@ -8269,6 +8315,10 @@ delete_tab(struct tab *t)
 
 	gtk_widget_destroy(t->tab_elems.eventbox);
 	gtk_widget_destroy(t->vbox);
+
+	/* just in case */
+	g_source_remove(t->search_id);
+	t->search_id = 0;
 
 	g_free(t->user_agent);
 	g_free(t->stylesheet);
