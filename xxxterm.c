@@ -4948,6 +4948,12 @@ set(struct tab *t, struct karg *args)
 				if (rs[i].ival)
 					show_oops(t, "%s = %d",
 					    rs[i].name, *rs[i].ival);
+				else if (rs[i].s && rs[i].s->get)
+					show_oops(t, "%s = %s",
+					    rs[i].name,
+					    rs[i].s->get(&rs[i]));
+				else if (rs[i].s && rs[i].s->get == NULL)
+					show_oops(t, "%s = ...", rs[i].name);
 				else
 					show_oops(t, "%s = ", rs[i].name);
 				break;
@@ -4955,6 +4961,12 @@ set(struct tab *t, struct karg *args)
 				if (rs[i].fval)
 					show_oops(t, "%s = %f",
 					    rs[i].name, *rs[i].fval);
+				else if (rs[i].s && rs[i].s->get)
+					show_oops(t, "%s = %s",
+					    rs[i].name,
+					    rs[i].s->get(&rs[i]));
+				else if (rs[i].s && rs[i].s->get == NULL)
+					show_oops(t, "%s = ...", rs[i].name);
 				else
 					show_oops(t, "%s = ", rs[i].name);
 				break;
