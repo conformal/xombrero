@@ -1616,27 +1616,20 @@ guess_url_type(char *url_in)
 {
 	struct stat		sb;
 	char			*url_out = NULL, *enc_search = NULL;
+	SoupURI			*uri = NULL;
 
 	url_out = match_alias(url_in);
 	if (url_out != NULL)
 		return (url_out);
 
 	if (guess_search) {
-		/*
-		 * If there is no dot nor slash in the string and it isn't a
-		 * path to a local file and doesn't resolves to an IP, assume
-		 * that the user wants to search for the string.
-		 */
-
-		if (strchr(url_in, '.') == NULL &&
-		    strchr(url_in, '/') == NULL &&
-		    stat(url_in, &sb) != 0 &&
-		    gethostbyname(url_in) == NULL) {
-
+		uri = soup_uri_new(url_in);
+		if (uri == NULL || !SOUP_URI_VALID_FOR_HTTP(uri)) {
+			/* invalid URI so search instead */
 			enc_search = soup_uri_encode(url_in, XT_RESERVED_CHARS);
 			url_out = g_strdup_printf(search_string, enc_search);
 			g_free(enc_search);
-			return (url_out);
+			goto done;
 		}
 	}
 
@@ -1645,8 +1638,10 @@ guess_url_type(char *url_in)
 		url_out = g_strdup_printf("file://%s", url_in);
 	else
 		url_out = g_strdup_printf("http://%s", url_in); /* guess http */
-
+done:
 	DNPRINTF(XT_D_URL, "guess_url_type: guessed %s\n", url_out);
+	if (uri)
+		soup_uri_free(uri);
 
 	return (url_out);
 }
