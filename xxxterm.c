@@ -1679,10 +1679,21 @@ guess_url_type(char *url_in)
 {
 	struct stat		sb;
 	char			*url_out = NULL, *enc_search = NULL;
+	int			i;
 
+	/* substitute aliases */
 	url_out = match_alias(url_in);
 	if (url_out != NULL)
 		return (url_out);
+
+	/* see if we are an about page */
+	if (!strncmp(url_in, XT_URI_ABOUT, XT_URI_ABOUT_LEN))
+		for (i = 0; i < LENGTH(about_list); i++)
+			if (!strcmp(&url_in[XT_URI_ABOUT_LEN],
+			    about_list[i].name)) {
+				url_out = g_strdup(url_in);
+				goto done;
+			}
 
 	if (guess_search && url_regex &&
 	    !(g_str_has_prefix(url_in, "http://") ||
@@ -1728,6 +1739,11 @@ load_uri(struct tab *t, gchar *uri)
 
 	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
 
+	if (valid_url_type(uri)) {
+		newuri = guess_url_type(uri);
+		uri = newuri;
+	}
+
 	if (!strncmp(uri, XT_URI_ABOUT, XT_URI_ABOUT_LEN)) {
 		for (i = 0; i < LENGTH(about_list); i++)
 			if (!strcmp(&uri[XT_URI_ABOUT_LEN], about_list[i].name)) {
@@ -1735,21 +1751,16 @@ load_uri(struct tab *t, gchar *uri)
 				about_list[i].func(t, &args);
 				gtk_widget_set_sensitive(GTK_WIDGET(t->stop),
 				    FALSE);
-				return;
+				goto done;
 			}
 		show_oops(t, "invalid about page");
-		return;
-	}
-
-	if (valid_url_type(uri)) {
-		newuri = guess_url_type(uri);
-		uri = newuri;
+		goto done;
 	}
 
 	set_status(t, (char *)uri, XT_STATUS_LOADING);
 	marks_clear(t);
 	webkit_web_view_load_uri(t->wv, uri);
-
+done:
 	if (newuri)
 		g_free(newuri);
 }
