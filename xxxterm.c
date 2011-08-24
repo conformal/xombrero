@@ -2827,7 +2827,7 @@ void
 js_toggle_cb(GtkWidget *w, struct tab *t)
 {
 	struct karg		a;
-fprintf(stderr, "%s\n", __func__);
+
 	a.i = XT_WL_TOGGLE | XT_WL_TOPLEVEL;
 	toggle_cwl(t, &a);
 
