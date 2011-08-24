@@ -864,13 +864,16 @@ struct undo_tailq	undos;
 struct keybinding_list	kbl;
 struct sp_list		spl;
 struct command_list	chl;
+struct command_list	shl;
 struct command_entry	*history_at;
+struct command_entry	*search_at;
 int			undo_count;
 int			updating_dl_tabs = 0;
 int			updating_hl_tabs = 0;
 int			updating_cl_tabs = 0;
 int			updating_fl_tabs = 0;
 int			cmd_history_count = 0;
+int			search_history_count = 0;
 char			*global_search;
 uint64_t		blocked_cookies = 0;
 char			named_session[PATH_MAX];
@@ -883,42 +886,45 @@ void			completion_add(struct tab *);
 void			completion_add_uri(const gchar *);
 
 void
-cmd_history_delete(struct command_list *l)
+history_delete(struct command_list *l, int *counter)
 {
 	struct command_entry	*c;
+
+	if (l == NULL || counter == NULL)
+		return;
 
 	c = TAILQ_LAST(l, command_list);
 	if (c == NULL)
 		return;
 
 	TAILQ_REMOVE(l, c, entry);
-	cmd_history_count--;
+	*counter -= 1;
 	g_free(c->line);
 	g_free(c);
 }
 
 void
-cmd_history_add(struct command_list *list, char *l)
+history_add(struct command_list *list, char *l, int *counter)
 {
 	struct command_entry	*c;
 
-	if (l == NULL)
+	if (list == NULL || l == NULL || counter == NULL)
 		return;
 
 	/* don't add the same line */
 	c = TAILQ_FIRST(list);
 	if (c)
-		if (!strcmp(c->line + 1 /* skip : */, l))
+		if (!strcmp(c->line + 1 /* skip space */, l))
 			return;
 
 	c = g_malloc0(sizeof *c);
-	c->line = g_strdup_printf(":%s", l);
+	c->line = g_strdup_printf(" %s", l);
 
-	cmd_history_count++;
+	*counter += 1;
 	TAILQ_INSERT_HEAD(list, c, entry);
 
-	if (cmd_history_count > 1000)
-		cmd_history_delete(list);
+	if (*counter > 1000)
+		history_delete(list, counter);
 }
 
 /* marks and quickmarks array storage.
@@ -1133,6 +1139,7 @@ void
 hide_cmd(struct tab *t)
 {
 	history_at = NULL; /* just in case */
+	search_at = NULL; /* just in case */
 	gtk_widget_hide(t->cmd);
 }
 
@@ -1140,7 +1147,7 @@ void
 show_cmd(struct tab *t)
 {
 	history_at = NULL;
-
+	search_at = NULL;
 	gtk_widget_hide(t->oops);
 	gtk_widget_show(t->cmd);
 }
@@ -8016,22 +8023,34 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 
 		goto done;
 	case GDK_Down:
-		if (c[0] != ':')
-			goto done;
-
-		if ((history_at = history_prev(&chl, history_at))) {
-			gtk_entry_set_text(w, history_at->line);
-			gtk_editable_set_position(GTK_EDITABLE(w), -1);
+		if (c[0] != ':') {
+			if ((search_at = history_next(&shl, search_at))) {
+				search_at->line[0] = c[0];
+				gtk_entry_set_text(w, search_at->line);
+				gtk_editable_set_position(GTK_EDITABLE(w), -1);
+			}
+		} else {
+			if ((history_at = history_prev(&chl, history_at))) {
+				history_at->line[0] = c[0];
+				gtk_entry_set_text(w, history_at->line);
+				gtk_editable_set_position(GTK_EDITABLE(w), -1);
+			}
 		}
 
 		goto done;
 	case GDK_Up:
-		if (c[0] != ':')
-			goto done;
-
-		if ((history_at = history_next(&chl, history_at))) {
-			gtk_entry_set_text(w, history_at->line);
-			gtk_editable_set_position(GTK_EDITABLE(w), -1);
+		if (c[0] != ':') {
+			if ((search_at = history_next(&shl, search_at))) {
+				search_at->line[0] = c[0];
+				gtk_entry_set_text(w, search_at->line);
+				gtk_editable_set_position(GTK_EDITABLE(w), -1);
+			}
+		} else {
+			if ((history_at = history_next(&chl, history_at))) {
+				history_at->line[0] = c[0];
+				gtk_entry_set_text(w, history_at->line);
+				gtk_editable_set_position(GTK_EDITABLE(w), -1);
+			}
 		}
 
 		goto done;
@@ -8132,12 +8151,13 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 		global_search = g_strdup(s);
 		t->search_forward = c[0] == '/';
 
+		history_add(&shl, s, &search_history_count);
 		goto done;
 	}
 
 	cmd_execute(t, s);
 
-	cmd_history_add(&chl, s);
+	history_add(&chl, s, &cmd_history_count);
 done:
 	return;
 }
@@ -9860,6 +9880,7 @@ main(int argc, char *argv[])
 	TAILQ_INIT(&kbl);
 	TAILQ_INIT(&spl);
 	TAILQ_INIT(&chl);
+	TAILQ_INIT(&shl);
 
 	/* fiddle with ulimits */
 	if (getrlimit(RLIMIT_NOFILE, &rlp) == -1)
