@@ -2714,10 +2714,7 @@ find_domain(const gchar *s, int toplevel)
 	} else
 		p = uri->host;
 
-	if (uri->port == 80)
-		ret = g_strdup_printf(".%s", p);
-	else
-		ret = g_strdup_printf(".%s:%d", p, uri->port);
+	ret = g_strdup_printf(".%s", p);
 
 	soup_uri_free(uri);
 
@@ -2830,7 +2827,7 @@ void
 js_toggle_cb(GtkWidget *w, struct tab *t)
 {
 	struct karg		a;
-
+fprintf(stderr, "%s\n", __func__);
 	a.i = XT_WL_TOGGLE | XT_WL_TOPLEVEL;
 	toggle_cwl(t, &a);
 
@@ -3749,7 +3746,6 @@ wl_save(struct tab *t, struct karg *args, int js)
 	struct domain		*d;
 	GSList			*cf;
 	SoupCookie		*ci, *c;
-	char			*p;
 
 	if (t == NULL || args == NULL)
 		return (1);
@@ -3769,11 +3765,6 @@ wl_save(struct tab *t, struct karg *args, int js)
 		  js ? "JavaScript" : "cookie");
 		goto done;
 	}
-
-	/* we don't want to save :port number */
-	p = g_strrstr(dom, ":");
-	if (p)
-		*p = '\0';
 
 	lt = g_strdup_printf("%s=%s", js ? "js_wl" : "cookie_wl", dom);
 
