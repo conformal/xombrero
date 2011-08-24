@@ -345,7 +345,7 @@ struct karg {
 #define XT_MAX_UNDO_CLOSE_TAB	(32)
 #define XT_RESERVED_CHARS	"$&+,/:;=?@ \"<>#%%{}|^~[]`"
 #define XT_PRINT_EXTRA_MARGIN	10
-#define XT_URL_REGEX		("^[[:blank:]]*[^[:blank:]]*([[:alnum:]-]+.)+[[:alnum:]-][^[:blank:]]*[[:blank:]]*$")
+#define XT_URL_REGEX		("^[[:blank:]]*[^[:blank:]]*([[:alnum:]-]+\\.)+[[:alnum:]-][^[:blank:]]*[[:blank:]]*$")
 #define XT_INVALID_MARK		(-1) /* XXX this is a double, maybe use something else, like a nan */
 
 /* colors */
