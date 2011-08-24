@@ -344,6 +344,7 @@ struct karg {
 #define XT_MAX_UNDO_CLOSE_TAB	(32)
 #define XT_RESERVED_CHARS	"$&+,/:;=?@ \"<>#%%{}|^~[]`"
 #define XT_PRINT_EXTRA_MARGIN	10
+#define XT_URL_REGEX		("^[[:blank:]]*[^[:blank:]]*([[:alnum:]-]+.)+[[:alnum:]-][^[:blank:]]*[[:blank:]]*$")
 #define XT_INVALID_MARK		(-1) /* XXX this is a double, maybe use something else, like a nan */
 
 /* colors */
@@ -571,6 +572,7 @@ gint		max_host_connections = 5;
 gint		enable_spell_checking = 0;
 char		*spell_check_languages = NULL;
 int		xterm_workaround = 0;
+char		*url_regex = NULL;
 
 char		*cmd_font_name = NULL;
 char		*oops_font_name = NULL;
@@ -583,6 +585,7 @@ PangoFontDescription *tabbar_font;
 char		*qmarks[XT_NOMARKS];
 
 int		btn_down;	/* M1 down in any wv */
+regex_t		url_re;		/* guess_search regex */
 
 struct settings;
 struct key_binding;
@@ -752,6 +755,7 @@ struct settings {
 	{ "ssl_strict_certs",		XT_S_INT, 0,		&ssl_strict_certs, NULL, NULL },
 	{ "statusbar_elems",		XT_S_STR, 0, NULL,	&statusbar_elems, NULL },
 	{ "tab_style",			XT_S_STR, 0, NULL, NULL,&s_tab_style },
+	{ "url_regex",			XT_S_STR, 0, NULL,	&url_regex, NULL },
 	{ "user_agent",			XT_S_STR, 0, NULL,	&user_agent, NULL },
 	{ "window_height",		XT_S_INT, 0,		&window_height, NULL, NULL },
 	{ "window_width",		XT_S_INT, 0,		&window_width, NULL, NULL },
@@ -1616,15 +1620,15 @@ guess_url_type(char *url_in)
 {
 	struct stat		sb;
 	char			*url_out = NULL, *enc_search = NULL;
-	SoupURI			*uri = NULL;
 
 	url_out = match_alias(url_in);
 	if (url_out != NULL)
 		return (url_out);
 
-	if (guess_search) {
-		uri = soup_uri_new(url_in);
-		if (uri == NULL || !SOUP_URI_VALID_FOR_HTTP(uri)) {
+	if (guess_search && url_regex &&
+	    !(g_str_has_prefix(url_in, "http://") ||
+	    g_str_has_prefix(url_in, "https://"))) {
+		if (regexec(&url_re, url_in, 0, NULL, 0)) {
 			/* invalid URI so search instead */
 			enc_search = soup_uri_encode(url_in, XT_RESERVED_CHARS);
 			url_out = g_strdup_printf(search_string, enc_search);
@@ -1640,8 +1644,6 @@ guess_url_type(char *url_in)
 		url_out = g_strdup_printf("http://%s", url_in); /* guess http */
 done:
 	DNPRINTF(XT_D_URL, "guess_url_type: guessed %s\n", url_out);
-	if (uri)
-		soup_uri_free(uri);
 
 	return (url_out);
 }
@@ -7243,8 +7245,10 @@ buffercmd_init(void)
 	int			i;
 
 	for (i = 0; i < LENGTH(buffercmds); i++)
-		regcomp(&buffercmds[i].cregex, buffercmds[i].regex,
-		    REG_EXTENDED);
+		if (regcomp(&buffercmds[i].cregex, buffercmds[i].regex,
+		    REG_EXTENDED | REG_NOSUB))
+			startpage_add("invalid buffercmd regex %s",
+			    buffercmds[i].regex);
 }
 
 void
@@ -9909,6 +9913,13 @@ main(int argc, char *argv[])
 			    (void *)NULL);
 	}
 
+	/* guess_search regex */
+	if (url_regex == NULL)
+		url_regex = g_strdup(XT_URL_REGEX);
+	if (url_regex)
+		if (regcomp(&url_re, url_regex, REG_EXTENDED | REG_NOSUB))
+			startpage_add("invalid url regex %s", url_regex);
+
 	/* proxy */
 	env_proxy = getenv("http_proxy");
 	if (env_proxy)
@@ -9999,6 +10010,9 @@ main(int argc, char *argv[])
 	}
 
 	gnutls_global_deinit();
+
+	if (url_regex)
+		regfree(&url_re);
 
 	return (0);
 }
