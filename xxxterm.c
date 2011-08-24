@@ -1872,6 +1872,7 @@ wl_add(char *str, struct domain_list *wl, int handy)
 {
 	struct domain		*d;
 	int			add_dot = 0;
+	char			*p;
 
 	if (str == NULL || wl == NULL || strlen(str) < 2)
 		return;
@@ -1885,6 +1886,11 @@ wl_add(char *str, struct domain_list *wl, int handy)
 		str = &str[0];
 	else
 		add_dot = 1;
+
+	/* slice off port number */
+	p = g_strrstr(str, ":");
+	if (p)
+		*p = '\0';
 
 	d = g_malloc(sizeof *d);
 	if (add_dot)
@@ -3682,6 +3688,7 @@ wl_save(struct tab *t, struct karg *args, int js)
 	struct domain		*d;
 	GSList			*cf;
 	SoupCookie		*ci, *c;
+	char			*p;
 
 	if (t == NULL || args == NULL)
 		return (1);
@@ -3701,6 +3708,11 @@ wl_save(struct tab *t, struct karg *args, int js)
 		  js ? "JavaScript" : "cookie");
 		goto done;
 	}
+
+	/* we don't want to save :port number */
+	p = g_strrstr(dom, ":");
+	if (p)
+		*p = '\0';
 
 	lt = g_strdup_printf("%s=%s", js ? "js_wl" : "cookie_wl", dom);
 
