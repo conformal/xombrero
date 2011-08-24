@@ -883,22 +883,22 @@ void			completion_add(struct tab *);
 void			completion_add_uri(const gchar *);
 
 void
-cmd_history_delete(void)
+cmd_history_delete(struct command_list *l)
 {
 	struct command_entry	*c;
 
-	c = TAILQ_LAST(&chl, command_list);
+	c = TAILQ_LAST(l, command_list);
 	if (c == NULL)
 		return;
 
-	TAILQ_REMOVE(&chl, c, entry);
+	TAILQ_REMOVE(l, c, entry);
 	cmd_history_count--;
 	g_free(c->line);
 	g_free(c);
 }
 
 void
-cmd_history_add(char *l)
+cmd_history_add(struct command_list *list, char *l)
 {
 	struct command_entry	*c;
 
@@ -906,24 +906,19 @@ cmd_history_add(char *l)
 		return;
 
 	/* don't add the same line */
-	c = TAILQ_FIRST(&chl);
-	fprintf(stderr, "c %p\n", c);
-	if (c) {
-		fprintf(stderr, "s %s %s\n", c->line, l);
-		if (!strcmp(c->line + 1 /* skip : */, l)) {
-			fprintf(stderr, "skip %s %s\n", c->line, l);
+	c = TAILQ_FIRST(list);
+	if (c)
+		if (!strcmp(c->line + 1 /* skip : */, l))
 			return;
-		}
-	}
 
 	c = g_malloc0(sizeof *c);
 	c->line = g_strdup_printf(":%s", l);
 
 	cmd_history_count++;
-	TAILQ_INSERT_HEAD(&chl, c, entry);
+	TAILQ_INSERT_HEAD(list, c, entry);
 
 	if (cmd_history_count > 1000)
-		cmd_history_delete();
+		cmd_history_delete(list);
 }
 
 /* marks and quickmarks array storage.
@@ -7958,6 +7953,34 @@ entry_key_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	return (handle_keypress(t, e, 1));
 }
 
+struct command_entry *
+history_prev(struct command_list *l, struct command_entry *at)
+{
+	if (at == NULL)
+		at = TAILQ_LAST(l, command_list);
+	else {
+		at = TAILQ_PREV(at, command_list, entry);
+		if (at == NULL)
+			at = TAILQ_LAST(l, command_list);
+	}
+
+	return (at);
+}
+
+struct command_entry *
+history_next(struct command_list *l, struct command_entry *at)
+{
+	if (at == NULL)
+		at = TAILQ_FIRST(l);
+	else {
+		at = TAILQ_NEXT(at, entry);
+		if (at == NULL)
+			at = TAILQ_FIRST(l);
+	}
+
+	return (at);
+}
+
 int
 cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 {
@@ -7996,36 +8019,21 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		if (c[0] != ':')
 			goto done;
 
-		if (history_at == NULL)
-			history_at = TAILQ_LAST(&chl, command_list);
-		else {
-			history_at = TAILQ_PREV(history_at, command_list,
-			    entry);
-			if (history_at == NULL)
-				history_at = TAILQ_LAST(&chl, command_list);
-		}
-
-		if (history_at) {
+		if ((history_at = history_prev(&chl, history_at))) {
 			gtk_entry_set_text(w, history_at->line);
 			gtk_editable_set_position(GTK_EDITABLE(w), -1);
 		}
+
 		goto done;
 	case GDK_Up:
 		if (c[0] != ':')
 			goto done;
 
-		if (history_at == NULL)
-			history_at = TAILQ_FIRST(&chl);
-		else {
-			history_at = TAILQ_NEXT(history_at, entry);
-			if (history_at == NULL)
-				history_at = TAILQ_FIRST(&chl);
-		}
-
-		if (history_at) {
+		if ((history_at = history_next(&chl, history_at))) {
 			gtk_entry_set_text(w, history_at->line);
 			gtk_editable_set_position(GTK_EDITABLE(w), -1);
 		}
+
 		goto done;
 	case GDK_BackSpace:
 		if (!(!strcmp(c, ":") || !strcmp(c, "/") || !strcmp(c, "?")))
@@ -8129,7 +8137,7 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 
 	cmd_execute(t, s);
 
-	cmd_history_add(s);
+	cmd_history_add(&chl, s);
 done:
 	return;
 }
