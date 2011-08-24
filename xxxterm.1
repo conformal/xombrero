@@ -884,7 +884,9 @@ Proxy server in URL format.
 overrides
 .Cm http_proxy
 if it is specified as an environment variable.
-It must be noted that one MUST use an IP address and not a FQDN.
+It must be noted that on older webkit versions one MUST use an IP address and
+not a FQDN.
+This works as expected with webkit 1.4.2.
 .Pp
 If one desires to use a socks proxy then an intermediary tool must be used.
 It has been reported that tsocks works with
