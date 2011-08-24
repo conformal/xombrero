@@ -223,6 +223,7 @@ struct tab {
 	gchar			*status;
 	int			xtp_meaning; /* identifies dls/favorites */
 	gchar			*tmp_uri;
+	int			popup; /* 1 if cmd_entry has popup visible */
 
 	/* hints */
 	int			hints_on;
@@ -7954,6 +7955,13 @@ done:
 	return (rv);
 }
 
+void
+cmd_popup_cb(GtkEntry *entry, GtkMenu *menu, struct tab *t)
+{
+	/* popup menu enabled */
+	t->popup = 1;
+}
+
 int
 cmd_focusout_cb(GtkWidget *w, GdkEventFocus *e, struct tab *t)
 {
@@ -7961,7 +7969,15 @@ cmd_focusout_cb(GtkWidget *w, GdkEventFocus *e, struct tab *t)
 		show_oops(NULL, "cmd_focusout_cb invalid parameters");
 		return (XT_CB_PASSTHROUGH);
 	}
-	DNPRINTF(XT_D_CMD, "cmd_focusout_cb: tab %d\n", t->tab_id);
+
+	DNPRINTF(XT_D_CMD, "cmd_focusout_cb: tab %d popup %d\n",
+	    t->tab_id, t->popup);
+
+	/* if popup is enabled don't lose focus */
+	if (t->popup) {
+		t->popup = 0;
+		return (XT_CB_PASSTHROUGH);
+	}
 
 	hide_cmd(t);
 	hide_oops(t);
@@ -8872,6 +8888,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	    "signal::key-release-event", G_CALLBACK(cmd_keyrelease_cb), t,
 	    "signal::focus-out-event", G_CALLBACK(cmd_focusout_cb), t,
 	    "signal::activate", G_CALLBACK(cmd_activate_cb), t,
+	    "signal::populate-popup", G_CALLBACK(cmd_popup_cb), t,
 	    (char *)NULL);
 
 	/* reuse wv_button_cb to hide oops */
