@@ -905,6 +905,17 @@ cmd_history_add(char *l)
 	if (l == NULL)
 		return;
 
+	/* don't add the same line */
+	c = TAILQ_FIRST(&chl);
+	fprintf(stderr, "c %p\n", c);
+	if (c) {
+		fprintf(stderr, "s %s %s\n", c->line, l);
+		if (!strcmp(c->line + 1 /* skip : */, l)) {
+			fprintf(stderr, "skip %s %s\n", c->line, l);
+			return;
+		}
+	}
+
 	c = g_malloc0(sizeof *c);
 	c->line = g_strdup_printf(":%s", l);
 
