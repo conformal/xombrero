@@ -499,6 +499,25 @@ Going forward this session is named session_name.
 Save current tabs to session_name session.
 This will close the current session and going forward this session is named
 session_name.
+.It Cm set
+The set command is used to inspect, clear or change runtime options.
+There are 3 methods to use
+.Cm :set .
+When used by itself as
+.Cm :set
+the command displays all options as currently set.
+.Pp
+To set a value use
+.Cm :set option=value .
+For example,
+.Cm :set http_proxy=http://127.0.0.1:8080 .
+.Pp
+To clear a value use
+.Cm :set option= .
+For example,
+.Cm :set http_proxy= .
+.Pp
+Note, not all options can be set at runtime.
 .It Cm stats
 Show blocked cookie statistics.
 These statistics vary based on settings and are not persistent.
