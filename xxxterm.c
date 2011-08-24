@@ -4935,7 +4935,27 @@ set(struct tab *t, struct karg *args)
 	/* we got some sort of string */
 	val = g_strrstr(p, "=");
 	if (val) {
-		show_oops(t, "can't activate runtime settings yet");
+		*val++ = '\0';
+		val = g_strchomp(val);
+		p = g_strchomp(p);
+
+		for (i = 0; i < LENGTH(rs); i++) {
+			if (strcmp(rs[i].name, p))
+				continue;
+
+			if (rs[i].activate) {
+				if (rs[i].activate(val))
+					show_oops(t, "%s invalid value %s",
+					    p, val);
+				else
+					show_oops(t, ":set %s = %s", p, val);
+				goto done;
+			} else {
+				show_oops(t, "not a runtime option: %s", p);
+				goto done;
+			}
+		}
+		show_oops(t, "unknown option: %s", p);
 	} else {
 		p = g_strchomp(p);
 
@@ -4943,6 +4963,7 @@ set(struct tab *t, struct karg *args)
 			if (strcmp(rs[i].name, p))
 				continue;
 
+			/* XXX this could use some cleanup */
 			switch (rs[i].type) {
 			case XT_S_INT:
 				if (rs[i].ival)
@@ -4971,7 +4992,6 @@ set(struct tab *t, struct karg *args)
 					show_oops(t, "%s = ", rs[i].name);
 				break;
 			case XT_S_STR:
-				/* XXX this could use some cleanup */
 				if (rs[i].sval && *rs[i].sval)
 					show_oops(t, "%s = %s",
 					    rs[i].name, *rs[i].sval);
@@ -9387,6 +9407,8 @@ setup_cookies(void)
 void
 setup_proxy(char *uri)
 {
+	SoupURI			*suri;
+
 	if (proxy_uri) {
 		g_object_set(session, "proxy_uri", NULL, (char *)NULL);
 		soup_uri_free(proxy_uri);
@@ -9402,15 +9424,36 @@ setup_proxy(char *uri)
 	if (uri) {
 		http_proxy = g_strdup(uri);
 		DNPRINTF(XT_D_CONFIG, "setup_proxy: %s\n", uri);
-		proxy_uri = soup_uri_new(http_proxy);
-		g_object_set(session, "proxy-uri", proxy_uri, (char *)NULL);
+		suri = soup_uri_new(http_proxy);
+		if (!(suri == NULL || !SOUP_URI_VALID_FOR_HTTP(suri)))
+			g_object_set(session, "proxy-uri", proxy_uri,
+			    (char *)NULL);
+		if (suri)
+			soup_uri_free(suri);
 	}
 }
 
 int
 set_http_proxy(char *proxy)
 {
-	fprintf(stderr, "%s %s\n", __func__, proxy);
+	SoupURI			*uri;
+
+	if (proxy == NULL)
+		return (1);
+
+	/* see if we need to clear it instead */
+	if (strlen(proxy) == 0) {
+		setup_proxy(NULL);
+		return (0);
+	}
+
+	uri = soup_uri_new(proxy);
+	if (uri == NULL || !SOUP_URI_VALID_FOR_HTTP(uri))
+		return (1);
+
+	setup_proxy(proxy);
+
+	soup_uri_free(uri);
 
 	return (0);
 }
