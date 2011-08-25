@@ -320,6 +320,8 @@ struct karg {
 #define XT_REJECT_FILE		("rejected.txt")
 #define XT_COOKIE_FILE		("cookies.txt")
 #define XT_SAVE_SESSION_ID	("SESSION_NAME=")
+#define XT_SEARCH_FILE		("search_history")
+#define XT_COMMAND_FILE		("command_history")
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
 #define XT_DOCTYPE		"<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>\n"
@@ -580,6 +582,9 @@ gint		enable_spell_checking = 0;
 char		*spell_check_languages = NULL;
 int		xterm_workaround = 0;
 char		*url_regex = NULL;
+int		history_autosave = 0;
+char		search_file[PATH_MAX];
+char		command_file[PATH_MAX];
 
 char		*cmd_font_name = NULL;
 char		*oops_font_name = NULL;
@@ -740,6 +745,7 @@ struct settings {
 	{ "enable_spell_checking",	XT_S_INT, 0,		&enable_spell_checking, NULL, NULL },
 	{ "fancy_bar",			XT_S_INT, XT_SF_RESTART,&fancy_bar, NULL, NULL },
 	{ "guess_search",		XT_S_INT, 0,		&guess_search, NULL, NULL },
+	{ "history_autosave",		XT_S_INT, 0,		&history_autosave, NULL, NULL },
 	{ "home",			XT_S_STR, 0, NULL,	&home, NULL },
 	{ "http_proxy",			XT_S_STR, 0, NULL,	&http_proxy, NULL, NULL, set_http_proxy },
 	{ "icon_size",			XT_S_INT, 0,		&icon_size, NULL, NULL },
@@ -884,6 +890,7 @@ void			xxx_dir(char *);
 int			icon_size_map(int);
 void			completion_add(struct tab *);
 void			completion_add_uri(const gchar *);
+void			show_oops(struct tab *, const char *, ...);
 
 void
 history_delete(struct command_list *l, int *counter)
@@ -904,9 +911,10 @@ history_delete(struct command_list *l, int *counter)
 }
 
 void
-history_add(struct command_list *list, char *l, int *counter)
+history_add(struct command_list *list, char *file, char *l, int *counter)
 {
 	struct command_entry	*c;
+	FILE			*f;
 
 	if (list == NULL || l == NULL || counter == NULL)
 		return;
@@ -925,6 +933,55 @@ history_add(struct command_list *list, char *l, int *counter)
 
 	if (*counter > 1000)
 		history_delete(list, counter);
+
+	if (history_autosave && file) {
+		f = fopen(file, "w");
+		if (f == NULL) {
+			show_oops(NULL, "couldn't write history %s", file);
+			return;
+		}
+
+		TAILQ_FOREACH_REVERSE(c, list, command_list, entry) {
+			c->line[0] = ' ';
+			fprintf(f, "%s\n", c->line);
+		}
+
+		fclose(f);
+	}
+}
+
+int
+history_read(struct command_list *list, char *file, int *counter)
+{
+	FILE			*f;
+	char			*s, line[65536];
+
+	if (list == NULL || file == NULL)
+		return (1);
+
+	f = fopen(file, "r");
+	if (f == NULL) {
+		startpage_add("couldn't open history file %s", file);
+		return (1);
+	}
+
+	for (;;) {
+		s = fgets(line, sizeof line, f);
+		if (s == NULL || feof(f) || ferror(f))
+			break;
+		if ((s = strchr(line, '\n')) == NULL) {
+			startpage_add("invalid history file %s", file);
+			fclose(f);
+			return (1);
+		}
+		*s = '\0';
+
+		history_add(list, NULL, line + 1, counter);
+	}
+
+	fclose(f);
+
+	return (0);
 }
 
 /* marks and quickmarks array storage.
@@ -8153,13 +8210,13 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 		global_search = g_strdup(s);
 		t->search_forward = c[0] == '/';
 
-		history_add(&shl, s, &search_history_count);
+		history_add(&shl, search_file, s, &search_history_count);
 		goto done;
 	}
 
 	cmd_execute(t, s);
 
-	history_add(&chl, s, &cmd_history_count);
+	history_add(&chl, command_file, s, &cmd_history_count);
 done:
 	return;
 }
@@ -10035,6 +10092,32 @@ main(int argc, char *argv[])
 		if ((f = fopen(file, "w")) == NULL)
 			err(1, "quickmarks");
 		fclose(f);
+	}
+
+	/* search history */
+	if (history_autosave) {
+		snprintf(search_file, sizeof search_file, "%s/%s",
+		    work_dir, XT_SEARCH_FILE);
+		if (stat(search_file, &sb)) {
+			warnx("search history file doesn't exist, creating it");
+			if ((f = fopen(search_file, "w")) == NULL)
+				err(1, "search_history");
+			fclose(f);
+		}
+		history_read(&shl, search_file, &search_history_count);
+	}
+
+	/* command history */
+	if (history_autosave) {
+		snprintf(command_file, sizeof command_file, "%s/%s",
+		    work_dir, XT_COMMAND_FILE);
+		if (stat(command_file, &sb)) {
+			warnx("command history file doesn't exist, creating it");
+			if ((f = fopen(command_file, "w")) == NULL)
+				err(1, "command_history");
+			fclose(f);
+		}
+		history_read(&chl, command_file, &cmd_history_count);
 	}
 
 	/* cookies */

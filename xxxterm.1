@@ -895,6 +895,13 @@ the command widget, is term you want to search for using search_string
 If the string does not contain a dot nor a slash, is not a
 path to a local file and does not resolves to an IP then it is assumed
 to be a search term.
+.It Cm history_autosave
+When enabled
+.Nm
+will save all command and search history.
+Upon restarting
+.Nm
+the saved command and search history will be restored.
 .It Cm home
 Homepage in URL format.
 .It Cm http_proxy
