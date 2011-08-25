@@ -9628,7 +9628,6 @@ setup_proxy(char *uri)
 
 	if (uri) {
 		http_proxy = g_strdup(uri);
-		fprintf(stderr, "setup_proxy: %s\n", uri);
 		DNPRINTF(XT_D_CONFIG, "setup_proxy: %s\n", uri);
 		proxy_uri = soup_uri_new(http_proxy);
 		if (!(proxy_uri == NULL || !SOUP_URI_VALID_FOR_HTTP(proxy_uri)))
