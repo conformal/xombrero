@@ -1,6 +1,6 @@
 # $xxxterm$
 
-LIBS= gtk+-2.0 webkit-1.0 libsoup-2.4
+LIBS= gtk+-2.0 webkit-1.0 libsoup-2.4 gnutls
 
 LDADD= -lutil
 GTK_CFLAGS!= pkg-config --cflags $(LIBS)
