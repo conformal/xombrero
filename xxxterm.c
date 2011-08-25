@@ -9614,8 +9614,6 @@ setup_cookies(void)
 void
 setup_proxy(char *uri)
 {
-	SoupURI			*suri;
-
 	if (proxy_uri) {
 		g_object_set(session, "proxy_uri", NULL, (char *)NULL);
 		soup_uri_free(proxy_uri);
@@ -9630,13 +9628,12 @@ setup_proxy(char *uri)
 
 	if (uri) {
 		http_proxy = g_strdup(uri);
+		fprintf(stderr, "setup_proxy: %s\n", uri);
 		DNPRINTF(XT_D_CONFIG, "setup_proxy: %s\n", uri);
-		suri = soup_uri_new(http_proxy);
-		if (!(suri == NULL || !SOUP_URI_VALID_FOR_HTTP(suri)))
+		proxy_uri = soup_uri_new(http_proxy);
+		if (!(proxy_uri == NULL || !SOUP_URI_VALID_FOR_HTTP(proxy_uri)))
 			g_object_set(session, "proxy-uri", proxy_uri,
 			    (char *)NULL);
-		if (suri)
-			soup_uri_free(suri);
 	}
 }
 
