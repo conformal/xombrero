@@ -3364,25 +3364,26 @@ connect_socket_from_uri(struct tab *t, const gchar *uri, char *domain,
 	}
 
 	for (ai = res; ai; ai = ai->ai_next) {
+		if (s != -1) {
+			close(s);
+			s = -1;
+		}
+
 		if (ai->ai_family != AF_INET && ai->ai_family != AF_INET6)
 			continue;
-
 		s = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-		if (s == -1) {
-			show_oops(t, "socket failed: %s", strerror(errno));
-			goto done;
-		}
+		if (s == -1)
+			continue;
 		if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on,
-		    sizeof(on)) == -1) {
-			show_oops(t, "setsockopt failed: %s", strerror(errno));
-			goto done;
-		}
-		if (connect(s, ai->ai_addr, ai->ai_addrlen) == -1) {
-			show_oops(t, "connect failed: %s", strerror(errno));
-			goto done;
-		}
-
-		break;
+		    sizeof(on)) == -1)
+			continue;
+		if (connect(s, ai->ai_addr, ai->ai_addrlen) == 0)
+			break;
+	}
+	if (s == -1) {
+		show_oops(t, "could not obtain certificates from: %s",
+		    su->host);
+		goto done;
 	}
 
 	if (domain)
