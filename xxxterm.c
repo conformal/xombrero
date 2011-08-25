@@ -2081,7 +2081,7 @@ wl_find_uri(const gchar *s, struct domain_list *wl)
 
 	for (i = 0; i < strlen(s) + 1 /* yes er need this */; i++)
 		/* chop string at first slash */
-		if (s[i] == '/' || s[i] == '\0') {
+		if (s[i] == '/' || s[i] == ':' || s[i] == '\0') {
 			ss = g_strdup(s);
 			ss[i] = '\0';
 			r = wl_find(ss, wl);
