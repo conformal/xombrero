@@ -4033,6 +4033,10 @@ can_go_forward_for_real(struct tab *t)
 	int			i;
 	WebKitWebHistoryItem	*item;
 
+	/* rely on webkit to make sure we can go forward when on an about page */
+	if (g_str_has_prefix(get_uri(t), "about:"))
+		return (webkit_web_view_can_go_forward(t->wv));
+
 	/* the back/forwars list is stupid so help selecting a different item */
 	for (i = 0, item = webkit_web_back_forward_list_get_current_item(t->bfl);
 	    item != NULL;
@@ -8197,6 +8201,12 @@ done:
 }
 
 void
+wv_popup_cb(GtkEntry *entry, GtkMenu *menu, struct tab *t)
+{
+	DNPRINTF(XT_D_CMD, "wv_popup_cb: tab %d\n", t->tab_id);
+}
+
+void
 cmd_popup_cb(GtkEntry *entry, GtkMenu *menu, struct tab *t)
 {
 	/* popup menu enabled */
@@ -9160,6 +9170,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	    "signal::icon-loaded", G_CALLBACK(notify_icon_loaded_cb), t,
 	    "signal::button_press_event", G_CALLBACK(wv_button_cb), t,
 	    "signal::button_release_event", G_CALLBACK(wv_release_button_cb), t,
+	    "signal::populate-popup", G_CALLBACK(wv_popup_cb), t,
 	    (char *)NULL);
 	g_signal_connect(t->wv,
 	    "notify::load-status", G_CALLBACK(notify_load_status_cb), t);
@@ -9180,6 +9191,26 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 
 	g_signal_connect(G_OBJECT(bb), "button_press_event",
 	    G_CALLBACK(tab_close_cb), t);
+
+	/* setup history */
+	t->bfl = webkit_web_view_get_back_forward_list(t->wv);
+	/* restore the tab's history */
+	if (u && u->history) {
+		items = u->history;
+		while (items) {
+			item = items->data;
+			webkit_web_back_forward_list_add_item(t->bfl, item);
+			items = g_list_next(items);
+		}
+
+		item = g_list_nth_data(u->history, u->back);
+		if (item)
+			webkit_web_view_go_to_back_forward_item(t->wv, item);
+
+		g_list_free(items);
+		g_list_free(u->history);
+	} else
+		webkit_web_back_forward_list_clear(t->bfl);
 
 	/* hide stuff */
 	hide_cmd(t);
@@ -9203,25 +9234,6 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 		else
 			focus_webview(t);
 	}
-
-	t->bfl = webkit_web_view_get_back_forward_list(t->wv);
-	/* restore the tab's history */
-	if (u && u->history) {
-		items = u->history;
-		while (items) {
-			item = items->data;
-			webkit_web_back_forward_list_add_item(t->bfl, item);
-			items = g_list_next(items);
-		}
-
-		item = g_list_nth_data(u->history, u->back);
-		if (item)
-			webkit_web_view_go_to_back_forward_item(t->wv, item);
-
-		g_list_free(items);
-		g_list_free(u->history);
-	} else
-		webkit_web_back_forward_list_clear(t->bfl);
 
 	recolor_compact_tabs();
 	setzoom_webkit(t, XT_ZOOM_NORMAL);
