@@ -4011,15 +4011,83 @@ done:
 }
 
 int
+can_go_back_for_real(struct tab *t)
+{
+	int			i;
+	WebKitWebHistoryItem	*item;
+
+	/* the back/forwars list is stupid so help determine if we can go back */
+	for (i = 0, item = webkit_web_back_forward_list_get_current_item(t->bfl);
+	    item != NULL;
+	    i--, item = webkit_web_back_forward_list_get_nth_item(t->bfl, i)) {
+		if (strcmp(webkit_web_history_item_get_uri(item), get_uri(t)))
+			return (TRUE);
+	}
+
+	return (FALSE);
+}
+
+int
+can_go_forward_for_real(struct tab *t)
+{
+	int			i;
+	WebKitWebHistoryItem	*item;
+
+	/* the back/forwars list is stupid so help selecting a different item */
+	for (i = 0, item = webkit_web_back_forward_list_get_current_item(t->bfl);
+	    item != NULL;
+	    i++, item = webkit_web_back_forward_list_get_nth_item(t->bfl, i)) {
+		if (strcmp(webkit_web_history_item_get_uri(item), get_uri(t)))
+			return (TRUE);
+	}
+
+	return (FALSE);
+}
+
+void
+go_back_for_real(struct tab *t)
+{
+	int			i;
+	WebKitWebHistoryItem	*item;
+
+	/* the back/forwars list is stupid so help selecting a different item */
+	for (i = 0, item = webkit_web_back_forward_list_get_current_item(t->bfl);
+	    item != NULL;
+	    i--, item = webkit_web_back_forward_list_get_nth_item(t->bfl, i)) {
+		if (strcmp(webkit_web_history_item_get_uri(item), get_uri(t))) {
+			webkit_web_view_go_to_back_forward_item(t->wv, item);
+			break;
+		}
+	}
+}
+
+void
+go_forward_for_real(struct tab *t)
+{
+	int			i;
+	WebKitWebHistoryItem	*item;
+
+	/* the back/forwars list is stupid so help selecting a different item */
+	for (i = 0, item = webkit_web_back_forward_list_get_current_item(t->bfl);
+	    item != NULL;
+	    i++, item = webkit_web_back_forward_list_get_nth_item(t->bfl, i)) {
+		if (strcmp(webkit_web_history_item_get_uri(item), get_uri(t))) {
+			webkit_web_view_go_to_back_forward_item(t->wv, item);
+			break;
+		}
+	}
+}
+
+int
 navaction(struct tab *t, struct karg *args)
 {
 	WebKitWebHistoryItem	*item;
+	WebKitWebFrame		*frame;
 
 	DNPRINTF(XT_D_NAV, "navaction: tab %d opcode %d\n",
 	    t->tab_id, args->i);
 
 	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
-
 	if (t->item) {
 		if (args->i == XT_NAV_BACK)
 			item = webkit_web_back_forward_list_get_current_item(t->bfl);
@@ -4035,20 +4103,15 @@ navaction(struct tab *t, struct karg *args)
 	switch (args->i) {
 	case XT_NAV_BACK:
 		marks_clear(t);
-		item = webkit_web_back_forward_list_get_back_item(t->bfl);
-		if (item)
-			webkit_web_view_go_to_back_forward_item(t->wv, item);
+		go_back_for_real(t);
 		break;
 	case XT_NAV_FORWARD:
 		marks_clear(t);
-		item = webkit_web_back_forward_list_get_forward_item(t->bfl);
-		if (item)
-			webkit_web_view_go_to_back_forward_item(t->wv, item);
+		go_forward_for_real(t);
 		break;
 	case XT_NAV_RELOAD:
-		item = webkit_web_back_forward_list_get_current_item(t->bfl);
-		if (item)
-			webkit_web_view_go_to_back_forward_item(t->wv, item);
+		frame = webkit_web_view_get_main_frame(t->wv);
+		webkit_web_frame_reload(frame);
 		break;
 	}
 	return (XT_CB_PASSTHROUGH);
@@ -6688,10 +6751,10 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		gtk_widget_set_sensitive(GTK_WIDGET(t->backward), TRUE);
 	else
 		gtk_widget_set_sensitive(GTK_WIDGET(t->backward),
-		    webkit_web_view_can_go_back(wview));
+		    can_go_back_for_real(t));
 
 	gtk_widget_set_sensitive(GTK_WIDGET(t->forward),
-	    webkit_web_view_can_go_forward(wview));
+	    can_go_forward_for_real(t));
 }
 
 #if 0
