@@ -4016,6 +4016,11 @@ can_go_back_for_real(struct tab *t)
 	int			i;
 	WebKitWebHistoryItem	*item;
 
+	/* rely on webkit to make sure we can go backward when on an about page */
+	if (get_uri(t) == NULL || g_str_has_prefix(get_uri(t), "about:"))
+		return (webkit_web_view_can_go_forward(t->wv));
+
+
 	/* the back/forwars list is stupid so help determine if we can go back */
 	for (i = 0, item = webkit_web_back_forward_list_get_current_item(t->bfl);
 	    item != NULL;
@@ -4034,7 +4039,7 @@ can_go_forward_for_real(struct tab *t)
 	WebKitWebHistoryItem	*item;
 
 	/* rely on webkit to make sure we can go forward when on an about page */
-	if (g_str_has_prefix(get_uri(t), "about:"))
+	if (get_uri(t) == NULL || g_str_has_prefix(get_uri(t), "about:"))
 		return (webkit_web_view_can_go_forward(t->wv));
 
 	/* the back/forwars list is stupid so help selecting a different item */
