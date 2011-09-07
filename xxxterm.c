@@ -39,6 +39,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <dirent.h>
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -258,6 +259,12 @@ struct history {
 	const gchar		*title;
 };
 RB_HEAD(history_list, history);
+
+struct session {
+	TAILQ_ENTRY(session)	entry;
+	const gchar		*name;
+};
+TAILQ_HEAD(session_list, session);
 
 struct download {
 	RB_ENTRY(download)	entry;
@@ -507,6 +514,7 @@ struct karg {
 #define XT_USERARG		(1<<1)
 #define XT_URLARG		(1<<2)
 #define XT_INTARG		(1<<3)
+#define XT_SESSARG		(1<<4)
 
 #define XT_TABS_NORMAL		0
 #define XT_TABS_COMPACT		1
@@ -863,6 +871,7 @@ GtkWidget		*tab_bar;
 GtkWidget		*arrow, *abtn;
 struct tab_list		tabs;
 struct history_list	hl;
+struct session_list	sessions;
 struct download_list	downloads;
 struct domain_list	c_wl;
 struct domain_list	js_wl;
@@ -2493,6 +2502,25 @@ quit(struct tab *t, struct karg *args)
 	gtk_main_quit();
 
 	return (1);
+}
+
+void
+restore_sessions_list(void)
+{
+	DIR *sdir               = NULL;
+	struct dirent *dp       = NULL;
+	struct session		*s;
+
+	sdir = opendir(sessions_dir);
+	if (sdir) {
+		while ((dp = readdir(sdir)) != NULL)
+			if (dp->d_type == DT_REG) {
+				s = g_malloc(sizeof(struct session));
+				s->name = g_strdup(dp->d_name);
+				TAILQ_INSERT_TAIL(&sessions, s, entry);
+			}
+		closedir(sdir);
+	}
 }
 
 int
@@ -5222,6 +5250,7 @@ session_save(struct tab *t, char *filename)
 {
 	struct karg		a;
 	int			rv = 1;
+	struct session		*s;
 
 	if (strlen(filename) == 0)
 		goto done;
@@ -5233,6 +5262,11 @@ session_save(struct tab *t, char *filename)
 	if (save_tabs(t, &a))
 		goto done;
 	strlcpy(named_session, filename, sizeof named_session);
+
+	/* add the new session to the list of sessions */
+	s = g_malloc(sizeof(struct session));
+	s->name = g_strdup(filename);
+	TAILQ_INSERT_TAIL(&sessions, s, entry);
 
 	rv = 0;
 done:
@@ -5268,6 +5302,7 @@ session_delete(struct tab *t, char *filename)
 {
 	char			file[PATH_MAX];
 	int			rv = 1;
+	struct session		*s;
 
 	if (strlen(filename) == 0)
 		goto done;
@@ -5282,6 +5317,15 @@ session_delete(struct tab *t, char *filename)
 	if (!strcmp(filename, named_session))
 		strlcpy(named_session, XT_SAVED_TABS_FILE,
 		    sizeof named_session);
+
+	/* remove session from sessions list */
+	TAILQ_FOREACH(s, &sessions, entry) {
+		if (!strcmp(s->name, filename))
+			break;
+	}
+	TAILQ_REMOVE(&sessions, s, entry);
+	g_free((gpointer) s->name);
+	g_free(s);
 
 	rv = 0;
 done:
@@ -5837,8 +5881,8 @@ struct cmd {
 
 	/* sessions */
 	{ "session",		0,	session_cmd,		XT_SHOW,		0 },
-	{ "delete",		1,	session_cmd,		XT_DELETE,		XT_USERARG },
-	{ "open",		1,	session_cmd,		XT_OPEN,		XT_USERARG },
+	{ "delete",		1,	session_cmd,		XT_DELETE,		XT_SESSARG },
+	{ "open",		1,	session_cmd,		XT_OPEN,		XT_SESSARG },
 	{ "save",		1,	session_cmd,		XT_SAVE,		XT_USERARG },
 	{ "show",		1,	session_cmd,		XT_SHOW,		0 },
 };
@@ -7845,22 +7889,45 @@ match_uri(const gchar *uri, const gchar *key) {
 	return (match);
 }
 
+gboolean
+match_session(const gchar *name, const gchar *key) {
+	char		*sub;
+
+	sub = strcasestr(name, key);
+
+	return sub == name;
+}
+
 void
 cmd_getlist(int id, char *key)
 {
 	int			i,  dep, c = 0;
 	struct history		*h;
+	struct session		*s;
 
-	if (id >= 0 && (cmds[id].type & XT_URLARG)) {
-		RB_FOREACH_REVERSE(h, history_list, &hl)
-			if (match_uri(h->uri, key)) {
-				cmd_status.list[c] = (char *)h->uri;
-				if (++c > 255)
-					break;
+	if (id >= 0) {
+		if (cmds[id].type & XT_URLARG) {
+			RB_FOREACH_REVERSE(h, history_list, &hl)
+				if (match_uri(h->uri, key)) {
+					cmd_status.list[c] = (char *)h->uri;
+					if (++c > 255)
+						break;
+				}
+
+			cmd_status.len = c;
+			return;
+		} else if (cmds[id].type & XT_SESSARG) {
+			TAILQ_FOREACH(s, &sessions, entry) {
+				if (match_session(s->name, key)) {
+					cmd_status.list[c] = (char *)s->name;
+					if (++c > 255)
+						break;
+				}
 			}
 
-		cmd_status.len = c;
-		return;
+			cmd_status.len = c;
+			return;
+		}
 	}
 
 	dep = (id == -1) ? 0 : cmds[id].level + 1;
@@ -10016,6 +10083,7 @@ main(int argc, char *argv[])
 	RB_INIT(&js_wl);
 	RB_INIT(&downloads);
 
+	TAILQ_INIT(&sessions);
 	TAILQ_INIT(&tabs);
 	TAILQ_INIT(&mtl);
 	TAILQ_INIT(&aliases);
@@ -10271,6 +10339,9 @@ main(int argc, char *argv[])
 
 	if (save_global_history)
 		restore_global_history();
+
+	/* restore session list */
+	restore_sessions_list();
 
 	if (!strcmp(named_session, XT_SAVED_TABS_FILE))
 		restore_saved_tabs();
