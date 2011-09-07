@@ -10003,6 +10003,13 @@ main(int argc, char *argv[])
 
 	start_argv = argv;
 
+	/* prepare gtk */
+	if (!g_thread_supported()) {
+		g_thread_init(NULL);
+		gdk_threads_init();
+	}
+	gtk_init(&argc, &argv);
+
 	strlcpy(named_session, XT_SAVED_TABS_FILE, sizeof named_session);
 
 	RB_INIT(&hl);
@@ -10077,14 +10084,6 @@ main(int argc, char *argv[])
 	generate_xtp_session_key(&hl_session_key);
 	generate_xtp_session_key(&cl_session_key);
 	generate_xtp_session_key(&fl_session_key);
-
-	/* prepare gtk */
-	if (!g_thread_supported()) {
-		g_thread_init(NULL);
-		gdk_threads_init();
-		gdk_threads_enter();
-	}
-	gtk_init(&argc, &argv);
 
 	/* signals */
 	bzero(&sact, sizeof(sact));
@@ -10305,10 +10304,6 @@ main(int argc, char *argv[])
 		}
 
 	gtk_main();
-
-	if (!g_thread_supported()) {
-		gdk_threads_leave();
-	}
 
 	gnutls_global_deinit();
 
