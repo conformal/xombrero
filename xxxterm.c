@@ -537,7 +537,7 @@ int		enable_socket = 0;
 int		single_instance = 0; /* only allow one xxxterm to run */
 int		fancy_bar = 1;	/* fancy toolbar */
 int		browser_mode = XT_BM_NORMAL;
-int		enable_localstorage = 0;
+int		enable_localstorage = 1;
 char		*statusbar_elems = NULL;
 
 /* runtime settings */
