@@ -8360,9 +8360,8 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 		goto done;
 	}
 
-	cmd_execute(t, s);
-
 	history_add(&chl, command_file, s, &cmd_history_count);
+	cmd_execute(t, s);
 done:
 	return;
 }
