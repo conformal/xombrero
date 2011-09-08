@@ -2542,7 +2542,7 @@ open_tabs(struct tab *t, struct karg *a)
 	ti = TAILQ_LAST(&tabs, tab_list);
 
 	for (;;) {
-		if ((uri = fparseln(f, NULL, NULL, NULL, 0)) == NULL)
+		if ((uri = fparseln(f, NULL, NULL, "\0\0\0", 0)) == NULL)
 			if (feof(f) || ferror(f))
 				break;
 
