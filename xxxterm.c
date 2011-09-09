@@ -31,7 +31,6 @@
 #include <err.h>
 #include <errno.h>
 #include <libgen.h>
-#include <pthread.h>
 #include <pwd.h>
 #include <regex.h>
 #include <signal.h>
@@ -10070,12 +10069,15 @@ main(int argc, char *argv[])
 	start_argv = argv;
 
 	/* prepare gtk */
-	if (!g_thread_supported()) {
-		g_thread_init(NULL);
-		gdk_threads_init();
-	}
 	gtk_init(&argc, &argv);
-
+	/*
+	 * XXX don't initialialize the thread subsytem
+	 * flash plugin does not like that
+	 */
+#if 0
+	g_thread_init(NULL);
+	gdk_threads_init();
+#endif
 	strlcpy(named_session, XT_SAVED_TABS_FILE, sizeof named_session);
 
 	RB_INIT(&hl);
