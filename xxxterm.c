@@ -10070,14 +10070,8 @@ main(int argc, char *argv[])
 
 	/* prepare gtk */
 	gtk_init(&argc, &argv);
-	/*
-	 * XXX don't initialialize the thread subsytem
-	 * flash plugin does not like that
-	 */
-#if 0
 	g_thread_init(NULL);
-	gdk_threads_init();
-#endif
+
 	strlcpy(named_session, XT_SAVED_TABS_FILE, sizeof named_session);
 
 	RB_INIT(&hl);
