@@ -514,6 +514,7 @@ struct karg {
 #define XT_URLARG		(1<<2)
 #define XT_INTARG		(1<<3)
 #define XT_SESSARG		(1<<4)
+#define XT_SETARG		(1<<5)
 
 #define XT_TABS_NORMAL		0
 #define XT_TABS_COMPACT		1
@@ -5873,7 +5874,7 @@ struct cmd {
 	{ "prompttabnewcurrent",0,	command,		XT_CMD_TABNEW_CURRENT,	0 },
 
 	/* settings */
-	{ "set",		0,	set,			0,			XT_USERARG },
+	{ "set",		0,	set,			0,			XT_SETARG },
 
 	{ "fullscreen",		0,	fullscreen,		0,			0 },
 	{ "f",			0,	fullscreen,		0,			0 },
@@ -7912,18 +7913,21 @@ cmd_getlist(int id, char *key)
 					if (++c > 255)
 						break;
 				}
-
 			cmd_status.len = c;
 			return;
 		} else if (cmds[id].type & XT_SESSARG) {
-			TAILQ_FOREACH(s, &sessions, entry) {
+			TAILQ_FOREACH(s, &sessions, entry)
 				if (match_session(s->name, key)) {
 					cmd_status.list[c] = (char *)s->name;
 					if (++c > 255)
 						break;
 				}
-			}
-
+			cmd_status.len = c;
+			return;
+		} else if (cmds[id].type & XT_SETARG) {
+			for (i = 0; i < LENGTH(rs); i++)
+				if(!strncmp(key, rs[i].name, strlen(key)))
+					cmd_status.list[c++] = rs[i].name;
 			cmd_status.len = c;
 			return;
 		}
