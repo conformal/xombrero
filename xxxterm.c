@@ -2738,10 +2738,12 @@ paste_uri(struct tab *t, struct karg *args)
 	GdkAtom			atom = gdk_atom_intern("CUT_BUFFER0", FALSE);
 	gint			len;
 	gchar			*p = NULL, *uri;
+	guchar			*pp;
 
 	/* try primary clipboard first */
 	clipboard = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
 	p = gtk_clipboard_wait_for_text(clipboard);
+	pp = (guchar *)p;
 
 	/* if it failed get whatever text is in cut_buffer0 */
 	if (p == NULL && xterm_workaround)
@@ -2754,7 +2756,7 @@ paste_uri(struct tab *t, struct karg *args)
 		    NULL,
 		    NULL,
 		    &len,
-		    (guchar **)&p)) {
+		    &pp)) {
 			/* yes sir, we need to NUL the string */
 			p[len] = '\0';
 		}
@@ -3602,7 +3604,8 @@ load_compare_cert(struct tab *t, struct karg *args)
 	const gchar		*uri;
 	char			domain[8182], file[PATH_MAX];
 	char			cert_buf[64 * 1024], r_cert_buf[64 * 1024];
-	int			s = -1, i, error;
+	int			s = -1, i;
+	unsigned int		error;
 	FILE			*f = NULL;
 	size_t			cert_buf_sz, cert_count;
 	enum cert_trust		rv = CERT_UNTRUSTED;
@@ -9469,6 +9472,7 @@ void
 clipb_primary_cb(GtkClipboard *primary, GdkEvent *event, gpointer notused)
 {
 	gchar			*p = NULL;
+	guchar			*pp;
 	GdkAtom			atom = gdk_atom_intern("CUT_BUFFER0", FALSE);
 	gint			len;
 
@@ -9484,6 +9488,8 @@ clipb_primary_cb(GtkClipboard *primary, GdkEvent *event, gpointer notused)
 	 */
 
 	p = gtk_clipboard_wait_for_text(primary);
+	pp = (guchar *)p;
+
 	if (p == NULL) {
 		if (gdk_property_get(gdk_get_default_root_window(),
 		    atom,
@@ -9494,7 +9500,7 @@ clipb_primary_cb(GtkClipboard *primary, GdkEvent *event, gpointer notused)
 		    NULL,
 		    NULL,
 		    &len,
-		    (guchar **)&p)) {
+		    &pp)) {
 			/* yes sir, we need to NUL the string */
 			p[len] = '\0';
 			gtk_clipboard_set_text(primary, p, -1);
