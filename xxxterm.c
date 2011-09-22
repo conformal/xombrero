@@ -8691,12 +8691,12 @@ create_buffers(struct tab *t)
 
 	renderer = gtk_cell_renderer_text_new();
 	gtk_tree_view_insert_column_with_attributes
-	    (GTK_TREE_VIEW(view), -1, "Id", renderer, "text", COL_ID, NULL);
+	    (GTK_TREE_VIEW(view), -1, "Id", renderer, "text", COL_ID, (char *)NULL);
 
 	renderer = gtk_cell_renderer_text_new();
 	gtk_tree_view_insert_column_with_attributes
 	    (GTK_TREE_VIEW(view), -1, "Title", renderer, "text", COL_TITLE,
-	    NULL);
+	    (char *)NULL);
 
 	gtk_tree_view_set_model
 	    (GTK_TREE_VIEW(view), GTK_TREE_MODEL(buffers_store));
@@ -9227,7 +9227,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	g_signal_connect(t->buffers,
 	    "row-activated", G_CALLBACK(row_activated_cb), t);
 	g_object_connect(G_OBJECT(t->buffers),
-	    "signal::key-press-event", G_CALLBACK(wv_keypress_cb), t, NULL);
+	    "signal::key-press-event", G_CALLBACK(wv_keypress_cb), t, (char *)NULL);
 
 	g_object_connect(G_OBJECT(t->wv),
 	    "signal::key-press-event", G_CALLBACK(wv_keypress_cb), t,
