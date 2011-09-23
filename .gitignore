@@ -1,8 +1,7 @@
 javascript.h
-marco.o
+*.o
 xxxterm
 *.orig
 *.rej
 *.rej.orig
 xxxterm.cat1
-xxxterm.o
