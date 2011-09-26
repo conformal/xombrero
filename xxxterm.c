@@ -7254,7 +7254,7 @@ int
 qmarks_load(void)
 {
 	char			file[PATH_MAX];
-	char			*line = NULL, *p, mark;
+	char			*line = NULL, *p;
 	int			index, i;
 	FILE			*f;
 	size_t			linelen;
@@ -7283,7 +7283,6 @@ qmarks_load(void)
 			break;
 		}
 
-		mark = *p;
 		p = strtok(NULL, " \t");
 		if (qmarks[index] != NULL)
 			g_free(qmarks[index]);
