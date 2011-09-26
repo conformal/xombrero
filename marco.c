@@ -17,6 +17,9 @@
 
 #include <stdlib.h>
 #include <string.h>
+#if defined(__linux__)
+#include <bsd/stdlib.h>
+#endif
 
 static const char *message[] = {
 	"I fully support your right to put restrictions on how I can modify"

@@ -45,6 +45,7 @@
 #if defined(__linux__)
 #include "linux/util.h"
 #include "linux/tree.h"
+#include <bsd/stdlib.h>
 #elif defined(__FreeBSD__)
 #include <libutil.h>
 #include "freebsd/util.h"
