@@ -6403,8 +6403,7 @@ show_ca_status(struct tab *t, const char *uri)
 		goto done;
 
 	/* thread the coloring of the address bar */
-	gdk_threads_add_idle_full(G_PRIORITY_DEFAULT_IDLE,
-	    color_address_bar, t, NULL);
+	g_thread_create((GThreadFunc)color_address_bar, t, FALSE, NULL);
 	return;
 
 done:
