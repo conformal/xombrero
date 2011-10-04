@@ -18,7 +18,7 @@ GTK_CFLAGS!= pkg-config --cflags $(LIBS)
 GTK_LDFLAGS!= pkg-config --libs $(LIBS)
 CFLAGS+= $(GTK_CFLAGS) -Wall -pthread
 LDFLAGS+= $(GTK_LDFLAGS) -pthread
-BUILDVERSION != sh "${.CUDIR}/buildver.sh"
+BUILDVERSION != sh "${.CURDIR}/buildver.sh"
 .if !${BUILDVERSION} == ""
 CPPFLAGS+= -DXXXTERM_BUILDSTR=\"$(BUILDVERSION)\"
 .endif
