@@ -30,6 +30,17 @@ static const char *message[] = {
 	"i am all for it being free; i am all for not allowing abuse",
 	"webkit 1.4 is a huge step backwards",
 	"i honestly dont get how people equate gpl with liberty or freedom",
+	"I have no idea where you came up with the idea that you have to "
+	"continuously patch OpenBSD. Last time I cared about that was when "
+	"I was still dicking around with Linux.",
+	"Problem with discussion is that it doesn't add any code to cvs.",
+	"I can insult you some more but I am not sure you'd get it.",
+	"the mouse is for copy/paste and the interwebs",
+	"You could run openbsd and be done with it. Unlike linux is doesn't "
+	"suck so that helps that decision.",
+	"Twitter is the dumbest fucking thing that has ever happened to the Internet.",
+	"[speaking of {open,libre}office] it is an obese crack whore with herpes boils "
+	"that are about to explode"
 };
 
 const char *
