@@ -2,10 +2,9 @@
 #
 # Prepares a release:
 #   - Bumps version according to specified level (major, minor, or patch)
-#   - Updates all necessary headers new version
+#   - Updates all necessary headers with new version
 #   - Commits the changes
 #   - Tags the release
-#   - Pushes changes to origin repository
 #   - Creates a release tarball
 
 PROJECT=xxxterm
@@ -26,7 +25,6 @@ report_err()
 }
 
 
-CUR_DIR=$(pwd)
 cd "$(dirname $0)"
 
 # verify header exists
