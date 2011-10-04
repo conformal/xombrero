@@ -55,8 +55,7 @@ fi
 NUM_MODIFIED=$(git diff 2>/dev/null | wc -l | sed 's/^[ \t]*//')
 NUM_STAGED=$(git diff --cached 2>/dev/null | wc -l | sed 's/^[ \t]*//')
 if [ "$NUM_MODIFIED" != "0" -o "$NUM_STAGED" != "0" ]; then
-#	report_err "the working directory contains uncommitted modifications"
-	echo
+	report_err "the working directory contains uncommitted modifications"
 fi
 
 # get version
