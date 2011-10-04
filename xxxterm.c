@@ -638,16 +638,21 @@ char		*get_tab_style(struct settings *);
 char		*get_work_dir(struct settings *);
 void		startpage_add(const char *, ...);
 
-void		walk_alias(struct settings *, void (*)(struct settings *, char *, void *), void *);
-void		walk_cookie_wl(struct settings *, void (*)(struct settings *, char *, void *), void *);
-void		walk_js_wl(struct settings *, void (*)(struct settings *, char *, void *), void *);
-void		walk_kb(struct settings *, void (*)(struct settings *, char *, void *), void *);
-void		walk_mime_type(struct settings *, void (*)(struct settings *, char *, void *), void *);
+void		walk_alias(struct settings *, void (*)(struct settings *,
+		    char *, void *), void *);
+void		walk_cookie_wl(struct settings *, void (*)(struct settings *,
+		    char *, void *), void *);
+void		walk_js_wl(struct settings *, void (*)(struct settings *,
+		    char *, void *), void *);
+void		walk_kb(struct settings *, void (*)(struct settings *, char *,
+		    void *), void *);
+void		walk_mime_type(struct settings *, void (*)(struct settings *,
+		    char *, void *), void *);
 
 void		recalc_tabs(void);
 void		recolor_compact_tabs(void);
 void		set_current_tab(int page_num);
-gboolean	update_statusbar_position(GtkAdjustment* adjustment, gpointer data);
+gboolean	update_statusbar_position(GtkAdjustment*, gpointer);
 void		marks_clear(struct tab *t);
 
 int		set_http_proxy(char *);
@@ -655,7 +660,9 @@ int		set_http_proxy(char *);
 struct special {
 	int		(*set)(struct settings *, char *);
 	char		*(*get)(struct settings *);
-	void		(*walk)(struct settings *, void (*cb)(struct settings *, char *, void *), void *);
+	void		(*walk)(struct settings *,
+			    void (*cb)(struct settings *, char *, void *),
+			    void *);
 };
 
 struct special		s_browser_mode = {
