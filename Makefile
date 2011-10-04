@@ -18,6 +18,11 @@ GTK_CFLAGS!= pkg-config --cflags $(LIBS)
 GTK_LDFLAGS!= pkg-config --libs $(LIBS)
 CFLAGS+= $(GTK_CFLAGS) -Wall -pthread
 LDFLAGS+= $(GTK_LDFLAGS) -pthread
+BUILDVERSION != sh "${.CUDIR}/buildver.sh"
+.if !${BUILDVERSION} == ""
+CPPFLAGS+= -DXXXTERM_BUILDSTR=\"$(BUILDVERSION)\"
+.endif
+
 
 MANDIR= ${PREFIX}/man/man
 
@@ -38,7 +43,5 @@ beforeinstall:
 
 ${PROG} ${OBJS} beforedepend: ${.CURDIR}/javascript.h
 
-release: xxxterm xxxterm.cat1
-	@sh ${.CURDIR}/release.sh ${.CURDIR}
-
 .include <bsd.prog.mk>
+

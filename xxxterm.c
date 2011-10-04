@@ -75,6 +75,7 @@
 #include <JavaScriptCore/JavaScript.h>
 #include <gnutls/x509.h>
 
+#include "version.h"
 #include "javascript.h"
 /*
 
@@ -103,7 +104,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-static char		*version = "$xxxterm$";
+static char		*version = XXXTERM_VERSION;
 
 /* hooked functions */
 void		(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
@@ -3058,7 +3059,11 @@ about(struct tab *t, struct karg *args)
 	if (t == NULL)
 		show_oops(NULL, "about invalid parameters");
 
-	body = g_strdup_printf("<b>Version: %s</b><p>"
+	body = g_strdup_printf("<b>Version: %s</b>"
+#ifdef XXXTERM_BUILDSTR
+	    "<br><b>Build: %s</b>"
+#endif
+	    "<p>"
 	    "Authors:"
 	    "<ul>"
 	    "<li>Marco Peereboom &lt;marco@peereboom.us&gt;</li>"
@@ -3068,8 +3073,13 @@ about(struct tab *t, struct karg *args)
 	    "<li>Raphael Graf &lt;r@undefined.ch&gt; </li>"
 	    "</ul>"
 	    "Copyrights and licenses can be found on the XXXTerm "
-	    "<a href=\"http://opensource.conformal.com/wiki/XXXTerm\">website</a>",
+	    "<a href=\"http://opensource.conformal.com/wiki/XXXTerm\">website</a>"
+	    "</p>",
+#ifdef XXXTERM_BUILDSTR
+	    version, XXXTERM_BUILDSTR
+#else
 	    version
+#endif
 	    );
 
 	page = get_html_page("About", body, "", 0);
