@@ -46,6 +46,9 @@
 #include "linux/util.h"
 #include "linux/tree.h"
 #include <bsd/stdlib.h>
+# if !defined(sane_libbsd_headers)
+void arc4random_buf(void *, size_t);
+# endif
 #elif defined(__FreeBSD__)
 #include <libutil.h>
 #include "freebsd/util.h"
