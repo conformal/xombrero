@@ -7952,7 +7952,7 @@ cmd_getlist(int id, char *key)
 		if (cmds[i].level < dep)
 			break;
 		if (cmds[i].level == dep && !strncmp(key, cmds[i].cmd,
-		    strlen(key)))
+		    strlen(key)) && !isdigit(cmds[i].cmd[0]))
 			cmd_status.list[c++] = cmds[i].cmd;
 
 	}
