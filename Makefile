@@ -14,10 +14,11 @@ LIBS+= gtk+-2.0
 LIBS+= webkit-1.0
 LIBS+= libsoup-2.4
 LIBS+= gnutls
+LIBS+= gthread-2.0
 GTK_CFLAGS!= pkg-config --cflags $(LIBS)
 GTK_LDFLAGS!= pkg-config --libs $(LIBS)
-CFLAGS+= $(GTK_CFLAGS) -Wall -pthread
-LDFLAGS+= $(GTK_LDFLAGS) -pthread
+CFLAGS+= $(GTK_CFLAGS) -Wall
+LDFLAGS+= $(GTK_LDFLAGS)
 BUILDVERSION != sh "${.CURDIR}/buildver.sh"
 .if !${BUILDVERSION} == ""
 CPPFLAGS+= -DXXXTERM_BUILDSTR=\"$(BUILDVERSION)\"

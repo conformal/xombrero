@@ -6392,7 +6392,7 @@ color_address_bar(gpointer p)
 
 	col_str = NULL;
 done:
-	return (FALSE /* kill thread */);
+	return (FALSE);
 }
 
 void
@@ -6422,8 +6422,8 @@ show_ca_status(struct tab *t, const char *uri)
 	    !g_str_has_prefix(uri, "https://"))
 		goto done;
 
-	/* thread the coloring of the address bar */
-	g_thread_create((GThreadFunc)color_address_bar, t, FALSE, NULL);
+	color_address_bar(t);
+
 	return;
 
 done:
@@ -10094,7 +10094,6 @@ main(int argc, char *argv[])
 
 	/* prepare gtk */
 	gtk_init(&argc, &argv);
-	g_thread_init(NULL);
 
 	strlcpy(named_session, XT_SAVED_TABS_FILE, sizeof named_session);
 
