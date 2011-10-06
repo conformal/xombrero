@@ -101,7 +101,7 @@ if [ ! -d "$TD" ]; then
 	report_err "unable to create temp directory"
 fi
 RELEASE_DIR="$PROJECT-$PROJ_VER"
-RELEASE_TAR="$PROJECT-$PROJ_VER.tar.gz"
+RELEASE_TAR="$PROJECT-$PROJ_VER.tgz"
 git clone . "$TD/$RELEASE_DIR" ||
     report_err "unable to copy to $TD/$RELEASE_DIR"
 
