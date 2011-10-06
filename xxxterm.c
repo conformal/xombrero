@@ -1849,7 +1849,7 @@ get_uri(struct tab *t)
 	const gchar		*uri = NULL;
 
 	if (webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED)
-		return t->tmp_uri;
+		return NULL;
 	if (t->xtp_meaning == XT_XTP_TAB_MEANING_NORMAL) {
 		uri = webkit_web_view_get_uri(t->wv);
 	} else {
@@ -4065,17 +4065,21 @@ can_go_back_for_real(struct tab *t)
 {
 	int			i;
 	WebKitWebHistoryItem	*item;
+	const gchar		*uri;
+
+	if (t == NULL)
+		return (FALSE);
 
 	/* rely on webkit to make sure we can go backward when on an about page */
-	if (get_uri(t) == NULL || g_str_has_prefix(get_uri(t), "about:"))
-		return (webkit_web_view_can_go_forward(t->wv));
-
+	uri = get_uri(t);
+	if (uri == NULL || g_str_has_prefix(uri, "about:"))
+		return (webkit_web_view_can_go_back(t->wv));
 
 	/* the back/forwars list is stupid so help determine if we can go back */
 	for (i = 0, item = webkit_web_back_forward_list_get_current_item(t->bfl);
 	    item != NULL;
 	    i--, item = webkit_web_back_forward_list_get_nth_item(t->bfl, i)) {
-		if (strcmp(webkit_web_history_item_get_uri(item), get_uri(t)))
+		if (strcmp(webkit_web_history_item_get_uri(item), uri))
 			return (TRUE);
 	}
 
@@ -4087,16 +4091,21 @@ can_go_forward_for_real(struct tab *t)
 {
 	int			i;
 	WebKitWebHistoryItem	*item;
+	const gchar		*uri;
+
+	if (t == NULL)
+		return (FALSE);
 
 	/* rely on webkit to make sure we can go forward when on an about page */
-	if (get_uri(t) == NULL || g_str_has_prefix(get_uri(t), "about:"))
+	uri = get_uri(t);
+	if (uri == NULL || g_str_has_prefix(uri, "about:"))
 		return (webkit_web_view_can_go_forward(t->wv));
 
 	/* the back/forwars list is stupid so help selecting a different item */
 	for (i = 0, item = webkit_web_back_forward_list_get_current_item(t->bfl);
 	    item != NULL;
 	    i++, item = webkit_web_back_forward_list_get_nth_item(t->bfl, i)) {
-		if (strcmp(webkit_web_history_item_get_uri(item), get_uri(t)))
+		if (strcmp(webkit_web_history_item_get_uri(item), uri))
 			return (TRUE);
 	}
 
@@ -4108,12 +4117,21 @@ go_back_for_real(struct tab *t)
 {
 	int			i;
 	WebKitWebHistoryItem	*item;
+	const gchar		*uri;
 
+	if (t == NULL)
+		return;
+
+	uri = get_uri(t);
+	if (uri == NULL) {
+		webkit_web_view_go_back(t->wv);
+		return;
+	}
 	/* the back/forwars list is stupid so help selecting a different item */
 	for (i = 0, item = webkit_web_back_forward_list_get_current_item(t->bfl);
 	    item != NULL;
 	    i--, item = webkit_web_back_forward_list_get_nth_item(t->bfl, i)) {
-		if (strcmp(webkit_web_history_item_get_uri(item), get_uri(t))) {
+		if (strcmp(webkit_web_history_item_get_uri(item), uri)) {
 			webkit_web_view_go_to_back_forward_item(t->wv, item);
 			break;
 		}
@@ -4125,12 +4143,21 @@ go_forward_for_real(struct tab *t)
 {
 	int			i;
 	WebKitWebHistoryItem	*item;
+	const gchar		*uri;
 
+	if (t == NULL)
+		return;
+
+	uri = get_uri(t);
+	if (uri == NULL) {
+		webkit_web_view_go_forward(t->wv);
+		return;
+	}
 	/* the back/forwars list is stupid so help selecting a different item */
 	for (i = 0, item = webkit_web_back_forward_list_get_current_item(t->bfl);
 	    item != NULL;
 	    i++, item = webkit_web_back_forward_list_get_nth_item(t->bfl, i)) {
-		if (strcmp(webkit_web_history_item_get_uri(item), get_uri(t))) {
+		if (strcmp(webkit_web_history_item_get_uri(item), uri)) {
 			webkit_web_view_go_to_back_forward_item(t->wv, item);
 			break;
 		}
