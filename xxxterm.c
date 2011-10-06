@@ -6858,28 +6858,6 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	    can_go_forward_for_real(t));
 }
 
-#if 0
-gboolean
-notify_load_error_cb(WebKitWebView* wview, WebKitWebFrame *web_frame,
-    gchar *uri, gpointer web_error,struct tab *t)
-{
-	/*
-	 * XXX this function is wrong
-	 * it overwrites perfectly good urls with garbage on load errors
-	 * those happen often when popups fail to resolve dns
-	 */
-	if (t->tmp_uri)
-		g_free(t->tmp_uri);
-	t->tmp_uri = g_strdup(uri);
-	gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
-	gtk_label_set_text(GTK_LABEL(t->label), "(untitled)");
-	gtk_window_set_title(GTK_WINDOW(main_window), XT_NAME);
-	set_status(t, uri, XT_STATUS_NOTHING);
-
-	return (FALSE);
-}
-#endif
-
 void
 notify_title_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 {
@@ -9295,13 +9273,6 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	    (char *)NULL);
 	g_signal_connect(t->wv,
 	    "notify::load-status", G_CALLBACK(notify_load_status_cb), t);
-	/*
-	 * XXX this puts invalid url in uri_entry and that is undesirable
-	 */
-#if 0
-	g_signal_connect(t->wv,
-	    "load-error", G_CALLBACK(notify_load_error_cb), t);
-#endif
 	g_signal_connect(t->wv,
 	    "notify::title", G_CALLBACK(notify_title_cb), t);
 
