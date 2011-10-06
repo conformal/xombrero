@@ -34,7 +34,7 @@ fi
 
 # verify valid release type
 RTYPE="$1"
-if [ "$RTYPE" != "major" -a "$RYPTE" != "minor" -a "$RTYPE" != "patch" ]; then
+if [ "$RTYPE" != "major" -a "$RTYPE" != "minor" -a "$RTYPE" != "patch" ]; then
 	report_err "release type must be major, minor, or patch"
 fi
 
