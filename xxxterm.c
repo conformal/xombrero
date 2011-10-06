@@ -9317,17 +9317,18 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 		set_current_tab(t->tab_id);
 		DNPRINTF(XT_D_TAB, "create_new_tab: going to tab: %d\n",
 		    t->tab_id);
-	}
 
-	if (load) {
-		gtk_entry_set_text(GTK_ENTRY(t->uri_entry), title);
+		if (load) {
+			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), title);
+			load_uri(t, title);
+		} else {
+			if (show_url == 1)
+				gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
+			else
+				focus_webview(t);
+		}
+	} else if (load)
 		load_uri(t, title);
-	} else {
-		if (show_url == 1)
-			gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
-		else
-			focus_webview(t);
-	}
 
 	recolor_compact_tabs();
 	setzoom_webkit(t, XT_ZOOM_NORMAL);
