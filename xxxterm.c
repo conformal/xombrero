@@ -8580,6 +8580,8 @@ create_browser(struct tab *t)
 	/* set defaults */
 	t->settings = webkit_web_settings_new();
 
+	g_object_set(t->settings, "default-encoding", encoding, (char *)NULL);
+
 	if (user_agent == NULL) {
 		g_object_get(G_OBJECT(t->settings), "user-agent", &strval,
 		    (char *)NULL);
@@ -10320,9 +10322,6 @@ main(int argc, char *argv[])
 			    SOUP_SESSION_SSL_STRICT, ssl_strict_certs,
 			    (void *)NULL);
 	}
-
-	/* set default encoding */
-	g_object_set(session, "default-encoding", encoding, (char *)NULL);
 
 	/* guess_search regex */
 	if (url_regex == NULL)
