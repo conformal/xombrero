@@ -424,6 +424,19 @@ Toggle cookie support for the current top level domain.
 Toggle cookie support for the current FQDN.
 .It Cm dl
 Show download manager.
+.It Cm encoding <encoding>
+If
+.Cm <encoding>
+is set the tab's encoding will be set to
+.Cm <encoding>
+and
+.Nm
+reloads the tab.
+If
+.Cm <encoding>
+is not set
+.Nm
+will display the current tab encoding.
 .It Cm fav
 Show favorites.
 .It Cm favadd
@@ -881,6 +894,10 @@ Enable html5 Local Storage.
 Enables spell checking. Preferred languages can be set using
 .Cm spell_check_languages
 option.
+.It Cm encoding
+Set the default encoding.
+E.g.
+.Pa encoding = ISO-8859-1 .
 .It Cm fancy_bar
 Enables a backward, forward, and stop button to the toolbar.
 Additionally if

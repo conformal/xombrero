@@ -598,6 +598,7 @@ char		*url_regex = NULL;
 int		history_autosave = 0;
 char		search_file[PATH_MAX];
 char		command_file[PATH_MAX];
+char		*encoding = NULL;
 
 char		*cmd_font_name = NULL;
 char		*oops_font_name = NULL;
@@ -763,6 +764,7 @@ struct settings {
 	{ "enable_scripts",		XT_S_INT, 0,		&enable_scripts, NULL, NULL },
 	{ "enable_socket",		XT_S_INT, XT_SF_RESTART,&enable_socket, NULL, NULL },
 	{ "enable_spell_checking",	XT_S_INT, 0,		&enable_spell_checking, NULL, NULL },
+	{ "encoding",			XT_S_STR, 0, NULL,	&encoding, NULL },
 	{ "fancy_bar",			XT_S_INT, XT_SF_RESTART,&fancy_bar, NULL, NULL },
 	{ "guess_search",		XT_S_INT, 0,		&guess_search, NULL, NULL },
 	{ "history_autosave",		XT_S_INT, 0,		&history_autosave, NULL, NULL },
@@ -1149,7 +1151,8 @@ load_webkit_string(struct tab *t, const char *str, gchar *title)
 				break;
 			}
 
-		webkit_web_view_load_string(t->wv, str, NULL, NULL, "file://");
+		webkit_web_view_load_string(t->wv, str, NULL, encoding,
+		    "file://");
 #if GTK_CHECK_VERSION(2, 20, 0)
 		gtk_spinner_stop(GTK_SPINNER(t->spinner));
 		gtk_widget_hide(t->spinner);
@@ -5475,6 +5478,22 @@ go_home(struct tab *t, struct karg *args)
 }
 
 int
+set_encoding(struct tab *t, struct karg *args)
+{
+	const gchar	*e;
+
+	if (args->s && strlen(g_strstrip(args->s)) == 0) {
+		e = webkit_web_view_get_custom_encoding(t->wv);
+		if (e == NULL)
+			e = webkit_web_view_get_encoding(t->wv);
+		show_oops(t, "encoding: %s", e ? e : "N/A");
+	} else
+		webkit_web_view_set_custom_encoding(t->wv, args->s);
+
+	return (0);
+}
+
+int
 restart(struct tab *t, struct karg *args)
 {
 	struct karg		a;
@@ -5915,6 +5934,7 @@ struct cmd {
 	{ "buffers",		0,	buffers,		0,			0 },
 	{ "ls",			0,	buffers,		0,			0 },
 	{ "tabs",		0,	buffers,		0,			0 },
+	{ "encoding",		0,	set_encoding,		0,			XT_USERARG },
 
 	/* command aliases (handy when -S flag is used) */
 	{ "promptopen",		0,	command,		XT_CMD_OPEN,		0 },
@@ -10196,6 +10216,7 @@ main(int argc, char *argv[])
 	statusbar_font_name = g_strdup("monospace normal 9");
 	tabbar_font_name = g_strdup("monospace normal 9");
 	statusbar_elems = g_strdup("BP");
+	encoding = g_strdup("ISO-8859-1");
 
 	/* read config file */
 	if (strlen(conf) == 0)
@@ -10297,6 +10318,9 @@ main(int argc, char *argv[])
 			    SOUP_SESSION_SSL_STRICT, ssl_strict_certs,
 			    (void *)NULL);
 	}
+
+	/* set default encoding */
+	g_object_set(session, "default-encoding", encoding, (char *)NULL);
 
 	/* guess_search regex */
 	if (url_regex == NULL)
