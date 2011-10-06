@@ -5087,24 +5087,12 @@ xtp_page_dl(struct tab *t, struct karg *args)
 int
 search(struct tab *t, struct karg *args)
 {
-	gboolean		d;
+	gboolean	d;
 
 	if (t == NULL || args == NULL) {
 		show_oops(NULL, "search invalid parameters");
 		return (1);
 	}
-	if (t->search_text == NULL) {
-		if (global_search == NULL)
-			return (XT_CB_PASSTHROUGH);
-		else {
-			t->search_text = g_strdup(global_search);
-			webkit_web_view_mark_text_matches(t->wv, global_search, FALSE, 0);
-			webkit_web_view_set_highlight_text_matches(t->wv, TRUE);
-		}
-	}
-
-	DNPRINTF(XT_D_CMD, "search: tab %d opc %d forw %d text %s\n",
-	    t->tab_id, args->i, t->search_forward, t->search_text);
 
 	switch (args->i) {
 	case  XT_SEARCH_NEXT:
@@ -5116,6 +5104,20 @@ search(struct tab *t, struct karg *args)
 	default:
 		return (XT_CB_PASSTHROUGH);
 	}
+
+	if (t->search_text == NULL) {
+		if (global_search == NULL)
+			return (XT_CB_PASSTHROUGH);
+		else {
+			d = t->search_forward = TRUE;
+			t->search_text = g_strdup(global_search);
+			webkit_web_view_mark_text_matches(t->wv, global_search, FALSE, 0);
+			webkit_web_view_set_highlight_text_matches(t->wv, TRUE);
+		}
+	}
+
+	DNPRINTF(XT_D_CMD, "search: tab %d opc %d forw %d text %s\n",
+	    t->tab_id, args->i, t->search_forward, t->search_text);
 
 	webkit_web_view_search_text(t->wv, t->search_text, FALSE, d, TRUE);
 
