@@ -230,6 +230,9 @@ struct tab {
 	gchar			*tmp_uri;
 	int			popup; /* 1 if cmd_entry has popup visible */
 
+	/* https thread stuff */
+	GThread			*thread;
+
 	/* hints */
 	int			hints_on;
 	int			hint_mode;
@@ -3381,26 +3384,29 @@ done:
 }
 
 int
-connect_socket_from_uri(struct tab *t, const gchar *uri, char *domain,
+connect_socket_from_uri(const gchar *uri, const gchar **error_str, char *domain,
     size_t domain_sz)
 {
 	SoupURI			*su = NULL;
 	struct addrinfo		hints, *res = NULL, *ai;
 	int			rv = -1, s = -1, on, error;
 	char			port[8];
+	static gchar		myerror[256];
 
+	myerror[0] = '\0';
+	*error_str = myerror;
 	if (uri && !g_str_has_prefix(uri, "https://")) {
-		show_oops(t, "invalid URI");
+		*error_str = "invalid URI";
 		goto done;
 	}
 
 	su = soup_uri_new(uri);
 	if (su == NULL) {
-		show_oops(t, "invalid soup URI");
+		*error_str = "invalid soup URI";
 		goto done;
 	}
 	if (!SOUP_URI_VALID_FOR_HTTP(su)) {
-		show_oops(t, "invalid HTTPS URI");
+		*error_str = "invalid HTTPS URI";
 		goto done;
 	}
 
@@ -3411,7 +3417,8 @@ connect_socket_from_uri(struct tab *t, const gchar *uri, char *domain,
 	hints.ai_socktype = SOCK_STREAM;
 
 	if ((error = getaddrinfo(su->host, port, &hints, &res))) {
-		show_oops(t, "getaddrinfo failed: %s", gai_strerror(errno));
+		snprintf(myerror, sizeof myerror, "getaddrinfo failed: %s",
+		    gai_strerror(errno));
 		goto done;
 	}
 
@@ -3433,7 +3440,8 @@ connect_socket_from_uri(struct tab *t, const gchar *uri, char *domain,
 			break;
 	}
 	if (s == -1) {
-		show_oops(t, "could not obtain certificates from: %s",
+		snprintf(myerror, sizeof myerror,
+		    "could not obtain certificates from: %s",
 		    su->host);
 		goto done;
 	}
@@ -3464,16 +3472,18 @@ stop_tls(gnutls_session_t gsession, gnutls_certificate_credentials_t xcred)
 }
 
 int
-start_tls(struct tab *t, int s, gnutls_session_t *gs,
+start_tls(const gchar **error_str, int s, gnutls_session_t *gs,
     gnutls_certificate_credentials_t *xc)
 {
 	gnutls_certificate_credentials_t xcred;
 	gnutls_session_t	gsession;
 	int			rv = 1;
+	static gchar		myerror[1024];
 
 	if (gs == NULL || xc == NULL)
 		goto done;
 
+	myerror[0] = '\0';
 	*gs = NULL;
 	*xc = NULL;
 
@@ -3486,7 +3496,8 @@ start_tls(struct tab *t, int s, gnutls_session_t *gs,
 	gnutls_credentials_set(gsession, GNUTLS_CRD_CERTIFICATE, xcred);
 	gnutls_transport_set_ptr(gsession, (gnutls_transport_ptr_t)(long)s);
 	if ((rv = gnutls_handshake(gsession)) < 0) {
-		show_oops(t, "gnutls_handshake failed %d fatal %d %s",
+		snprintf(myerror, sizeof myerror,
+		    "gnutls_handshake failed %d fatal %d %s",
 		    rv,
 		    gnutls_error_is_fatal(rv),
 		    gnutls_strerror_name(rv));
@@ -3497,7 +3508,9 @@ start_tls(struct tab *t, int s, gnutls_session_t *gs,
 	gnutls_credentials_type_t cred;
 	cred = gnutls_auth_get_type(gsession);
 	if (cred != GNUTLS_CRD_CERTIFICATE) {
-		show_oops(t, "gnutls_auth_get_type failed %d", (int)cred);
+		snprintf(myerror, sizeof myerror,
+		    "gnutls_auth_get_type failed %d",
+		    (int)cred);
 		stop_tls(gsession, xcred);
 		goto done;
 	}
@@ -3506,6 +3519,7 @@ start_tls(struct tab *t, int s, gnutls_session_t *gs,
 	*xc = xcred;
 	rv = 0;
 done:
+	*error_str = myerror;
 	return (rv);
 }
 
@@ -3621,9 +3635,8 @@ enum cert_trust {
 };
 
 enum cert_trust
-load_compare_cert(struct tab *t, struct karg *args)
+load_compare_cert(const gchar *uri, const gchar **error_str)
 {
-	const gchar		*uri;
 	char			domain[8182], file[PATH_MAX];
 	char			cert_buf[64 * 1024], r_cert_buf[64 * 1024];
 	int			s = -1, i;
@@ -3631,39 +3644,36 @@ load_compare_cert(struct tab *t, struct karg *args)
 	FILE			*f = NULL;
 	size_t			cert_buf_sz, cert_count;
 	enum cert_trust		rv = CERT_UNTRUSTED;
-	char			serr[80];
+	static gchar		serr[80];
 	gnutls_session_t	gsession;
 	gnutls_x509_crt_t	*certs;
 	gnutls_certificate_credentials_t xcred;
 
-	DNPRINTF(XT_D_URL, "%s: %p %p\n", __func__, t, args);
-
-	if (t == NULL)
-		return (rv);
-
-	if ((uri = get_uri(t)) == NULL)
-		return (rv);
 	DNPRINTF(XT_D_URL, "%s: %s\n", __func__, uri);
 
-	if ((s = connect_socket_from_uri(t, uri, domain, sizeof domain)) == -1)
+	serr[0] = '\0';
+	*error_str = serr;
+	if ((s = connect_socket_from_uri(uri, error_str, domain,
+	    sizeof domain)) == -1)
 		return (rv);
+
 	DNPRINTF(XT_D_URL, "%s: fd %d\n", __func__, s);
 
 	/* go ssl/tls */
-	if (start_tls(t, s, &gsession, &xcred))
+	if (start_tls(error_str, s, &gsession, &xcred))
 		goto done;
 	DNPRINTF(XT_D_URL, "%s: got tls\n", __func__);
 
 	/* verify certs in case cert file doesn't exist */
 	if (gnutls_certificate_verify_peers2(gsession, &error) !=
 	    GNUTLS_E_SUCCESS) {
-		show_oops(t, "Invalid certificates");
+		*error_str = "Invalid certificates";
 		goto done;
 	}
 
 	/* get certs */
 	if (get_connection_certs(gsession, &certs, &cert_count)) {
-		show_oops(t, "Can't get connection certificates");
+		*error_str = "Can't get connection certificates";
 		goto done;
 	}
 
@@ -3722,7 +3732,7 @@ done:
 				serr[i] = '\0';
 				break;
 			}
-		show_oops(t, serr);
+		*error_str = serr;
 	}
 
 	stop_tls(gsession, xcred);
@@ -3733,7 +3743,7 @@ done:
 int
 cert_cmd(struct tab *t, struct karg *args)
 {
-	const gchar		*uri;
+	const gchar		*uri, *error_str = NULL;
 	char			domain[8182];
 	int			s = -1;
 	size_t			cert_count;
@@ -3754,13 +3764,14 @@ cert_cmd(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	if ((s = connect_socket_from_uri(t, uri, domain, sizeof domain)) == -1) {
-		show_oops(t, "Invalid certificate URI: %s", uri);
+	if ((s = connect_socket_from_uri(uri, &error_str, domain,
+	    sizeof domain)) == -1) {
+		show_oops(t, "%s", error_str);
 		return (1);
 	}
 
 	/* go ssl/tls */
-	if (start_tls(t, s, &gsession, &xcred))
+	if (start_tls(&error_str, s, &gsession, &xcred))
 		goto done;
 
 	/* get certs */
@@ -3780,7 +3791,8 @@ done:
 	if (s != -1)
 		close(s);
 	stop_tls(gsession, xcred);
-
+	if (error_str)
+		show_oops(t, "%s", error_str);
 	return (0);
 }
 
@@ -6398,25 +6410,34 @@ check_and_set_js(const gchar *uri, struct tab *t)
 	    es ? GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE);
 }
 
-gboolean
+void
 color_address_bar(gpointer p)
 {
 	GdkColor		color;
 	struct tab		*tt, *t = p;
-	gchar			*col_str = XT_COLOR_YELLOW;
+	gchar			*col_str = XT_COLOR_WHITE;
+	const gchar		*uri, *u = NULL, *error_str = NULL;
 
+	gdk_threads_enter();
 	DNPRINTF(XT_D_URL, "%s:\n", __func__);
 
 	/* make sure t still exists */
 	if (t == NULL)
-		goto done;
+		return;
 	TAILQ_FOREACH(tt, &tabs, entry)
 		if (t == tt)
 			break;
 	if (t != tt)
 		goto done;
 
-	switch (load_compare_cert(t, NULL)) {
+	if ((uri = get_uri(t)) == NULL)
+		goto white;
+	u = g_strdup(uri);
+
+	gdk_threads_leave();
+
+	col_str = XT_COLOR_YELLOW;
+	switch (load_compare_cert(u, &error_str)) {
 	case CERT_LOCAL:
 		col_str = XT_COLOR_BLUE;
 		break;
@@ -6431,6 +6452,19 @@ color_address_bar(gpointer p)
 		break;
 	}
 
+	gdk_threads_enter();
+
+	/* make sure t isn't deleted */
+	TAILQ_FOREACH(tt, &tabs, entry)
+		if (t == tt)
+			break;
+	if (t != tt)
+		goto done;
+
+	/* test to see if the user navigated away and canceled the thread */
+	if (t->thread != g_thread_self())
+		goto done;
+white:
 	gdk_color_parse(col_str, &color);
 	gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
 
@@ -6439,9 +6473,15 @@ color_address_bar(gpointer p)
 	else
 		statusbar_modify_attr(t, XT_COLOR_BLACK, col_str);
 
-	col_str = NULL;
+	if (error_str && error_str[0] != '\0')
+		show_oops(t, "%s", error_str);
+
+	t->thread = NULL;
 done:
-	return (FALSE);
+	/* t is invalid at this point */
+	if (u)
+		g_free((gpointer)u);
+	gdk_threads_leave();
 }
 
 void
@@ -6471,7 +6511,14 @@ show_ca_status(struct tab *t, const char *uri)
 	    !g_str_has_prefix(uri, "https://"))
 		goto done;
 
-	color_address_bar(t);
+	/*
+	 * It is not necessary to see if the thread is already running.
+	 * If the thread is in progress setting it to something else aborts it
+	 * on the way out.
+	 */
+
+	/* thread the coloring of the address bar */
+	t->thread = g_thread_create((GThreadFunc)color_address_bar, t, TRUE, NULL);
 
 	return;
 
@@ -6795,6 +6842,9 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		/* take focus if we are visible */
 		focus_webview(t);
 		t->focus_wv = 1;
+
+		/* kill color thread */
+		t->thread = NULL;
 
 		break;
 
@@ -8897,6 +8947,10 @@ delete_tab(struct tab *t)
 	if (t == NULL)
 		return;
 
+	/*
+	 * no need to join thread here because it won't access t on completion
+	 */
+
 	buffercmd_abort(t);
 	TAILQ_REMOVE(&tabs, t, entry);
 
@@ -10116,6 +10170,9 @@ main(int argc, char *argv[])
 	start_argv = argv;
 
 	/* prepare gtk */
+	g_thread_init(NULL);
+	gdk_threads_init();
+	gdk_threads_enter();
 	gtk_init(&argc, &argv);
 
 	strlcpy(named_session, XT_SAVED_TABS_FILE, sizeof named_session);
@@ -10422,6 +10479,8 @@ main(int argc, char *argv[])
 
 	if (url_regex)
 		regfree(&url_re);
+
+	gdk_threads_leave();
 
 	return (0);
 }

@@ -17,8 +17,8 @@ LIBS+= gnutls
 LIBS+= gthread-2.0
 GTK_CFLAGS!= pkg-config --cflags $(LIBS)
 GTK_LDFLAGS!= pkg-config --libs $(LIBS)
-CFLAGS+= $(GTK_CFLAGS) -Wall
-LDFLAGS+= $(GTK_LDFLAGS)
+CFLAGS+= $(GTK_CFLAGS) -Wall -pthread
+LDFLAGS+= $(GTK_LDFLAGS) -pthread
 BUILDVERSION != sh "${.CURDIR}/buildver.sh"
 .if !${BUILDVERSION} == ""
 CPPFLAGS+= -DXXXTERM_BUILDSTR=\"$(BUILDVERSION)\"
