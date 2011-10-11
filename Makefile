@@ -1,5 +1,3 @@
-# $xxxterm$
-
 PREFIX?=/usr/local
 BINDIR=${PREFIX}/bin
 
@@ -7,7 +5,7 @@ PROG=xxxterm
 MAN=xxxterm.1
 
 SRCS= xxxterm.c marco.c
-COPT+= -O2
+CFLAGS+= -O2
 DEBUG= -ggdb3
 LDADD= -lutil
 LIBS+= gtk+-2.0
@@ -17,13 +15,12 @@ LIBS+= gnutls
 LIBS+= gthread-2.0
 GTK_CFLAGS!= pkg-config --cflags $(LIBS)
 GTK_LDFLAGS!= pkg-config --libs $(LIBS)
-CFLAGS+= $(GTK_CFLAGS) -Wall -pthread
-LDFLAGS+= $(GTK_LDFLAGS) -pthread
+CFLAGS+= $(GTK_CFLAGS) -Wall
+LDFLAGS+= $(GTK_LDFLAGS)
 BUILDVERSION != sh "${.CURDIR}/buildver.sh"
 .if !${BUILDVERSION} == ""
 CPPFLAGS+= -DXXXTERM_BUILDSTR=\"$(BUILDVERSION)\"
 .endif
-
 
 MANDIR= ${PREFIX}/man/man
 
@@ -44,5 +41,19 @@ beforeinstall:
 
 ${PROG} ${OBJS} beforedepend: ${.CURDIR}/javascript.h
 
-.include <bsd.prog.mk>
+# clang targets
+.if ${.TARGETS:M*analyze*}
+CC=clang
+CXX=clang++
+CPP=clang -E
+CFLAGS+=--analyze
+.elif ${.TARGETS:M*clang*}
+CC=clang
+CXX=clang++
+CPP=clang -E
+.endif
 
+analyze: all
+clang: all
+
+.include <bsd.prog.mk>
