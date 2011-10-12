@@ -7113,10 +7113,11 @@ run_mimehandler(struct tab *t, char *mime_type, WebKitNetworkRequest *request)
 	return (0);
 }
 
-const gchar *
-get_mime_type(char *file)
+char *
+get_mime_type(const char *file)
 {
-	const char		*mime_type;
+	const gchar		*m;
+	char			*mime_type = NULL;
 	GFileInfo		*fi;
 	GFile			*gf;
 
@@ -7126,7 +7127,8 @@ get_mime_type(char *file)
 	gf = g_file_new_for_path(file);
 	fi = g_file_query_info(gf, G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE, 0,
 	    NULL, NULL);
-	mime_type = g_file_info_get_content_type(fi);
+	if ((m = g_file_info_get_content_type(fi)) != NULL)
+		mime_type = g_strdup(m);
 	g_object_unref(fi);
 	g_object_unref(gf);
 
@@ -7169,7 +7171,8 @@ download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
     WebKitWebView *wv)
 {
 	WebKitDownloadStatus	status;
-	const gchar		*file = NULL, *mime = NULL;
+	const char		*file = NULL;
+	char			*mime = NULL;
 
 	if (download == NULL)
 		return;
@@ -7180,11 +7183,12 @@ download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
 	file = webkit_download_get_destination_uri(download);
 	if (file == NULL)
 		return;
-	mime = get_mime_type((char *)file);
+	mime = get_mime_type(file);
 	if (mime == NULL)
 		return;
 
 	run_download_mimehandler((char *)mime, (char *)file);
+	g_free(mime);
 }
 
 int
