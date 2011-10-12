@@ -10175,7 +10175,9 @@ main(int argc, char *argv[])
 
 	/* prepare gtk */
 	g_thread_init(NULL);
+#if !defined(__linux__)
 	gdk_threads_init();
+#endif
 	gdk_threads_enter();
 	gtk_init(&argc, &argv);
 
