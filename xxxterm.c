@@ -3230,8 +3230,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 
 	for (i = 1;;) {
 		if ((title = fparseln(f, &len, &lineno, delim, 0)) == NULL)
-			if (feof(f) || ferror(f))
-				break;
+			break;
 		if (strlen(title) == 0 || title[0] == '#') {
 			free(title);
 			title = NULL;
@@ -3640,7 +3639,7 @@ load_compare_cert(const gchar *uri, const gchar **error_str)
 	char			domain[8182], file[PATH_MAX];
 	char			cert_buf[64 * 1024], r_cert_buf[64 * 1024];
 	int			s = -1, i;
-	unsigned int		error;
+	unsigned int		error = 0;
 	FILE			*f = NULL;
 	size_t			cert_buf_sz, cert_count;
 	enum cert_trust		rv = CERT_UNTRUSTED;
@@ -5389,6 +5388,8 @@ session_delete(struct tab *t, char *filename)
 		if (!strcmp(s->name, filename))
 			break;
 	}
+	if (s == NULL)
+		goto done;
 	TAILQ_REMOVE(&sessions, s, entry);
 	g_free((gpointer) s->name);
 	g_free(s);
@@ -7366,8 +7367,7 @@ qmarks_load(void)
 
 	for (i = 1; ; i++) {
 		if ((line = fparseln(f, &linelen, NULL, NULL, 0)) == NULL)
-			if (feof(f) || ferror(f))
-				break;
+			break;
 		if (strlen(line) == 0 || line[0] == '#') {
 			free(line);
 			line = NULL;
@@ -8202,6 +8202,10 @@ cmd_execute(struct tab *t, char *str)
 		}
 	}
 execute_cmd:
+	if (cmd == NULL) {
+		show_oops(t, "Empty command");
+		goto done;
+	}
 	arg.i = cmd->arg;
 
 	if (prefix != -1)
@@ -8216,6 +8220,10 @@ execute_cmd:
 	if (cmd->type > 1)
 		arg.s = last ? g_strdup(last) : g_strdup("");
 	if (cmd->type & XT_INTARG && last && strlen(last) > 0) {
+		if (arg.s == NULL) {
+			show_oops(t, "Invalid command");
+			goto done;
+		}
 		arg.precount = atoi(arg.s);
 		if (arg.precount <= 0) {
 			if (arg.s[0] == '0')
@@ -9459,7 +9467,8 @@ notebook_pagereordered_cb(GtkNotebook *nb, GtkWidget *nbp, guint pn,
 			t = tt;
 			break;
 		}
-
+	if (t == NULL)
+		return;
 	DNPRINTF(XT_D_TAB, "page_reordered_cb: tab: %d\n", t->tab_id);
 
 	gtk_box_reorder_child(GTK_BOX(tab_bar), t->tab_elems.eventbox,
