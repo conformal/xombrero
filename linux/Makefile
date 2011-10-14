@@ -1,8 +1,6 @@
-# $xxxterm$
+LIBS= gtk+-2.0 webkit-1.0 libsoup-2.4 gnutls gthread-2.0
 
-LIBS= gtk+-2.0 webkit-1.0 libsoup-2.4 gnutls
-
-CFLAGS+= -Wall -ggdb -D_GNU_SOURCE -I. $(shell pkg-config --cflags $(LIBS))
+CFLAGS+= -O2 -Wall -ggdb3 -D_GNU_SOURCE -I. $(shell pkg-config --cflags $(LIBS))
 LDADD+= $(shell pkg-config --libs $(LIBS)) -lbsd -ldl
 
 PREFIX?= /usr/local
