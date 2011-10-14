@@ -6167,7 +6167,8 @@ remove_favorite(struct tab *t, int index)
 		goto clean;
 	}
 
-	(void)fwrite(new_favs, strlen(new_favs), 1, f);
+	if (fwrite(new_favs, strlen(new_favs), 1, f) != 1)
+		show_oops(t, "%s: can't fwrite"); /* shut gcc up */
 	fclose(f);
 
 clean:
