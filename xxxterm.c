@@ -6167,7 +6167,7 @@ remove_favorite(struct tab *t, int index)
 		goto clean;
 	}
 
-	fwrite(new_favs, strlen(new_favs), 1, f);
+	(void)fwrite(new_favs, strlen(new_favs), 1, f);
 	fclose(f);
 
 clean:
@@ -6237,7 +6237,7 @@ struct xtp_despatch		xtp_despatches[] = {
 int
 parse_xtp_url(struct tab *t, const char *url)
 {
-	char			*dup = NULL, *p, *last;
+	char			*dup = NULL, *p, *last = NULL;
 	uint8_t			n_tokens = 0;
 	char			*tokens[4] = {NULL, NULL, NULL, ""};
 	struct xtp_despatch	*dsp, *dsp_match = NULL;
@@ -8065,7 +8065,7 @@ int
 cmd_tokenize(char *s, char *tokens[])
 {
 	int			i = 0;
-	char			*tok, *last;
+	char			*tok, *last = NULL;
 	size_t			len = strlen(s);
 	bool			blank;
 
@@ -8150,7 +8150,7 @@ gboolean
 cmd_execute(struct tab *t, char *str)
 {
 	struct cmd		*cmd = NULL;
-	char			*tok, *last, *s = g_strdup(str), *sc;
+	char			*tok, *last = NULL, *s = g_strdup(str), *sc;
 	char			prefixstr[4];
 	int			j, len, c = 0, dep = 0, matchcount = 0;
 	int			prefix = -1, rv = XT_CB_PASSTHROUGH;
