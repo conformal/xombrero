@@ -3390,7 +3390,7 @@ connect_socket_from_uri(const gchar *uri, const gchar **error_str, char *domain,
 	struct addrinfo		hints, *res = NULL, *ai;
 	int			rv = -1, s = -1, on, error;
 	char			port[8];
-	static gchar		myerror[256];
+	static gchar		myerror[256]; /* this is not thread safe */
 
 	myerror[0] = '\0';
 	*error_str = myerror;
@@ -3477,7 +3477,7 @@ start_tls(const gchar **error_str, int s, gnutls_session_t *gs,
 	gnutls_certificate_credentials_t xcred;
 	gnutls_session_t	gsession;
 	int			rv = 1;
-	static gchar		myerror[1024];
+	static gchar		myerror[1024]; /* this is not thread safe */
 
 	if (gs == NULL || xc == NULL)
 		goto done;
@@ -3643,7 +3643,7 @@ load_compare_cert(const gchar *uri, const gchar **error_str)
 	FILE			*f = NULL;
 	size_t			cert_buf_sz, cert_count;
 	enum cert_trust		rv = CERT_UNTRUSTED;
-	static gchar		serr[80];
+	static gchar		serr[80]; /* this isn't thread safe */
 	gnutls_session_t	gsession;
 	gnutls_x509_crt_t	*certs;
 	gnutls_certificate_credentials_t xcred;
