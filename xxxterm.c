@@ -74,12 +74,22 @@ void arc4random_buf(void *, size_t);
 
 #include <webkit/webkit.h>
 #include <libsoup/soup.h>
-#include <gnutls/gnutls.h>
 #include <JavaScriptCore/JavaScript.h>
+#include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
+
+/* uncomment if you want to use threads */
+#define USE_THREADS
 
 #include "version.h"
 #include "javascript.h"
+
+#ifdef USE_THREADS
+#include <gcrypt.h>
+#include <pthread.h>
+GCRY_THREAD_OPTION_PTHREAD_IMPL;
+#endif
+
 /*
 
 javascript.h borrowed from vimprobable2 under the following license:
@@ -229,10 +239,10 @@ struct tab {
 	int			xtp_meaning; /* identifies dls/favorites */
 	gchar			*tmp_uri;
 	int			popup; /* 1 if cmd_entry has popup visible */
-
+#ifdef USE_THREADS
 	/* https thread stuff */
 	GThread			*thread;
-
+#endif
 	/* hints */
 	int			hints_on;
 	int			hint_mode;
@@ -1016,7 +1026,7 @@ char
 indextomark(int i)
 {
 	if (i < 0)
-		return 0;
+		return (0);
 
 	if (i >= 0 && i <= 'z' - 'a')
 		return 'a' + i;
@@ -1027,7 +1037,7 @@ indextomark(int i)
 
 	i -= 'Z' - 'A' + 1;
 	if (i >= 10)
-		return 0;
+		return (0);
 
 	return i + '0';
 }
@@ -1048,7 +1058,7 @@ marktoindex(char m)
 	if (m >= '0' && m <= '9')
 		return ret + m - '0';
 
-	return -1;
+	return (-1);
 }
 
 
@@ -1643,7 +1653,7 @@ generate_xtp_session_key(char **key)
 
 /*
  * validate a xtp session key.
- * return 1 if OK
+ * return (1) if OK
  */
 int
 validate_xtp_session_key(struct tab *t, char *trusted, char *untrusted)
@@ -6420,7 +6430,9 @@ color_address_bar(gpointer p)
 	gchar			*col_str = XT_COLOR_WHITE;
 	const gchar		*uri, *u = NULL, *error_str = NULL;
 
+#ifdef USE_THREADS
 	gdk_threads_enter();
+#endif
 	DNPRINTF(XT_D_URL, "%s:\n", __func__);
 
 	/* make sure t still exists */
@@ -6436,7 +6448,9 @@ color_address_bar(gpointer p)
 		goto white;
 	u = g_strdup(uri);
 
+#ifdef USE_THREADS
 	gdk_threads_leave();
+#endif
 
 	col_str = XT_COLOR_YELLOW;
 	switch (load_compare_cert(u, &error_str)) {
@@ -6454,8 +6468,9 @@ color_address_bar(gpointer p)
 		break;
 	}
 
+#ifdef USE_THREADS
 	gdk_threads_enter();
-
+#endif
 	/* make sure t isn't deleted */
 	TAILQ_FOREACH(tt, &tabs, entry)
 		if (t == tt)
@@ -6463,9 +6478,11 @@ color_address_bar(gpointer p)
 	if (t != tt)
 		goto done;
 
+#ifdef USE_THREADS
 	/* test to see if the user navigated away and canceled the thread */
 	if (t->thread != g_thread_self())
 		goto done;
+#endif
 white:
 	gdk_color_parse(col_str, &color);
 	gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
@@ -6477,13 +6494,16 @@ white:
 
 	if (error_str && error_str[0] != '\0')
 		show_oops(t, "%s", error_str);
-
+#ifdef USE_THREADS
 	t->thread = NULL;
+#endif
 done:
 	/* t is invalid at this point */
 	if (u)
 		g_free((gpointer)u);
+#ifdef USE_THREADS
 	gdk_threads_leave();
+#endif
 }
 
 void
@@ -6512,7 +6532,7 @@ show_ca_status(struct tab *t, const char *uri)
 	if (g_str_has_prefix(uri, "http://") ||
 	    !g_str_has_prefix(uri, "https://"))
 		goto done;
-
+#ifdef USE_THREADS
 	/*
 	 * It is not necessary to see if the thread is already running.
 	 * If the thread is in progress setting it to something else aborts it
@@ -6521,7 +6541,9 @@ show_ca_status(struct tab *t, const char *uri)
 
 	/* thread the coloring of the address bar */
 	t->thread = g_thread_create((GThreadFunc)color_address_bar, t, TRUE, NULL);
-
+#else
+	color_address_bar(t);
+#endif
 	return;
 
 done:
@@ -6844,10 +6866,10 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		/* take focus if we are visible */
 		focus_webview(t);
 		t->focus_wv = 1;
-
+#ifdef USE_THREAD
 		/* kill color thread */
 		t->thread = NULL;
-
+#endif
 		break;
 
 	case WEBKIT_LOAD_COMMITTED:
@@ -7325,21 +7347,21 @@ mark(struct tab *t, struct karg *arg)
 
 	mark = arg->s[1];
 	if ((index = marktoindex(mark)) == -1)
-		return -1;
+		return (-1);
 
 	if (arg->i == XT_MARK_SET)
 		t->mark[index] = gtk_adjustment_get_value(t->adjust_v);
 	else if (arg->i == XT_MARK_GOTO) {
 		if (t->mark[index] == XT_INVALID_MARK) {
 			show_oops(t, "mark '%c' does not exist", mark);
-			return -1;
+			return (-1);
 		}
 		/* XXX t->mark[index] can be bigger than the maximum if ajax or
 		   something changes the document size */
 		gtk_adjustment_set_value(t->adjust_v, t->mark[index]);
 	}
 
-	return 0;
+	return (0);
 }
 
 void
@@ -7472,7 +7494,7 @@ go_up(struct tab *t, struct karg *args)
 
 	uri = g_strdup(webkit_web_view_get_uri(t->wv));
 	if ((tmp = strstr(uri, XT_PROTO_DELIM)) == NULL)
-		return 1;
+		return (1);
 	tmp += strlen(XT_PROTO_DELIM);
 
 	/* if an uri starts with a slash, leave it alone (for file:///) */
@@ -7519,7 +7541,7 @@ zoom_amount(struct tab *t, struct karg *arg)
 	narg.i = atoi(arg->s);
 	resizetab(t, &narg);
 
-	return 0;
+	return (0);
 }
 
 int
@@ -10165,7 +10187,6 @@ usage(void)
 	exit(0);
 }
 
-
 int
 main(int argc, char *argv[])
 {
@@ -10184,12 +10205,20 @@ main(int argc, char *argv[])
 	start_argv = argv;
 
 	/* prepare gtk */
+#ifdef USE_THREADS
 	g_thread_init(NULL);
 #if !defined(__linux__)
+	/* this call hangs the flash plugin and isn't needed on linux it seems */
 	gdk_threads_init();
 #endif
 	gdk_threads_enter();
+#endif
 	gtk_init(&argc, &argv);
+
+#ifdef USE_THREADS
+	gcry_control (GCRYCTL_SET_THREAD_CBS, &gcry_threads_pthread);
+#endif
+	gnutls_global_init();
 
 	strlcpy(named_session, XT_SAVED_TABS_FILE, sizeof named_session);
 
@@ -10258,8 +10287,6 @@ main(int argc, char *argv[])
 	argv += optind;
 
 	init_keybindings();
-
-	gnutls_global_init();
 
 	/* generate session keys for xtp pages */
 	generate_xtp_session_key(&dl_session_key);
@@ -10496,7 +10523,8 @@ main(int argc, char *argv[])
 	if (url_regex)
 		regfree(&url_re);
 
+#ifdef USE_THREADS
 	gdk_threads_leave();
-
+#endif
 	return (0);
 }
