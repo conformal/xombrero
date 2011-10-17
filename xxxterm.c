@@ -67,7 +67,7 @@ void arc4random_buf(void *, size_t);
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
 
-#if GTK_CHECK_VERSION(3,0,0)
+#if GTK_CHECK_VERSION(3, 0, 0)
 /* we still use GDK_* instead of GDK_KEY_* */
 #include <gdk/gdkkeysyms-compat.h>
 #endif
@@ -6468,7 +6468,11 @@ color_address_bar(gpointer p)
 		goto done;
 white:
 	gdk_color_parse(col_str, &color);
+#if GTK_CHECK_VERSION(3, 0, 0)
+	gtk_widget_modify_bg(t->uri_entry, GTK_STATE_NORMAL, &color);
+#else
 	gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
+#endif
 
 	if (!strcmp(col_str, XT_COLOR_WHITE))
 		statusbar_modify_attr(t, col_str, XT_COLOR_BLACK);
