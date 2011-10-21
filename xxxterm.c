@@ -78,11 +78,11 @@ void arc4random_buf(void *, size_t);
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
 
-/* uncomment if you want to use threads */
-#define USE_THREADS
-
 #include "version.h"
 #include "javascript.h"
+
+/* comment if you don't want to use threads */
+#define USE_THREADS
 
 #ifdef USE_THREADS
 #include <gcrypt.h>
