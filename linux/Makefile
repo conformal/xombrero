@@ -1,7 +1,7 @@
 LIBS= gtk+-2.0 webkit-1.0 libsoup-2.4 gnutls gthread-2.0
 
 CFLAGS+= -O2 -Wall -ggdb3 -D_GNU_SOURCE -I. $(shell pkg-config --cflags $(LIBS))
-LDADD+= $(shell pkg-config --libs $(LIBS)) -lbsd -ldl
+LDADD+= $(shell pkg-config --libs $(LIBS)) -lbsd -ldl -lgcrypt
 
 PREFIX?= /usr/local
 BINDIR?= $(PREFIX)/bin
