@@ -1,7 +1,7 @@
-javascript.h
 *.o
-xxxterm
 *.orig
 *.rej
 *.rej.orig
+javascript.h
+xxxterm
 xxxterm.cat1
