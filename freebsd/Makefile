@@ -1,11 +1,9 @@
-# $xxxterm$
+LIBS= gtk+-2.0 webkit-1.0 libsoup-2.4 gnutls -gthread-2.0
 
-LIBS= gtk+-2.0 webkit-1.0 libsoup-2.4 gnutls
-
-LDADD= -lutil
+LDADD= -lutil -lgcrypt
 GTK_CFLAGS!= pkg-config --cflags $(LIBS)
 GTK_LDFLAGS!= pkg-config --libs $(LIBS)
-CFLAGS+= $(GTK_CFLAGS) -Wall -pthread
+CFLAGS+= $(GTK_CFLAGS) -O2 -Wall -pthread
 LDFLAGS+= $(GTK_LDFLAGS) -pthread
 
 PREFIX?= /usr/local
