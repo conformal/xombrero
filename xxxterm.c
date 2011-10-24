@@ -6482,6 +6482,15 @@ color_address_bar(gpointer p)
 	/* test to see if the user navigated away and canceled the thread */
 	if (t->thread != g_thread_self())
 		goto done;
+	if ((uri = get_uri(t)) == NULL) {
+		t->thread = NULL;
+		goto done;
+	}
+	if (strcmp(uri, u)) {
+		/* make sure we are still the same url */
+		t->thread = NULL;
+		goto done;
+	}
 #endif
 white:
 	gdk_color_parse(col_str, &color);
@@ -10187,6 +10196,75 @@ usage(void)
 	exit(0);
 }
 
+GStaticRecMutex		my_gdk_mtx = G_STATIC_REC_MUTEX_INIT;
+volatile int		mtx_depth;
+int			mtx_complain;
+
+/*
+ * The linux flash plugin violates the gdk locking mechanism.
+ * Work around the issue by using a recursive mutex with some match applied
+ * to see if we hit a buggy condition.
+ *
+ * The following code is painful so just don't read it.  It really doesn't
+ * make much sense but seems to work.
+ */
+void
+mtx_lock(void)
+{
+	g_static_rec_mutex_lock(&my_gdk_mtx);
+	mtx_depth++;
+
+	if (mtx_depth <= 0) {
+		/* should not happen */
+		show_oops(NULL, "negative mutex locking bug, trying to "
+		    "correct");
+		fprintf(stderr, "negative mutex locking bug, trying to "
+		    "correct\n");
+		g_static_rec_mutex_unlock_full(&my_gdk_mtx);
+		g_static_rec_mutex_lock(&my_gdk_mtx);
+		mtx_depth = 1;
+		return;
+	}
+
+	if (mtx_depth != 1) {
+		/* decrease mutext depth to 1 */
+		do {
+			g_static_rec_mutex_unlock(&my_gdk_mtx);
+			mtx_depth--;
+		} while (mtx_depth > 1);
+	}
+}
+
+void
+mtx_unlock(void)
+{
+	guint x;
+
+	/* if mutex depth isn't 1 then something went bad */
+	if (mtx_depth != 1) {
+		x = g_static_rec_mutex_unlock_full(&my_gdk_mtx);
+		if (x != 1) {
+			/* should not happen */
+			show_oops(NULL, "mutex unlocking bug, trying to "
+			    "correct");
+			fprintf(stderr, "mutex unlocking bug, trying to "
+			    "correct\n");
+		}
+		mtx_depth = 0;
+		if (mtx_complain == 0) {
+			show_oops(NULL, "buggy mutex implementation detected, "
+			    "work around implemented");
+			fprintf(stderr, "buggy mutex implementation detected, "
+			    "work around implemented");
+			mtx_complain = 1;
+		}
+		return;
+	}
+
+	mtx_depth--;
+	g_static_rec_mutex_unlock(&my_gdk_mtx);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -10207,17 +10285,14 @@ main(int argc, char *argv[])
 	/* prepare gtk */
 #ifdef USE_THREADS
 	g_thread_init(NULL);
-#if !defined(__linux__)
-	/* this call hangs the flash plugin and isn't needed on linux it seems */
+	gdk_threads_set_lock_functions(mtx_lock, mtx_unlock);
 	gdk_threads_init();
-#endif
 	gdk_threads_enter();
+
+	gcry_control (GCRYCTL_SET_THREAD_CBS, &gcry_threads_pthread);
 #endif
 	gtk_init(&argc, &argv);
 
-#ifdef USE_THREADS
-	gcry_control (GCRYCTL_SET_THREAD_CBS, &gcry_threads_pthread);
-#endif
 	gnutls_global_init();
 
 	strlcpy(named_session, XT_SAVED_TABS_FILE, sizeof named_session);
@@ -10518,13 +10593,15 @@ main(int argc, char *argv[])
 
 	gtk_main();
 
+#ifdef USE_THREADS
+	gdk_threads_leave();
+	g_static_rec_mutex_unlock_full(&my_gdk_mtx); /* just in case */
+#endif
+
 	gnutls_global_deinit();
 
 	if (url_regex)
 		regfree(&url_re);
 
-#ifdef USE_THREADS
-	gdk_threads_leave();
-#endif
 	return (0);
 }
