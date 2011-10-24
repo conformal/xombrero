@@ -3800,7 +3800,7 @@ done:
 	if (s != -1)
 		close(s);
 	stop_tls(gsession, xcred);
-	if (error_str)
+	if (error_str && strlen(error_str))
 		show_oops(t, "%s", error_str);
 	return (0);
 }
