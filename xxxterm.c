@@ -917,7 +917,7 @@ int			updating_fl_tabs = 0;
 int			cmd_history_count = 0;
 int			search_history_count = 0;
 char			*global_search;
-uint64_t		blocked_cookies = 0;
+long long unsigned int	blocked_cookies = 0;
 char			named_session[PATH_MAX];
 GtkListStore		*completion_model;
 GtkListStore		*buffers_store;
@@ -3009,7 +3009,7 @@ int
 stats(struct tab *t, struct karg *args)
 {
 	char			*page, *body, *s, line[64 * 1024];
-	uint64_t		line_count = 0;
+	long long unsigned int	line_count = 0;
 	FILE			*r_cookie_f;
 
 	if (t == NULL)
