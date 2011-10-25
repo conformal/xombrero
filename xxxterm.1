@@ -477,6 +477,32 @@ Toggle Java Script execution for the current FQDN.
 Toggle Java Script execution for the current top level domain.
 .It Cm open , op , o URL
 Open URL.
+.It Cm plugin
+The
+.Cm plugin
+command is used to manipulate the plugin whitelist.
+Used by itself it expands to
+.Cm plugin show all .
+.It Cm plugin save, save fqdn
+Saves the FQDN to the persistent whitelist.
+For example,
+the www.peereboom.us domain would result in saving .www.peereboom.us.
+.It Cm plugin save domain
+Saves the top level domain name to the persistent whitelist.
+For example,
+the www.peereboom.us domain would result in saving .peereboom.us.
+.Pp
+This action enables plugins if they are currently disabled for this entry.
+.It Cm plugin show all
+Shows all persistent and session entries in the plugin whitelist.
+.It Cm plugin show persistent
+Shows all persistent entries in the plugin whitelist.
+.It Cm plugin show session
+Shows all session entries in the plugin whitelist.
+.It Cm plugin toggle, plugin toggle fqdn
+Toggle plugin execution for the current FQDN.
+.It Cm plugin toggle domain
+Toggle plugin execution for the current top level domain.
 .It Cm print
 Print page.
 .It Cm qa , qall , quitall
@@ -752,6 +778,24 @@ These entries in the configuration file are the actual domains names in the
 Java Script whitelist.
 .El
 .Pp
+Plugin whitelist requires the following configuration to be set:
+.Pp
+.Bl -tag -width "enable_plugin_whitelistXXX" -offset indent -compact
+.It Cm enable_plugins
+This is a WebKit setting and must be set to
+.Pa 1
+(ENABLED)
+in order to be able to use a
+plugin whitelist.
+.It Cm enable_plugin_whitelist
+This needs to be set to
+.Pa 1
+to enable the plugin whitelist functionality.
+.It Cm pl_wl
+These entries in the configuration file are the actual domains names in the
+plugin whitelist.
+.El
+.Pp
 See the
 .Pa FILES
 section for additional configuration file entries and details
@@ -809,22 +853,23 @@ and
 .Pa kiosk .
 In the
 .Pa normal
-mode the browser allows all cookies and Java Script as any other browser
-would.
+mode the browser allows all cookies, plugins and Java Script as any other
+browser would.
 This means that all cookies are saved to persistent storage and that all
-Java Script runs.
+Java Script and plugins run.
 .Pp
 On the other hand, using the
 .Pa whitelist
 mode enables whitelists.
 This requires the user to add all the required
-.Pa cookie_wl
-and
+.Pa cookie_wl ,
 .Pa js_wl
+and
+.Pa pl_wl
 items.
 If a domain does not appear in the whitelists
 .Nm
-disallows cookies and Java Script execution.
+disallows cookies, Java Script and plugin execution.
 .Pp
 In
 .Pa kiosk
@@ -874,10 +919,16 @@ Script.
 NOTE: Make sure
 .Cm enable_scripts
 is set to 0.
+.It Cm enable_plugin_whitelist
+When enabled all domains must be in the plugin whitelist in order to run
+plugins.
+NOTE: Make sure
+.Cm enable_plugins
+is set to 0.
 .It Cm enable_plugins
-Enable plugins.
+Enable external plugins such as Flash and Java.
 .It Cm enable_scripts
-Enable scripts.
+Enable Java Script.
 .It Cm enable_socket
 When enabled the first instance of
 .Nm
@@ -974,6 +1025,11 @@ before the MIME handler is called.
 Set the font used to display error messages.
 E.g.
 .Pa oops_font = monospace normal 9 .
+.It Cm pl_wl
+This is a plugin whitelist item.
+See
+.Cm cookie_wl
+for semantics and more details.
 .It Cm read_only_cookies
 Mark cookies file read-only and discard all cookies once the session is
 terminated.
