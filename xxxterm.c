@@ -2284,17 +2284,20 @@ config_parse(char *filename, int runtime)
 		if ((var = strsep(&cp, WS)) == NULL || cp == NULL)
 			startpage_add("invalid configuration file entry: %s",
 			    line);
+		else {
+			cp += (long)strspn(cp, WS);
 
-		cp += (long)strspn(cp, WS);
+			if ((val = strsep(&cp, "\0")) == NULL)
+				break;
 
-		if ((val = strsep(&cp, "\0")) == NULL)
-			break;
-
-		DNPRINTF(XT_D_CONFIG, "config_parse: %s=%s\n", var, val);
-		handled = settings_add(var, val);
-		if (handled == 0)
-			startpage_add("invalid configuration file entry: %s=%s",
+			DNPRINTF(XT_D_CONFIG, "config_parse: %s=%s\n",
 			    var, val);
+			handled = settings_add(var, val);
+
+			if (handled == 0)
+				startpage_add("invalid configuration file entry"
+				    ": %s=%s", var, val);
+		}
 
 		free(line);
 	}
