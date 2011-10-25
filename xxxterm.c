@@ -575,13 +575,14 @@ int		ctrl_click_focus = 0; /* ctrl click gets focus */
 int		cookies_enabled = 1; /* enable cookies */
 int		read_only_cookies = 0; /* enable to not write cookies */
 int		enable_scripts = 1;
-int		enable_plugins = 0;
+int		enable_plugins = 1;
 gfloat		default_zoom_level = 1.0;
 char		default_script[PATH_MAX];
 int		window_height = 768;
 int		window_width = 1024;
 int		icon_size = 2; /* 1 = smallest, 2+ = bigger */
 int		refresh_interval = 10; /* download refresh interval */
+int		enable_plugin_whitelist = 0;
 int		enable_cookie_whitelist = 0;
 int		enable_js_whitelist = 0;
 int		session_timeout = 3600; /* cookie session timeout */
@@ -639,6 +640,7 @@ int		add_alias(struct settings *, char *);
 int		add_mime_type(struct settings *, char *);
 int		add_cookie_wl(struct settings *, char *);
 int		add_js_wl(struct settings *, char *);
+int		add_pl_wl(struct settings *, char *);
 int		add_kb(struct settings *, char *);
 void		button_set_stockid(GtkWidget *, char *);
 GtkWidget *	create_button(char *, char *, int);
@@ -657,6 +659,8 @@ void		walk_alias(struct settings *, void (*)(struct settings *,
 void		walk_cookie_wl(struct settings *, void (*)(struct settings *,
 		    char *, void *), void *);
 void		walk_js_wl(struct settings *, void (*)(struct settings *,
+		    char *, void *), void *);
+void		walk_pl_wl(struct settings *, void (*)(struct settings *,
 		    char *, void *), void *);
 void		walk_kb(struct settings *, void (*)(struct settings *, char *,
 		    void *), void *);
@@ -707,6 +711,12 @@ struct special		s_js = {
 	add_js_wl,
 	NULL,
 	walk_js_wl
+};
+
+struct special		s_pl = {
+	add_pl_wl,
+	NULL,
+	walk_pl_wl
 };
 
 struct special		s_kb = {
@@ -772,6 +782,7 @@ struct settings {
 	{ "download_dir",		XT_S_STR, 0, NULL, NULL,&s_download_dir },
 	{ "enable_cookie_whitelist",	XT_S_INT, 0,		&enable_cookie_whitelist, NULL, NULL },
 	{ "enable_js_whitelist",	XT_S_INT, 0,		&enable_js_whitelist, NULL, NULL },
+	{ "enable_plugin_whitelist",	XT_S_INT, 0,		&enable_plugin_whitelist, NULL, NULL },
 	{ "enable_localstorage",	XT_S_INT, 0,		&enable_localstorage, NULL, NULL },
 	{ "enable_plugins",		XT_S_INT, 0,		&enable_plugins, NULL, NULL },
 	{ "enable_scripts",		XT_S_INT, 0,		&enable_scripts, NULL, NULL },
@@ -822,6 +833,7 @@ struct settings {
 	{ "js_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_js },
 	{ "keybinding",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_kb },
 	{ "mime_type",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_mime },
+	{ "pl_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_pl },
 };
 
 int			about(struct tab *, struct karg *);
@@ -829,6 +841,7 @@ int			blank(struct tab *, struct karg *);
 int			ca_cmd(struct tab *, struct karg *);
 int			cookie_show_wl(struct tab *, struct karg *);
 int			js_show_wl(struct tab *, struct karg *);
+int			pl_show_wl(struct tab *, struct karg *);
 int			help(struct tab *, struct karg *);
 int			set(struct tab *, struct karg *);
 int			stats(struct tab *, struct karg *);
@@ -855,6 +868,7 @@ const gchar		*get_title(struct tab *, bool);
 #define XT_URI_ABOUT_HELP	("help")
 #define XT_URI_ABOUT_HISTORY	("history")
 #define XT_URI_ABOUT_JSWL	("jswl")
+#define XT_URI_ABOUT_PLUGINWL	("plwl")
 #define XT_URI_ABOUT_SET	("set")
 #define XT_URI_ABOUT_STATS	("stats")
 #define XT_URI_ABOUT_MARCO	("marco")
@@ -878,6 +892,7 @@ struct about_type {
 	{ XT_URI_ABOUT_STATS,		stats },
 	{ XT_URI_ABOUT_MARCO,		marco },
 	{ XT_URI_ABOUT_STARTPAGE,	startpage },
+	{ XT_URI_ABOUT_PLUGINWL,	pl_show_wl },
 };
 
 /* xtp tab meanings  - identifies which tabs have xtp pages in (corresponding to about_list indices) */
@@ -902,6 +917,7 @@ struct session_list	sessions;
 struct download_list	downloads;
 struct domain_list	c_wl;
 struct domain_list	js_wl;
+struct domain_list	pl_wl;
 struct undo_tailq	undos;
 struct keybinding_list	kbl;
 struct sp_list		spl;
@@ -1410,6 +1426,8 @@ set_browser_mode(struct settings *s, char *val)
 		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
 		cookies_enabled = 1;
 		enable_cookie_whitelist = 1;
+		enable_plugin_whitelist = 1;
+		enable_plugins = 0;
 		read_only_cookies = 0;
 		save_rejected_cookies = 0;
 		session_timeout = 3600;
@@ -1422,6 +1440,8 @@ set_browser_mode(struct settings *s, char *val)
 		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_ALWAYS;
 		cookies_enabled = 1;
 		enable_cookie_whitelist = 0;
+		enable_plugin_whitelist = 0;
+		enable_plugins = 1;
 		read_only_cookies = 0;
 		save_rejected_cookies = 0;
 		session_timeout = 3600;
@@ -1434,6 +1454,8 @@ set_browser_mode(struct settings *s, char *val)
 		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_ALWAYS;
 		cookies_enabled = 1;
 		enable_cookie_whitelist = 0;
+		enable_plugin_whitelist = 0;
+		enable_plugins = 1;
 		read_only_cookies = 0;
 		save_rejected_cookies = 0;
 		session_timeout = 3600;
@@ -2119,6 +2141,28 @@ int
 add_js_wl(struct settings *s, char *entry)
 {
 	wl_add(entry, &js_wl, 1 /* persistent */);
+	return (0);
+}
+
+void
+walk_pl_wl(struct settings *s,
+    void (*cb)(struct settings *, char *, void *), void *cb_args)
+{
+	struct domain		*d;
+
+	if (s == NULL || cb == NULL) {
+		show_oops(NULL, "walk_pl_wl invalid parameters");
+		return;
+	}
+
+	RB_FOREACH_REVERSE(d, domain_list, &pl_wl)
+		cb(s, d->d, cb_args);
+}
+
+int
+add_pl_wl(struct settings *s, char *entry)
+{
+	wl_add(entry, &pl_wl, 1 /* persistent */);
 	return (0);
 }
 
@@ -2950,12 +2994,74 @@ done:
 	return (0);
 }
 
+int
+toggle_pl(struct tab *t, struct karg *args)
+{
+	int			es;
+	const gchar		*uri;
+	struct domain		*d;
+	char			*dom = NULL;
+
+	if (args == NULL)
+		return (1);
+
+	g_object_get(G_OBJECT(t->settings),
+	    "enable-plugins", &es, (char *)NULL);
+	if (args->i & XT_WL_TOGGLE)
+		es = !es;
+	else if ((args->i & XT_WL_ENABLE) && es != 1)
+		es = 1;
+	else if ((args->i & XT_WL_DISABLE) && es != 0)
+		es = 0;
+	else
+		return (1);
+
+	uri = get_uri(t);
+	dom = find_domain(uri, args->i & XT_WL_TOPLEVEL);
+
+	if (uri == NULL || dom == NULL ||
+	    webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED) {
+		show_oops(t, "Can't toggle domain in plugins white list");
+		goto done;
+	}
+
+	if (es)
+		wl_add(dom, &pl_wl, 0 /* session */);
+	else {
+		d = wl_find(dom, &pl_wl);
+		if (d)
+			RB_REMOVE(domain_list, &pl_wl, d);
+	}
+	g_object_set(G_OBJECT(t->settings),
+	    "enable-plugins", es, (char *)NULL);
+	webkit_web_view_set_settings(t->wv, t->settings);
+
+	if (args->i & XT_WL_RELOAD)
+		webkit_web_view_reload(t->wv);
+done:
+	if (dom)
+		g_free(dom);
+	return (0);
+}
+
 void
 js_toggle_cb(GtkWidget *w, struct tab *t)
 {
 	struct karg		a;
+	int			es, set;
 
-	a.i = XT_WL_TOGGLE | XT_WL_TOPLEVEL;
+	g_object_get(G_OBJECT(t->settings),
+	    "enable-scripts", &es, (char *)NULL);
+	es = !es;
+	if (es)
+		set = XT_WL_ENABLE;
+	else
+		set = XT_WL_DISABLE;
+
+	a.i = set | XT_WL_TOPLEVEL;
+	toggle_pl(t, &a);
+
+	a.i = set | XT_WL_TOPLEVEL;
 	toggle_cwl(t, &a);
 
 	a.i = XT_WL_TOGGLE | XT_WL_TOPLEVEL | XT_WL_RELOAD;
@@ -3874,16 +3980,22 @@ wl_show(struct tab *t, struct karg *args, char *title, struct domain_list *wl)
 	g_free(body);
 	if (wl == &js_wl)
 		load_webkit_string(t, tmp, XT_URI_ABOUT_JSWL);
-	else
+	else if (wl == &c_wl)
 		load_webkit_string(t, tmp, XT_URI_ABOUT_COOKIEWL);
+	else
+		load_webkit_string(t, tmp, XT_URI_ABOUT_PLUGINWL);
 	g_free(tmp);
 	return (0);
 }
 
+#define XT_WL_INVALID		(0)
+#define XT_WL_JAVASCRIPT	(1)
+#define XT_WL_COOKIE		(2)
+#define XT_WL_PLUGIN		(3)
 int
-wl_save(struct tab *t, struct karg *args, int js)
+wl_save(struct tab *t, struct karg *args, int list)
 {
-	char			file[PATH_MAX];
+	char			file[PATH_MAX], *lst_str = NULL;
 	FILE			*f;
 	char			*line = NULL, *lt = NULL, *dom = NULL;
 	size_t			linelen;
@@ -3903,16 +4015,31 @@ wl_save(struct tab *t, struct karg *args, int js)
 	if ((f = fopen(file, "r+")) == NULL)
 		return (1);
 
+	switch (list) {
+	case XT_WL_JAVASCRIPT:
+		lst_str = "JavaScript";
+		lt = g_strdup_printf("js_wl=%s", dom);
+		break;
+	case XT_WL_COOKIE:
+		lst_str = "Cookie";
+		lt = g_strdup_printf("cookie_wl=%s", dom);
+		break;
+	case XT_WL_PLUGIN:
+		lst_str = "Plugin";
+		lt = g_strdup_printf("pl_wl=%s", dom);
+		break;
+	default:
+		show_oops(t, "Invalid list id: %d", list);
+		return (1);
+	}
+
 	uri = get_uri(t);
 	dom = find_domain(uri, args->i & XT_WL_TOPLEVEL);
 	if (uri == NULL || dom == NULL ||
 	    webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED) {
-		show_oops(t, "Can't add domain to %s white list",
-		  js ? "JavaScript" : "cookie");
+		show_oops(t, "Can't add domain to %s white list", lst_str);
 		goto done;
 	}
-
-	lt = g_strdup_printf("%s=%s", js ? "js_wl" : "cookie_wl", dom);
 
 	while (!feof(f)) {
 		line = fparseln(f, &linelen, NULL, NULL, 0);
@@ -3928,14 +4055,17 @@ wl_save(struct tab *t, struct karg *args, int js)
 
 	a.i = XT_WL_ENABLE;
 	a.i |= args->i;
-	if (js) {
+	switch (list) {
+	case XT_WL_JAVASCRIPT:
 		d = wl_find(dom, &js_wl);
 		if (!d) {
 			settings_add("js_wl", dom);
 			d = wl_find(dom, &js_wl);
 		}
 		toggle_js(t, &a);
-	} else {
+		break;
+
+	case XT_WL_COOKIE:
 		d = wl_find(dom, &c_wl);
 		if (!d) {
 			settings_add("cookie_wl", dom);
@@ -3954,6 +4084,18 @@ wl_save(struct tab *t, struct karg *args, int js)
 			}
 		}
 		soup_cookies_free(cf);
+		break;
+
+	case XT_WL_PLUGIN:
+		d = wl_find(dom, &pl_wl);
+		if (!d) {
+			settings_add("pl_wl", dom);
+			d = wl_find(dom, &pl_wl);
+		}
+		toggle_pl(t, &a);
+		break;
+	default:
+		abort(); /* can't happen */
 	}
 	if (d)
 		d->handy = 1;
@@ -3998,7 +4140,7 @@ cookie_cmd(struct tab *t, struct karg *args)
 		toggle_cwl(t, args);
 	} else if (args->i & XT_SAVE) {
 		args->i |= XT_WL_RELOAD;
-		wl_save(t, args, 0);
+		wl_save(t, args, XT_WL_COOKIE);
 	} else if (args->i & XT_DELETE)
 		show_oops(t, "'cookie delete' currently unimplemented");
 
@@ -4012,12 +4154,38 @@ js_cmd(struct tab *t, struct karg *args)
 		wl_show(t, args, "JavaScript White List", &js_wl);
 	else if (args->i & XT_SAVE) {
 		args->i |= XT_WL_RELOAD;
-		wl_save(t, args, 1);
+		wl_save(t, args, XT_WL_JAVASCRIPT);
 	} else if (args->i & XT_WL_TOGGLE) {
 		args->i |= XT_WL_RELOAD;
 		toggle_js(t, args);
 	} else if (args->i & XT_DELETE)
 		show_oops(t, "'js delete' currently unimplemented");
+
+	return (0);
+}
+
+int
+pl_show_wl(struct tab *t, struct karg *args)
+{
+	args->i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION;
+	wl_show(t, args, "Plugin White List", &pl_wl);
+
+	return (0);
+}
+
+int
+pl_cmd(struct tab *t, struct karg *args)
+{
+	if (args->i & XT_SHOW)
+		wl_show(t, args, "Plugin White List", &pl_wl);
+	else if (args->i & XT_SAVE) {
+		args->i |= XT_WL_RELOAD;
+		wl_save(t, args, XT_WL_PLUGIN);
+	} else if (args->i & XT_WL_TOGGLE) {
+		args->i |= XT_WL_RELOAD;
+		toggle_pl(t, args);
+	} else if (args->i & XT_DELETE)
+		show_oops(t, "'plugin delete' currently unimplemented");
 
 	return (0);
 }
@@ -5914,6 +6082,19 @@ struct cmd {
 	{ "domain",		2,	cookie_cmd,		XT_WL_TOGGLE | XT_WL_TOPLEVEL,			0 },
 	{ "fqdn",		2,	cookie_cmd,		XT_WL_TOGGLE | XT_WL_FQDN,			0 },
 
+	/* plugin command */
+	{ "plugin",		0,	pl_cmd,			XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION,	0 },
+	{ "save",		1,	pl_cmd,			XT_SAVE | XT_WL_FQDN,				0 },
+	{ "domain",		2,	pl_cmd,			XT_SAVE | XT_WL_TOPLEVEL,			0 },
+	{ "fqdn",		2,	pl_cmd,			XT_SAVE | XT_WL_FQDN,				0 },
+	{ "show",		1,	pl_cmd,			XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION,	0 },
+	{ "all",		2,	pl_cmd,			XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION,	0 },
+	{ "persistent",		2,	pl_cmd,			XT_SHOW | XT_WL_PERSISTENT,			0 },
+	{ "session",		2,	pl_cmd,			XT_SHOW | XT_WL_SESSION,			0 },
+	{ "toggle",		1,	pl_cmd,			XT_WL_TOGGLE | XT_WL_FQDN,			0 },
+	{ "domain",		2,	pl_cmd,			XT_WL_TOGGLE | XT_WL_TOPLEVEL,			0 },
+	{ "fqdn",		2,	pl_cmd,			XT_WL_TOGGLE | XT_WL_FQDN,			0 },
+
 	/* toplevel (domain) command */
 	{ "toplevel",		0,	toplevel_cmd,		XT_WL_TOGGLE | XT_WL_TOPLEVEL | XT_WL_RELOAD,	0 },
 	{ "toggle",		1,	toplevel_cmd,		XT_WL_TOGGLE | XT_WL_TOPLEVEL | XT_WL_RELOAD,	0 },
@@ -6426,6 +6607,28 @@ check_and_set_js(const gchar *uri, struct tab *t)
 }
 
 void
+check_and_set_pl(const gchar *uri, struct tab *t)
+{
+	struct domain		*d = NULL;
+	int			es = 0;
+
+	if (uri == NULL || t == NULL)
+		return;
+
+	if ((d = wl_find_uri(uri, &pl_wl)) == NULL)
+		es = 0;
+	else
+		es = 1;
+
+	DNPRINTF(XT_D_JS, "check_and_set_pl: %s %s\n",
+	    es ? "enable" : "disable", uri);
+
+	g_object_set(G_OBJECT(t->settings),
+	    "enable-plugins", es, (char *)NULL);
+	webkit_web_view_set_settings(t->wv, t->settings);
+}
+
+void
 color_address_bar(gpointer p)
 {
 	GdkColor		color;
@@ -6898,6 +7101,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		set_status(t, (char *)uri, XT_STATUS_LOADING);
 
 		/* check if js white listing is enabled */
+		if (enable_plugin_whitelist)
+			check_and_set_pl(uri, t);
 		if (enable_cookie_whitelist)
 			check_and_set_cookie(uri, t);
 		if (enable_js_whitelist)
@@ -10302,6 +10507,7 @@ main(int argc, char *argv[])
 
 	RB_INIT(&hl);
 	RB_INIT(&js_wl);
+	RB_INIT(&pl_wl);
 	RB_INIT(&downloads);
 
 	TAILQ_INIT(&sessions);
