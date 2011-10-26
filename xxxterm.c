@@ -2899,7 +2899,7 @@ find_domain(const gchar *s, int toplevel)
 
 	soup_uri_free(uri);
 
-	return ret;
+	return (ret);
 }
 
 int
@@ -2938,9 +2938,11 @@ toggle_cwl(struct tab *t, struct karg *args)
 	if (es)
 		/* enable cookies for domain */
 		wl_add(dom, &c_wl, 0);
-	else
+	else {
 		/* disable cookies for domain */
-		RB_REMOVE(domain_list, &c_wl, d);
+		if (d)
+			RB_REMOVE(domain_list, &c_wl, d);
+	}
 
 	if (args->i & XT_WL_RELOAD)
 		webkit_web_view_reload(t->wv);
