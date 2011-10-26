@@ -248,6 +248,7 @@ struct tab {
 #define XT_HINT_NONE		(0)
 #define XT_HINT_NUMERICAL	(1)
 #define XT_HINT_ALPHANUM	(2)
+	int			new_tab;
 	char			hint_buf[128];
 	char			hint_num[128];
 
@@ -532,6 +533,8 @@ struct karg {
 #define XT_INTARG		(1<<3)
 #define XT_SESSARG		(1<<4)
 #define XT_SETARG		(1<<5)
+
+#define XT_HINT_NEWTAB		(1<<0)
 
 #define XT_TABS_NORMAL		0
 #define XT_TABS_COMPACT		1
@@ -2376,6 +2379,7 @@ disable_hints(struct tab *t)
 	run_script(t, "vimprobable_clear()");
 	t->hints_on = 0;
 	t->hint_mode = XT_HINT_NONE;
+	t->new_tab = 0;
 }
 
 void
@@ -2421,6 +2425,10 @@ run_script(struct tab *t, char *s)
 		g_free(es);
 		return (1);
 	} else {
+		/* if set open in new tab */
+		if (t->new_tab)
+			t->ctrl_click = 1;
+
 		es = js_ref_to_string(ctx, val);
 		DNPRINTF(XT_D_JS, "run_script: val %s\n", es);
 
@@ -2453,7 +2461,10 @@ int
 hint(struct tab *t, struct karg *args)
 {
 
-	DNPRINTF(XT_D_JS, "hint: tab %d\n", t->tab_id);
+	DNPRINTF(XT_D_JS, "hint: tab %d args %d\n", t->tab_id, args->i);
+
+	if (args->i == XT_HINT_NEWTAB)
+		t->new_tab = 1;
 
 	if (t->hints_on == 0)
 		enable_hints(t);
@@ -5744,6 +5755,7 @@ struct key_binding {
 
 	/* hinting */
 	{ "hinting",		0,	0,	GDK_f		},
+	{ "hinting_newtab",	SHFT,	0,	GDK_F		},
 
 	/* custom stylesheet */
 	{ "userstyle",		0,	0,	GDK_i		},
@@ -6017,6 +6029,7 @@ struct cmd {
 
 	/* hinting */
 	{ "hinting",		0,	hint,			0,			0 },
+	{ "hinting_newtab",	0,	hint,			XT_HINT_NEWTAB,		0 },
 
 	/* custom stylesheet */
 	{ "userstyle",		0,	userstyle,		0,			0 },
