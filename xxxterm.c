@@ -8561,36 +8561,46 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 			run_script(t, "hints.focusPreviousHint();");
 		goto done;
 	case GDK_Down:
-		if (c[0] != ':') {
+		if (c[0] == '?') {
 			if ((search_at = history_next(&shl, search_at))) {
 				search_at->line[0] = c[0];
 				gtk_entry_set_text(w, search_at->line);
 				gtk_editable_set_position(GTK_EDITABLE(w), -1);
 			}
-		} else {
+		} else if (c[0] == '/') {
+			if ((search_at = history_prev(&chl, search_at))) {
+				search_at->line[0] = c[0];
+				gtk_entry_set_text(w, search_at->line);
+				gtk_editable_set_position(GTK_EDITABLE(w), -1);
+			}
+		} if (c[0] == ':') {
 			if ((history_at = history_prev(&chl, history_at))) {
 				history_at->line[0] = c[0];
 				gtk_entry_set_text(w, history_at->line);
 				gtk_editable_set_position(GTK_EDITABLE(w), -1);
 			}
 		}
-
 		goto done;
 	case GDK_Up:
-		if (c[0] != ':') {
+		if (c[0] == '/') {
 			if ((search_at = history_next(&shl, search_at))) {
 				search_at->line[0] = c[0];
 				gtk_entry_set_text(w, search_at->line);
 				gtk_editable_set_position(GTK_EDITABLE(w), -1);
 			}
-		} else {
+		} else if (c[0] == '?') {
+			if ((search_at = history_prev(&chl, search_at))) {
+				search_at->line[0] = c[0];
+				gtk_entry_set_text(w, search_at->line);
+				gtk_editable_set_position(GTK_EDITABLE(w), -1);
+			}
+		} if (c[0] == ':') {
 			if ((history_at = history_next(&chl, history_at))) {
 				history_at->line[0] = c[0];
 				gtk_entry_set_text(w, history_at->line);
 				gtk_editable_set_position(GTK_EDITABLE(w), -1);
 			}
 		}
-
 		goto done;
 	case GDK_BackSpace:
 		if (!(!strcmp(c, ":") || !strcmp(c, "/") || !strcmp(c, "?") ||
