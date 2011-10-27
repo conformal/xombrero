@@ -77,9 +77,6 @@ void arc4random_buf(void *, size_t);
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
 
-#include "version.h"
-#include "javascript.h"
-
 /* comment if you don't want to use threads */
 #define USE_THREADS
 
@@ -89,8 +86,9 @@ void arc4random_buf(void *, size_t);
 GCRY_THREAD_OPTION_PTHREAD_IMPL;
 #endif
 
+#include "version.h"
+#include "javascript.h"
 /*
-
 javascript.h borrowed from vimprobable2 under the following license:
 
 Copyright (c) 2009 Leon Winter
