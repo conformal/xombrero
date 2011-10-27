@@ -615,6 +615,7 @@ int		history_autosave = 0;
 char		search_file[PATH_MAX];
 char		command_file[PATH_MAX];
 char		*encoding = NULL;
+int		autofocus_onload = 0;
 
 char		*cmd_font_name = NULL;
 char		*oops_font_name = NULL;
@@ -773,8 +774,9 @@ struct settings {
 	gfloat		*fval;
 	int		(*activate)(char *);
 } rs[] = {
-	{ "append_next",		XT_S_INT, 0,		&append_next, NULL, NULL },
 	{ "allow_volatile_cookies",	XT_S_INT, 0,		&allow_volatile_cookies, NULL, NULL },
+	{ "append_next",		XT_S_INT, 0,		&append_next, NULL, NULL },
+	{ "autofocus_onload",		XT_S_INT, 0,		&autofocus_onload, NULL, NULL },
 	{ "browser_mode",		XT_S_INT, 0, NULL, NULL,&s_browser_mode },
 	{ "cookie_policy",		XT_S_INT, 0, NULL, NULL,&s_cookie },
 	{ "cookies_enabled",		XT_S_INT, 0,		&cookies_enabled, NULL, NULL },
@@ -7230,8 +7232,11 @@ void
 webview_load_finished_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 {
 	run_script(t, JS_HINTING);
-	if (t->tab_id == gtk_notebook_get_current_page(notebook))
+	if (autofocus_onload &&
+	    t->tab_id == gtk_notebook_get_current_page(notebook))
 		run_script(t, "hints.focusInput();");
+	else
+		run_script(t, "hints.clearFocus();");
 }
 
 void
