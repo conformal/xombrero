@@ -94,8 +94,12 @@ GCRY_THREAD_OPTION_PTHREAD_IMPL;
 javascript.h borrowed from vimprobable2 under the following license:
 
 Copyright (c) 2009 Leon Winter
-Copyright (c) 2009 Hannes Schueller
-Copyright (c) 2009 Matto Fransen
+Copyright (c) 2009-2011 Hannes Schueller
+Copyright (c) 2009-2010 Matto Fransen
+Copyright (c) 2010-2011 Hans-Peter Deifel
+Copyright (c) 2010-2011 Thomas Adam
+Copyright (c) 2011 Albert Kim
+Copyright (c) 2011 Daniel Carl
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -244,13 +248,7 @@ struct tab {
 #endif
 	/* hints */
 	int			hints_on;
-	int			hint_mode;
-#define XT_HINT_NONE		(0)
-#define XT_HINT_NUMERICAL	(1)
-#define XT_HINT_ALPHANUM	(2)
 	int			new_tab;
-	char			hint_buf[128];
-	char			hint_num[128];
 
 	/* custom stylesheet */
 	int			styled;
@@ -535,6 +533,9 @@ struct karg {
 #define XT_SETARG		(1<<5)
 
 #define XT_HINT_NEWTAB		(1<<0)
+
+#define XT_MODE_INSERT		(0)
+#define XT_MODE_COMMAND		(1)
 
 #define XT_TABS_NORMAL		0
 #define XT_TABS_COMPACT		1
@@ -2374,29 +2375,31 @@ js_ref_to_string(JSContextRef context, JSValueRef ref)
 void
 disable_hints(struct tab *t)
 {
-	bzero(t->hint_buf, sizeof t->hint_buf);
-	bzero(t->hint_num, sizeof t->hint_num);
-	run_script(t, "vimprobable_clear()");
+	DNPRINTF(XT_D_JS, "%s\n", __func__);
+
+	run_script(t, "hints.clearHints();");
 	t->hints_on = 0;
-	t->hint_mode = XT_HINT_NONE;
 	t->new_tab = 0;
 }
 
 void
 enable_hints(struct tab *t)
 {
-	bzero(t->hint_buf, sizeof t->hint_buf);
-	run_script(t, "vimprobable_show_hints()");
+	DNPRINTF(XT_D_JS, "%s\n", __func__);
+
+	run_script(t, JS_HINTING);
+
+	if (t->new_tab)
+		run_script(t, "hints.createHints('', 'F');");
+	else
+		run_script(t, "hints.createHints('', 'f');");
 	t->hints_on = 1;
-	t->hint_mode = XT_HINT_NONE;
 }
 
-#define XT_JS_OPEN	("open;")
-#define XT_JS_OPEN_LEN	(strlen(XT_JS_OPEN))
-#define XT_JS_FIRE	("fire;")
-#define XT_JS_FIRE_LEN	(strlen(XT_JS_FIRE))
-#define XT_JS_FOUND	("found;")
-#define XT_JS_FOUND_LEN	(strlen(XT_JS_FOUND))
+#define XT_JS_DONE		("done;")
+#define XT_JS_DONE_LEN		(strlen(XT_JS_DONE))
+#define XT_JS_INSERT		("insert;")
+#define XT_JS_INSERT_LEN	(strlen(XT_JS_INSERT))
 
 int
 run_script(struct tab *t, char *s)
@@ -2405,7 +2408,7 @@ run_script(struct tab *t, char *s)
 	WebKitWebFrame		*frame;
 	JSStringRef		str;
 	JSValueRef		val, exception;
-	char			*es, buf[128];
+	char			*es;
 
 	DNPRINTF(XT_D_JS, "run_script: tab %d %s\n",
 	    t->tab_id, s == (char *)JS_HINTING ? "JS_HINTING" : s);
@@ -2422,36 +2425,24 @@ run_script(struct tab *t, char *s)
 	if (val == NULL) {
 		es = js_ref_to_string(ctx, exception);
 		DNPRINTF(XT_D_JS, "run_script: exception %s\n", es);
-		g_free(es);
+		if (es) {
+			show_oops(t, "script exception: %s", es);
+			g_free(es);
+		}
 		return (1);
 	} else {
-		/* if set open in new tab */
-		if (t->new_tab)
-			t->ctrl_click = 1;
-
 		es = js_ref_to_string(ctx, val);
-		DNPRINTF(XT_D_JS, "run_script: val %s\n", es);
-
-		/* handle return value right here */
-		if (!strncmp(es, XT_JS_OPEN, XT_JS_OPEN_LEN)) {
-			disable_hints(t);
-			marks_clear(t);
-			load_uri(t, &es[XT_JS_OPEN_LEN]);
+#if 0
+		/* return values */
+		if (!strncmp(es, XT_JS_DONE, XT_JS_DONE_LEN))
+			; /* do nothing */
+		if (!strncmp(es, XT_JS_INSERT, XT_JS_INSERT_LEN))
+			; /* do nothing */
+#endif
+		if (es) {
+			DNPRINTF(XT_D_JS, "run_script: val %s\n", es);
+			g_free(es);
 		}
-
-		if (!strncmp(es, XT_JS_FIRE, XT_JS_FIRE_LEN)) {
-			snprintf(buf, sizeof buf, "vimprobable_fire(%s)",
-			    &es[XT_JS_FIRE_LEN]);
-			run_script(t, buf);
-			disable_hints(t);
-		}
-
-		if (!strncmp(es, XT_JS_FOUND, XT_JS_FOUND_LEN)) {
-			if (atoi(&es[XT_JS_FOUND_LEN]) == 0)
-				disable_hints(t);
-		}
-
-		g_free(es);
 	}
 
 	return (0);
@@ -2463,12 +2454,11 @@ hint(struct tab *t, struct karg *args)
 
 	DNPRINTF(XT_D_JS, "hint: tab %d args %d\n", t->tab_id, args->i);
 
-	if (args->i == XT_HINT_NEWTAB)
-		t->new_tab = 1;
-
-	if (t->hints_on == 0)
+	if (t->hints_on == 0) {
+		if (args->i == XT_HINT_NEWTAB)
+			t->new_tab = 1;
 		enable_hints(t);
-	else
+	} else
 		disable_hints(t);
 
 	return (0);
@@ -4806,11 +4796,22 @@ movetab(struct tab *t, struct karg *args)
 int cmd_prefix = 0;
 
 int
+command_mode(struct tab *t, struct karg *args)
+{
+	if (args->i == XT_MODE_COMMAND)
+		run_script(t, "hints.clearFocus();");
+	else
+		run_script(t, "hints.focusInput();");
+	return (XT_CB_HANDLED);
+}
+
+int
 command(struct tab *t, struct karg *args)
 {
 	char			*s = NULL, *ss = NULL;
 	GdkColor		color;
 	const gchar		*uri;
+	struct karg		a;
 
 	if (t == NULL || args == NULL) {
 		show_oops(NULL, "command invalid parameters");
@@ -4832,6 +4833,18 @@ command(struct tab *t, struct karg *args)
 			s = ss;
 			cmd_prefix = 0;
 		}
+		break;
+	case '.':
+		bzero(&a, sizeof a);
+		a.i = 0;
+		hint(t, &a);
+		s = ".";
+		break;
+	case ',':
+		bzero(&a, sizeof a);
+		a.i = XT_HINT_NEWTAB;
+		hint(t, &a);
+		s = ",";
 		break;
 	case XT_CMD_OPEN:
 		s = ":open ";
@@ -5727,6 +5740,8 @@ struct key_binding {
 	guint				key;
 	TAILQ_ENTRY(key_binding)	entry;	/* in bss so no need to init */
 } keys[] = {
+	{ "command_mode",	0,	0,	GDK_Escape	},
+	{ "insert_mode",	0,	0,	GDK_i		},
 	{ "cookiejar",		MOD1,	0,	GDK_j		},
 	{ "downloadmgr",	MOD1,	0,	GDK_d		},
 	{ "history",		MOD1,	0,	GDK_h		},
@@ -5757,10 +5772,12 @@ struct key_binding {
 
 	/* hinting */
 	{ "hinting",		0,	0,	GDK_f		},
+	{ "hinting",		0,	0,	GDK_period	},
 	{ "hinting_newtab",	SHFT,	0,	GDK_F		},
+	{ "hinting_newtab",	0,	0,	GDK_comma	},
 
 	/* custom stylesheet */
-	{ "userstyle",		0,	0,	GDK_i		},
+	{ "userstyle",		0,	0,	GDK_s		},
 
 	/* navigation */
 	{ "goback",		0,	0,	GDK_BackSpace	},
@@ -6010,9 +6027,13 @@ struct cmd {
 	int		arg;
 	int		type;
 } cmds[] = {
+	{ "command_mode",	0,	command_mode,		XT_MODE_COMMAND,	0 },
+	{ "insert_mode",	0,	command_mode,		XT_MODE_INSERT,		0 },
 	{ "command",		0,	command,		':',			0 },
 	{ "search",		0,	command,		'/',			0 },
 	{ "searchb",		0,	command,		'?',			0 },
+	{ "hinting",		0,	command,		'.',			0 },
+	{ "hinting_newtab",	0,	command,		',',			0 },
 	{ "togglesrc",		0,	toggle_src,		0,			0 },
 
 	/* yanking and pasting */
@@ -7095,6 +7116,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		/* take focus if we are visible */
 		focus_webview(t);
 		t->focus_wv = 1;
+
+		marks_clear(t);
 #ifdef USE_THREAD
 		/* kill color thread */
 		t->thread = NULL;
@@ -7202,6 +7225,8 @@ void
 webview_load_finished_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 {
 	run_script(t, JS_HINTING);
+	if (t->tab_id == gtk_notebook_get_current_page(notebook))
+		run_script(t, "hints.focusInput();");
 }
 
 void
@@ -7241,7 +7266,7 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 	if (parse_xtp_url(t, uri))
 		    return (TRUE);
 
-	if (t->ctrl_click) {
+	if ((t->hints_on && t->new_tab) || t->ctrl_click) {
 		t->ctrl_click = 0;
 		create_new_tab(uri, NULL, ctrl_click_focus, -1);
 		webkit_web_policy_decision_ignore(pd);
@@ -7979,8 +8004,7 @@ handle_keypress(struct tab *t, GdkEventKey *e, int entry)
 int
 wv_keypress_after_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 {
-	char			s[2], buf[128];
-	const char		*errstr = NULL;
+	char			s[2];
 
 	/* don't use w directly; use t->whatever instead */
 
@@ -7993,115 +8017,7 @@ wv_keypress_after_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 	    e->keyval, e->state, t);
 
 	if (t->hints_on) {
-		/* ESC */
-		if (CLEAN(e->state) == 0 && e->keyval == GDK_Escape) {
-			disable_hints(t);
-			return (XT_CB_HANDLED);
-		}
-
-		/* RETURN */
-		if (CLEAN(e->state) == 0 && e->keyval == GDK_Return) {
-			if (errstr) {
-				/* we have a string */
-			} else {
-				/* we have a number */
-				snprintf(buf, sizeof buf,
-				    "vimprobable_fire(%s)", t->hint_num);
-				run_script(t, buf);
-			}
-			disable_hints(t);
-		}
-
-		/* BACKSPACE */
-		/* XXX unfuck this */
-		if (CLEAN(e->state) == 0 && e->keyval == GDK_BackSpace) {
-			if (t->hint_mode == XT_HINT_NUMERICAL) {
-				/* last input was numerical */
-				int		l;
-				l = strlen(t->hint_num);
-				if (l > 0) {
-					l--;
-					if (l == 0) {
-						disable_hints(t);
-						enable_hints(t);
-					} else {
-						t->hint_num[l] = '\0';
-						goto num;
-					}
-				}
-			} else if (t->hint_mode == XT_HINT_ALPHANUM) {
-				/* last input was alphanumerical */
-				int		l;
-				l = strlen(t->hint_buf);
-				if (l > 0) {
-					l--;
-					if (l == 0) {
-						disable_hints(t);
-						enable_hints(t);
-					} else {
-						t->hint_buf[l] = '\0';
-						goto anum;
-					}
-				}
-			} else {
-				/* bogus */
-				disable_hints(t);
-			}
-		}
-
-		/* numerical input */
-		if (CLEAN(e->state) == 0 &&
-		    ((e->keyval >= GDK_0 && e->keyval <= GDK_9) ||
-		    (e->keyval >= GDK_KP_0 && e->keyval <= GDK_KP_9))) {
-			snprintf(s, sizeof s, "%c", e->keyval);
-			strlcat(t->hint_num, s, sizeof t->hint_num);
-			DNPRINTF(XT_D_JS, "wv_keypress_after_cb: num %s\n",
-			    t->hint_num);
-num:
-			if (errstr) {
-				DNPRINTF(XT_D_JS, "wv_keypress_after_cb: "
-				    "invalid link number\n");
-				disable_hints(t);
-			} else {
-				snprintf(buf, sizeof buf,
-				    "vimprobable_update_hints(%s)",
-				    t->hint_num);
-				t->hint_mode = XT_HINT_NUMERICAL;
-				run_script(t, buf);
-			}
-
-			/* empty the counter buffer */
-			bzero(t->hint_buf, sizeof t->hint_buf);
-			return (XT_CB_HANDLED);
-		}
-
-		/* alphanumerical input */
-		if ((CLEAN(e->state) == 0 && e->keyval >= GDK_a &&
-		    e->keyval <= GDK_z) ||
-		    (CLEAN(e->state) == GDK_SHIFT_MASK &&
-		    e->keyval >= GDK_A && e->keyval <= GDK_Z) ||
-		    (CLEAN(e->state) == 0 && ((e->keyval >= GDK_0 &&
-		    e->keyval <= GDK_9) ||
-		    ((e->keyval >= GDK_KP_0 && e->keyval <= GDK_KP_9) &&
-		    (t->hint_mode != XT_HINT_NUMERICAL))))) {
-			snprintf(s, sizeof s, "%c", e->keyval);
-			strlcat(t->hint_buf, s, sizeof t->hint_buf);
-			DNPRINTF(XT_D_JS, "wv_keypress_after_cb: alphanumerical"
-			    " %s\n", t->hint_buf);
-anum:
-			snprintf(buf, sizeof buf, "vimprobable_cleanup()");
-			run_script(t, buf);
-
-			snprintf(buf, sizeof buf,
-			    "vimprobable_show_hints('%s')", t->hint_buf);
-			t->hint_mode = XT_HINT_ALPHANUM;
-			run_script(t, buf);
-
-			/* empty the counter buffer */
-			bzero(t->hint_num, sizeof t->hint_num);
-			return (XT_CB_HANDLED);
-		}
-
+		/* XXX make sure cmd entry is enabled */
 		return (XT_CB_HANDLED);
 	} else {
 		/* prefix input*/
@@ -8130,12 +8046,52 @@ wv_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 }
 
 gboolean
+hint_continue(struct tab *t)
+{
+	const gchar		*c = gtk_entry_get_text(GTK_ENTRY(t->cmd));
+	char			*s;
+	const gchar		*errstr = NULL;
+	gboolean		rv = TRUE;
+	long long		i;
+
+	if (!(c[0] == '.' || c[0] == ','))
+		goto done;
+	if (strlen(c) == 1) {
+		/* XXX should not happen */
+		rv = TRUE;
+		goto done;
+	}
+
+	if (isdigit(c[1])) {
+		/* numeric input */
+		i = strtonum(&c[1], 1, 4096, &errstr);
+		if (errstr) {
+			show_oops(t, "invalid numerical hint %s", &c[1]);
+			goto done;
+		}
+		s = g_strdup_printf("hints.updateHints(%lld);", i);
+		run_script(t, s);
+		g_free(s);
+	} else {
+		/* alphanumeric input */
+		s = g_strdup_printf("hints.createHints('%s', '%c');",
+		    &c[1], c[0] == '.' ? 'f' : 'F');
+		run_script(t, s);
+		g_free(s);
+	}
+
+	rv = TRUE;
+done:
+	return (rv);
+}
+
+gboolean
 search_continue(struct tab *t)
 {
 	const gchar		*c = gtk_entry_get_text(GTK_ENTRY(t->cmd));
 	gboolean		rv = FALSE;
 
-	if (c[0] == ':')
+	if (c[0] == ':' || c[0] == '.' || c[0] == ',')
 		goto done;
 	if (strlen(c) == 1) {
 		webkit_web_view_unmark_text_matches(t->wv);
@@ -8198,6 +8154,13 @@ cmd_keyrelease_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	DNPRINTF(XT_D_CMD, "cmd_keyrelease_cb: keyval 0x%x mask 0x%x t %p\n",
 	    e->keyval, e->state, t);
 
+	/* hinting */
+	if (!(e->keyval == GDK_Tab || e->keyval == GDK_ISO_Left_Tab)) {
+		if (hint_continue(t) == FALSE)
+			goto done;
+	}
+
+	/* search */
 	if (search_continue(t) == FALSE)
 		goto done;
 
@@ -8558,6 +8521,7 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 {
 	int			rv = XT_CB_HANDLED;
 	const gchar		*c = gtk_entry_get_text(w);
+	char			*s;
 
 	if (t == NULL) {
 		show_oops(NULL, "cmd_keypress_cb parameters");
@@ -8570,7 +8534,8 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	/* sanity */
 	if (c == NULL)
 		e->keyval = GDK_Escape;
-	else if (!(c[0] == ':' || c[0] == '/' || c[0] == '?'))
+	else if (!(c[0] == ':' || c[0] == '/' || c[0] == '?' ||
+	    c[0] == '.' || c[0] == ','))
 		e->keyval = GDK_Escape;
 
 	if (e->keyval != GDK_Tab && e->keyval != GDK_Shift_L &&
@@ -8581,11 +8546,14 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	case GDK_Tab:
 		if (c[0] == ':')
 			cmd_complete(t, (char *)&c[1], 1);
+		else if (c[0] == '.' || c[0] == ',')
+			run_script(t, "hints.focusNextHint();");
 		goto done;
 	case GDK_ISO_Left_Tab:
 		if (c[0] == ':')
 			cmd_complete(t, (char *)&c[1], -1);
-
+		else if (c[0] == '.' || c[0] == ',')
+			run_script(t, "hints.focusPreviousHint();");
 		goto done;
 	case GDK_Down:
 		if (c[0] != ':') {
@@ -8620,8 +8588,19 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 
 		goto done;
 	case GDK_BackSpace:
-		if (!(!strcmp(c, ":") || !strcmp(c, "/") || !strcmp(c, "?")))
+		if (!(!strcmp(c, ":") || !strcmp(c, "/") || !strcmp(c, "?") ||
+		    !strcmp(c, ".") || !strcmp(c, ","))) {
+			/* see if we are doing hinting and reset it */
+			if (c[0] == '.' || c[0] == ',') {
+				/* recreate hints */
+				s = g_strdup_printf("hints.createHints('', "
+				    "'%c');", c[0] == '.' ? 'f' : 'F');
+				run_script(t, s);
+				g_free(s);
+			}
 			break;
+		}
+
 		/* FALLTHROUGH */
 	case GDK_Escape:
 		hide_cmd(t);
@@ -8630,6 +8609,8 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		/* cancel search */
 		if (c != NULL && (c[0] == '/' || c[0] == '?'))
 			webkit_web_view_unmark_text_matches(t->wv);
+
+		/* no need to cancel hints */
 		goto done;
 	}
 
@@ -8670,6 +8651,7 @@ cmd_focusout_cb(GtkWidget *w, GdkEventFocus *e, struct tab *t)
 
 	hide_cmd(t);
 	hide_oops(t);
+	disable_hints(t);
 
 	if (show_url == 0 || t->focus_wv)
 		focus_webview(t);
@@ -8692,14 +8674,13 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 
 	DNPRINTF(XT_D_CMD, "cmd_activate_cb: tab %d %s\n", t->tab_id, c);
 
-	hide_cmd(t);
-
 	/* sanity */
 	if (c == NULL)
 		goto done;
-	else if (!(c[0] == ':' || c[0] == '/' || c[0] == '?'))
+	else if (!(c[0] == ':' || c[0] == '/' || c[0] == '?' ||
+	    c[0] == '.' || c[0] == ','))
 		goto done;
-	if (strlen(c) < 2)
+	if (strlen(c) < 1)
 		goto done;
 	s = (char *)&c[1];
 
@@ -8724,11 +8705,16 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 
 		history_add(&shl, search_file, s, &search_history_count);
 		goto done;
+	} else if (c[0] == '.' || c[0] == ',') {
+		run_script(t, "hints.fire();");
+		/* XXX history for link following? */
+		goto done;
 	}
 
 	history_add(&chl, command_file, s, &cmd_history_count);
 	cmd_execute(t, s);
 done:
+	hide_cmd(t);
 	return;
 }
 
