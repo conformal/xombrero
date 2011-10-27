@@ -245,6 +245,7 @@ struct tab {
 	GThread			*thread;
 #endif
 	/* hints */
+	int			script_init;
 	int			hints_on;
 	int			new_tab;
 
@@ -2410,6 +2411,12 @@ run_script(struct tab *t, char *s)
 
 	DNPRINTF(XT_D_JS, "run_script: tab %d %s\n",
 	    t->tab_id, s == (char *)JS_HINTING ? "JS_HINTING" : s);
+
+	/* a bit silly but it prevents some heartburn */
+	if (t->script_init == 0) {
+		t->script_init = 1;
+		run_script(t, JS_HINTING);
+	}
 
 	frame = webkit_web_view_get_main_frame(t->wv);
 	ctx = webkit_web_frame_get_global_context(frame);
