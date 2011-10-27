@@ -162,6 +162,18 @@ See the accompanying configuration file for examples.
 .Pp
 The various bindings are documented below.
 The relevant keybinding action is given afterwards, in parentheses.
+.Ss Command mode
+These commands are used to focus or unfocus input on the default input of a web
+page.
+.Pp
+.Bl -tag -width Ds -offset indent -compact
+.It Cm ESC
+Go to command mode; unfocus current entry on web page.
+.Pq Cm command_mode
+.It Cm i
+Go to insert mode; focus on default entry on web page.
+.Pq Cm insert_mode
+.El
 .Ss Search Commands
 These commands are used to search for text strings within a web page.
 .Pp
@@ -350,10 +362,10 @@ possibilities
 will follow the link.
 .Pp
 .Bl -tag -width Ds -offset indent -compact
-.It Cm f
+.It Cm f, '.'
 Highlight all links and prefix them with a number.
 .Pq Cm hinting
-.It Cm F
+.It Cm F, ','
 Highlight all links and prefix them with a number but open in a new tab.
 .Pq Cm hinting_newtab
 .El
@@ -370,7 +382,7 @@ This command toggles the page's style between the default CSS and a
 low-contrast color scheme with light grey text on a dark grey background.
 .Pp
 .Bl -tag -width Ds -offset indent -compact
-.It Cm i
+.It Cm s
 Toggle the current tab's style.
 .Pq Cm userstyle
 .El
