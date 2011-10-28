@@ -2617,24 +2617,11 @@ open_tabs(struct tab *t, struct karg *a)
 	if (a == NULL)
 		goto done;
 
+	ti = TAILQ_LAST(&tabs, tab_list);
+
 	snprintf(file, sizeof file, "%s/%s", sessions_dir, a->s);
 	if ((f = fopen(file, "r")) == NULL)
 		goto done;
-
-	ti = TAILQ_LAST(&tabs, tab_list);
-	/* close open tabs */
-	if (a->i == XT_SES_CLOSETABS && ti != NULL) {
-		for (;;) {
-			tt = TAILQ_FIRST(&tabs);
-			if (tt != ti) {
-				delete_tab(tt);
-				continue;
-			}
-			delete_tab(tt);
-			break;
-		}
-		recalc_tabs();
-	}
 
 	for (;;) {
 		if ((uri = fparseln(f, NULL, NULL, "\0\0\0", 0)) == NULL)
@@ -2655,6 +2642,22 @@ open_tabs(struct tab *t, struct karg *a)
 		free(uri);
 		uri = NULL;
 	}
+
+	/* close open tabs */
+	if (a->i == XT_SES_CLOSETABS && ti != NULL) {
+		for (;;) {
+			tt = TAILQ_FIRST(&tabs);
+			if (tt == NULL)
+				break;
+			if (tt != ti) {
+				delete_tab(tt);
+				continue;
+			}
+			delete_tab(tt);
+			break;
+		}
+	}
+
 	rv = 0;
 done:
 	if (f)
@@ -2697,6 +2700,8 @@ save_tabs(struct tab *t, struct karg *a)
 	FILE			*f;
 	int			num_tabs = 0, i;
 	struct tab		**stabs = NULL;
+
+	/* tab may be null here */
 
 	if (a == NULL)
 		return (1);
@@ -8691,6 +8696,7 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 	}
 
 	DNPRINTF(XT_D_CMD, "cmd_activate_cb: tab %d %s\n", t->tab_id, c);
+	hide_cmd(t);
 
 	/* sanity */
 	if (c == NULL)
@@ -8732,7 +8738,6 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 	history_add(&chl, command_file, s, &cmd_history_count);
 	cmd_execute(t, s);
 done:
-	hide_cmd(t);
 	return;
 }
 
@@ -9221,8 +9226,8 @@ delete_tab(struct tab *t)
 	 * no need to join thread here because it won't access t on completion
 	 */
 
-	buffercmd_abort(t);
 	TAILQ_REMOVE(&tabs, t, entry);
+	buffercmd_abort(t);
 
 	/* Halt all webkit activity. */
 	abort_favicon_download(t);
@@ -9230,6 +9235,10 @@ delete_tab(struct tab *t)
 
 	/* Save the tab, so we can undo the close. */
 	undo_close_tab_save(t);
+
+	/* just in case */
+	if (t->search_id)
+		g_source_remove(t->search_id);
 
 	if (browser_mode == XT_BM_KIOSK) {
 		gtk_widget_destroy(t->uri_entry);
@@ -9240,14 +9249,11 @@ delete_tab(struct tab *t)
 	gtk_widget_destroy(t->tab_elems.eventbox);
 	gtk_widget_destroy(t->vbox);
 
-	/* just in case */
-	if (t->search_id)
-		g_source_remove(t->search_id);
-
 	g_free(t->user_agent);
 	g_free(t->stylesheet);
 	g_free(t->tmp_uri);
 	g_free(t);
+	t = NULL;
 
 	if (TAILQ_EMPTY(&tabs)) {
 		if (browser_mode == XT_BM_KIOSK)
@@ -9259,7 +9265,7 @@ delete_tab(struct tab *t)
 	/* recreate session */
 	if (session_autosave) {
 		a.s = NULL;
-		save_tabs(t, &a);
+		save_tabs(NULL, &a);
 	}
 
 	recalc_tabs();
