@@ -541,6 +541,8 @@ struct karg {
 
 #define XT_BUFCMD_SZ		(8)
 
+#define XT_EJS_SHOW		(1<<0)
+
 /* mime types */
 struct mime_type {
 	char			*mt_type;
@@ -5649,6 +5651,79 @@ done:
 	return (XT_CB_PASSTHROUGH);
 }
 
+int
+script_cmd(struct tab *t, struct karg *args)
+{
+	JSGlobalContextRef	ctx;
+	WebKitWebFrame		*frame;
+	JSStringRef		str;
+	JSValueRef		val, exception;
+	char			*es;
+	struct stat		sb;
+	FILE			*f = NULL;
+	char			*buf = NULL;
+
+	if (t == NULL)
+		goto done;
+
+	if ((f = fopen(args->s, "r")) == NULL) {
+		show_oops(t, "Can't open script file: %s", args->s);
+		goto done;
+	}
+
+	if (fstat(fileno(f), &sb) == -1) {
+		show_oops(t, "Can't stat script file: %s", args->s);
+		goto done;
+	}
+
+	buf = g_malloc0(sb.st_size + 1);
+	if (fread(buf, 1, sb.st_size, f) != sb.st_size) {
+		show_oops(t, "Can't read script file: %s", args->s);
+		goto done;
+	}
+
+	/* this code needs to be redone */
+	frame = webkit_web_view_get_main_frame(t->wv);
+	ctx = webkit_web_frame_get_global_context(frame);
+
+	str = JSStringCreateWithUTF8CString(buf);
+	val = JSEvaluateScript(ctx, str, JSContextGetGlobalObject(ctx),
+	    NULL, 0, &exception);
+	JSStringRelease(str);
+
+	DNPRINTF(XT_D_JS, "run_script: val %p\n", val);
+	if (val == NULL) {
+		es = js_ref_to_string(ctx, exception);
+		if (es) {
+			show_oops(t, "script exception: %s", es);
+			g_free(es);
+		}
+		goto done;
+	} else {
+		es = js_ref_to_string(ctx, val);
+#if 0
+		/* return values */
+		if (!strncmp(es, XT_JS_DONE, XT_JS_DONE_LEN))
+			; /* do nothing */
+		if (!strncmp(es, XT_JS_INSERT, XT_JS_INSERT_LEN))
+			; /* do nothing */
+#endif
+		if (es) {
+			show_oops(t, "script complete return value: '%s'", es);
+			g_free(es);
+		} else
+			show_oops(t, "script complete: without a return value");
+	}
+
+done:
+	if (f)
+		fclose(f);
+	if (buf)
+		g_free(buf);
+
+	return (XT_CB_PASSTHROUGH);
+}
+
 /*
  * Make a hardcopy of the page
  */
@@ -6208,6 +6283,9 @@ struct cmd {
 	{ "open",		1,	session_cmd,		XT_OPEN,		XT_SESSARG },
 	{ "save",		1,	session_cmd,		XT_SAVE,		XT_USERARG },
 	{ "show",		1,	session_cmd,		XT_SHOW,		0 },
+
+	/* external javascript */
+	{ "script",		0,	script_cmd,		XT_EJS_SHOW,		XT_USERARG },
 };
 
 struct {
