@@ -2622,6 +2622,19 @@ open_tabs(struct tab *t, struct karg *a)
 		goto done;
 
 	ti = TAILQ_LAST(&tabs, tab_list);
+	/* close open tabs */
+	if (a->i == XT_SES_CLOSETABS && ti != NULL) {
+		for (;;) {
+			tt = TAILQ_FIRST(&tabs);
+			if (tt != ti) {
+				delete_tab(tt);
+				continue;
+			}
+			delete_tab(tt);
+			break;
+		}
+		recalc_tabs();
+	}
 
 	for (;;) {
 		if ((uri = fparseln(f, NULL, NULL, "\0\0\0", 0)) == NULL)
@@ -2642,21 +2655,6 @@ open_tabs(struct tab *t, struct karg *a)
 		free(uri);
 		uri = NULL;
 	}
-
-	/* close open tabs */
-	if (a->i == XT_SES_CLOSETABS && ti != NULL) {
-		for (;;) {
-			tt = TAILQ_FIRST(&tabs);
-			if (tt != ti) {
-				delete_tab(tt);
-				continue;
-			}
-			delete_tab(tt);
-			break;
-		}
-		recalc_tabs();
-	}
-
 	rv = 0;
 done:
 	if (f)
