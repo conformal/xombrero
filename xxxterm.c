@@ -2431,9 +2431,9 @@ run_script(struct tab *t, char *s)
 	DNPRINTF(XT_D_JS, "run_script: val %p\n", val);
 	if (val == NULL) {
 		es = js_ref_to_string(ctx, exception);
-		DNPRINTF(XT_D_JS, "run_script: exception %s\n", es);
 		if (es) {
-			show_oops(t, "script exception: %s", es);
+			/* show_oops(t, "script exception: %s", es); */
+			DNPRINTF(XT_D_JS, "run_script: exception %s\n", es);
 			g_free(es);
 		}
 		return (1);
