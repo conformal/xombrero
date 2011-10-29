@@ -6259,10 +6259,10 @@ struct cmd {
 	{ "tabprevious",	0,	movetab,		XT_TAB_PREV,		XT_PREFIX | XT_INTARG},
 	{ "tabrewind",		0,	movetab,		XT_TAB_FIRST,		0 },
 	{ "tabshow",		0,	tabaction,		XT_TAB_SHOW,		0 },
+	{ "tabs",		0,	buffers,		0,			0 },
 	{ "tabundoclose",	0,	tabaction,		XT_TAB_UNDO_CLOSE,	0 },
 	{ "buffers",		0,	buffers,		0,			0 },
 	{ "ls",			0,	buffers,		0,			0 },
-	{ "tabs",		0,	buffers,		0,			0 },
 	{ "encoding",		0,	set_encoding,		0,			XT_USERARG },
 
 	/* command aliases (handy when -S flag is used) */

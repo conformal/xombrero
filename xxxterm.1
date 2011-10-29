@@ -312,22 +312,31 @@ Open new tab with the clicked link
 .It Cm C-t
 Create new tab with focus in URL entry
 .Pq Cm tabnew
+.It Cm C-T
+Create new tab with focus in URL entry as the last tab in the browser
+.Pq Cm 999tabnew
 .It Cm C-w
 Destroy current tab
 .Pq Cm tabclose
 .It Cm U
 Undo close tab
 .Pq Cm tabundoclose
-.It Cm C-Left
+.It Cm C-Left, C-PageUp
 Go to the previous tab
 .Pq Cm tabprevious
-.It Cm C-Right
+.It Cm C-Right, C-PageDown
 Go to the next tab
 .Pq Cm tabnext
 .It Cm C-[1..9]
 Jump to page
 .Ar N
 .Pq Cm tabnext [1..9]
+.It Cm C-<
+Jump to first page
+.Pq Cm tabfirst
+.It Cm C->
+Jump to last page
+.Pq Cm tablast
 .It Cm C-minus
 Zoom out by 4%
 .Pq Cm focusout
@@ -579,18 +588,18 @@ Show blocked cookie statistics.
 These statistics vary based on settings and are not persistent.
 .It Cm statustoggle , statust
 Toggle status bar.
-.It Cm tabclose , tabc
+.It Cm tabclose
 Close current tab.
 .It Cm tabhide
 Hide tabs.
-.It Cm tabnew , tabedit , tabe URL
+.It Cm tabnew , tabedit [URL]
 Create new tab and optionally open provided URL.
-.It Cm tabnext , tabn
+.It Cm tabnext
 Go to the next tab.
-.It Cm tabprevious , tabp
+.It Cm tabprevious
 Go to the previous tab.
 .It Cm tabshow
-Show tabs.
+Show tabs in GUI.
 .It Cm toplevel , toplevel toggle
 Toggle the top level domain name cookie and JS session whitelist.
 This is to enable/disable short lived full site functionality without
