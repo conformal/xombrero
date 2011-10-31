@@ -8911,6 +8911,8 @@ setup_webkit(struct tab *t)
 	    "enable_spell_checking", enable_spell_checking, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
 	    "spell_checking_languages", spell_check_languages, (char *)NULL);
+	g_object_set(G_OBJECT(t->settings),
+	    "enable-developer-extras", TRUE, (char *)NULL);
 	g_object_set(G_OBJECT(t->wv),
 	    "full-content-zoom", TRUE, (char *)NULL);
 
@@ -8957,11 +8959,40 @@ update_statusbar_position(GtkAdjustment* adjustment, gpointer data)
 }
 
 GtkWidget *
+create_window(const gchar *name)
+{
+	GtkWidget		*w;
+
+	w = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	gtk_window_set_default_size(GTK_WINDOW(w), window_width, window_height);
+	gtk_widget_set_name(w, name);
+	gtk_window_set_wmclass(GTK_WINDOW(w), name, "XXXTerm");
+
+	return (w);
+}
+
+WebKitWebView*
+inspector_inspect_web_view_cb(WebKitWebInspector inspector, WebKitWebView* wv,
+    struct tab *t;)
+{
+	GtkWidget	*inspector_window;
+	GtkWidget	*inspector_view;
+
+	inspector_window = create_window("inspector");
+	inspector_view = webkit_web_view_new();
+	gtk_container_add(GTK_CONTAINER(inspector_window), inspector_view);
+	gtk_widget_show_all(inspector_window);
+
+	return WEBKIT_WEB_VIEW(inspector_view);
+}
+
+GtkWidget *
 create_browser(struct tab *t)
 {
 	GtkWidget		*w;
 	gchar			*strval;
 	GtkAdjustment		*adjustment;
+	WebKitWebInspector	*inspector;
 
 	if (t == NULL) {
 		show_oops(NULL, "create_browser invalid parameters");
@@ -9002,20 +9033,9 @@ create_browser(struct tab *t)
 
 	setup_webkit(t);
 
-	return (w);
-}
-
-GtkWidget *
-create_window(void)
-{
-	GtkWidget		*w;
-
-	w = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_window_set_default_size(GTK_WINDOW(w), window_width, window_height);
-	gtk_widget_set_name(w, "xxxterm");
-	gtk_window_set_wmclass(GTK_WINDOW(w), "xxxterm", "XXXTerm");
-	g_signal_connect(G_OBJECT(w), "delete_event",
-	    G_CALLBACK (gtk_main_quit), NULL);
+	inspector = webkit_web_view_get_inspector(WEBKIT_WEB_VIEW(t->wv));
+	g_signal_connect(G_OBJECT(inspector), "inspect-web-view",
+	    G_CALLBACK(inspector_inspect_web_view_cb), t);
 
 	return (w);
 }
@@ -10005,8 +10025,10 @@ create_canvas(void)
 	g_signal_connect(G_OBJECT(abtn), "button_press_event",
 	    G_CALLBACK(arrow_cb), NULL);
 
-	main_window = create_window();
+	main_window = create_window("xxxterm");
 	gtk_container_add(GTK_CONTAINER(main_window), vbox);
+	g_signal_connect(G_OBJECT(main_window), "delete_event",
+	    G_CALLBACK(gtk_main_quit), NULL);
 
 	/* icons */
 	for (i = 0; i < LENGTH(icons); i++) {
