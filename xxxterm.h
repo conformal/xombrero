@@ -142,6 +142,70 @@ extern u_int32_t	swm_debug;
 
 #define XT_NOMARKS		(('z' - 'a' + 1) * 2 + 10)
 
+#define XT_BM_NORMAL		(0)
+#define XT_BM_WHITELIST		(1)
+#define XT_BM_KIOSK		(2)
+
+#define XT_SHOW			(1<<7)
+#define XT_DELETE		(1<<8)
+#define XT_SAVE			(1<<9)
+#define XT_OPEN			(1<<10)
+
+#define XT_WL_TOGGLE		(1<<0)
+#define XT_WL_ENABLE		(1<<1)
+#define XT_WL_DISABLE		(1<<2)
+#define XT_WL_FQDN		(1<<3) /* default */
+#define XT_WL_TOPLEVEL		(1<<4)
+#define XT_WL_PERSISTENT	(1<<5)
+#define XT_WL_SESSION		(1<<6)
+#define XT_WL_RELOAD		(1<<7)
+
+#define XT_URI_ABOUT		("about:")
+#define XT_URI_ABOUT_LEN	(strlen(XT_URI_ABOUT))
+#define XT_URI_ABOUT_ABOUT	("about")
+#define XT_URI_ABOUT_BLANK	("blank")
+#define XT_URI_ABOUT_CERTS	("certs")
+#define XT_URI_ABOUT_COOKIEWL	("cookiewl")
+#define XT_URI_ABOUT_COOKIEJAR	("cookiejar")
+#define XT_URI_ABOUT_DOWNLOADS	("downloads")
+#define XT_URI_ABOUT_FAVORITES	("favorites")
+#define XT_URI_ABOUT_HELP	("help")
+#define XT_URI_ABOUT_HISTORY	("history")
+#define XT_URI_ABOUT_JSWL	("jswl")
+#define XT_URI_ABOUT_PLUGINWL	("plwl")
+#define XT_URI_ABOUT_SET	("set")
+#define XT_URI_ABOUT_STATS	("stats")
+#define XT_URI_ABOUT_MARCO	("marco")
+#define XT_URI_ABOUT_STARTPAGE	("startpage")
+
+
+extern int		enable_plugin_whitelist;
+extern int		enable_cookie_whitelist;
+extern int		enable_js_whitelist;
+extern int		browser_mode;
+extern int		allow_volatile_cookies;
+extern int		cookie_policy;
+extern int		cookies_enabled;
+extern int		enable_plugins;
+extern int		read_only_cookies;
+extern int		save_rejected_cookies;
+extern int		session_timeout;
+extern int		enable_scripts;
+extern int		enable_localstorage;
+extern int		show_tabs;
+extern int		tabless;
+extern char		default_script[PATH_MAX];
+extern struct passwd	*pwd;
+extern char		runtime_settings[PATH_MAX];
+extern char		work_dir[PATH_MAX];
+extern SoupCookieJar	*s_cookiejar;
+extern SoupCookieJar	*p_cookiejar;
+
+struct domain_list;
+extern struct domain_list	c_wl;
+extern struct domain_list	js_wl;
+extern struct domain_list	pl_wl;
+
 struct tab {
 	TAILQ_ENTRY(tab)	entry;
 	GtkWidget		*vbox;
@@ -225,7 +289,68 @@ struct tab {
 };
 TAILQ_HEAD(tab_list, tab);
 
+struct domain {
+	RB_ENTRY(domain)	entry;
+	gchar			*d;
+	int			handy; /* app use */
+};
+
+struct karg {
+	int		i;
+	char		*s;
+	int		precount;
+};
+
+
 GtkWidget		*create_window(const gchar *);
 
 WebKitWebView*		inspector_inspect_web_view_cb(WebKitWebInspector *,
 			    WebKitWebView*, struct tab *);
+struct settings;
+struct key_binding;
+int		set_browser_mode(struct settings *, char *);
+int		set_cookie_policy(struct settings *, char *);
+int		set_download_dir(struct settings *, char *);
+int		set_default_script(struct settings *, char *);
+int		set_runtime_dir(struct settings *, char *);
+int		set_tab_style(struct settings *, char *);
+int		set_work_dir(struct settings *, char *);
+int		add_alias(struct settings *, char *);
+int		add_mime_type(struct settings *, char *);
+int		add_cookie_wl(struct settings *, char *);
+int		add_js_wl(struct settings *, char *);
+int		add_pl_wl(struct settings *, char *);
+int		add_kb(struct settings *, char *);
+void		button_set_stockid(GtkWidget *, char *);
+GtkWidget *	create_button(char *, char *, int);
+
+char		*get_browser_mode(struct settings *);
+char		*get_cookie_policy(struct settings *);
+char		*get_download_dir(struct settings *);
+char		*get_default_script(struct settings *);
+char		*get_runtime_dir(struct settings *);
+char		*get_tab_style(struct settings *);
+char		*get_work_dir(struct settings *);
+void		startpage_add(const char *, ...);
+
+struct domain	*wl_find(const gchar *, struct domain_list *);
+void		wl_add(char *, struct domain_list *, int);
+int		toggle_pl(struct tab *, struct karg *);
+int		js_cmd(struct tab *, struct karg *);
+int		cookie_cmd(struct tab *, struct karg *);
+int		pl_cmd(struct tab *, struct karg *);
+int		toplevel_cmd(struct tab *, struct karg *);
+struct domain	*wl_find_uri(const gchar *, struct domain_list *);
+void		js_toggle_cb(GtkWidget *, struct tab *);
+void		show_oops(struct tab *, const char *, ...);
+const gchar	*get_uri(struct tab *);
+gchar		*find_domain(const gchar *, int);
+gchar		*get_html_page(gchar *title, gchar *, gchar *, bool);
+void		load_webkit_string(struct tab *, const char *, gchar *);
+int		settings_add(char *, char *);
+void		wl_init(void);
+
+/* hooked functions */
+void		(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
+void		(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
+		    SoupCookie *);
