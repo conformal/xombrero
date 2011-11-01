@@ -126,6 +126,7 @@ THE SOFTWARE.
 #define XT_D_KEYBINDING		0x1000
 #define XT_D_CLIP		0x2000
 #define XT_D_BUFFERCMD		0x4000
+#define XT_D_INSPECTOR		0x8000
 extern u_int32_t	swm_debug;
 #else
 #define DPRINTF(x...)
@@ -304,6 +305,7 @@ struct karg {
 
 GtkWidget		*create_window(const gchar *);
 
+/* inspector */
 WebKitWebView*		inspector_inspect_web_view_cb(WebKitWebInspector *,
 			    WebKitWebView*, struct tab *);
 struct settings;
@@ -354,3 +356,4 @@ void		wl_init(void);
 void		(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 void		(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
 		    SoupCookie *);
+void			setup_inspector(struct tab *);
