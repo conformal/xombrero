@@ -28,7 +28,6 @@ void		(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 void		(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
 		    SoupCookie *);
 
-/*#define XT_DEBUG*/
 #ifdef XT_DEBUG
 u_int32_t		swm_debug = 0
 			    | XT_D_MOVE
@@ -46,6 +45,7 @@ u_int32_t		swm_debug = 0
 			    | XT_D_KEYBINDING
 			    | XT_D_CLIP
 			    | XT_D_BUFFERCMD
+			    | XT_D_INSPECTOR
 			    ;
 #endif
 
@@ -8771,7 +8771,6 @@ create_browser(struct tab *t)
 	GtkWidget		*w;
 	gchar			*strval;
 	GtkAdjustment		*adjustment;
-	WebKitWebInspector	*inspector;
 
 	if (t == NULL) {
 		show_oops(NULL, "create_browser invalid parameters");
@@ -8811,10 +8810,7 @@ create_browser(struct tab *t)
 	    G_CALLBACK(update_statusbar_position), NULL);
 
 	setup_webkit(t);
-
-	inspector = webkit_web_view_get_inspector(WEBKIT_WEB_VIEW(t->wv));
-	g_signal_connect(G_OBJECT(inspector), "inspect-web-view",
-	    G_CALLBACK(inspector_inspect_web_view_cb), t);
+	setup_inspector(t);
 
 	return (w);
 }
