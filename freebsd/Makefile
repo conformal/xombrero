@@ -1,4 +1,4 @@
-LIBS= gtk+-2.0 webkit-1.0 libsoup-2.4 gnutls -gthread-2.0
+LIBS= gtk+-2.0 webkit-1.0 libsoup-2.4 gnutls gthread-2.0
 
 LDADD= -lutil -lgcrypt
 GTK_CFLAGS!= pkg-config --cflags $(LIBS)
