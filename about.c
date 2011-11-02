@@ -402,6 +402,75 @@ cookie_show_wl(struct tab *t, struct karg *args)
 	return (0);
 }
 
+int
+js_show_wl(struct tab *t, struct karg *args)
+{
+	args->i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION;
+	wl_show(t, args, "JavaScript White List", &js_wl);
+
+	return (0);
+}
+
+int
+cookie_cmd(struct tab *t, struct karg *args)
+{
+	if (args->i & XT_SHOW)
+		wl_show(t, args, "Cookie White List", &c_wl);
+	else if (args->i & XT_WL_TOGGLE) {
+		args->i |= XT_WL_RELOAD;
+		toggle_cwl(t, args);
+	} else if (args->i & XT_SAVE) {
+		args->i |= XT_WL_RELOAD;
+		wl_save(t, args, XT_WL_COOKIE);
+	} else if (args->i & XT_DELETE)
+		show_oops(t, "'cookie delete' currently unimplemented");
+
+	return (0);
+}
+
+int
+js_cmd(struct tab *t, struct karg *args)
+{
+	if (args->i & XT_SHOW)
+		wl_show(t, args, "JavaScript White List", &js_wl);
+	else if (args->i & XT_SAVE) {
+		args->i |= XT_WL_RELOAD;
+		wl_save(t, args, XT_WL_JAVASCRIPT);
+	} else if (args->i & XT_WL_TOGGLE) {
+		args->i |= XT_WL_RELOAD;
+		toggle_js(t, args);
+	} else if (args->i & XT_DELETE)
+		show_oops(t, "'js delete' currently unimplemented");
+
+	return (0);
+}
+
+int
+pl_show_wl(struct tab *t, struct karg *args)
+{
+	args->i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION;
+	wl_show(t, args, "Plugin White List", &pl_wl);
+
+	return (0);
+}
+
+int
+pl_cmd(struct tab *t, struct karg *args)
+{
+	if (args->i & XT_SHOW)
+		wl_show(t, args, "Plugin White List", &pl_wl);
+	else if (args->i & XT_SAVE) {
+		args->i |= XT_WL_RELOAD;
+		wl_save(t, args, XT_WL_PLUGIN);
+	} else if (args->i & XT_WL_TOGGLE) {
+		args->i |= XT_WL_RELOAD;
+		toggle_pl(t, args);
+	} else if (args->i & XT_DELETE)
+		show_oops(t, "'plugin delete' currently unimplemented");
+
+	return (0);
+}
+
 /*
  * cancel, remove, etc. downloads
  */
@@ -1320,5 +1389,52 @@ xtp_page_dl(struct tab *t, struct karg *args)
 	g_free(page);
 
 	return (0);
+}
+
+int
+startpage(struct tab *t, struct karg *args)
+{
+	char			*page, *body, *b;
+	struct sp		*s;
+
+	if (t == NULL)
+		show_oops(NULL, "startpage invalid parameters");
+
+	body = g_strdup_printf("<b>Startup Exception(s):</b><p>");
+
+	TAILQ_FOREACH(s, &spl, entry) {
+		b = body;
+		body = g_strdup_printf("%s%s<br>", body, s->line);
+		g_free(b);
+	}
+
+	page = get_html_page("Startup Exception", body, "", 0);
+	g_free(body);
+
+	load_webkit_string(t, page, XT_URI_ABOUT_STARTPAGE);
+	g_free(page);
+
+	return (0);
+}
+
+void
+startpage_add(const char *fmt, ...)
+{
+	va_list			ap;
+	char			*msg;
+	struct sp		*s;
+
+	if (fmt == NULL)
+		return;
+
+	va_start(ap, fmt);
+	if (vasprintf(&msg, fmt, ap) == -1)
+		errx(1, "startpage_add failed");
+	va_end(ap);
+
+	s = g_malloc0(sizeof *s);
+	s->line = msg;
+
+	TAILQ_INSERT_TAIL(&spl, s, entry);
 }
 

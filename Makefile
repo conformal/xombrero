@@ -4,7 +4,7 @@ BINDIR=${PREFIX}/bin
 PROG=xxxterm
 MAN=xxxterm.1
 
-SRCS= inspector.c marco.c about.c xxxterm.c
+SRCS= inspector.c marco.c about.c whitelist.c settings.c xxxterm.c
 CFLAGS+= -O2
 DEBUG= -ggdb3
 LDADD= -lutil -lgcrypt

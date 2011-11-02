@@ -268,6 +268,7 @@ const gchar		*get_uri(struct tab *);
 const gchar		*get_title(struct tab *, bool);
 
 void			load_webkit_string(struct tab *, const char *, gchar *);
+void			button_set_stockid(GtkWidget *, char *);
 
 /* cookies */
 int			remove_cookie(int);
@@ -307,6 +308,12 @@ struct about_type {
 	int		(*func)(struct tab *, struct karg *);
 };
 
+struct sp {
+	char			*line;
+	TAILQ_ENTRY(sp)		entry;
+};
+TAILQ_HEAD(sp_list, sp);
+
 int			blank(struct tab *, struct karg *);
 int			help(struct tab *, struct karg *);
 int			about(struct tab *, struct karg *);
@@ -326,6 +333,10 @@ void			update_history_tabs(struct tab *);
 void			update_download_tabs(struct tab *);
 void			xtp_generate_keys(void);
 size_t			about_list_size(void);
+int			cookie_cmd(struct tab *, struct karg *);
+int			js_cmd(struct tab *, struct karg *);
+int			pl_cmd(struct tab *, struct karg *);
+void			startpage_add(const char *, ...);
 
 /*
  * xtp tab meanings
@@ -352,6 +363,11 @@ size_t			about_list_size(void);
 #define XT_SAVE			(1<<10)
 #define XT_OPEN			(1<<11)
 
+#define XT_WL_INVALID		(0)
+#define XT_WL_JAVASCRIPT	(1)
+#define XT_WL_COOKIE		(2)
+#define XT_WL_PLUGIN		(3)
+
 struct domain {
 	RB_ENTRY(domain)	entry;
 	gchar			*d;
@@ -363,21 +379,152 @@ RB_PROTOTYPE(domain_list, domain, entry, domain_rb_cmp);
 int			wl_show(struct tab *, struct karg *, char *,
 			    struct domain_list *);
 
+/* uri aliases */
+struct alias {
+	char			*a_name;
+	char			*a_uri;
+	TAILQ_ENTRY(alias)	 entry;
+};
+TAILQ_HEAD(alias_list, alias);
+
+/* mime types */
+struct mime_type {
+	char			*mt_type;
+	char			*mt_action;
+	int			mt_default;
+	int			mt_download;
+	TAILQ_ENTRY(mime_type)	entry;
+};
+TAILQ_HEAD(mime_type_list, mime_type);
+
+struct domain *	wl_find(const gchar *, struct domain_list *);
+int		wl_save(struct tab *, struct karg *, int);
+int		toggle_cwl(struct tab *, struct karg *);
+int		toggle_js(struct tab *, struct karg *);
+int		toggle_pl(struct tab *, struct karg *);
+
 /* settings */
-extern char		*encoding;
-extern char		*resource_dir;
-extern int		save_rejected_cookies;
-extern int		refresh_interval;
-extern char		*ssl_ca_file;
+#define XT_BM_NORMAL		(0)
+#define XT_BM_WHITELIST		(1)
+#define XT_BM_KIOSK		(2)
+
+#define XT_TABS_NORMAL		(0)
+#define XT_TABS_COMPACT		(1)
+
+#define CTRL			GDK_CONTROL_MASK
+#define MOD1			GDK_MOD1_MASK
+#define SHFT			GDK_SHIFT_MASK
+
+struct key_binding {
+	char				*cmd;
+	guint				mask;
+	guint				use_in_entry;
+	guint				key;
+	TAILQ_ENTRY(key_binding)	entry;	/* in bss so no need to init */
+};
+TAILQ_HEAD(keybinding_list, key_binding);
+
+struct settings {
+	char		*name;
+	int		type;
+#define XT_S_INVALID	(0)
+#define XT_S_INT	(1)
+#define XT_S_STR	(2)
+#define XT_S_FLOAT	(3)
+	uint32_t	flags;
+#define XT_SF_RESTART	(1<<0)
+#define XT_SF_RUNTIME	(1<<1)
+	int		*ival;
+	char		**sval;
+	struct special	*s;
+	gfloat		*fval;
+	int		(*activate)(char *);
+};
+
+int		set(struct tab *, struct karg *);
+size_t		get_settings_size(void);
+int		settings_add(char *, char *);
+void		setup_proxy(char *);
+int		set_browser_mode(struct settings *, char *);
+int		set_cookie_policy(struct settings *, char *);
+char		*get_browser_mode(struct settings *);
+char		*get_cookie_policy(struct settings *);
+void		init_keybindings(void);
+void		config_parse(char *, int);
+char		*get_setting_name(int);
+
+extern int	tabless;
+extern int	enable_socket;
+extern int	single_instance;
+extern int	fancy_bar;
+extern int	browser_mode;
+extern int	enable_localstorage;
+extern char	*statusbar_elems;
+
+extern int	show_tabs;
+extern int	tab_style;
+extern int	show_url;
+extern int	show_statusbar;
+extern int	ctrl_click_focus;
+extern int	cookies_enabled;
+extern int	read_only_cookies;
+extern int	enable_scripts;
+extern int	enable_plugins;
+extern gfloat	default_zoom_level;
+extern char	default_script[PATH_MAX];
+extern int	window_height;
+extern int	window_width;
+extern int	icon_size;
+extern int	refresh_interval;
+extern int	enable_plugin_whitelist;
+extern int	enable_cookie_whitelist;
+extern int	enable_js_whitelist;
+extern int	session_timeout;
+extern int	cookie_policy;
+extern char	*ssl_ca_file;
+extern char	*resource_dir;
+extern gboolean	ssl_strict_certs;
+extern int	append_next;
+extern char	*home;
+extern char	*search_string;
+extern char	*http_proxy;
+extern char	download_dir[PATH_MAX];
+extern char	runtime_settings[PATH_MAX];
+extern int	allow_volatile_cookies;
+extern int	save_global_history;
+extern char	*user_agent;
+extern int	save_rejected_cookies;
+extern int	session_autosave;
+extern int	guess_search;
+extern int	dns_prefetch;
+extern gint	max_connections;
+extern gint	max_host_connections;
+extern gint	enable_spell_checking;
+extern char	*spell_check_languages;
+extern int	xterm_workaround;
+extern char	*url_regex;
+extern int	history_autosave;
+extern char	search_file[PATH_MAX];
+extern char	command_file[PATH_MAX];
+extern char	*encoding;
+extern int	autofocus_onload;
+extern char	*cmd_font_name;
+extern char	*oops_font_name;
+extern char	*statusbar_font_name;
+extern char	*tabbar_font_name;
 
 /* globals */
 extern char		*version;
 extern char		*icons[];
 extern char		rc_fname[PATH_MAX];
 extern char		work_dir[PATH_MAX];
+extern struct passwd	*pwd;
 long long unsigned int	blocked_cookies;
 extern SoupCookieJar	*s_cookiejar;
 extern SoupCookieJar	*p_cookiejar;
+extern SoupSession	*session;
+
+extern void	(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 
 extern struct history_list	hl;
 extern struct download_list	downloads;
@@ -386,3 +533,12 @@ extern struct about_type	about_list[];
 extern struct domain_list	c_wl;
 extern struct domain_list	js_wl;
 extern struct domain_list	pl_wl;
+extern struct alias_list	aliases;
+extern struct mime_type_list	mtl;
+extern struct keybinding_list	kbl;
+extern struct sp_list		spl;
+
+extern PangoFontDescription	*cmd_font;
+extern PangoFontDescription	*oops_font;
+extern PangoFontDescription	*statusbar_font;
+extern PangoFontDescription	*tabbar_font;
