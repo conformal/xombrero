@@ -205,6 +205,54 @@ done:
 	return (0);
 }
 
+int
+wl_show(struct tab *t, struct karg *args, char *title, struct domain_list *wl)
+{
+	struct domain		*d;
+	char			*tmp, *body;
+
+	body = g_strdup("");
+
+	/* p list */
+	if (args->i & XT_WL_PERSISTENT) {
+		tmp = body;
+		body = g_strdup_printf("%s<h2>Persistent</h2>", body);
+		g_free(tmp);
+		RB_FOREACH(d, domain_list, wl) {
+			if (d->handy == 0)
+				continue;
+			tmp = body;
+			body = g_strdup_printf("%s%s<br/>", body, d->d);
+			g_free(tmp);
+		}
+	}
+
+	/* s list */
+	if (args->i & XT_WL_SESSION) {
+		tmp = body;
+		body = g_strdup_printf("%s<h2>Session</h2>", body);
+		g_free(tmp);
+		RB_FOREACH(d, domain_list, wl) {
+			if (d->handy == 1)
+				continue;
+			tmp = body;
+			body = g_strdup_printf("%s%s<br/>", body, d->d);
+			g_free(tmp);
+		}
+	}
+
+	tmp = get_html_page(title, body, "", 0);
+	g_free(body);
+	if (wl == &js_wl)
+		load_webkit_string(t, tmp, XT_URI_ABOUT_JSWL);
+	else if (wl == &c_wl)
+		load_webkit_string(t, tmp, XT_URI_ABOUT_COOKIEWL);
+	else
+		load_webkit_string(t, tmp, XT_URI_ABOUT_PLUGINWL);
+	g_free(tmp);
+	return (0);
+}
+
 void
 wl_add(char *str, struct domain_list *wl, int handy)
 {
