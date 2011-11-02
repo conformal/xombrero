@@ -237,16 +237,115 @@ struct karg {
 	int		precount;
 };
 
+struct download {
+	RB_ENTRY(download)	entry;
+	int			id;
+	WebKitDownload		*download;
+	struct tab		*tab;
+};
+RB_HEAD(download_list, download);
+RB_PROTOTYPE(download_list, download, entry, download_rb_cmp);
+
+struct history {
+	RB_ENTRY(history)	entry;
+	const gchar		*uri;
+	const gchar		*title;
+};
+RB_HEAD(history_list, history);
+RB_PROTOTYPE(history_list, history, entry, history_rb_cmp);
+
 /* utility */
+#define XT_NAME			("XXXTerm")
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
+#define XT_FAVS_FILE		("favorites")
+
+void			xt_icon_from_file(struct tab *, char *);
 GtkWidget		*create_window(const gchar *);
+void			show_oops(struct tab *, const char *, ...);
+gchar			*get_html_page(gchar *, gchar *, gchar *, bool);
+void			load_webkit_string(struct tab *, const char *, gchar *);
+
+/* cookies */
+int			remove_cookie(int);
 
 /* inspector */
 #define XT_INS_SHOW		(1<<0)
 #define XT_INS_HIDE		(1<<1)
 #define XT_INS_CLOSE		(1<<2)
+
 WebKitWebView*		inspector_inspect_web_view_cb(WebKitWebInspector *,
 			    WebKitWebView*, struct tab *);
 void			setup_inspector(struct tab *);
 int			inspector_cmd(struct tab *, struct karg *);
+
+/* about */
+#define XT_XTP_STR		"xxxt://"
+#define XT_URI_ABOUT		("about:")
+#define XT_URI_ABOUT_LEN	(strlen(XT_URI_ABOUT))
+#define XT_URI_ABOUT_ABOUT	("about")
+#define XT_URI_ABOUT_BLANK	("blank")
+#define XT_URI_ABOUT_CERTS	("certs")
+#define XT_URI_ABOUT_COOKIEWL	("cookiewl")
+#define XT_URI_ABOUT_COOKIEJAR	("cookiejar")
+#define XT_URI_ABOUT_DOWNLOADS	("downloads")
+#define XT_URI_ABOUT_FAVORITES	("favorites")
+#define XT_URI_ABOUT_HELP	("help")
+#define XT_URI_ABOUT_HISTORY	("history")
+#define XT_URI_ABOUT_JSWL	("jswl")
+#define XT_URI_ABOUT_PLUGINWL	("plwl")
+#define XT_URI_ABOUT_SET	("set")
+#define XT_URI_ABOUT_STATS	("stats")
+#define XT_URI_ABOUT_MARCO	("marco")
+#define XT_URI_ABOUT_STARTPAGE	("startpage")
+
+struct about_type {
+	char		*name;
+	int		(*func)(struct tab *, struct karg *);
+};
+
+int			blank(struct tab *, struct karg *);
+int			help(struct tab *, struct karg *);
+int			about(struct tab *, struct karg *);
+int			stats(struct tab *, struct karg *);
+int			xtp_page_cl(struct tab *, struct karg *);
+int			xtp_page_dl(struct tab *, struct karg *);
+int			xtp_page_fl(struct tab *, struct karg *);
+int			xtp_page_hl(struct tab *, struct karg *);
+int			parse_xtp_url(struct tab *, const char *);
+void			update_favorite_tabs(struct tab *);
+void			update_history_tabs(struct tab *);
+void			update_download_tabs(struct tab *);
+void			xtp_generate_keys(void);
+size_t			about_list_size(void);
+
+/*
+ * xtp tab meanings
+ * identifies which tabs have xtp pages in (corresponding to about_list indices)
+ */
+#define XT_XTP_TAB_MEANING_NORMAL	(-1) /* normal url */
+#define XT_XTP_TAB_MEANING_BL		(1)  /* about:blank in this tab */
+#define XT_XTP_TAB_MEANING_CL		(4)  /* cookie manager in this tab */
+#define XT_XTP_TAB_MEANING_DL		(5)  /* download manager in this tab */
+#define XT_XTP_TAB_MEANING_FL		(6)  /* favorite manager in this tab */
+#define XT_XTP_TAB_MEANING_HL		(8)  /* history manager in this tab */
+
+/* settings */
+extern char		*encoding;
+extern char		*resource_dir;
+extern int		save_rejected_cookies;
+extern int		refresh_interval;
+
+/* globals */
+extern char		*version;
+extern char		*icons[];
+extern char		rc_fname[PATH_MAX];
+extern char		work_dir[PATH_MAX];
+long long unsigned int	blocked_cookies;
+extern SoupCookieJar	*s_cookiejar;
+extern SoupCookieJar	*p_cookiejar;
+
+extern struct history_list	hl;
+extern struct download_list	downloads;
+extern struct tab_list		tabs;
+extern struct about_type	about_list[];

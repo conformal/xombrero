@@ -15,11 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdlib.h>
-#include <string.h>
-#if defined(__linux__)
-#include <bsd/stdlib.h>
-#endif
+#include "xxxterm.h"
 
 static const char *message[] = {
 	"I fully support your right to put restrictions on how I can modify"
@@ -54,3 +50,22 @@ marco_message(int *len)
 	return str;
 }
 
+int
+marco(struct tab *t, struct karg *args)
+{
+	char			*page, line[64 * 1024];
+	int			len;
+
+	if (t == NULL)
+		show_oops(NULL, "marco invalid parameters");
+
+	line[0] = '\0';
+	snprintf(line, sizeof line, "%s", marco_message(&len));
+
+	page = get_html_page("Marco Sez...", line, "", 0);
+
+	load_webkit_string(t, page, XT_URI_ABOUT_MARCO);
+	g_free(page);
+
+	return (0);
+}
