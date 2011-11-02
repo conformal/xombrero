@@ -213,8 +213,6 @@ void		set_current_tab(int page_num);
 gboolean	update_statusbar_position(GtkAdjustment*, gpointer);
 void		marks_clear(struct tab *t);
 
-int		set_http_proxy(char *);
-
 /* globals */
 extern char		*__progname;
 char			**start_argv;
