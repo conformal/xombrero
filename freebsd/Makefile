@@ -23,9 +23,11 @@ xxxterm.o: ../xxxterm.o
 
 marco.o: ../marco.o
 
+inspector.o: ../inspector.o
+
 ../xxxterm.o: ../javascript.h
 
-xxxterm: xxxterm.o freebsd.o marco.o
+xxxterm: xxxterm.o freebsd.o marco.o inspector.o
 	$(CC) $(LDFLAGS) -o $@ *.o $+ $(LDADD)
 
 install: all
