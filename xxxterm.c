@@ -67,13 +67,6 @@ struct session {
 };
 TAILQ_HEAD(session_list, session);
 
-struct domain {
-	RB_ENTRY(domain)	entry;
-	gchar			*d;
-	int			handy; /* app use */
-};
-RB_HEAD(domain_list, domain);
-
 struct undo {
 	TAILQ_ENTRY(undo)	entry;
 	gchar			*uri;
@@ -195,20 +188,6 @@ TAILQ_HEAD(command_list, command_entry);
 
 #define XT_URL_SHOW		(1)
 #define XT_URL_HIDE		(2)
-
-#define XT_WL_TOGGLE		(1<<0)
-#define XT_WL_ENABLE		(1<<1)
-#define XT_WL_DISABLE		(1<<2)
-#define XT_WL_FQDN		(1<<3) /* default */
-#define XT_WL_TOPLEVEL		(1<<4)
-#define XT_WL_PERSISTENT	(1<<5)
-#define XT_WL_SESSION		(1<<6)
-#define XT_WL_RELOAD		(1<<7)
-
-#define XT_SHOW			(1<<7)
-#define XT_DELETE		(1<<8)
-#define XT_SAVE			(1<<9)
-#define XT_OPEN			(1<<10)
 
 #define XT_CMD_OPEN		(0)
 #define XT_CMD_OPEN_CURRENT	(1)
@@ -544,9 +523,6 @@ struct settings {
 	{ "mime_type",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_mime },
 	{ "pl_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_pl },
 };
-
-const gchar		*get_uri(struct tab *);
-const gchar		*get_title(struct tab *, bool);
 
 /* globals */
 extern char		*__progname;
@@ -2699,90 +2675,6 @@ startpage_add(const char *fmt, ...)
 	TAILQ_INSERT_TAIL(&spl, s, entry);
 }
 
-void
-show_certs(struct tab *t, gnutls_x509_crt_t *certs,
-    size_t cert_count, char *title)
-{
-	gnutls_datum_t		cinfo;
-	char			*tmp, *body;
-	int			i;
-
-	body = g_strdup("");
-
-	for (i = 0; i < cert_count; i++) {
-		if (gnutls_x509_crt_print(certs[i], GNUTLS_CRT_PRINT_FULL,
-		    &cinfo))
-			return;
-
-		tmp = body;
-		body = g_strdup_printf("%s<h2>Cert #%d</h2><pre>%s</pre>",
-		    body, i, cinfo.data);
-		gnutls_free(cinfo.data);
-		g_free(tmp);
-	}
-
-	tmp = get_html_page(title, body, "", 0);
-	g_free(body);
-
-	load_webkit_string(t, tmp, XT_URI_ABOUT_CERTS);
-	g_free(tmp);
-}
-
-int
-ca_cmd(struct tab *t, struct karg *args)
-{
-	FILE			*f = NULL;
-	int			rv = 1, certs = 0, certs_read;
-	struct stat		sb;
-	gnutls_datum_t		dt;
-	gnutls_x509_crt_t	*c = NULL;
-	char			*certs_buf = NULL, *s;
-
-	if ((f = fopen(ssl_ca_file, "r")) == NULL) {
-		show_oops(t, "Can't open CA file: %s", ssl_ca_file);
-		return (1);
-	}
-
-	if (fstat(fileno(f), &sb) == -1) {
-		show_oops(t, "Can't stat CA file: %s", ssl_ca_file);
-		goto done;
-	}
-
-	certs_buf = g_malloc(sb.st_size + 1);
-	if (fread(certs_buf, 1, sb.st_size, f) != sb.st_size) {
-		show_oops(t, "Can't read CA file: %s", strerror(errno));
-		goto done;
-	}
-	certs_buf[sb.st_size] = '\0';
-
-	s = certs_buf;
-	while ((s = strstr(s, "BEGIN CERTIFICATE"))) {
-		certs++;
-		s += strlen("BEGIN CERTIFICATE");
-	}
-
-	bzero(&dt, sizeof dt);
-	dt.data = (unsigned char *)certs_buf;
-	dt.size = sb.st_size;
-	c = g_malloc(sizeof(gnutls_x509_crt_t) * certs);
-	certs_read = gnutls_x509_crt_list_import(c, (unsigned int *)&certs, &dt,
-	    GNUTLS_X509_FMT_PEM, 0);
-	if (certs_read <= 0) {
-		show_oops(t, "No cert(s) available");
-		goto done;
-	}
-	show_certs(t, c, certs_read, "Certificate Authority Certificates");
-done:
-	if (c)
-		g_free(c);
-	if (certs_buf)
-		g_free(certs_buf);
-	if (f)
-		fclose(f);
-
-	return (rv);
-}
-
 int
 connect_socket_from_uri(const gchar *uri, const gchar **error_str, char *domain,
     size_t domain_sz)
@@ -3404,15 +3296,6 @@ js_show_wl(struct tab *t, struct karg *args)
 }
 
 int
-cookie_show_wl(struct tab *t, struct karg *args)
-{
-	args->i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION;
-	wl_show(t, args, "Cookie White List", &c_wl);
-
-	return (0);
-}
-
-int
 cookie_cmd(struct tab *t, struct karg *args)
 {
 	if (args->i & XT_SHOW)
@@ -3476,63 +3359,6 @@ int
 toplevel_cmd(struct tab *t, struct karg *args)
 {
 	js_toggle_cb(t->js_toggle, t);
-
-	return (0);
-}
-
-int
-add_favorite(struct tab *t, struct karg *args)
-{
-	char			file[PATH_MAX];
-	FILE			*f;
-	char			*line = NULL;
-	size_t			urilen, linelen;
-	const gchar		*uri, *title;
-
-	if (t == NULL)
-		return (1);
-
-	/* don't allow adding of xtp pages to favorites */
-	if (t->xtp_meaning != XT_XTP_TAB_MEANING_NORMAL) {
-		show_oops(t, "%s: can't add xtp pages to favorites", __func__);
-		return (1);
-	}
-
-	snprintf(file, sizeof file, "%s/%s", work_dir, XT_FAVS_FILE);
-	if ((f = fopen(file, "r+")) == NULL) {
-		show_oops(t, "Can't open favorites file: %s", strerror(errno));
-		return (1);
-	}
-
-	title = get_title(t, FALSE);
-	uri = get_uri(t);
-
-	if (title == NULL || uri == NULL) {
-		show_oops(t, "can't add page to favorites");
-		goto done;
-	}
-
-	urilen = strlen(uri);
-
-	for (;;) {
-		if ((line = fparseln(f, &linelen, NULL, NULL, 0)) == NULL)
-			if (feof(f) || ferror(f))
-				break;
-
-		if (linelen == urilen && !strcmp(line, uri))
-			goto done;
-
-		free(line);
-		line = NULL;
-	}
-
-	fprintf(f, "\n%s\n%s", title, uri);
-done:
-	if (line)
-		free(line);
-	fclose(f);
-
-	update_favorite_tabs(NULL);
 
 	return (0);
 }

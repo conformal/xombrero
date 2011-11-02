@@ -264,6 +264,9 @@ void			xt_icon_from_file(struct tab *, char *);
 GtkWidget		*create_window(const gchar *);
 void			show_oops(struct tab *, const char *, ...);
 gchar			*get_html_page(gchar *, gchar *, gchar *, bool);
+const gchar		*get_uri(struct tab *);
+const gchar		*get_title(struct tab *, bool);
+
 void			load_webkit_string(struct tab *, const char *, gchar *);
 
 /* cookies */
@@ -308,11 +311,16 @@ int			blank(struct tab *, struct karg *);
 int			help(struct tab *, struct karg *);
 int			about(struct tab *, struct karg *);
 int			stats(struct tab *, struct karg *);
+void			show_certs(struct tab *, gnutls_x509_crt_t *,
+			    size_t, char *);
+int			ca_cmd(struct tab *, struct karg *);
+int			cookie_show_wl(struct tab *, struct karg *);
 int			xtp_page_cl(struct tab *, struct karg *);
 int			xtp_page_dl(struct tab *, struct karg *);
 int			xtp_page_fl(struct tab *, struct karg *);
 int			xtp_page_hl(struct tab *, struct karg *);
 int			parse_xtp_url(struct tab *, const char *);
+int			add_favorite(struct tab *, struct karg *);
 void			update_favorite_tabs(struct tab *);
 void			update_history_tabs(struct tab *);
 void			update_download_tabs(struct tab *);
@@ -330,11 +338,37 @@ size_t			about_list_size(void);
 #define XT_XTP_TAB_MEANING_FL		(6)  /* favorite manager in this tab */
 #define XT_XTP_TAB_MEANING_HL		(8)  /* history manager in this tab */
 
+/* whitelists */
+#define XT_WL_TOGGLE		(1<<0)
+#define XT_WL_ENABLE		(1<<1)
+#define XT_WL_DISABLE		(1<<2)
+#define XT_WL_FQDN		(1<<3) /* default */
+#define XT_WL_TOPLEVEL		(1<<4)
+#define XT_WL_PERSISTENT	(1<<5)
+#define XT_WL_SESSION		(1<<6)
+#define XT_WL_RELOAD		(1<<7)
+#define XT_SHOW			(1<<8)
+#define XT_DELETE		(1<<9)
+#define XT_SAVE			(1<<10)
+#define XT_OPEN			(1<<11)
+
+struct domain {
+	RB_ENTRY(domain)	entry;
+	gchar			*d;
+	int			handy; /* app use */
+};
+RB_HEAD(domain_list, domain);
+RB_PROTOTYPE(domain_list, domain, entry, domain_rb_cmp);
+
+int			wl_show(struct tab *, struct karg *, char *,
+			    struct domain_list *);
+
 /* settings */
 extern char		*encoding;
 extern char		*resource_dir;
 extern int		save_rejected_cookies;
 extern int		refresh_interval;
+extern char		*ssl_ca_file;
 
 /* globals */
 extern char		*version;
@@ -349,3 +383,6 @@ extern struct history_list	hl;
 extern struct download_list	downloads;
 extern struct tab_list		tabs;
 extern struct about_type	about_list[];
+extern struct domain_list	c_wl;
+extern struct domain_list	js_wl;
+extern struct domain_list	pl_wl;
