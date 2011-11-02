@@ -272,6 +272,8 @@ void			button_set_stockid(GtkWidget *, char *);
 
 /* cookies */
 int			remove_cookie(int);
+void			print_cookie(char *msg, SoupCookie *);
+void			setup_cookies(void);
 
 /* inspector */
 #define XT_INS_SHOW		(1<<0)
