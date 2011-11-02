@@ -113,12 +113,6 @@ TAILQ_HEAD(command_list, command_entry);
 /* starts from 1 to catch atoi() failures when calling xtp_handle_dl() */
 int				next_download_id = 1;
 
-struct karg {
-	int		i;
-	char		*s;
-	int		precount;
-};
-
 /* defines */
 #define XT_NAME			("XXXTerm")
 #define XT_DIR			(".xxxterm")
@@ -137,8 +131,6 @@ struct karg {
 #define XT_SAVE_SESSION_ID	("SESSION_NAME=")
 #define XT_SEARCH_FILE		("search_history")
 #define XT_COMMAND_FILE		("command_history")
-#define XT_CB_HANDLED		(TRUE)
-#define XT_CB_PASSTHROUGH	(FALSE)
 #define XT_DOCTYPE		"<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>\n"
 #define XT_HTML_TAG		"<html xmlns='http://www.w3.org/1999/xhtml'>\n"
 #define XT_DLMAN_REFRESH	"10"
@@ -6080,6 +6072,11 @@ struct cmd {
 
 	/* external javascript */
 	{ "script",		0,	script_cmd,		XT_EJS_SHOW,		XT_USERARG },
+
+	/* inspector */
+	{ "inspector",		0,	inspector_cmd,		XT_INS_SHOW,		0 },
+	{ "show",		1,	inspector_cmd,		XT_INS_SHOW,		0 },
+	{ "hide",		1,	inspector_cmd,		XT_INS_HIDE,		0 },
 };
 
 struct {
@@ -9113,6 +9110,11 @@ delete_tab(struct tab *t)
 	if (t->search_id)
 		g_source_remove(t->search_id);
 
+	/* inspector */
+	bzero(&a, sizeof a);
+	a.i = XT_INS_CLOSE;
+	inspector_cmd(t, &a);
+
 	if (browser_mode == XT_BM_KIOSK) {
 		gtk_widget_destroy(t->uri_entry);
 		gtk_widget_destroy(t->stop);
@@ -9137,6 +9139,7 @@ delete_tab(struct tab *t)
 
 	/* recreate session */
 	if (session_autosave) {
+		bzero(&a, sizeof a);
 		a.s = NULL;
 		save_tabs(NULL, &a);
 	}

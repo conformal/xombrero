@@ -68,7 +68,7 @@ void arc4random_buf(void *, size_t);
 #include <gnutls/x509.h>
 
 /* comment if you don't want to use threads */
-#define USE_THREADS
+//#define USE_THREADS
 
 #ifdef USE_THREADS
 #include <gcrypt.h>
@@ -223,12 +223,30 @@ struct tab {
 
 	/* marks */
 	double			mark[XT_NOMARKS];
+
+	/* inspector */
+	WebKitWebInspector	*inspector;
+	GtkWidget		*inspector_window;
+	GtkWidget		*inspector_view;
 };
 TAILQ_HEAD(tab_list, tab);
 
+struct karg {
+	int		i;
+	char		*s;
+	int		precount;
+};
+
+/* utility */
+#define XT_CB_HANDLED		(TRUE)
+#define XT_CB_PASSTHROUGH	(FALSE)
 GtkWidget		*create_window(const gchar *);
 
 /* inspector */
+#define XT_INS_SHOW		(1<<0)
+#define XT_INS_HIDE		(1<<1)
+#define XT_INS_CLOSE		(1<<2)
 WebKitWebView*		inspector_inspect_web_view_cb(WebKitWebInspector *,
 			    WebKitWebView*, struct tab *);
 void			setup_inspector(struct tab *);
+int			inspector_cmd(struct tab *, struct karg *);
