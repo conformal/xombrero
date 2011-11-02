@@ -133,59 +133,6 @@ extern u_int32_t	swm_debug;
 #define DNPRINTF(n,x...)
 #endif
 
-/* defines */
-#define XT_NAME			("XXXTerm")
-#define XT_DIR			(".xxxterm")
-#define XT_CACHE_DIR		("cache")
-#define XT_CERT_DIR		("certs/")
-#define XT_SESSIONS_DIR		("sessions/")
-#define XT_CONF_FILE		("xxxterm.conf")
-#define XT_FAVS_FILE		("favorites")
-#define XT_QMARKS_FILE		("quickmarks")
-#define XT_SAVED_TABS_FILE	("main_session")
-#define XT_RESTART_TABS_FILE	("restart_tabs")
-#define XT_SOCKET_FILE		("socket")
-#define XT_HISTORY_FILE		("history")
-#define XT_REJECT_FILE		("rejected.txt")
-#define XT_COOKIE_FILE		("cookies.txt")
-#define XT_SAVE_SESSION_ID	("SESSION_NAME=")
-#define XT_SEARCH_FILE		("search_history")
-#define XT_COMMAND_FILE		("command_history")
-#define XT_CB_HANDLED		(TRUE)
-#define XT_CB_PASSTHROUGH	(FALSE)
-#define XT_DOCTYPE		"<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>\n"
-#define XT_HTML_TAG		"<html xmlns='http://www.w3.org/1999/xhtml'>\n"
-#define XT_DLMAN_REFRESH	"10"
-#define XT_PAGE_STYLE		"<style type='text/css'>\n"		\
-				"td{overflow: hidden;"			\
-				" padding: 2px 2px 2px 2px;"		\
-				" border: 1px solid black;"		\
-				" vertical-align:top;"			\
-				" word-wrap: break-word}\n"		\
-				"tr:hover{background: #ffff99}\n"	\
-				"th{background-color: #cccccc;"		\
-				" border: 1px solid black}\n"		\
-				"table{width: 100%%;"			\
-				" border: 1px black solid;"		\
-				" border-collapse:collapse}\n"		\
-				".progress-outer{"			\
-				"border: 1px solid black;"		\
-				" height: 8px;"				\
-				" width: 90%%}\n"			\
-				".progress-inner{float: left;"		\
-				" height: 8px;"				\
-				" background: green}\n"			\
-				".dlstatus{font-size: small;"		\
-				" text-align: center}\n"		\
-				"</style>\n"
-#define XT_MAX_URL_LENGTH	(4096) /* 1 page is atomic, don't make bigger */
-#define XT_MAX_UNDO_CLOSE_TAB	(32)
-#define XT_RESERVED_CHARS	"$&+,/:;=?@ \"<>#%%{}|^~[]`"
-#define XT_PRINT_EXTRA_MARGIN	10
-#define XT_URL_REGEX		("^[[:blank:]]*[^[:blank:]]*([[:alnum:]-]+\\.)+[[:alnum:]-][^[:blank:]]*[[:blank:]]*$")
-#define XT_INVALID_MARK		(-1) /* XXX this is a double, maybe use something else, like a nan */
-
-
 #define LENGTH(x)		(sizeof x / sizeof x[0])
 #define CLEAN(mask)		(mask & ~(GDK_MOD2_MASK) &	\
 				    ~(GDK_BUTTON1_MASK) &	\
@@ -232,15 +179,6 @@ extern u_int32_t	swm_debug;
 #define XT_URI_ABOUT_MARCO	("marco")
 #define XT_URI_ABOUT_STARTPAGE	("startpage")
 
-/*
- * Session IDs.
- * We use these to prevent people putting xxxt:// URLs on
- * websites in the wild. We generate 8 bytes and represent in hex (16 chars)
- */
-#define XT_XTP_SES_KEY_SZ	8
-#define XT_XTP_SES_KEY_HEX_FMT  \
-	"%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
-
 
 extern int		enable_plugin_whitelist;
 extern int		enable_cookie_whitelist;
@@ -257,10 +195,6 @@ extern int		enable_scripts;
 extern int		enable_localstorage;
 extern int		show_tabs;
 extern int		tabless;
-extern int		updating_cl_tabs;
-extern int		updating_dl_tabs;
-extern int		refresh_interval;
-extern int		updating_hl_tabs;
 extern char		default_script[PATH_MAX];
 extern struct passwd	*pwd;
 extern char		runtime_settings[PATH_MAX];
@@ -268,16 +202,10 @@ extern char		work_dir[PATH_MAX];
 extern SoupCookieJar	*s_cookiejar;
 extern SoupCookieJar	*p_cookiejar;
 
-extern char		*dl_session_key;
-extern char		*hl_session_key;
-extern char		*cl_session_key;
-extern char		*fl_session_key;
-
 struct domain_list;
 extern struct domain_list	c_wl;
 extern struct domain_list	js_wl;
 extern struct domain_list	pl_wl;
-extern struct tab_list		tabs;
 
 struct tab {
 	TAILQ_ENTRY(tab)	entry;
@@ -368,26 +296,12 @@ struct domain {
 	int			handy; /* app use */
 };
 
-struct history {
-	RB_ENTRY(history)	entry;
-	const gchar		*uri;
-	const gchar		*title;
-};
-struct history_list;
-extern struct history_list	hl;
-
 struct karg {
 	int		i;
 	char		*s;
 	int		precount;
 };
 
-struct download {
-	RB_ENTRY(download)	entry;
-	int			id;
-	WebKitDownload		*download;
-	struct tab		*tab;
-};
 
 GtkWidget		*create_window(const gchar *);
 
@@ -437,20 +351,9 @@ gchar		*get_html_page(gchar *title, gchar *, gchar *, bool);
 void		load_webkit_string(struct tab *, const char *, gchar *);
 int		settings_add(char *, char *);
 void		wl_init(void);
-int		history_rb_cmp(struct history *, struct history *);
-int		remove_cookie(int);
-void		xtp_handle_dl(struct tab *, uint8_t, int);
-void		xtp_handle_hl(struct tab *, uint8_t, int);
-int		xtp_page_hl(struct tab *, struct karg *);
-char		*xtp_page_dl_row(struct tab *, char *, struct download *);
-void		update_favorite_tabs(struct tab *);
-void		update_history_tabs(struct tab *);
-void		remove_favorite(struct tab *, int);
-void		setup_inspector(struct tab *);
-int		parse_xtp_url(struct tab *, const char *);
 
 /* hooked functions */
 void		(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 void		(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
 		    SoupCookie *);
-
+void			setup_inspector(struct tab *);
