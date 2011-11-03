@@ -30,8 +30,10 @@ print_cookie(char *msg, SoupCookie *c)
 	if (c == NULL)
 		return;
 
-	if (msg)
+	if (msg) {
 		DNPRINTF(XT_D_COOKIE, "%s\n", msg);
+	}
+
 	DNPRINTF(XT_D_COOKIE, "name     : %s\n", c->name);
 	DNPRINTF(XT_D_COOKIE, "value    : %s\n", c->value);
 	DNPRINTF(XT_D_COOKIE, "domain   : %s\n", c->domain);
