@@ -31,13 +31,14 @@ ${.CURDIR}/javascript.h: hinting.js input-focus.js
 	    ${.CURDIR}/input-focus.js >  ${.CURDIR}/javascript.h
 
 beforeinstall:
-	mkdir -p ${PREFIX}/share/xxxterm
-	cp ${.CURDIR}/xxxtermicon16.png ${PREFIX}/share/xxxterm
-	cp ${.CURDIR}/xxxtermicon32.png ${PREFIX}/share/xxxterm
-	cp ${.CURDIR}/xxxtermicon48.png ${PREFIX}/share/xxxterm
-	cp ${.CURDIR}/xxxtermicon64.png ${PREFIX}/share/xxxterm
-	cp ${.CURDIR}/xxxtermicon128.png ${PREFIX}/share/xxxterm
-	cp ${.CURDIR}/style.css ${PREFIX}/share/xxxterm
+	install -m 755 -d ${PREFIX}/share/xxxterm
+	install -m 644 ${.CURDIR}/xxxtermicon.png ${PREFIX}/share/xxxterm
+	install -m 644 ${.CURDIR}/xxxtermicon16.png ${PREFIX}/share/xxxterm
+	install -m 644 ${.CURDIR}/xxxtermicon32.png ${PREFIX}/share/xxxterm
+	install -m 644 ${.CURDIR}/xxxtermicon48.png ${PREFIX}/share/xxxterm
+	install -m 644 ${.CURDIR}/xxxtermicon64.png ${PREFIX}/share/xxxterm
+	install -m 644 ${.CURDIR}/xxxtermicon128.png ${PREFIX}/share/xxxterm
+	install -m 644 ${.CURDIR}/style.css ${PREFIX}/share/xxxterm
 
 ${PROG} ${OBJS} beforedepend: ${.CURDIR}/javascript.h
 
