@@ -36,7 +36,8 @@
 #include "linux/tree.h"
 #include <bsd/stdlib.h>
 # if !defined(sane_libbsd_headers)
-void arc4random_buf(void *, size_t);
+void		arc4random_buf(void *, size_t);
+u_int32_t	arc4random_uniform(u_int32_t);
 # endif
 #elif defined(__FreeBSD__)
 #include <libutil.h>
