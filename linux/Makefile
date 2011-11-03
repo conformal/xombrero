@@ -18,8 +18,8 @@ javascript.h: ../js-merge-helper.pl ../hinting.js
 
 xxxterm.o: javascript.h
 
-xxxterm: ../whitelist.c ../settings.c ../marco.o ../about.o ../inspector.o ../xxxterm.o linux.o
-	$(CC) $(LDFLAGS) -o $@ $+ $(LDADD)
+xxxterm: ../whitelist.c ../cookie.c ../settings.c ../marco.o ../about.o ../inspector.o ../xxxterm.o linux.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $+ $(LDADD)
 
 install: all
 	install -m 755 -d $(DESTDIR)$(BINDIR)
