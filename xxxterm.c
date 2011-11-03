@@ -5325,16 +5325,18 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 		t->search_forward = c[0] == '/';
 
 		history_add(&shl, search_file, s, &search_history_count);
-		goto done;
 	} else if (c[0] == '.' || c[0] == ',') {
 		run_script(t, "hints.fire();");
 		/* XXX history for link following? */
-		goto done;
+	} else if (c[0] == ':') {
+		history_add(&chl, command_file, s, &cmd_history_count);
+		cmd_execute(t, s);
+		/* can't call hide_cmd after cmd_execute */
+		return;
 	}
 
-	history_add(&chl, command_file, s, &cmd_history_count);
-	cmd_execute(t, s);
 done:
+	hide_cmd(t);
 	return;
 }
 

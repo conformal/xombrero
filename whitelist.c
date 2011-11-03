@@ -90,7 +90,7 @@ wl_save(struct tab *t, struct karg *args, int list)
 {
 	char			file[PATH_MAX], *lst_str = NULL;
 	FILE			*f;
-	char			*line = NULL, *lt = NULL, *dom = NULL;
+	char			*line = NULL, *lt = NULL, *dom;
 	size_t			linelen;
 	const gchar		*uri;
 	struct karg		a;
@@ -104,22 +104,15 @@ wl_save(struct tab *t, struct karg *args, int list)
 	if (runtime_settings[0] == '\0')
 		return (1);
 
-	snprintf(file, sizeof file, "%s/%s", work_dir, runtime_settings);
-	if ((f = fopen(file, "r+")) == NULL)
-		return (1);
-
 	switch (list) {
 	case XT_WL_JAVASCRIPT:
 		lst_str = "JavaScript";
-		lt = g_strdup_printf("js_wl=%s", dom);
 		break;
 	case XT_WL_COOKIE:
 		lst_str = "Cookie";
-		lt = g_strdup_printf("cookie_wl=%s", dom);
 		break;
 	case XT_WL_PLUGIN:
 		lst_str = "Plugin";
-		lt = g_strdup_printf("pl_wl=%s", dom);
 		break;
 	default:
 		show_oops(t, "Invalid list id: %d", list);
@@ -133,6 +126,26 @@ wl_save(struct tab *t, struct karg *args, int list)
 		show_oops(t, "Can't add domain to %s white list", lst_str);
 		goto done;
 	}
+
+	switch (list) {
+	case XT_WL_JAVASCRIPT:
+		lt = g_strdup_printf("js_wl=%s", dom);
+		break;
+	case XT_WL_COOKIE:
+		lt = g_strdup_printf("cookie_wl=%s", dom);
+		break;
+	case XT_WL_PLUGIN:
+		lt = g_strdup_printf("pl_wl=%s", dom);
+		break;
+	default:
+		/* can't happen */
+		show_oops(t, "Invalid list id: %d", list);
+		return (1);
+	}
+
+	snprintf(file, sizeof file, "%s/%s", work_dir, runtime_settings);
+	if ((f = fopen(file, "r+")) == NULL)
+		return (1);
 
 	while (!feof(f)) {
 		line = fparseln(f, &linelen, NULL, NULL, 0);
