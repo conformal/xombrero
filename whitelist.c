@@ -89,7 +89,7 @@ int
 wl_save(struct tab *t, struct karg *args, int list)
 {
 	char			file[PATH_MAX], *lst_str = NULL;
-	FILE			*f;
+	FILE			*f = NULL;
 	char			*line = NULL, *lt = NULL, *dom;
 	size_t			linelen;
 	const gchar		*uri;
@@ -140,12 +140,14 @@ wl_save(struct tab *t, struct karg *args, int list)
 	default:
 		/* can't happen */
 		show_oops(t, "Invalid list id: %d", list);
-		return (1);
+		goto done;
 	}
 
 	snprintf(file, sizeof file, "%s/%s", work_dir, runtime_settings);
-	if ((f = fopen(file, "r+")) == NULL)
-		return (1);
+	if ((f = fopen(file, "r+")) == NULL) {
+		show_oops(t, "can't open file %s");
+		goto done;
+	}
 
 	while (!feof(f)) {
 		line = fparseln(f, &linelen, NULL, NULL, 0);
@@ -213,7 +215,8 @@ done:
 		g_free(dom);
 	if (lt)
 		g_free(lt);
-	fclose(f);
+	if (f)
+		fclose(f);
 
 	return (0);
 }
