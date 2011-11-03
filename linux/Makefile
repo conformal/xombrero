@@ -18,7 +18,7 @@ javascript.h: ../js-merge-helper.pl ../hinting.js
 
 xxxterm.o: javascript.h
 
-xxxterm: ../whitelist.c ../cookie.c ../settings.c ../marco.o ../about.o ../inspector.o ../xxxterm.o linux.o
+xxxterm: ../whitelist.o ../cookie.o ../settings.o ../marco.o ../about.o ../inspector.o ../xxxterm.o linux.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $+ $(LDADD)
 
 install: all
