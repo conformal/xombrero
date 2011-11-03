@@ -221,7 +221,7 @@ about(struct tab *t, struct karg *args)
 	    "<li>Edd Barrett &lt;vext01@gmail.com&gt;</li>"
 	    "<li>Todd T. Fries &lt;todd@fries.net&gt;</li>"
 	    "<li>Raphael Graf &lt;r@undefined.ch&gt;</li>"
-	    "<li>Michal Mazurek &lt;akfaew@jasminek.net&gt;<li>"
+	    "<li>Michal Mazurek &lt;akfaew@jasminek.net&gt;</li>"
 	    "</ul>"
 	    "Copyrights and licenses can be found on the XXXTerm "
 	    "<a href=\"http://opensource.conformal.com/wiki/XXXTerm\">website</a>"
