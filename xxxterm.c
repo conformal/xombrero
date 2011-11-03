@@ -5330,8 +5330,9 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 		/* XXX history for link following? */
 	} else if (c[0] == ':') {
 		history_add(&chl, command_file, s, &cmd_history_count);
-		cmd_execute(t, s);
 		/* can't call hide_cmd after cmd_execute */
+		hide_cmd(t);
+		cmd_execute(t, s);
 		return;
 	}
 
