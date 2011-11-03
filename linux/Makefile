@@ -8,6 +8,11 @@ BINDIR?= $(PREFIX)/bin
 LIBDIR?= $(PREFIX)/lib
 MANDIR?= $(PREFIX)/share/man
 
+SRCS= $(shell ls ../*.c)
+SRCS+= linux.c
+OBJS= $(SRCS:.c=.o)
+DEPS= $(addsuffix .depend, $(OBJS))
+
 CC?= gcc
 
 all: javascript.h xxxterm
@@ -16,10 +21,14 @@ javascript.h: ../js-merge-helper.pl ../hinting.js
 	perl ../js-merge-helper.pl ../hinting.js ../input-focus.js > \
 	javascript.h
 
-xxxterm.o: javascript.h
-
-xxxterm: ../whitelist.o ../cookie.o ../settings.o ../marco.o ../about.o ../inspector.o ../xxxterm.o linux.o
+xxxterm: $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $+ $(LDADD)
+
+%.o: %.c
+	@echo "Generating $@.depend"
+	@$(CC) -MM $(CPPFLAGS) $(CFLAGS) $< | \
+	sed 's,^.*\.o[ :]*,$@ $@.depend : ,g' > $@.depend
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
 
 install: all
 	install -m 755 -d $(DESTDIR)$(BINDIR)
@@ -29,7 +38,10 @@ install: all
 	install -m 644 ../xxxterm.1 $(DESTDIR)$(MANDIR)/man1/xxxterm.1
 
 clean:
-	rm -f xxxterm *.o ../*.o
+	rm -f xxxterm $(OBJS) $(DEPS)
 	rm -f javascript.h
+
+
+-include $(DEPS)
 
 .PHONY: all install clean
