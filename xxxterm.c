@@ -947,7 +947,6 @@ enable_hints(struct tab *t)
 	DNPRINTF(XT_D_JS, "%s\n", __func__);
 
 	run_script(t, JS_HINTING);
-
 	if (t->new_tab)
 		run_script(t, "hints.createHints('', 'F');");
 	else
@@ -2484,10 +2483,12 @@ int cmd_prefix = 0;
 int
 command_mode(struct tab *t, struct karg *args)
 {
+	run_script(t, JS_HINTING);
 	if (args->i == XT_MODE_COMMAND)
 		run_script(t, "hints.clearFocus();");
 	else
 		run_script(t, "hints.focusInput();");
+
 	return (XT_CB_HANDLED);
 }
 
@@ -5293,7 +5294,6 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 	}
 
 	DNPRINTF(XT_D_CMD, "cmd_activate_cb: tab %d %s\n", t->tab_id, c);
-	hide_cmd(t);
 
 	/* sanity */
 	if (c == NULL)
