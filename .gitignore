@@ -1,7 +1,9 @@
 *.o
+*.o.depend
 *.orig
 *.rej
 *.rej.orig
 javascript.h
 xxxterm
 xxxterm.cat1
+tags
