@@ -131,6 +131,7 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_MOVE_RIGHT		(11)
 #define XT_MOVE_FARRIGHT	(12)
 #define XT_MOVE_PERCENT		(13)
+#define XT_MOVE_CENTER		(14)
 
 #define XT_QMARK_SET		(0)
 #define XT_QMARK_OPEN		(1)
@@ -2102,6 +2103,7 @@ move(struct tab *t, struct karg *args)
 	case XT_MOVE_HALFDOWN:
 	case XT_MOVE_HALFUP:
 	case XT_MOVE_PERCENT:
+	case XT_MOVE_CENTER:
 		adjust = t->adjust_v;
 		break;
 	default:
@@ -2157,6 +2159,9 @@ move(struct tab *t, struct karg *args)
 		pos -= pi / 2;
 		gtk_adjustment_set_value(adjust, MAX(pos, lower));
 		break;
+	case XT_MOVE_CENTER:
+		args->s = g_strdup("50.0");
+		/* FALLTHROUGH */
 	case XT_MOVE_PERCENT:
 		percent = atoi(args->s) / 100.0;
 		pos = max * percent;
@@ -4448,6 +4453,7 @@ struct buffercmd {
 	{ "^gg$",		XT_PRE_NO,	"gg",	move,		XT_MOVE_TOP },
 	{ "^gG$",		XT_PRE_NO,	"gG",	move,		XT_MOVE_BOTTOM },
 	{ "^[0-9]+%$",		XT_PRE_YES,	"%",	move,		XT_MOVE_PERCENT },
+	{ "^zz$",		XT_PRE_NO,	"zz",	move,		XT_MOVE_CENTER },
 	{ "^gh$",		XT_PRE_NO,	"gh",	go_home,	0 },
 	{ "^m[a-zA-Z0-9]$",	XT_PRE_NO,	"m",	mark,		XT_MARK_SET },
 	{ "^['][a-zA-Z0-9]$",	XT_PRE_NO,	"'",	mark,		XT_MARK_GOTO },
