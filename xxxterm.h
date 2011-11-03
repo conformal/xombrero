@@ -69,7 +69,7 @@ u_int32_t	arc4random_uniform(u_int32_t);
 #include <gnutls/x509.h>
 
 /* comment if you don't want to use threads */
-//#define USE_THREADS
+#define USE_THREADS
 
 #ifdef USE_THREADS
 #include <gcrypt.h>
