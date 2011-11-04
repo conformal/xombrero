@@ -503,6 +503,8 @@ set_status(struct tab *t, gchar *s, int status)
 void
 hide_cmd(struct tab *t)
 {
+	DNPRINTF(XT_D_CMD, "%s: tab %d\n", __func__, t->tab_id);
+
 	history_at = NULL; /* just in case */
 	search_at = NULL; /* just in case */
 	gtk_widget_hide(t->cmd);
@@ -511,6 +513,8 @@ hide_cmd(struct tab *t)
 void
 show_cmd(struct tab *t)
 {
+	DNPRINTF(XT_D_CMD, "%s: tab %d\n", __func__, t->tab_id);
+
 	history_at = NULL;
 	search_at = NULL;
 	gtk_widget_hide(t->oops);
@@ -935,7 +939,7 @@ js_ref_to_string(JSContextRef context, JSValueRef ref)
 void
 disable_hints(struct tab *t)
 {
-	DNPRINTF(XT_D_JS, "%s\n", __func__);
+	DNPRINTF(XT_D_JS, "%s: tab %d\n", __func__, t->tab_id);
 
 	run_script(t, "hints.clearHints();");
 	t->hints_on = 0;
@@ -945,7 +949,7 @@ disable_hints(struct tab *t)
 void
 enable_hints(struct tab *t)
 {
-	DNPRINTF(XT_D_JS, "%s\n", __func__);
+	DNPRINTF(XT_D_JS, "%s: tab %d\n", __func__, t->tab_id);
 
 	run_script(t, JS_HINTING);
 	if (t->new_tab)
@@ -2560,7 +2564,7 @@ command(struct tab *t, struct karg *args)
 		return (XT_CB_PASSTHROUGH);
 	}
 
-	DNPRINTF(XT_D_CMD, "command: type %s\n", s);
+	DNPRINTF(XT_D_CMD, "%s: tab %d type %s\n", __func__, t->tab_id, s);
 
 	gtk_entry_set_text(GTK_ENTRY(t->cmd), s);
 	gdk_color_parse(XT_COLOR_WHITE, &color);
@@ -4629,8 +4633,8 @@ wv_keypress_after_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
 		return (XT_CB_PASSTHROUGH);
 	}
 
-	DNPRINTF(XT_D_KEY, "wv_keypress_after_cb: keyval 0x%x mask 0x%x t %p\n",
-	    e->keyval, e->state, t);
+	DNPRINTF(XT_D_KEY, "wv_keypress_after_cb: keyval 0x%x mask 0x%x tab %d\n",
+	    e->keyval, e->state, t->tab_id);
 
 	if (t->hints_on) {
 		/* XXX make sure cmd entry is enabled */
@@ -4767,8 +4771,8 @@ cmd_keyrelease_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		return (XT_CB_PASSTHROUGH);
 	}
 
-	DNPRINTF(XT_D_CMD, "cmd_keyrelease_cb: keyval 0x%x mask 0x%x t %p\n",
-	    e->keyval, e->state, t);
+	DNPRINTF(XT_D_CMD, "cmd_keyrelease_cb: keyval 0x%x mask 0x%x tab %d\n",
+	    e->keyval, e->state, t->tab_id);
 
 	/* hinting */
 	if (!(e->keyval == GDK_Tab || e->keyval == GDK_ISO_Left_Tab)) {
@@ -5092,8 +5096,8 @@ entry_key_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		return (XT_CB_PASSTHROUGH);
 	}
 
-	DNPRINTF(XT_D_CMD, "entry_key_cb: keyval 0x%x mask 0x%x t %p\n",
-	    e->keyval, e->state, t);
+	DNPRINTF(XT_D_CMD, "entry_key_cb: keyval 0x%x mask 0x%x tab %d\n",
+	    e->keyval, e->state, t->tab_id);
 
 	hide_oops(t);
 
@@ -5145,8 +5149,8 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		return (XT_CB_PASSTHROUGH);
 	}
 
-	DNPRINTF(XT_D_CMD, "cmd_keypress_cb: keyval 0x%x mask 0x%x t %p\n",
-	    e->keyval, e->state, t);
+	DNPRINTF(XT_D_CMD, "cmd_keypress_cb: keyval 0x%x mask 0x%x tab %d\n",
+	    e->keyval, e->state, t->tab_id);
 
 	/* sanity */
 	if (c == NULL)
@@ -5344,7 +5348,6 @@ cmd_activate_cb(GtkEntry *entry, struct tab *t)
 
 done:
 	hide_cmd(t);
-	return;
 }
 
 void
