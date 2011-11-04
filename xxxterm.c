@@ -2217,12 +2217,14 @@ statusbar_set_visibility(void)
 {
 	struct tab		*t;
 
-	TAILQ_FOREACH(t, &tabs, entry)
-		if (show_statusbar == 0) {
+	TAILQ_FOREACH(t, &tabs, entry){
+		if (show_statusbar == 0)
 			gtk_widget_hide(t->statusbar_box);
-			focus_webview(t);
-		} else
+		else
 			gtk_widget_show(t->statusbar_box);
+
+		focus_webview(t);
+	}
 }
 
 void
@@ -4700,7 +4702,7 @@ hint_continue(struct tab *t)
 		g_free(s);
 	}
 
-	rv = TRUE;
+	rv = FALSE;
 done:
 	return (rv);
 }
