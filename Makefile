@@ -6,6 +6,7 @@ MAN=xxxterm.1
 
 SRCS= cookie.c inspector.c marco.c about.c whitelist.c settings.c xxxterm.c
 CFLAGS+= -O2 -Wall -Wno-format-extra-args -Wunused
+CFLAGS+= -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare
 DEBUG= -ggdb3
 LDADD= -lutil -lgcrypt
 LIBS+= gtk+-2.0
@@ -45,14 +46,12 @@ ${PROG} ${OBJS} beforedepend: ${.CURDIR}/javascript.h
 # clang targets
 .if ${.TARGETS:M*analyze*}
 CFLAGS+= -Wdeclaration-after-statement -Wshadow
-CFLAGS+= -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare
 CC=clang
 CXX=clang++
 CPP=clang -E
 CFLAGS+=--analyze
 .elif ${.TARGETS:M*clang*}
 CFLAGS+= -Wdeclaration-after-statement -Wshadow
-CFLAGS+= -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare
 CC=clang
 CXX=clang++
 CPP=clang -E
