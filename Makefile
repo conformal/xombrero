@@ -44,15 +44,15 @@ ${PROG} ${OBJS} beforedepend: ${.CURDIR}/javascript.h
 
 # clang targets
 .if ${.TARGETS:M*analyze*}
-CFLAGS+= -Wdeclaration-after-statement
-CFLAGS+= -Wshadow
+CFLAGS+= -Wdeclaration-after-statement -Wshadow
+CFLAGS+= -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare
 CC=clang
 CXX=clang++
 CPP=clang -E
 CFLAGS+=--analyze
 .elif ${.TARGETS:M*clang*}
-CFLAGS+= -Wdeclaration-after-statement
-CFLAGS+= -Wshadow
+CFLAGS+= -Wdeclaration-after-statement -Wshadow
+CFLAGS+= -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare
 CC=clang
 CXX=clang++
 CPP=clang -E
