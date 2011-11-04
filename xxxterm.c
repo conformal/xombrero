@@ -6406,13 +6406,13 @@ arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 }
 
 int
-icon_size_map(int icon_size)
+icon_size_map(int iconsz)
 {
-	if (icon_size <= GTK_ICON_SIZE_INVALID ||
-	    icon_size > GTK_ICON_SIZE_DIALOG)
+	if (iconsz <= GTK_ICON_SIZE_INVALID ||
+	    iconsz > GTK_ICON_SIZE_DIALOG)
 		return (GTK_ICON_SIZE_SMALL_TOOLBAR);
 
-	return (icon_size);
+	return (iconsz);
 }
 
 GtkWidget *
