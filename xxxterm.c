@@ -261,8 +261,6 @@ void
 history_delete(struct command_list *l, int *counter)
 {
 	struct command_entry	*c;
-	char *icons = "aaa";
-	printf(icons);
 
 	if (l == NULL || counter == NULL)
 		return;
