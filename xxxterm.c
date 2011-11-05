@@ -158,6 +158,7 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_NAV_BACK		(1)
 #define XT_NAV_FORWARD		(2)
 #define XT_NAV_RELOAD		(3)
+#define XT_NAV_STOP		(4)
 
 #define XT_FOCUS_INVALID	(0)
 #define XT_FOCUS_URI		(1)
@@ -260,6 +261,8 @@ void
 history_delete(struct command_list *l, int *counter)
 {
 	struct command_entry	*c;
+	char *icons = "aaa";
+	printf(icons);
 
 	if (l == NULL || counter == NULL)
 		return;
@@ -2086,6 +2089,10 @@ navaction(struct tab *t, struct karg *args)
 		frame = webkit_web_view_get_main_frame(t->wv);
 		webkit_web_frame_reload(frame);
 		break;
+	case XT_NAV_STOP:
+		frame = webkit_web_view_get_main_frame(t->wv);
+		webkit_web_frame_stop_loading(frame);
+		break;
 	}
 	return (XT_CB_PASSTHROUGH);
 }
@@ -2946,6 +2953,7 @@ struct cmd {
 	{ "goback",		0,	navaction,		XT_NAV_BACK,		0 },
 	{ "goforward",		0,	navaction,		XT_NAV_FORWARD,		0 },
 	{ "reload",		0,	navaction,		XT_NAV_RELOAD,		0 },
+	{ "stop",		0,	navaction,		XT_NAV_STOP,		0 },
 
 	/* vertical movement */
 	{ "scrolldown",		0,	move,			XT_MOVE_DOWN,		0 },
