@@ -3851,7 +3851,6 @@ char *
 get_domain(const gchar *host)
 {
 	size_t		x;
-	int		silly_domain = 0;
 	char		*p;
 
 	/* handle silly domains like .co.uk */
@@ -3860,7 +3859,6 @@ get_domain(const gchar *host)
 		return (g_strdup(host));
 
 	if (host[x - 3] == '.' && host[x - 6] == '.') {
-		silly_domain = 1;
 		x = x - 7;
 		while (x > 0)
 			if (host[x] != '.')
