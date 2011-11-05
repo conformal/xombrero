@@ -85,6 +85,7 @@ char		search_file[PATH_MAX];
 char		command_file[PATH_MAX];
 char		*encoding = NULL;
 int		autofocus_onload = 0;
+int		js_autorun_enabled = 1;
 
 char		*cmd_font_name = NULL;
 char		*oops_font_name = NULL;
@@ -254,6 +255,7 @@ struct settings		rs[] = {
 	{ "home",			XT_S_STR, 0, NULL,	&home, NULL },
 	{ "http_proxy",			XT_S_STR, 0, NULL,	&http_proxy, NULL, NULL, set_http_proxy },
 	{ "icon_size",			XT_S_INT, 0,		&icon_size, NULL, NULL },
+	{ "js_autorun_enabled",		XT_S_INT, 0,		&js_autorun_enabled, NULL, NULL },
 	{ "max_connections",		XT_S_INT, XT_SF_RESTART,&max_connections, NULL, NULL },
 	{ "max_host_connections",	XT_S_INT, XT_SF_RESTART,&max_host_connections, NULL, NULL },
 	{ "read_only_cookies",		XT_S_INT, 0,		&read_only_cookies, NULL, NULL },

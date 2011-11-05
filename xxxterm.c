@@ -81,6 +81,7 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_DIR			(".xxxterm")
 #define XT_CACHE_DIR		("cache")
 #define XT_CERT_DIR		("certs/")
+#define XT_JS_DIR		("js/")
 #define XT_SESSIONS_DIR		("sessions/")
 #define XT_CONF_FILE		("xxxterm.conf")
 #define XT_QMARKS_FILE		("quickmarks")
@@ -637,6 +638,7 @@ show_oops(struct tab *at, const char *fmt, ...)
 
 char			work_dir[PATH_MAX];
 char			certs_dir[PATH_MAX];
+char			js_dir[PATH_MAX];
 char			cache_dir[PATH_MAX];
 char			sessions_dir[PATH_MAX];
 char			cookie_file[PATH_MAX];
@@ -3845,9 +3847,181 @@ notify_title_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		gtk_window_set_title(GTK_WINDOW(main_window), win_title);
 }
 
+char *
+get_domain(const gchar *host)
+{
+	size_t		x;
+	int		silly_domain = 0;
+	char		*p;
+
+	/* handle silly domains like .co.uk */
+
+	if ((x = strlen(host)) <= 6)
+		return (g_strdup(host));
+
+	if (host[x - 3] == '.' && host[x - 6] == '.') {
+		silly_domain = 1;
+		x = x - 7;
+		while (x > 0)
+			if (host[x] != '.')
+				x--;
+			else
+				return (g_strdup(&host[x + 1]));
+	}
+
+	/* find first . */
+	p = g_strrstr(host, ".");
+	if (p == NULL)
+		return (g_strdup(""));
+	p--;
+	while (p > host)
+		if (*p != '.')
+			p--;
+		else
+			return (g_strdup(p + 1));
+
+	return (g_strdup(host));
+}
+
+void
+js_autorun(struct tab *t)
+{
+	SoupURI			*su = NULL;
+	const gchar		*uri;
+	size_t			got_default = 0, got_host = 0;
+	struct stat		sb;
+	char			deff[PATH_MAX], hostf[PATH_MAX];
+	char			*js = NULL, *jsat, *domain = NULL;
+	FILE			*deffile = NULL, *hostfile = NULL;
+	JSGlobalContextRef	ctx;
+	WebKitWebFrame		*frame;
+	JSStringRef		str;
+	JSValueRef		val, exception;
+	char			*es;
+
+	if (js_autorun_enabled == 0)
+		return;
+
+	uri = get_uri(t);
+	if (uri &&
+	    !(g_str_has_prefix(uri, "http://") ||
+	    g_str_has_prefix(uri, "https://"))) {
+		show_oops(t, "invalid uri");
+		goto done;
+	}
+
+	su = soup_uri_new(uri);
+	if (su == NULL) {
+		show_oops(t, "invalid soup URI");
+		goto done;
+	}
+	if (!SOUP_URI_VALID_FOR_HTTP(su)) {
+		show_oops(t, "invalid HTTPS URI");
+		goto done;
+	}
+
+	DNPRINTF(XT_D_JS, "%s: host: %s domain: %s\n", __func__,
+	    su->host, domain);
+	domain = get_domain(su->host);
+
+	snprintf(deff, sizeof deff, "%s/default.js", js_dir);
+	if ((deffile = fopen(deff, "r")) != NULL) {
+		if (fstat(fileno(deffile), &sb) == -1) {
+			show_oops(t, "can't stat default JS file");
+			goto done;
+		}
+		got_default = sb.st_size;
+	}
+
+	/* try host first followed by domain */
+	snprintf(hostf, sizeof hostf, "%s/%s.js", js_dir, su->host);
+	DNPRINTF(XT_D_JS, "trying file: %s\n", hostf);
+	if ((hostfile = fopen(hostf, "r")) == NULL) {
+		snprintf(hostf, sizeof hostf, "%s/%s.js", js_dir, domain);
+		DNPRINTF(XT_D_JS, "trying file: %s\n", hostf);
+		if ((hostfile = fopen(hostf, "r")) == NULL)
+			goto nofile;
+	}
+	DNPRINTF(XT_D_JS, "file: %s\n", hostf);
+	if (fstat(fileno(hostfile), &sb) == -1) {
+		show_oops(t, "can't stat %s JS file", hostf);
+		goto done;
+	}
+	got_host = sb.st_size;
+
+nofile:
+	if (got_default + got_host == 0)
+		goto done;
+
+	js = g_malloc0(got_default + got_host + 1);
+	jsat = js;
+
+	if (got_default) {
+		if (fread(js, got_default, 1, deffile) != 1) {
+			show_oops(t, "default file read error");
+			goto done;
+		}
+		jsat = js + got_default;
+	}
+
+	if (got_host) {
+		if (fread(jsat, got_host, 1, hostfile) != 1) {
+			show_oops(t, "host file read error");
+			goto done;
+		}
+	}
+
+	/* this code needs to be redone */
+	frame = webkit_web_view_get_main_frame(t->wv);
+	ctx = webkit_web_frame_get_global_context(frame);
+
+	str = JSStringCreateWithUTF8CString(js);
+	val = JSEvaluateScript(ctx, str, JSContextGetGlobalObject(ctx),
+	    NULL, 0, &exception);
+	JSStringRelease(str);
+
+	DNPRINTF(XT_D_JS, "run_script: val %p\n", val);
+	if (val == NULL) {
+		es = js_ref_to_string(ctx, exception);
+		if (es) {
+			show_oops(t, "script exception: %s", es);
+			g_free(es);
+		}
+		goto done;
+	} else {
+		es = js_ref_to_string(ctx, val);
+#if 0
+		/* return values */
+		if (!strncmp(es, XT_JS_DONE, XT_JS_DONE_LEN))
+			; /* do nothing */
+		if (!strncmp(es, XT_JS_INSERT, XT_JS_INSERT_LEN))
+			; /* do nothing */
+#endif
+		if (es) {
+			show_oops(t, "script complete return value: '%s'", es);
+			g_free(es);
+		} else
+			show_oops(t, "script complete: without a return value");
+	}
+done:
+	if (su)
+		soup_uri_free(su);
+	if (js)
+		g_free(js);
+	if (deffile)
+		fclose(deffile);
+	if (hostfile)
+		fclose(hostfile);
+	if (domain)
+		g_free(domain);
+}
+
 void
 webview_load_finished_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 {
+	/* autorun some js if enabled */
+	js_autorun(t);
+
 	run_script(t, JS_HINTING);
 	if (autofocus_onload &&
 	    t->tab_id == gtk_notebook_get_current_page(notebook))
@@ -7046,6 +7220,10 @@ main(int argc, char *argv[])
 	snprintf(sessions_dir, sizeof sessions_dir, "%s/%s",
 	    work_dir, XT_SESSIONS_DIR);
 	xxx_dir(sessions_dir);
+
+	/* js dir */
+	snprintf(js_dir, sizeof js_dir, "%s/%s", work_dir, XT_JS_DIR);
+	xxx_dir(js_dir);
 
 	/* runtime settings that can override config file */
 	if (runtime_settings[0] != '\0')

@@ -511,6 +511,7 @@ extern char	search_file[PATH_MAX];
 extern char	command_file[PATH_MAX];
 extern char	*encoding;
 extern int	autofocus_onload;
+extern int	js_autorun_enabled;
 extern char	*cmd_font_name;
 extern char	*oops_font_name;
 extern char	*statusbar_font_name;
