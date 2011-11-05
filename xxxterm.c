@@ -3905,20 +3905,14 @@ js_autorun(struct tab *t)
 	uri = get_uri(t);
 	if (uri &&
 	    !(g_str_has_prefix(uri, "http://") ||
-	    g_str_has_prefix(uri, "https://"))) {
-		show_oops(t, "invalid uri");
+	    g_str_has_prefix(uri, "https://")))
 		goto done;
-	}
 
 	su = soup_uri_new(uri);
-	if (su == NULL) {
-		show_oops(t, "invalid soup URI");
+	if (su == NULL)
 		goto done;
-	}
-	if (!SOUP_URI_VALID_FOR_HTTP(su)) {
-		show_oops(t, "invalid HTTPS URI");
+	if (!SOUP_URI_VALID_FOR_HTTP(su))
 		goto done;
-	}
 
 	DNPRINTF(XT_D_JS, "%s: host: %s domain: %s\n", __func__,
 	    su->host, domain);
