@@ -640,6 +640,7 @@ struct key_binding	keys[] = {
 	{ "qa",			CTRL,	0,	GDK_q		},
 	{ "restart",		MOD1,	0,	GDK_q		},
 	{ "js toggle",		CTRL,	0,	GDK_j		},
+	{ "plugin toggle",	CTRL,	0,	GDK_p		},
 	{ "cookie toggle",	MOD1,	0,	GDK_c		},
 	{ "togglesrc",		CTRL,	0,	GDK_s		},
 	{ "yankuri",		0,	0,	GDK_y		},
