@@ -194,6 +194,10 @@ struct tab {
 	GtkAdjustment		*adjust_v;
 
 	/* flags */
+	int			mode;
+#define XT_MODE_COMMAND		(0)
+#define XT_MODE_INSERT		(1)
+#define XT_MODE_HINT		(2)
 	int			focus_wv;
 	int			ctrl_click;
 	gchar			*status;
@@ -206,7 +210,6 @@ struct tab {
 #endif
 	/* hints */
 	int			script_init;
-	int			hints_on;
 	int			new_tab;
 
 	/* custom stylesheet */
