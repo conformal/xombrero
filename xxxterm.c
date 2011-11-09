@@ -951,7 +951,6 @@ enable_hints(struct tab *t)
 {
 	DNPRINTF(XT_D_JS, "%s: tab %d\n", __func__, t->tab_id);
 
-	run_script(t, JS_HINTING);
 	if (t->new_tab)
 		run_script(t, "hints.createHints('', 'F');");
 	else
@@ -973,14 +972,8 @@ run_script(struct tab *t, char *s)
 	JSValueRef		val, exception;
 	char			*es;
 
-	//DNPRINTF(XT_D_JS, "run_script: tab %d %s\n",
-	//    t->tab_id, s == (char *)JS_HINTING ? "JS_HINTING" : s);
-
-	/* a bit silly but it prevents some heartburn */
-	if (t->script_init == 0) {
-		t->script_init = 1;
-		run_script(t, JS_HINTING);
-	}
+	DNPRINTF(XT_D_JS, "run_script: tab %d %s\n",
+	    t->tab_id, s == (char *)JS_HINTING ? "JS_HINTING" : s);
 
 	frame = webkit_web_view_get_main_frame(t->wv);
 	ctx = webkit_web_frame_get_global_context(frame);
@@ -2963,7 +2956,7 @@ script_cmd(struct tab *t, struct karg *args)
 	    NULL, 0, &exception);
 	JSStringRelease(str);
 
-	DNPRINTF(XT_D_JS, "run_script: val %p\n", val);
+	DNPRINTF(XT_D_JS, "%s: val %p\n", __func__, val);
 	if (val == NULL) {
 		es = js_ref_to_string(ctx, exception);
 		if (es) {
@@ -4155,7 +4148,7 @@ nofile:
 	    NULL, 0, &exception);
 	JSStringRelease(str);
 
-	DNPRINTF(XT_D_JS, "run_script: val %p\n", val);
+	DNPRINTF(XT_D_JS, "%s: val %p\n", __func__, val);
 	if (val == NULL) {
 		es = js_ref_to_string(ctx, exception);
 		if (es) {
