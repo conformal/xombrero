@@ -4175,18 +4175,19 @@ nofile:
 		goto done;
 	} else {
 		es = js_ref_to_string(ctx, val);
+		g_free(es);
 #if 0
 		/* return values */
 		if (!strncmp(es, XT_JS_DONE, XT_JS_DONE_LEN))
 			; /* do nothing */
 		if (!strncmp(es, XT_JS_INSERT, XT_JS_INSERT_LEN))
 			; /* do nothing */
-#endif
 		if (es) {
 			show_oops(t, "script complete return value: '%s'", es);
 			g_free(es);
 		} else
 			show_oops(t, "script complete: without a return value");
+#endif
 	}
 done:
 	if (su)
