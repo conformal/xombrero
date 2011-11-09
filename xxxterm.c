@@ -2496,31 +2496,122 @@ movetab(struct tab *t, struct karg *args)
 int cmd_prefix = 0;
 
 int
-focus_input(struct tab *t)
+focus_input_document(struct tab *t, WebKitDOMDocument *doc)
 {
-	WebKitDOMDocument	*doc;
-	WebKitDOMNodeList	*input;
+	WebKitDOMNodeList	*input = NULL, *textarea = NULL;
 	WebKitDOMNode		*n;
 	char			*es;
 	int			i, rv = 0 /* not found */;
 
-	/* XXX do we need to repeat this for text area? */
-	doc = webkit_web_view_get_dom_document(t->wv);
+	WebKitDOMHTMLTextAreaElement	*ta;
+	WebKitDOMHTMLInputElement	*in;
+
+	/* we are deliberately ignoring tab index! */
+
+	/* try input first */
 	input = webkit_dom_document_get_elements_by_tag_name(doc, "input");
 	for (i = 0; i < webkit_dom_node_list_get_length(input); i++) {
 		n = webkit_dom_node_list_item(input, i);
-		g_object_get(G_OBJECT(n), "type", &es, (char *)NULL);
-		if (!g_str_equal("text", es)) {
+		in = (WebKitDOMHTMLInputElement*)n;
+		g_object_get(G_OBJECT(in), "type", &es, (char *)NULL);
+		if ((!g_str_equal("text", es) && !g_str_equal("password",es)) ||
+		    webkit_dom_html_input_element_get_disabled(in)) {
 			/* skip not text */
 			g_free(es);
 			continue;
 		}
-		webkit_dom_element_focus((WebKitDOMElement*)n);
+		webkit_dom_element_focus((WebKitDOMElement*)in);
 		g_free(es);
 		rv = 1; /* found */
-		break;
+		goto done;
 	}
-	g_object_unref(input);
+
+	/* now try textarea */
+	textarea = webkit_dom_document_get_elements_by_tag_name(doc, "textarea");
+	for (i = 0; i < webkit_dom_node_list_get_length(textarea); i++) {
+		n = webkit_dom_node_list_item(textarea, i);
+		ta = (WebKitDOMHTMLTextAreaElement*)n;
+		if (webkit_dom_html_text_area_element_get_disabled(ta)) {
+			/* it is hidden so skip */
+			continue;
+		}
+		webkit_dom_element_focus((WebKitDOMElement*)ta);
+		rv = 1; /* found */
+		goto done;
+	}
+done:
+	if (input)
+		g_object_unref(input);
+	if (textarea)
+		g_object_unref(textarea);
+
+	return (rv);
+}
+int
+focus_input(struct tab *t)
+{
+	WebKitDOMDocument	*doc;
+	WebKitDOMNode		*n;
+	WebKitDOMNodeList	*fl = NULL, *ifl = NULL;
+	int			i, fl_count, ifl_count, rv = 0;
+
+	WebKitDOMHTMLFrameElement *frame;
+	WebKitDOMHTMLIFrameElement *iframe;
+
+	/*
+	 * Here is what we are doing:
+	 * See if we got frames or iframes
+	 *
+	 * if we do focus on input or textarea in frame or in iframe
+	 *
+	 * if we find nothing or there are no frames focus on first input or
+	 * text area
+	 */
+
+	doc = webkit_web_view_get_dom_document(t->wv);
+
+	/* get frames */
+	fl = webkit_dom_document_get_elements_by_tag_name(doc, "frame");
+	fl_count = webkit_dom_node_list_get_length(fl);
+
+	/* get iframes */
+	ifl = webkit_dom_document_get_elements_by_tag_name(doc, "iframe");
+	ifl_count = webkit_dom_node_list_get_length(ifl);
+
+	/* walk frames and look for a text input */
+	for (i = 0; i < fl_count; i++) {
+		n = webkit_dom_node_list_item(fl, i);
+		frame = (WebKitDOMHTMLFrameElement*)n;
+		doc = webkit_dom_html_frame_element_get_content_document(frame);
+
+		if (focus_input_document(t, doc)) {
+			rv = 1;
+			goto done;
+		}
+	}
+
+	/* walk iframes and look for a text input */
+	for (i = 0; i < ifl_count; i++) {
+		n = webkit_dom_node_list_item(ifl, i);
+		iframe = (WebKitDOMHTMLIFrameElement*)n;
+		doc = webkit_dom_html_iframe_element_get_content_document(iframe);
+
+		if (focus_input_document(t, doc)) {
+			rv = 1;
+			goto done;
+		}
+	}
+
+	/* if we made it here nothing got focuses so use normal heuristic */
+	if (focus_input_document(t, webkit_web_view_get_dom_document(t->wv))) {
+		rv = 1;
+		goto done;
+	}
+done:
+	if (fl)
+		g_object_unref(fl);
+	if (ifl)
+		g_object_unref(ifl);
 
 	return (rv);
 }
