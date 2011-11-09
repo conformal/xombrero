@@ -2626,6 +2626,23 @@ dom_is_input(struct tab *t, WebKitDOMElement **active)
 	for (;;) {
 		a = webkit_dom_html_document_get_active_element(
 		    (WebKitDOMHTMLDocument*)doc);
+		if (a == NULL)
+			return (0);
+
+		/*
+		 * I think this is a total hack because this property isn't
+		 * set for textareas or input however, it is set for jquery
+		 * textareas that do rich text.  Since this works around issues
+		 * in RT we'll simply keep it!
+		 *
+		 * This might break some other stuff but for now it helps.
+		 */
+		if (webkit_dom_html_element_get_is_content_editable(
+		    (WebKitDOMHTMLElement*)a)) {
+			*active = a;
+			return (1);
+		}
+
 		frame = (WebKitDOMHTMLFrameElement *)a;
 		if (WEBKIT_DOM_IS_HTML_FRAME_ELEMENT(frame)) {
 			doc = webkit_dom_html_frame_element_get_content_document(
