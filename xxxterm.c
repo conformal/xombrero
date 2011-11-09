@@ -2541,12 +2541,14 @@ command(struct tab *t, struct karg *args)
 		}
 		break;
 	case '.':
+		t->mode = XT_MODE_HINT;
 		bzero(&a, sizeof a);
 		a.i = 0;
 		hint(t, &a);
 		s = ".";
 		break;
 	case ',':
+		t->mode = XT_MODE_HINT;
 		bzero(&a, sizeof a);
 		a.i = XT_HINT_NEWTAB;
 		hint(t, &a);
@@ -3127,8 +3129,6 @@ wv_button_cb(GtkWidget *btn, GdkEventButton *e, struct tab *t)
 
 	hit_test_result = webkit_web_view_get_hit_test_result(t->wv, e);
 	g_object_get(hit_test_result, "context", &context, NULL);
-
-	fprintf(stderr, "%s: %d %d %d\n", __func__, e->button, context, WEBKIT_HIT_TEST_RESULT_CONTEXT_EDITABLE);
 
 	hide_oops(t);
 	hide_buffers(t);
@@ -4022,26 +4022,17 @@ done:
 		g_free(domain);
 }
 
-gboolean
-webview_console_cb(WebKitWebView *webview, char *message, int line, char *source, gpointer user_data)
-{
-	//fprintf(stderr, "%s: message %s\n", __func__, message);
-	return (FALSE);
-}
-
 void
 webview_load_finished_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 {
 	/* autorun some js if enabled */
 	js_autorun(t);
 
-	fprintf(stderr, "%s: message\n", __func__);
 	if (autofocus_onload &&
 	    t->tab_id == gtk_notebook_get_current_page(notebook))
 		run_script(t, "hints.focusInput();");
 	else
 		run_script(t, "hints.clearFocus();");
-	//run_script(t, JS_INPUT_FOCUS);
 }
 
 void
@@ -4816,42 +4807,9 @@ handle_keypress(struct tab *t, GdkEventKey *e, int entry)
 
 	return (XT_CB_PASSTHROUGH);
 }
-#if 0
+
 int
-wv_keypress_after_cb(GtkWidget *w, GdkEventKey *e, struct tab *t)
-{
-	char			s[2];
-	WebKitDOMDocument	*doc;
-	WebKitDOMElement	*active;
-
-	doc = webkit_web_view_get_dom_document(t->wv);
-	active = webkit_dom_html_document_get_active_element((WebKitDOMHTMLDocument*)doc);
-
-	/* don't use w directly; use t->whatever instead */
-
-	if (t == NULL) {
-		show_oops(NULL, "wv_keypress_after_cb");
-		return (XT_CB_PASSTHROUGH);
-	}
-
-	DNPRINTF(XT_D_KEY, "wv_keypress_after_cb: keyval 0x%x mask 0x%x tab %d\n",
-	    e->keyval, e->state, t->tab_id);
-
-	if (t->hints_on) {
-		/* XXX make sure cmd entry is enabled */
-		return (XT_CB_HANDLED);
-	} else {
-		/* prefix input*/
-		snprintf(s, sizeof s, "%c", e->keyval);
-		if (CLEAN(e->state) == 0 && isdigit(s[0]))
-			cmd_prefix = 10 * cmd_prefix + atoi(s);
-	}
-
-	return (handle_keypress(t, e, 0));
-}
-#endif
-int
-dom_unwind(struct tab *t, WebKitDOMElement **active)
+dom_is_input(struct tab *t, WebKitDOMElement **active)
 {
 	WebKitDOMDocument	*doc;
 	WebKitDOMElement	*a;
@@ -4863,7 +4821,7 @@ dom_unwind(struct tab *t, WebKitDOMElement **active)
 
 	doc = webkit_web_view_get_dom_document(t->wv);
 
-	/* unwind frames and iframes */
+	/* unwind frames and iframes until the cows come home */
 	for (;;) {
 		a = webkit_dom_html_document_get_active_element(
 		    (WebKitDOMHTMLDocument*)doc);
@@ -4926,58 +4884,15 @@ wv_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		return (XT_CB_HANDLED);
 
 	if ((CLEAN(e->state) == 0 && e->keyval == GDK_Tab) ||
-	    (CLEAN(e->state) == SHFT && e->keyval == GDK_Tab)) {
-		fprintf(stderr, "something focussy is about to happen\n");
+	    (CLEAN(e->state) == SHFT && e->keyval == GDK_Tab))
+		/* something focussy is about to happen */
 		return (XT_CB_PASSTHROUGH);
-	}
 
-	if (dom_unwind(t, &active))
+	/* check if we are some sort of text input thing in the dom */
+	if (dom_is_input(t, &active))
 		t->mode = XT_MODE_INSERT;
 	else
 		t->mode = XT_MODE_COMMAND;
-	fprintf(stderr, "MODE: %d\n", t->mode);
-#if 0
-	WebKitDOMDocument	*doc;
-	WebKitDOMElement	*active;
-	WebKitDOMNode		*a;
-	WebKitDOMHTMLFrameElement *f;
-	WebKitDOMHTMLTextAreaElement *tt;
-
-	doc = webkit_web_view_get_dom_document(t->wv);
-	active = webkit_dom_html_document_get_active_element((WebKitDOMHTMLDocument*)doc);
-	a = (WebKitDOMNode *)active;
-	f = (WebKitDOMHTMLFrameElement *)active;
-
-	fprintf(stderr, "active %p '%s' '%s' input '%d' frame '%d'\n",
-	    active,
-	    webkit_dom_element_get_attribute(active, "node_name"),
-	    webkit_dom_element_get_attribute(active, "name"),
-	    WEBKIT_DOM_IS_HTML_INPUT_ELEMENT(a),
-	    WEBKIT_DOM_IS_HTML_FRAME_ELEMENT(f)
-	    );
-	while (WEBKIT_DOM_IS_HTML_FRAME_ELEMENT(f)) {
-		fprintf(stderr, "=====================\n");
-		doc = webkit_dom_html_frame_element_get_content_document(f);
-		active = webkit_dom_html_document_get_active_element((WebKitDOMHTMLDocument*)doc);
-		a = (WebKitDOMNode *)active;
-		f = (WebKitDOMHTMLFrameElement *)active;
-		tt = (WebKitDOMHTMLTextAreaElement *)active;
-		fprintf(stderr, "active %p '%s' '%s' input '%d' frame '%d' text '%d'\n",
-		    active,
-		    webkit_dom_element_get_attribute(active, "node_name"),
-		    webkit_dom_element_get_attribute(active, "name"),
-		    WEBKIT_DOM_IS_HTML_INPUT_ELEMENT(a),
-		    WEBKIT_DOM_IS_HTML_FRAME_ELEMENT(f),
-		    WEBKIT_DOM_IS_HTML_TEXT_AREA_ELEMENT(tt)
-		    );
-	}
-
-	if (WEBKIT_DOM_IS_HTML_INPUT_ELEMENT(a))
-		t->mode = XT_MODE_INSERT;
-	else
-		t->mode = XT_MODE_COMMAND;
-	run_script(t, JS_INPUT_FOCUS);
-#endif
 
 	if (t->mode == XT_MODE_HINT) {
 		/* XXX make sure cmd entry is enabled */
@@ -6560,8 +6475,6 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 
 	g_object_connect(G_OBJECT(t->wv),
 	    "signal::key-press-event", G_CALLBACK(wv_keypress_cb), t,
-	    //"signal::key-press-event", G_CALLBACK(wv_keypress_cb), t,
-	    //"signal-after::key-press-event", G_CALLBACK(wv_keypress_after_cb), t,
 	    "signal::hovering-over-link", G_CALLBACK(webview_hover_cb), t,
 	    "signal::download-requested", G_CALLBACK(webview_download_cb), t,
 	    "signal::mime-type-policy-decision-requested", G_CALLBACK(webview_mimetype_cb), t,
@@ -6576,7 +6489,6 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	    "signal::button_press_event", G_CALLBACK(wv_button_cb), t,
 	    "signal::button_release_event", G_CALLBACK(wv_release_button_cb), t,
 	    "signal::populate-popup", G_CALLBACK(wv_popup_cb), t,
-	    //"signal::console-message", G_CALLBACK(webview_console_cb), t,
 	    (char *)NULL);
 	g_signal_connect(t->wv,
 	    "notify::load-status", G_CALLBACK(notify_load_status_cb), t);
