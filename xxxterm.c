@@ -2548,8 +2548,8 @@ focus_input(struct tab *t)
 	WebKitDOMNodeList	*fl = NULL, *ifl = NULL;
 	int			i, fl_count, ifl_count, rv = 0;
 
-	WebKitDOMHTMLFrameElement *frame;
-	WebKitDOMHTMLIFrameElement *iframe;
+	WebKitDOMHTMLFrameElement	*frame;
+	WebKitDOMHTMLIFrameElement	*iframe;
 
 	/*
 	 * Here is what we are doing:
@@ -4885,8 +4885,16 @@ buffercmd_addkey(struct tab *t, guint keyval)
 	}
 
 	/* key with modifier or non-ascii character */
-	if (!isascii(keyval))
-		return (XT_CB_PASSTHROUGH);
+	if (!isascii(keyval)) {
+		/*
+		 * XXX this looks wrong but fixes some sites like
+		 * http://www.seslisozluk.com/
+		 * that eat a shift or ctrl and end putting default focus in js
+		 * instead of ignoring the keystroke
+		 * so instead of return (XT_CB_PASSTHROUGH); eat the key
+		 */
+		return (XT_CB_HANDLED);
+	}
 
 	DNPRINTF(XT_D_BUFFERCMD, "buffercmd_addkey: adding key \"%c\" "
 	    "to buffer \"%s\"\n", keyval, bcmd);
