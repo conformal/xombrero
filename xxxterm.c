@@ -2496,15 +2496,93 @@ movetab(struct tab *t, struct karg *args)
 int cmd_prefix = 0;
 
 int
+focus_input(struct tab *t)
+{
+	WebKitDOMDocument	*doc;
+	WebKitDOMNodeList	*input;
+	WebKitDOMNode		*n;
+	char			*es;
+	int			i, rv = 0 /* not found */;
+
+	/* XXX do we need to repeat this for text area? */
+	doc = webkit_web_view_get_dom_document(t->wv);
+	input = webkit_dom_document_get_elements_by_tag_name(doc, "input");
+	for (i = 0; i < webkit_dom_node_list_get_length(input); i++) {
+		n = webkit_dom_node_list_item(input, i);
+		g_object_get(G_OBJECT(n), "type", &es, (char *)NULL);
+		if (!g_str_equal("text", es)) {
+			/* skip not text */
+			g_free(es);
+			continue;
+		}
+		webkit_dom_element_focus((WebKitDOMElement*)n);
+		g_free(es);
+		rv = 1; /* found */
+		break;
+	}
+	g_object_unref(input);
+
+	return (rv);
+}
+
+int
+dom_is_input(struct tab *t, WebKitDOMElement **active)
+{
+	WebKitDOMDocument	*doc;
+	WebKitDOMElement	*a;
+
+	WebKitDOMHTMLFrameElement *frame;
+	WebKitDOMHTMLIFrameElement *iframe;
+
+	/* proof positive that OO is stupid */
+
+	doc = webkit_web_view_get_dom_document(t->wv);
+
+	/* unwind frames and iframes until the cows come home */
+	for (;;) {
+		a = webkit_dom_html_document_get_active_element(
+		    (WebKitDOMHTMLDocument*)doc);
+		frame = (WebKitDOMHTMLFrameElement *)a;
+		if (WEBKIT_DOM_IS_HTML_FRAME_ELEMENT(frame)) {
+			doc = webkit_dom_html_frame_element_get_content_document(
+			    frame);
+			continue;
+		}
+
+		iframe = (WebKitDOMHTMLIFrameElement *)a;
+		if (WEBKIT_DOM_IS_HTML_IFRAME_ELEMENT(iframe)) {
+			doc = webkit_dom_html_iframe_element_get_content_document(
+			    iframe);
+			continue;
+		}
+
+		break;
+	}
+
+	if (a == NULL)
+		return (0);
+
+	if (WEBKIT_DOM_IS_HTML_INPUT_ELEMENT((WebKitDOMNode *)a) ||
+	    WEBKIT_DOM_IS_HTML_TEXT_AREA_ELEMENT((WebKitDOMNode *)a)) {
+		*active = a;
+		return (1);
+	}
+
+	return (0);
+}
+
+int
 command_mode(struct tab *t, struct karg *args)
 {
-	/* this is busted! need to check if the script worked */
-	run_script(t, JS_HINTING);
+	WebKitDOMElement	*active = NULL;
+
 	if (args->i == XT_MODE_COMMAND) {
-		run_script(t, "hints.clearFocus();");
+		if (dom_is_input(t, &active))
+			if (active)
+				webkit_dom_element_blur(active);
 		t->mode = XT_MODE_COMMAND;
 	} else {
-		run_script(t, "hints.focusInput();");
+		focus_input(t);
 		t->mode = XT_MODE_INSERT;
 	}
 
@@ -4025,14 +4103,21 @@ done:
 void
 webview_load_finished_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 {
+	WebKitDOMElement	*active = NULL;
+
 	/* autorun some js if enabled */
 	js_autorun(t);
 
 	if (autofocus_onload &&
-	    t->tab_id == gtk_notebook_get_current_page(notebook))
-		run_script(t, "hints.focusInput();");
-	else
-		run_script(t, "hints.clearFocus();");
+	    t->tab_id == gtk_notebook_get_current_page(notebook)) {
+		focus_input(t);
+		t->mode = XT_MODE_INSERT;
+	} else {
+		if (dom_is_input(t, &active))
+			if (active)
+				webkit_dom_element_blur(active);
+		t->mode = XT_MODE_COMMAND;
+	}
 }
 
 void
@@ -4806,52 +4891,6 @@ handle_keypress(struct tab *t, GdkEventKey *e, int entry)
 		return buffercmd_addkey(t, e->keyval);
 
 	return (XT_CB_PASSTHROUGH);
-}
-
-int
-dom_is_input(struct tab *t, WebKitDOMElement **active)
-{
-	WebKitDOMDocument	*doc;
-	WebKitDOMElement	*a;
-
-	WebKitDOMHTMLFrameElement *frame;
-	WebKitDOMHTMLIFrameElement *iframe;
-
-	/* proof positive that OO is stupid */
-
-	doc = webkit_web_view_get_dom_document(t->wv);
-
-	/* unwind frames and iframes until the cows come home */
-	for (;;) {
-		a = webkit_dom_html_document_get_active_element(
-		    (WebKitDOMHTMLDocument*)doc);
-		frame = (WebKitDOMHTMLFrameElement *)a;
-		if (WEBKIT_DOM_IS_HTML_FRAME_ELEMENT(frame)) {
-			doc = webkit_dom_html_frame_element_get_content_document(
-			    frame);
-			continue;
-		}
-
-		iframe = (WebKitDOMHTMLIFrameElement *)a;
-		if (WEBKIT_DOM_IS_HTML_IFRAME_ELEMENT(iframe)) {
-			doc = webkit_dom_html_iframe_element_get_content_document(
-			    iframe);
-			continue;
-		}
-
-		break;
-	}
-
-	if (a == NULL)
-		return (0);
-
-	if (WEBKIT_DOM_IS_HTML_INPUT_ELEMENT((WebKitDOMNode *)a) ||
-	    WEBKIT_DOM_IS_HTML_TEXT_AREA_ELEMENT((WebKitDOMNode *)a)) {
-		*active = a;
-		return (1);
-	}
-
-	return (0);
 }
 
 int
