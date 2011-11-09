@@ -4211,8 +4211,10 @@ webview_load_finished_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 
 	if (autofocus_onload &&
 	    t->tab_id == gtk_notebook_get_current_page(notebook)) {
-		focus_input(t);
-		t->mode = XT_MODE_INSERT;
+		if (focus_input(t))
+			t->mode = XT_MODE_INSERT;
+		else
+			t->mode = XT_MODE_COMMAND;
 	} else {
 		if (dom_is_input(t, &active))
 			if (active)
