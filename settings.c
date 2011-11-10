@@ -639,8 +639,8 @@ struct key_binding	keys[] = {
 	{ "searchb",		0,	0,	GDK_question	},
 	{ "statustoggle",	CTRL,	0,	GDK_n		},
 	{ "command",		0,	0,	GDK_colon	},
-	{ "qa",			CTRL,	0,	GDK_q		},
-	{ "restart",		MOD1,	0,	GDK_q		},
+	{ "qa",			CTRL,	1,	GDK_q		},
+	{ "restart",		MOD1,	1,	GDK_q		},
 	{ "js toggle",		CTRL,	0,	GDK_j		},
 	{ "plugin toggle",	MOD1,	0,	GDK_p		},
 	{ "cookie toggle",	MOD1,	0,	GDK_c		},
@@ -648,7 +648,7 @@ struct key_binding	keys[] = {
 	{ "yankuri",		0,	0,	GDK_y		},
 	{ "pasteuricur",	0,	0,	GDK_p		},
 	{ "pasteurinew",	0,	0,	GDK_P		},
-	{ "toplevel toggle",	0,	0,	GDK_F4		},
+	{ "toplevel toggle",	0,	1,	GDK_F4		},
 	{ "help",		0,	0,	GDK_F1		},
 	{ "run_script",		MOD1,	0,	GDK_r		},
 
@@ -657,8 +657,8 @@ struct key_binding	keys[] = {
 	{ "searchprevious",	0,	0,	GDK_N		},
 
 	/* focus */
-	{ "focusaddress",	0,	0,	GDK_F6		},
-	{ "focussearch",	0,	0,	GDK_F7		},
+	{ "focusaddress",	0,	1,	GDK_F6		},
+	{ "focussearch",	0,	1,	GDK_F7		},
 
 	/* hinting */
 	{ "hinting",		0,	0,	GDK_f		},
@@ -703,9 +703,9 @@ struct key_binding	keys[] = {
 	{ "scrollfarleft",	0,	0,	GDK_0		},
 
 	/* tabs */
-	{ "tabnew",		CTRL,	0,	GDK_t		},
-	{ "999tabnew",		CTRL,	0,	GDK_T		},
-	{ "tabclose",		CTRL,	1,	GDK_w		},
+	{ "tabnew",		CTRL,	1,	GDK_t		},
+	{ "999tabnew",		CTRL,	1,	GDK_T		},
+	{ "tabclose",		CTRL,	0,	GDK_w		},
 	{ "tabundoclose",	0,	0,	GDK_U		},
 	{ "tabnext 1",		CTRL,	0,	GDK_1		},
 	{ "tabnext 2",		CTRL,	0,	GDK_2		},
