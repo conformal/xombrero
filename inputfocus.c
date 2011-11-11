@@ -219,7 +219,8 @@ void
 input_focus_blur(struct tab *t, void *active)
 {
 	/* active is (WebKitDOMElement*) */
-	webkit_dom_element_blur(active);
+	if (active)
+		webkit_dom_element_blur(active);
 }
 
 int
@@ -258,6 +259,52 @@ input_autofocus(struct tab *t)
 		t->mode = XT_MODE_COMMAND;
 	}
 }
-#elif
+#else /* WEBKIT_CHECK_VERSION */
 	/* incomplete DOM API */
+
+	/*
+	 * XXX
+	 * note that we can't check the return value of run_script so we
+	 * have to assume that the command worked; this may leave you in
+	 * insertmode when in fact you shouldn't be
+	*/
+void
+input_autofocus(struct tab *t)
+{
+	if (autofocus_onload &&
+	    t->tab_id == gtk_notebook_get_current_page(notebook)) {
+		run_script(t, "hints.focusInput();");
+		t->mode = XT_MODE_INSERT;
+	} else {
+		run_script(t, "hints.clearFocus();");
+		t->mode = XT_MODE_COMMAND;
+	}
+}
+
+void
+input_focus_blur(struct tab *t, void *active)
+{
+	run_script(t, "hints.clearFocus();");
+	t->mode = XT_MODE_COMMAND;
+}
+
+void *
+input_check_mode(struct tab *t)
+{
+	return (NULL);
+}
+
+int
+command_mode(struct tab *t, struct karg *args)
+{
+	if (args->i == XT_MODE_COMMAND) {
+		run_script(t, "hints.clearFocus();");
+		t->mode = XT_MODE_COMMAND;
+	} else {
+		run_script(t, "hints.focusInput();");
+		t->mode = XT_MODE_INSERT;
+	}
+
+	return (XT_CB_HANDLED);
+}
 #endif

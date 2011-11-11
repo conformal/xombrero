@@ -651,7 +651,6 @@ struct alias_list	aliases;
 struct tab		*create_new_tab(char *, struct undo *, int, int);
 void			delete_tab(struct tab *);
 void			setzoom_webkit(struct tab *, int);
-int			run_script(struct tab *, char *);
 int			download_rb_cmp(struct download *, struct download *);
 gboolean		cmd_execute(struct tab *t, char *str);
 
@@ -4851,8 +4850,7 @@ wv_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 
 	if (CLEAN(e->state) == 0 && e->keyval == GDK_Escape) {
 		t->mode = XT_MODE_COMMAND;
-		if (active)
-			input_focus_blur(t, active);
+		input_focus_blur(t, active);
 		return (XT_CB_HANDLED);
 	}
 

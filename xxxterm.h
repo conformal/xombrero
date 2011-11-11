@@ -264,6 +264,7 @@ RB_PROTOTYPE(history_list, history, entry, history_rb_cmp);
 #define XT_CB_PASSTHROUGH	(FALSE)
 #define XT_FAVS_FILE		("favorites")
 
+int			run_script(struct tab *, char *);
 void			xt_icon_from_file(struct tab *, char *);
 GtkWidget		*create_window(const gchar *);
 void			show_oops(struct tab *, const char *, ...);
@@ -411,8 +412,8 @@ int		toggle_pl(struct tab *, struct karg *);
 
 /* input autofocus */
 void		input_autofocus(struct tab *);
-void		input_focus_blur(struct tab *t, void *);
-void		*input_check_mode(struct tab *t);
+void		input_focus_blur(struct tab *, void *);
+void		*input_check_mode(struct tab *);
 int		command_mode(struct tab *, struct karg *);
 
 /* settings */
