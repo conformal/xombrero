@@ -2595,7 +2595,7 @@ focus_input(struct tab *t)
 		}
 	}
 
-	/* if we made it here nothing got focuses so use normal heuristic */
+	/* if we made it here nothing got focused so use normal heuristic */
 	if (focus_input_document(t, webkit_web_view_get_dom_document(t->wv))) {
 		rv = 1;
 		goto done;
@@ -2683,8 +2683,8 @@ command_mode(struct tab *t, struct karg *args)
 				webkit_dom_element_blur(active);
 		t->mode = XT_MODE_COMMAND;
 	} else {
-		focus_input(t);
-		t->mode = XT_MODE_INSERT;
+		if (focus_input(t))
+			t->mode = XT_MODE_INSERT;
 	}
 
 	return (XT_CB_HANDLED);
@@ -4293,6 +4293,7 @@ webview_cwv_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 	struct domain		*d = NULL;
 	const gchar		*uri;
 	WebKitWebView		*webview = NULL;
+	int			x = 1;
 
 	DNPRINTF(XT_D_NAV, "webview_cwv_cb: %s\n",
 	    webkit_web_view_get_uri(wv));
@@ -4300,15 +4301,23 @@ webview_cwv_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 	if (tabless) {
 		/* open in current tab */
 		webview = t->wv;
-	} else if (enable_scripts == 0 && enable_cookie_whitelist == 1) {
+	} else if (enable_scripts == 0 && enable_js_whitelist == 1) {
 		uri = webkit_web_view_get_uri(wv);
 		if (uri && (d = wl_find_uri(uri, &js_wl)) == NULL)
 			return (NULL);
 
-		tt = create_new_tab(NULL, NULL, 1, -1);
+		if (t->ctrl_click) {
+			x = ctrl_click_focus;
+			t->ctrl_click = 0;
+		}
+		tt = create_new_tab(NULL, NULL, x, -1);
 		webview = tt->wv;
 	} else if (enable_scripts == 1) {
-		tt = create_new_tab(NULL, NULL, 1, -1);
+		if (t->ctrl_click) {
+			x = ctrl_click_focus;
+			t->ctrl_click = 0;
+		}
+		tt = create_new_tab(NULL, NULL, x, -1);
 		webview = tt->wv;
 	}
 
