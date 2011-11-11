@@ -4,7 +4,8 @@ BINDIR=${PREFIX}/bin
 PROG=xxxterm
 MAN=xxxterm.1
 
-SRCS= cookie.c inspector.c marco.c about.c whitelist.c settings.c xxxterm.c
+SRCS= cookie.c inspector.c marco.c about.c whitelist.c settings.c inputfocus.c
+SRCS+= xxxterm.c
 CFLAGS+= -O2 -Wall -Wno-format-extra-args -Wunused
 CFLAGS+= -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare
 DEBUG= -ggdb3

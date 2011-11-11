@@ -409,6 +409,12 @@ int		toggle_cwl(struct tab *, struct karg *);
 int		toggle_js(struct tab *, struct karg *);
 int		toggle_pl(struct tab *, struct karg *);
 
+/* input autofocus */
+void		input_autofocus(struct tab *);
+void		input_focus_blur(struct tab *t, void *);
+void		*input_check_mode(struct tab *t);
+int		command_mode(struct tab *, struct karg *);
+
 /* settings */
 #define XT_BM_NORMAL		(0)
 #define XT_BM_WHITELIST		(1)
@@ -530,6 +536,7 @@ long long unsigned int	blocked_cookies;
 extern SoupCookieJar	*s_cookiejar;
 extern SoupCookieJar	*p_cookiejar;
 extern SoupSession	*session;
+extern GtkNotebook	*notebook;
 
 extern void	(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 
