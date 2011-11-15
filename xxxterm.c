@@ -7140,7 +7140,12 @@ main(int argc, char *argv[])
 			show_tabs = 0;
 			break;
 		case 'V':
+#ifdef XXXTERM_BUILDSTR
+			errx(0 , "Version: %s Build: %s",
+			    version, XXXTERM_BUILDSTR);
+#else
 			errx(0 , "Version: %s", version);
+#endif
 			break;
 		case 'f':
 			strlcpy(conf, optarg, sizeof(conf));
