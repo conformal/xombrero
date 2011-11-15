@@ -424,6 +424,9 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_TABS_NORMAL		(0)
 #define XT_TABS_COMPACT		(1)
 
+#define XT_EM_HYBRID		(0)
+#define XT_EM_VI		(1)
+
 #define CTRL			GDK_CONTROL_MASK
 #define MOD1			GDK_MOD1_MASK
 #define SHFT			GDK_SHIFT_MASK
@@ -526,6 +529,7 @@ extern char	*cmd_font_name;
 extern char	*oops_font_name;
 extern char	*statusbar_font_name;
 extern char	*tabbar_font_name;
+extern int	edit_mode;
 
 /* globals */
 extern char		*version;

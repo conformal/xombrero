@@ -4848,12 +4848,19 @@ wv_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		return (handle_keypress(t, e, 0));
 	}
 
+	/* insert mode */
 	if (CLEAN(e->state) == 0 && e->keyval == GDK_Escape) {
 		t->mode = XT_MODE_COMMAND;
 		input_focus_blur(t, active);
 		return (XT_CB_HANDLED);
 	}
 
+	if (edit_mode == XT_EM_HYBRID) {
+		/* eat most modded commands */
+		if (e->state & CTRL || e->state & MOD1)
+			return (XT_CB_PASSTHROUGH);
+	}
+fprintf(stderr, "state 0x%x kyval 0x%x\n", e->state, e->keyval);
 	return (XT_CB_PASSTHROUGH);
 }
 

@@ -86,6 +86,7 @@ char		command_file[PATH_MAX];
 char		*encoding = NULL;
 int		autofocus_onload = 0;
 int		js_autorun_enabled = 1;
+int		edit_mode = XT_EM_HYBRID;
 
 char		*cmd_font_name = NULL;
 char		*oops_font_name = NULL;
@@ -96,6 +97,7 @@ char		*get_download_dir(struct settings *);
 char		*get_default_script(struct settings *);
 char		*get_runtime_dir(struct settings *);
 char		*get_tab_style(struct settings *);
+char		*get_edit_mode(struct settings *);
 char		*get_work_dir(struct settings *);
 
 int		add_cookie_wl(struct settings *, char *);
@@ -109,6 +111,7 @@ int		set_download_dir(struct settings *, char *);
 int		set_default_script(struct settings *, char *);
 int		set_runtime_dir(struct settings *, char *);
 int		set_tab_style(struct settings *, char *);
+int		set_edit_mode(struct settings *, char *);
 int		set_work_dir(struct settings *, char *);
 
 void		walk_mime_type(struct settings *, void (*)(struct settings *,
@@ -229,6 +232,12 @@ struct special		s_tab_style = {
 	NULL
 };
 
+struct special		s_edit_mode = {
+	set_edit_mode,
+	get_edit_mode,
+	NULL
+};
+
 struct settings		rs[] = {
 	{ "allow_volatile_cookies",	XT_S_INT, 0,		&allow_volatile_cookies, NULL, NULL },
 	{ "append_next",		XT_S_INT, 0,		&append_next, NULL, NULL },
@@ -240,6 +249,7 @@ struct settings		rs[] = {
 	{ "default_zoom_level",		XT_S_FLOAT, 0,		NULL, NULL, NULL, &default_zoom_level },
 	{ "default_script",		XT_S_STR, 0, NULL, NULL,&s_default_script },
 	{ "download_dir",		XT_S_STR, 0, NULL, NULL,&s_download_dir },
+	{ "edit_mode",			XT_S_STR, 0, NULL, NULL,&s_edit_mode },
 	{ "enable_cookie_whitelist",	XT_S_INT, 0,		&enable_cookie_whitelist, NULL, NULL },
 	{ "enable_js_whitelist",	XT_S_INT, 0,		&enable_js_whitelist, NULL, NULL },
 	{ "enable_plugin_whitelist",	XT_S_INT, 0,		&enable_plugin_whitelist, NULL, NULL },
@@ -950,6 +960,28 @@ set_tab_style(struct settings *s, char *val)
 		tab_style = XT_TABS_NORMAL;
 	else if (!strcmp(val, "compact"))
 		tab_style = XT_TABS_COMPACT;
+	else
+		return (1);
+
+	return (0);
+}
+
+char *
+get_edit_mode(struct settings *s)
+{
+	if (tab_style == XT_EM_HYBRID)
+		return (g_strdup("hybrid"));
+	else
+		return (g_strdup("vi"));
+}
+
+int
+set_edit_mode(struct settings *s, char *val)
+{
+	if (!strcmp(val, "hybrid"))
+		tab_style = XT_EM_HYBRID;
+	else if (!strcmp(val, "vi"))
+		tab_style = XT_EM_VI;
 	else
 		return (1);
 
