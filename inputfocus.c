@@ -16,7 +16,7 @@
 
 #include "xxxterm.h"
 
-#if WEBKIT_CHECK_VERSION(1, 3, 0)
+#if WEBKIT_CHECK_VERSION(1, 5, 0)
 	/* we got the DOM API we need */
 int
 focus_input_document(struct tab *t, WebKitDOMDocument *doc)
