@@ -4786,6 +4786,12 @@ handle_keypress(struct tab *t, GdkEventKey *e, int entry)
 		TAILQ_FOREACH(k, &kbl, entry)
 			if (e->keyval == k->key
 			    && (entry ? k->use_in_entry : 1)) {
+				/* when we are edditing eat ctrl/mod keys */
+				if (edit_mode == XT_EM_VI &&
+				    t->mode == XT_MODE_INSERT &&
+				    (e->state & CTRL || e->state & MOD1))
+					return (XT_CB_PASSTHROUGH);
+
 				if (k->mask == 0) {
 					if ((e->state & (CTRL | MOD1)) == 0)
 						return (cmd_execute(t, k->cmd));

@@ -969,7 +969,7 @@ set_tab_style(struct settings *s, char *val)
 char *
 get_edit_mode(struct settings *s)
 {
-	if (tab_style == XT_EM_HYBRID)
+	if (edit_mode == XT_EM_HYBRID)
 		return (g_strdup("hybrid"));
 	else
 		return (g_strdup("vi"));
@@ -979,9 +979,9 @@ int
 set_edit_mode(struct settings *s, char *val)
 {
 	if (!strcmp(val, "hybrid"))
-		tab_style = XT_EM_HYBRID;
+		edit_mode = XT_EM_HYBRID;
 	else if (!strcmp(val, "vi"))
-		tab_style = XT_EM_VI;
+		edit_mode = XT_EM_VI;
 	else
 		return (1);
 
