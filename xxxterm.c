@@ -3117,6 +3117,7 @@ struct cmd {
 
 	/* proxy */
 	{ "proxy",		0,	proxy_cmd,		XT_PRXY_SHOW,		0 },
+	{ "show",		1,	proxy_cmd,		XT_PRXY_SHOW,		0 },
 	{ "toggle",		1,	proxy_cmd,		XT_PRXY_TOGGLE,		0 },
 };
 
