@@ -280,6 +280,10 @@ int			remove_cookie(int);
 void			print_cookie(char *msg, SoupCookie *);
 void			setup_cookies(void);
 
+/* proxy */
+#define XT_PRXY_SHOW		(1<<0)
+#define XT_PRXY_TOGGLE		(1<<1)
+
 /* inspector */
 #define XT_INS_SHOW		(1<<0)
 #define XT_INS_HIDE		(1<<1)

@@ -2892,6 +2892,41 @@ restart(struct tab *t, struct karg *args)
 	return (0);
 }
 
+char		*http_proxy_save; /* not a setting, used to toggle */
+
+int
+proxy_cmd(struct tab *t, struct karg *args)
+{
+	DNPRINTF(XT_D_CMD, "%s: tab %d\n", __func__, t->tab_id);
+
+	if (t == NULL)
+		return (1);
+
+	/* setup */
+	if (http_proxy) {
+		if (http_proxy_save)
+			g_free(http_proxy_save);
+		http_proxy_save = g_strdup(http_proxy);
+	}
+
+	if (args->i & XT_PRXY_SHOW) {
+		if (http_proxy)
+			show_oops(t, "http_proxy = %s", http_proxy);
+		else
+			show_oops(t, "proxy is currently disabled");
+	} else if (args->i & XT_PRXY_TOGGLE) {
+		if (http_proxy_save == NULL && http_proxy == NULL) {
+			show_oops(t, "can't toggle proxy");
+			goto done;
+		}
+		if (http_proxy)
+			setup_proxy(NULL);
+		else
+			setup_proxy(http_proxy_save);
+	}
+done:
+	return (XT_CB_PASSTHROUGH);
+}
 struct cmd {
 	char		*cmd;
 	int		level;
@@ -3079,6 +3114,10 @@ struct cmd {
 	{ "inspector",		0,	inspector_cmd,		XT_INS_SHOW,		0 },
 	{ "show",		1,	inspector_cmd,		XT_INS_SHOW,		0 },
 	{ "hide",		1,	inspector_cmd,		XT_INS_HIDE,		0 },
+
+	/* proxy */
+	{ "proxy",		0,	proxy_cmd,		XT_PRXY_SHOW,		0 },
+	{ "toggle",		1,	proxy_cmd,		XT_PRXY_TOGGLE,		0 },
 };
 
 struct {
@@ -7324,8 +7363,13 @@ main(int argc, char *argv[])
 	env_proxy = getenv("http_proxy");
 	if (env_proxy)
 		setup_proxy(env_proxy);
-	else
-		setup_proxy(http_proxy);
+	else {
+		env_proxy = getenv("HTTP_PROXY");
+		if (env_proxy)
+			setup_proxy(env_proxy);
+		else
+			setup_proxy(http_proxy);
+	}
 
 	if (opte) {
 		send_cmd_to_socket(argv[0]);

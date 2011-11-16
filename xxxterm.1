@@ -213,6 +213,8 @@ option is used.
 .Bl -tag -width Ds -offset indent -compact
 .It Cm F1
 Alias for ":help"
+.It Cm F2
+Alias for ":proxy toggle"
 .It Cm F4
 Alias for ":toplevel toggle"
 .It Cm F9
@@ -532,6 +534,22 @@ Toggle plugin execution for the current FQDN.
 Toggle plugin execution for the current top level domain.
 .It Cm print
 Print page.
+.It Cm proxy
+The
+.Cm proxy
+command is used to manipulate the currently set proxy.
+Used by itself it expands to
+.Cm proxy show .
+.It Cm proxy show
+Displays the current
+.Cm http_proxy
+setting.
+.It Cm proxy toggle
+Enables or disables the proxy for
+.Nm .
+Note that
+.Cm http_proxy
+must be set before it can be toggled.
 .It Cm qa , qall , quitall
 Quit
 .Nm .

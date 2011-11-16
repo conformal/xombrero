@@ -661,6 +661,7 @@ struct key_binding	keys[] = {
 	{ "toplevel toggle",	0,	1,	GDK_F4		},
 	{ "help",		0,	1,	GDK_F1		},
 	{ "run_script",		MOD1,	1,	GDK_r		},
+	{ "proxy toggle",	0,	1,	GDK_F2		},
 
 	/* search */
 	{ "searchnext",		0,	0,	GDK_n		},
