@@ -3872,9 +3872,12 @@ notify_title_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 	title = get_title(t, FALSE);
 	win_title = get_title(t, TRUE);
-	gtk_label_set_text(GTK_LABEL(t->label), title);
-	gtk_label_set_text(GTK_LABEL(t->tab_elems.label), title);
-	if (t->tab_id == gtk_notebook_get_current_page(notebook))
+	if (title) {
+		gtk_label_set_text(GTK_LABEL(t->label), title);
+		gtk_label_set_text(GTK_LABEL(t->tab_elems.label), title);
+	}
+
+	if (win_title && t->tab_id == gtk_notebook_get_current_page(notebook))
 		gtk_window_set_title(GTK_WINDOW(main_window), win_title);
 }
 
