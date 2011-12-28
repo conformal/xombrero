@@ -33,6 +33,8 @@ inspector.o: ../inspector.o
 
 cookie.o: ../cookie.o
 
+inputfocus.o: ../inputfocus.o
+
 ../xxxterm.o: ../javascript.h
 
 xxxterm: xxxterm.o freebsd.o marco.o about.o inspector.o whitelist.o settings.o cookie.o
