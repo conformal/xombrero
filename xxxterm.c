@@ -23,9 +23,8 @@
 
 char		*version = XXXTERM_VERSION;
 
-/*#ifdef XT_DEBUG*/
+#ifdef XT_DEBUG
 u_int32_t		swm_debug = 0
-/*
 			    | XT_D_MOVE
 			    | XT_D_KEY
 			    | XT_D_TAB
@@ -42,7 +41,6 @@ u_int32_t		swm_debug = 0
 			    | XT_D_CLIP
 			    | XT_D_BUFFERCMD
 			    | XT_D_INSPECTOR
-*/
 			    | XT_D_VISITED
 			    | XT_D_HISTORY
 			    ;
@@ -177,6 +175,9 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_SEARCH_INVALID	(0)
 #define XT_SEARCH_NEXT		(1)
 #define XT_SEARCH_PREV		(2)
+
+#define XT_STYLE_CURRENT_TAB	(0)
+#define XT_STYLE_GLOBAL		(1)
 
 #define XT_PASTE_CURRENT_TAB	(0)
 #define XT_PASTE_NEW_TAB	(1)
@@ -1038,23 +1039,46 @@ hint(struct tab *t, struct karg *args)
 void
 apply_style(struct tab *t)
 {
+	t->styled = 1;
 	g_object_set(G_OBJECT(t->settings),
 	    "user-stylesheet-uri", t->stylesheet, (char *)NULL);
+}
+
+void
+remove_style(struct tab *t)
+{
+	t->styled = 0;
+	g_object_set(G_OBJECT(t->settings),
+	    "user-stylesheet-uri", NULL, (char *)NULL);
 }
 
 int
 userstyle(struct tab *t, struct karg *args)
 {
+	struct tab		*tt;
+
 	DNPRINTF(XT_D_JS, "userstyle: tab %d\n", t->tab_id);
 
-	if (t->styled) {
-		t->styled = 0;
-		g_object_set(G_OBJECT(t->settings),
-		    "user-stylesheet-uri", NULL, (char *)NULL);
-	} else {
-		t->styled = 1;
-		apply_style(t);
+	switch (args->i) {
+	case XT_STYLE_CURRENT_TAB:
+		if (t->styled)
+			remove_style(t);
+		else
+			apply_style(t);
+		break;
+	case XT_STYLE_GLOBAL:
+		if (userstyle_global) {
+			userstyle_global = 0;
+			TAILQ_FOREACH(tt, &tabs, entry)
+				remove_style(tt);
+		} else {
+			userstyle_global = 1;
+			TAILQ_FOREACH(tt, &tabs, entry)
+				apply_style(tt);
+		}
+		break;
 	}
+
 	return (0);
 }
 
@@ -3101,7 +3125,8 @@ struct cmd {
 	{ "hinting_newtab",	0,	hint,			XT_HINT_NEWTAB,		0 },
 
 	/* custom stylesheet */
-	{ "userstyle",		0,	userstyle,		0,			0 },
+	{ "userstyle",		0,	userstyle,		XT_STYLE_CURRENT_TAB,	0 },
+	{ "userstyle_global",	0,	userstyle,		XT_STYLE_GLOBAL,	0 },
 
 	/* navigation */
 	{ "goback",		0,	navaction,		XT_NAV_BACK,		0 },
@@ -6679,6 +6704,9 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 		}
 	} else if (load)
 		load_uri(t, title);
+
+	if (userstyle_global)
+		apply_style(t);
 
 	recolor_compact_tabs();
 	setzoom_webkit(t, XT_ZOOM_NORMAL);

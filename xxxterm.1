@@ -392,13 +392,17 @@ Quit
 .Pq Cm quitall
 .El
 .Ss Low-Contrast Color Scheme
-This command toggles the page's style between the default CSS and a
+These commands toggle the page style between the default CSS and a
 low-contrast color scheme with light grey text on a dark grey background.
 .Pp
 .Bl -tag -width Ds -offset indent -compact
 .It Cm s
 Toggle the current tab's style.
 .Pq Cm userstyle
+.It Cm S
+Toggle the global page style mode.
+Will also affect new tabs.
+.Pq Cm userstyle_global
 .El
 .Sh COMMAND MODE
 Command mode works in a similar fashion to the

@@ -108,7 +108,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#define XT_DEBUG
+/*#define XT_DEBUG*/
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
 #define DNPRINTF(n,x...)	do { if (swm_debug & n) fprintf(stderr, x); } while (0)
@@ -538,6 +538,7 @@ extern char	*oops_font_name;
 extern char	*statusbar_font_name;
 extern char	*tabbar_font_name;
 extern int	edit_mode;
+extern int	userstyle_global;
 
 /* globals */
 extern char		*version;

@@ -88,6 +88,7 @@ char		*encoding = NULL;
 int		autofocus_onload = 0;
 int		js_autorun_enabled = 1;
 int		edit_mode = XT_EM_HYBRID;
+int		userstyle_global = 0;
 
 char		*cmd_font_name = NULL;
 char		*oops_font_name = NULL;
@@ -681,6 +682,7 @@ struct key_binding	keys[] = {
 
 	/* custom stylesheet */
 	{ "userstyle",		0,	0,	GDK_s		},
+	{ "userstyle_global",	SHFT,	0,	GDK_S		},
 
 	/* navigation */
 	{ "goback",		0,	0,	GDK_BackSpace	},
