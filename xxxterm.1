@@ -940,6 +940,15 @@ See the default config file for more details.
 Set the command prompt font.
 E.g.
 .Pa cmd_font = monospace normal 9 .
+.It Cm color_visited_uris
+When enabled (the default)
+.Nm
+will color visited links. This is done while the web page loads using
+JavaScript, rather than WebKit's (broken, see bug #51747) built-in
+facility for coloring visited links. The JavaScript approach is
+(probably) slower and is not consistent across tabs (unless the tabs are
+reloaded), but has the advantage of not leaking history data to web
+pages (see http://wtikay.com/docs/details.html).
 .It Cm cookie_policy
 This field delineates the cookie policy.
 Possible values are: no3rdparty, reject 3rd party cookies.
@@ -1235,11 +1244,3 @@ was written by
 .An Raphael Graf Aq r@undefined.ch ,
 and
 .An Michal Mazurek Aq akfaew@jasminek.net .
-.Sh BUGS
-When
-.Cm save_global_history
-is enabled
-.Nm
-is supposed to, in addition to restoring the global history, color the
-visited links accordingly; however due to bug #51747 in WebKit this does
-not happen.

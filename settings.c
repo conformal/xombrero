@@ -68,6 +68,7 @@ char		*http_proxy = NULL;
 char		download_dir[PATH_MAX];
 char		runtime_settings[PATH_MAX]; /* override of settings */
 int		allow_volatile_cookies = 0;
+int		color_visited_uris = 1;
 int		save_global_history = 0; /* save global history to disk */
 char		*user_agent = NULL;
 int		save_rejected_cookies = 0;
@@ -243,6 +244,7 @@ struct settings		rs[] = {
 	{ "append_next",		XT_S_INT, 0,		&append_next, NULL, NULL },
 	{ "autofocus_onload",		XT_S_INT, 0,		&autofocus_onload, NULL, NULL },
 	{ "browser_mode",		XT_S_INT, 0, NULL, NULL,&s_browser_mode },
+	{ "color_visited_uris",		XT_S_INT, 0,		&color_visited_uris, NULL, NULL },
 	{ "cookie_policy",		XT_S_INT, 0, NULL, NULL,&s_cookie },
 	{ "cookies_enabled",		XT_S_INT, 0,		&cookies_enabled, NULL, NULL },
 	{ "ctrl_click_focus",		XT_S_INT, 0,		&ctrl_click_focus, NULL, NULL },

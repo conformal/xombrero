@@ -1265,7 +1265,7 @@ xtp_page_hl(struct tab *t, struct karg *args)
 
 	/* body */
 	body = g_strdup_printf("<table style='table-layout:fixed'><tr>"
-	    "<th>URI</th><th>Title</th><th style='width: 40px'>Rm</th></tr>\n");
+	    "<th>URI</th><th>Title</th><th>Last visited</th><th style='width: 40px'>Rm</th></tr>\n");
 
 	RB_FOREACH_REVERSE(h, history_list, &hl) {
 		tmp = body;
@@ -1273,9 +1273,10 @@ xtp_page_hl(struct tab *t, struct karg *args)
 		    "%s\n<tr>"
 		    "<td><a href='%s'>%s</a></td>"
 		    "<td>%s</td>"
+		    "<td>%s</td>"
 		    "<td style='text-align: center'>"
 		    "<a href='%s%d/%s/%d/%d'>X</a></td></tr>\n",
-		    body, h->uri, h->uri, h->title,
+		    body, h->uri, h->uri, h->title, ctime(&h->time),
 		    XT_XTP_STR, XT_XTP_HL, hl_session_key,
 		    XT_XTP_HL_REMOVE, i);
 

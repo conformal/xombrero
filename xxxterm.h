@@ -108,7 +108,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-/*#define XT_DEBUG*/
+#define XT_DEBUG
 #ifdef XT_DEBUG
 #define DPRINTF(x...)		do { if (swm_debug) fprintf(stderr, x); } while (0)
 #define DNPRINTF(n,x...)	do { if (swm_debug & n) fprintf(stderr, x); } while (0)
@@ -128,6 +128,8 @@ THE SOFTWARE.
 #define XT_D_CLIP		0x2000
 #define XT_D_BUFFERCMD		0x4000
 #define XT_D_INSPECTOR		0x8000
+#define XT_D_VISITED		0x10000
+#define XT_D_HISTORY		0x20000
 extern u_int32_t	swm_debug;
 #else
 #define DPRINTF(x...)
@@ -252,8 +254,9 @@ RB_PROTOTYPE(download_list, download, entry, download_rb_cmp);
 
 struct history {
 	RB_ENTRY(history)	entry;
-	const gchar		*uri;
-	const gchar		*title;
+	gchar			*uri;
+	gchar			*title;
+	time_t			time; /* When the item was added. */
 };
 RB_HEAD(history_list, history);
 RB_PROTOTYPE(history_list, history, entry, history_rb_cmp);
@@ -511,6 +514,7 @@ extern char	*http_proxy;
 extern char	download_dir[PATH_MAX];
 extern char	runtime_settings[PATH_MAX];
 extern int	allow_volatile_cookies;
+extern int	color_visited_uris;
 extern int	save_global_history;
 extern char	*user_agent;
 extern int	save_rejected_cookies;
