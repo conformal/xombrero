@@ -447,6 +447,12 @@ struct key_binding {
 };
 TAILQ_HEAD(keybinding_list, key_binding);
 
+struct user_agent {
+	char *value;
+	TAILQ_ENTRY(user_agent)	entry;
+};
+TAILQ_HEAD(user_agent_list, user_agent);
+
 struct settings {
 	char		*name;
 	int		type;
@@ -516,7 +522,8 @@ extern char	runtime_settings[PATH_MAX];
 extern int	allow_volatile_cookies;
 extern int	color_visited_uris;
 extern int	save_global_history;
-extern char	*user_agent;
+extern struct user_agent	*user_agent;
+extern int	user_agent_roundrobin;
 extern int	save_rejected_cookies;
 extern int	session_autosave;
 extern int	guess_search;
@@ -565,6 +572,7 @@ extern struct alias_list	aliases;
 extern struct mime_type_list	mtl;
 extern struct keybinding_list	kbl;
 extern struct sp_list		spl;
+extern struct user_agent_list	ua_list;
 
 extern PangoFontDescription	*cmd_font;
 extern PangoFontDescription	*oops_font;

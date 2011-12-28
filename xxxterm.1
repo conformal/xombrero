@@ -1213,7 +1213,9 @@ URL when using
 .It Cm user_agent
 Set to override the default
 .Nm
-user-agent string.
+user-agent string. May be specified several times for switching between user-agents.
+.It Cm user_agent_roundrobin
+If enabled, switches between specified user-agents for each new request.
 .It Cm window_height
 Set the default height of the browser window.
 .It Cm window_width

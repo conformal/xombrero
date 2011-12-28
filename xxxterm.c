@@ -241,6 +241,7 @@ struct domain_list	pl_wl;
 struct undo_tailq	undos;
 struct keybinding_list	kbl;
 struct sp_list		spl;
+struct user_agent_list	ua_list;
 struct command_list	chl;
 struct command_list	shl;
 struct command_entry	*history_at;
@@ -4266,6 +4267,26 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 		return (TRUE); /* we made the decission */
 	}
 
+	/* change user agent */
+	if (user_agent_roundrobin ) {
+		struct user_agent *ua;
+
+		if ((ua = TAILQ_NEXT(user_agent, entry)) == NULL)
+			user_agent = TAILQ_FIRST(&ua_list);
+		else
+			user_agent = ua;
+
+		free(t->user_agent);
+		t->user_agent = g_strdup(user_agent->value);
+
+		DNPRINTF(XT_D_NAV, "user-agent: %s\n", t->user_agent);
+
+		g_object_set(G_OBJECT(t->settings),
+			"user-agent", t->user_agent, (char *)NULL);
+
+		webkit_web_view_set_settings(wv, t->settings);
+	}
+
 	/*
 	 * This is a little hairy but it comes down to this:
 	 * when we run in whitelist mode we have to assist the browser in
@@ -5945,7 +5966,7 @@ create_browser(struct tab *t)
 		t->user_agent = g_strdup_printf("%s %s+", strval, version);
 		g_free(strval);
 	} else
-		t->user_agent = g_strdup(user_agent);
+		t->user_agent = g_strdup(user_agent->value);
 
 	t->stylesheet = g_strdup_printf("file://%s/style.css", resource_dir);
 
@@ -7335,6 +7356,7 @@ main(int argc, char *argv[])
 	TAILQ_INIT(&spl);
 	TAILQ_INIT(&chl);
 	TAILQ_INIT(&shl);
+	TAILQ_INIT(&ua_list);
 
 	/* fiddle with ulimits */
 	if (getrlimit(RLIMIT_NOFILE, &rlp) == -1)
