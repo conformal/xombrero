@@ -70,6 +70,7 @@
 #define XT_XTP_DL_LIST		(1)
 #define XT_XTP_DL_CANCEL	(2)
 #define XT_XTP_DL_REMOVE	(3)
+#define XT_XTP_DL_UNLINK	(4)
 
 /* XTP history actions */
 #define XT_XTP_HL_LIST		(1)
@@ -498,6 +499,10 @@ xtp_handle_dl(struct tab *t, uint8_t cmd, int id)
 	case XT_XTP_DL_CANCEL:
 		webkit_download_cancel(d->download);
 		break;
+	case XT_XTP_DL_UNLINK:
+		unlink(webkit_download_get_destination_uri(d->download) +
+		    strlen("file://"));
+		/* FALLTHROUGH */
 	case XT_XTP_DL_REMOVE:
 		webkit_download_cancel(d->download); /* just incase */
 		g_object_unref(d->download);
@@ -1057,8 +1062,9 @@ xtp_page_dl_row(struct tab *t, char *html, struct download *dl)
 	case WEBKIT_DOWNLOAD_STATUS_FINISHED:
 		status_html = g_strdup_printf("Finished");
 		cmd_html = g_strdup_printf(
-		    "<a href='%s%d/%d'>Remove</a>",
-		    xtp_prefix, XT_XTP_DL_REMOVE, dl->id);
+		    "<a href='%s%d/%d'>Remove</a> / <a href='%s%d/%d'>Unlink</a>",
+		    xtp_prefix, XT_XTP_DL_REMOVE, dl->id, xtp_prefix,
+		    XT_XTP_DL_UNLINK, dl->id);
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_STARTED:
 		/* gather size info */
@@ -1084,13 +1090,17 @@ xtp_page_dl_row(struct tab *t, char *html, struct download *dl)
 		/* LLL */
 	case WEBKIT_DOWNLOAD_STATUS_CANCELLED:
 		status_html = g_strdup_printf("Cancelled");
-		cmd_html = g_strdup_printf("<a href='%s%d/%d'>Remove</a>",
-		    xtp_prefix, XT_XTP_DL_REMOVE, dl->id);
+		cmd_html = g_strdup_printf(
+		    "<a href='%s%d/%d'>Remove</a> / <a href='%s%d/%d'>Unlink</a>",
+		    xtp_prefix, XT_XTP_DL_REMOVE, dl->id, xtp_prefix,
+		    XT_XTP_DL_UNLINK, dl->id);
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_ERROR:
 		status_html = g_strdup_printf("Error!");
-		cmd_html = g_strdup_printf("<a href='%s%d/%d'>Remove</a>",
-		    xtp_prefix, XT_XTP_DL_REMOVE, dl->id);
+		cmd_html = g_strdup_printf(
+		    "<a href='%s%d/%d'>Remove</a> / <a href='%s%d/%d'>Unlink</a>",
+		    xtp_prefix, XT_XTP_DL_REMOVE, dl->id, xtp_prefix,
+		    XT_XTP_DL_UNLINK, dl->id);
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_CREATED:
 		cmd_html = g_strdup_printf("<a href='%s%d/%d'>Cancel</a>",
