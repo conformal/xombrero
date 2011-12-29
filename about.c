@@ -79,6 +79,7 @@
 /* XTP cookie actions */
 #define XT_XTP_CL_LIST		(1)
 #define XT_XTP_CL_REMOVE	(2)
+#define XT_XTP_CL_REMOVE_DOMAIN	(3)
 
 /* XTP cookie actions */
 #define XT_XTP_FL_LIST		(1)
@@ -716,6 +717,9 @@ xtp_handle_cl(struct tab *t, uint8_t cmd, int arg)
 	case XT_XTP_CL_REMOVE:
 		remove_cookie(arg);
 		break;
+	case XT_XTP_CL_REMOVE_DOMAIN:
+		remove_cookie_domain(arg);
+		break;
 	default:
 		show_oops(t, "%s: unknown cookie xtp command", __func__);
 		break;
@@ -1135,6 +1139,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 {
 	char			*body, *page, *tmp;
 	int			i = 1; /* all ids start 1 */
+	int			domain_id = 0;
 	GSList			*sc, *pc, *pc_start;
 	SoupCookie		*c;
 	char			*type, *table_headers, *last_domain;
@@ -1172,19 +1177,28 @@ xtp_page_cl(struct tab *t, struct karg *args)
 
 		if (strcmp(last_domain, c->domain) != 0) {
 			/* new domain */
+			domain_id ++;
 			free(last_domain);
 			last_domain = strdup(c->domain);
 
 			if (body != NULL) {
 				tmp = body;
 				body = g_strdup_printf("%s</table>"
-				    "<h2>%s</h2>%s\n",
-				    body, c->domain, table_headers);
+				    "<h2>%s</h2>"
+				    "<a href='%s%d/%s/%d/%d'>remove all</a>%s\n",
+				    body, c->domain,
+				    XT_XTP_STR, XT_XTP_CL,
+				    cl_session_key, XT_XTP_CL_REMOVE_DOMAIN, domain_id,
+				    table_headers);
 				g_free(tmp);
 			} else {
 				/* first domain */
-				body = g_strdup_printf("<h2>%s</h2>%s\n",
-				    c->domain, table_headers);
+				body = g_strdup_printf("<h2>%s</h2>"
+				    "<a href='%s%d/%s/%d/%d'>remove all</a>%s\n",
+				    c->domain,
+				    XT_XTP_STR, XT_XTP_CL,
+				    cl_session_key, XT_XTP_CL_REMOVE_DOMAIN, domain_id,
+				    table_headers);
 			}
 		}
 

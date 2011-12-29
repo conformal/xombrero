@@ -280,6 +280,7 @@ void			button_set_stockid(GtkWidget *, char *);
 
 /* cookies */
 int			remove_cookie(int);
+int			remove_cookie_domain(int);
 void			print_cookie(char *msg, SoupCookie *);
 void			setup_cookies(void);
 

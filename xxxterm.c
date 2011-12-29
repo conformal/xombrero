@@ -2101,6 +2101,42 @@ remove_cookie(int index)
 }
 
 int
+remove_cookie_domain(int domain_id)
+{
+	int			domain_count, rv = 1;
+	GSList			*cf;
+	SoupCookie		*c;
+	char *last_domain;
+
+	DNPRINTF(XT_D_COOKIE, "remove_cookie_domain: %d\n", domain_id);
+
+	last_domain = "";
+	cf = soup_cookie_jar_all_cookies(s_cookiejar);
+
+	for (domain_count = 0; cf; cf = cf->next) {
+		c = cf->data;
+
+		if (strcmp(last_domain, c->domain) != 0) {
+			domain_count++;
+			last_domain = c->domain;
+		}
+
+		if (domain_count < domain_id)
+			continue;
+		else if (domain_count > domain_id)
+			break;
+
+		print_cookie("remove cookie", c);
+		soup_cookie_jar_delete_cookie(s_cookiejar, c);
+		rv = 0;
+	}
+
+	soup_cookies_free(cf);
+
+	return (rv);
+}
+
+int
 toplevel_cmd(struct tab *t, struct karg *args)
 {
 	js_toggle_cb(t->js_toggle, t);
