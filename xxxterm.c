@@ -4811,9 +4811,59 @@ gototab(struct tab *t, struct karg *args)
 
 	tab = atoi(args->s);
 
-	arg.i = XT_TAB_NEXT;
+	if (args->i == 0)
+		arg.i = XT_TAB_NEXT;
+	else
+		arg.i = args->i;
+
 	arg.precount = tab;
 
+	movetab(t, &arg);
+
+	return (0);
+}
+
+int
+gotonexttab(struct tab *t, struct karg *args)
+{
+	int			count, n_tabs, dest;
+	struct karg 		arg = {0, NULL, -1};
+
+	count = atoi(args->s);
+	if (count == 0)
+		count = 1;
+
+	arg.i = XT_TAB_NEXT;
+
+	n_tabs = gtk_notebook_get_n_pages(notebook);
+	dest = gtk_notebook_get_current_page(notebook);
+
+	dest += (count + 1) % n_tabs;
+	if (dest > n_tabs)
+		dest -= n_tabs;
+	arg.precount = dest;
+
+	DNPRINTF(XT_D_BUFFERCMD, "gotonexttab: count: %d - dest : %d \n", count, dest);
+
+	movetab(t, &arg);
+
+	return (0);
+}
+
+int
+gotoprevtab(struct tab *t, struct karg *args)
+{
+	int		count;
+	struct 		karg arg = {0, NULL, -1};
+
+	count = atoi(args->s);
+	if (count == 0)
+		count = 1;
+
+	arg.i = XT_TAB_PREV;
+	arg.precount = count;
+
+	DNPRINTF(XT_D_BUFFERCMD, "gotoprevtab: count: %d\n", count);
 	movetab(t, &arg);
 
 	return (0);
@@ -4874,6 +4924,10 @@ struct buffercmd {
 	{ "^m[a-zA-Z0-9]$",	XT_PRE_NO,	"m",	mark,		XT_MARK_SET },
 	{ "^['][a-zA-Z0-9]$",	XT_PRE_NO,	"'",	mark,		XT_MARK_GOTO },
 	{ "^[0-9]+t$",		XT_PRE_YES,	"t",	gototab,	0 },
+	{ "^g0$",		XT_PRE_YES,	"g0",	gototab,	XT_TAB_FIRST },
+	{ "^g[$]$",		XT_PRE_YES,	"g$",	gototab,	XT_TAB_LAST },
+	{ "^[0-9]*gt$",		XT_PRE_YES,	"t",	gotonexttab,	0 },
+	{ "^[0-9]*gT$",		XT_PRE_YES,	"T",	gotoprevtab,	0 },
 	{ "^M[a-zA-Z0-9]$",	XT_PRE_NO,	"M",	qmark,		XT_QMARK_SET },
 	{ "^go[a-zA-Z0-9]$",	XT_PRE_NO,	"go",	qmark,		XT_QMARK_OPEN },
 	{ "^gn[a-zA-Z0-9]$",	XT_PRE_NO,	"gn",	qmark,		XT_QMARK_TAB },
