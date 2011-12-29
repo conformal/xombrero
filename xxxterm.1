@@ -674,14 +674,16 @@ go to the
 percent of the page
 .It Cm zz
 go to 50% of the page
-.It Cm [0-9]*gU
+.It Cm [0-9]*gu
 go
 .Cm arg
 levels up. If
 .Cm arg
 is missing, 1 is assumed. Going a
-level up means going to a uri obtained from the current one by removing
+level up means going to a URI obtained from the current one by removing
 the last slash ('/') character and everything that follows it
+.It Cm gU
+go to the root level, i.e. going up as many levels as possible.
 .It Cm gh
 open the home page in the current tab
 .It Cm m[a-zA-Z0-9]
@@ -1220,6 +1222,8 @@ If enabled, switches between specified user-agents for each new request.
 Set the default height of the browser window.
 .It Cm window_width
 Set the default width of the browser window.
+.It Cm window_maximize
+Maximize the browser window at startup.
 .It Cm work_dir
 Set the work directory where all
 .Nm

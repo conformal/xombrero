@@ -503,6 +503,7 @@ extern gfloat	default_zoom_level;
 extern char	default_script[PATH_MAX];
 extern int	window_height;
 extern int	window_width;
+extern int	window_maximize;
 extern int	icon_size;
 extern int	refresh_interval;
 extern int	enable_plugin_whitelist;

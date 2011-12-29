@@ -51,6 +51,7 @@ gfloat		default_zoom_level = 1.0;
 char		default_script[PATH_MAX];
 int		window_height = 768;
 int		window_width = 1024;
+int		window_maximize = 0;
 int		icon_size = 2; /* 1 = smallest, 2+ = bigger */
 int		refresh_interval = 10; /* download refresh interval */
 int		enable_plugin_whitelist = 0;
@@ -302,6 +303,7 @@ struct settings		rs[] = {
 	{ "url_regex",			XT_S_STR, 0, NULL,	&url_regex, NULL },
 	{ "window_height",		XT_S_INT, 0,		&window_height, NULL, NULL },
 	{ "window_width",		XT_S_INT, 0,		&window_width, NULL, NULL },
+	{ "window_maximize",		XT_S_INT, 0,		&window_maximize, NULL, NULL },
 	{ "work_dir",			XT_S_STR, 0, NULL, NULL,&s_work_dir },
 	{ "xterm_workaround",		XT_S_INT, 0,		&xterm_workaround, NULL, NULL },
 	{ "user_agent_roundrobin",	XT_S_INT, 0,	&user_agent_roundrobin, NULL, NULL, NULL, set_ua_roundrobin },

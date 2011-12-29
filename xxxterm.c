@@ -148,6 +148,8 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_MARK_SET		(0)
 #define XT_MARK_GOTO		(1)
 
+#define XT_GO_UP_ROOT		(999)
+
 #define XT_TAB_LAST		(-4)
 #define XT_TAB_FIRST		(-3)
 #define XT_TAB_PREV		(-2)
@@ -588,6 +590,9 @@ buffers_make_list(void)
 void
 show_buffers(struct tab *t)
 {
+	if (gtk_widget_get_visible(GTK_WIDGET(t->buffers)))
+		return;
+
 	buffers_make_list();
 	gtk_widget_show(t->buffers);
 	gtk_widget_grab_focus(GTK_WIDGET(t->buffers));
@@ -4763,17 +4768,21 @@ qmark(struct tab *t, struct karg *arg)
 int
 go_up(struct tab *t, struct karg *args)
 {
-	int		 levels;
+	int		levels;
 	char		*uri;
 	char		*tmp;
+	char		*p;
 
-	levels = atoi(args->s);
-	if (levels == 0)
+	if (args->i == XT_GO_UP_ROOT)
+		levels = XT_GO_UP_ROOT;
+	else if ((levels = atoi(args->s)) == 0)
 		levels = 1;
 
-	uri = g_strdup(webkit_web_view_get_uri(t->wv));
+	uri = g_strdup(get_uri(t));
+
 	if ((tmp = strstr(uri, XT_PROTO_DELIM)) == NULL)
 		return (1);
+
 	tmp += strlen(XT_PROTO_DELIM);
 
 	/* if an uri starts with a slash, leave it alone (for file:///) */
@@ -4781,8 +4790,6 @@ go_up(struct tab *t, struct karg *args)
 		tmp++;
 
 	while (levels--) {
-		char	*p;
-
 		p = strrchr(tmp, '/');
 		if (p != NULL)
 			*p = '\0';
@@ -4858,6 +4865,7 @@ struct buffercmd {
 	regex_t		cregex;
 } buffercmds[] = {
 	{ "^[0-9]*gu$",		XT_PRE_MAYBE,	"gu",	go_up,		0 },
+	{ "^gU$",		XT_PRE_NO,	"gU",	go_up,		XT_GO_UP_ROOT },
 	{ "^gg$",		XT_PRE_NO,	"gg",	move,		XT_MOVE_TOP },
 	{ "^gG$",		XT_PRE_NO,	"gG",	move,		XT_MOVE_BOTTOM },
 	{ "^[0-9]+%$",		XT_PRE_YES,	"%",	move,		XT_MOVE_PERCENT },
@@ -4926,6 +4934,11 @@ buffercmd_addkey(struct tab *t, guint keyval)
 {
 	int			i, c, match ;
 	char			s[XT_BUFCMD_SZ];
+
+	if (gtk_widget_get_visible(GTK_WIDGET(t->buffers))) {
+		buffercmd_abort(t);
+		return (XT_CB_PASSTHROUGH);
+	}
 
 	if (keyval == GDK_Escape) {
 		buffercmd_abort(t);
@@ -5924,7 +5937,10 @@ create_window(const gchar *name)
 	GtkWidget		*w;
 
 	w = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_window_set_default_size(GTK_WINDOW(w), window_width, window_height);
+	if (window_maximize)
+		gtk_window_maximize(GTK_WINDOW(w));
+	else
+		gtk_window_set_default_size(GTK_WINDOW(w), window_width, window_height);
 	gtk_widget_set_name(w, name);
 	gtk_window_set_wmclass(GTK_WINDOW(w), name, "XXXTerm");
 
