@@ -226,6 +226,7 @@ struct tab {
 	/* settings */
 	WebKitWebSettings	*settings;
 	gchar			*user_agent;
+	gboolean		load_images;
 
 	/* marks */
 	double			mark[XT_NOMARKS];
@@ -548,6 +549,7 @@ extern char	*statusbar_font_name;
 extern char	*tabbar_font_name;
 extern int	edit_mode;
 extern int	userstyle_global;
+extern int	auto_load_images;
 
 /* globals */
 extern char		*version;

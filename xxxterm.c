@@ -163,6 +163,7 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_TAB_SHOW		(6)
 #define XT_TAB_HIDE		(7)
 #define XT_TAB_NEXTSTYLE	(8)
+#define XT_TAB_LOAD_IMAGES	(9)
 
 #define XT_NAV_INVALID		(0)
 #define XT_NAV_BACK		(1)
@@ -2598,6 +2599,28 @@ tabaction(struct tab *t, struct karg *args)
 			g_free(u);
 		}
 		break;
+	case XT_TAB_LOAD_IMAGES:
+
+		if (!auto_load_images) {
+
+			/* Enable auto-load images (this will load all
+			 * previously unloaded images). */
+			g_object_set(G_OBJECT(t->settings),
+			    "auto-load-images", TRUE, (char *)NULL);
+			webkit_web_view_set_settings(t->wv, t->settings);
+
+			webkit_web_view_reload(t->wv);
+
+			/* Webkit triggers an event when we change the setting,
+			 * so we can't disable the auto-loading at once.
+			 *
+			 * Unfortunately, webkit does not tell us when it's done.
+			 * Instead, we wait until the next request, and then
+			 * disable autoloading again.
+			 */
+			t->load_images = TRUE;
+		}
+		break;
 	default:
 		rv = XT_CB_PASSTHROUGH;
 		goto done;
@@ -3293,6 +3316,7 @@ struct cmd {
 	{ "buffers",		0,	buffers,		0,			0 },
 	{ "ls",			0,	buffers,		0,			0 },
 	{ "encoding",		0,	set_encoding,		0,			XT_USERARG },
+	{ "loadimages",		0,	tabaction,		XT_TAB_LOAD_IMAGES,	0 },
 
 	/* command aliases (handy when -S flag is used) */
 	{ "promptopen",		0,	command,		XT_CMD_OPEN,		0 },
@@ -4296,6 +4320,17 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 	    webkit_network_request_get_uri(request));
 
 	uri = (char *)webkit_network_request_get_uri(request);
+
+	if (!auto_load_images && t->load_images) {
+
+		/* Disable autoloading of images, now that we're done loading
+		 * them. */
+		g_object_set(G_OBJECT(t->settings),
+		    "auto-load-images", FALSE, (char *)NULL);
+		webkit_web_view_set_settings(t->wv, t->settings);
+
+		t->load_images = FALSE;
+	}
 
 	/* if this is an xtp url, we don't load anything else */
 	if (parse_xtp_url(t, uri))
@@ -5978,6 +6013,8 @@ setup_webkit(struct tab *t)
 	    "enable-developer-extras", TRUE, (char *)NULL);
 	g_object_set(G_OBJECT(t->wv),
 	    "full-content-zoom", TRUE, (char *)NULL);
+	g_object_set(G_OBJECT(t->settings),
+	    "auto-load-images", auto_load_images, (char *)NULL);
 
 	webkit_web_view_set_settings(t->wv, t->settings);
 }
@@ -6075,6 +6112,7 @@ create_browser(struct tab *t)
 		t->user_agent = g_strdup(user_agent->value);
 
 	t->stylesheet = g_strdup_printf("file://%s/style.css", resource_dir);
+	t->load_images = auto_load_images;
 
 	adjustment =
 	    gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(w));
