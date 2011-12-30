@@ -7549,6 +7549,7 @@ main(int argc, char *argv[])
 	statusbar_font_name = g_strdup("monospace normal 9");
 	tabbar_font_name = g_strdup("monospace normal 9");
 	statusbar_elems = g_strdup("BP");
+	spell_check_languages = g_strdup("en_US");
 	encoding = g_strdup("UTF-8");
 
 	/* read config file */
