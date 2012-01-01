@@ -748,6 +748,8 @@ guess_url_type(char *url_in)
 	struct stat		sb;
 	char			*url_out = NULL, *enc_search = NULL;
 	int			i;
+	char			*cwd;
+
 
 	/* substitute aliases */
 	url_out = match_alias(url_in);
@@ -776,9 +778,17 @@ guess_url_type(char *url_in)
 	}
 
 	/* XXX not sure about this heuristic */
-	if (stat(url_in, &sb) == 0)
-		url_out = g_strdup_printf("file://%s", url_in);
-	else
+	if (stat(url_in, &sb) == 0) {
+		if (url_in[0] == '/')
+			url_out = g_strdup_printf("file://%s", url_in);
+		else {
+			cwd = malloc(PATH_MAX);
+			if (getcwd(cwd, PATH_MAX) != NULL) {
+				url_out = g_strdup_printf("file://%s/%s",cwd, url_in);
+			}
+			free(cwd);
+		}
+	}else
 		url_out = g_strdup_printf("http://%s", url_in); /* guess http */
 done:
 	DNPRINTF(XT_D_URL, "guess_url_type: guessed %s\n", url_out);
