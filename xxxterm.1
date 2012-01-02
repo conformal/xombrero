@@ -1049,6 +1049,20 @@ the command widget, is term you want to search for using search_string
 If the string does not contain a dot nor a slash, is not a
 path to a local file and does not resolves to an IP then it is assumed
 to be a search term.
+.It Cm gui_mode
+To simplify configuring
+.Nm
+allows you pick between two GUI modes:
+.Pa classic
+(the default) and
+.Pa minimal .
+In the
+.Pa classic
+mode the GUI looks similar to that of most mainstream browsers. While in
+.Pa minimal
+mode the GUI looks more vi-like. One can get a GUI between the two by
+tweaking the low-level GUI settings found under the advanced GUI setting
+section in the configuration file.
 .It Cm history_autosave
 When enabled
 .Nm

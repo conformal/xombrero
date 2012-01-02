@@ -29,7 +29,7 @@ use constant MAIN     => "xxxterm.c";
 # should be the default value.
 
 sub follows_the_rule {
-	my ($setting_value, $config_value) = @_;
+	my ($default_value, $config_value) = @_;
 
 	# Boolean setting.
 	if ($default_value =~ /^(0|1)$/) {

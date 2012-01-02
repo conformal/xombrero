@@ -34,6 +34,7 @@ int		enable_socket = 0;
 int		single_instance = 0; /* only allow one xxxterm to run */
 int		fancy_bar = 1;	/* fancy toolbar */
 int		browser_mode = XT_BM_NORMAL;
+int		gui_mode = XT_GM_CLASSIC;
 int		enable_localstorage = 1;
 char		*statusbar_elems = NULL;
 
@@ -176,6 +177,12 @@ struct special		s_browser_mode = {
 	NULL
 };
 
+struct special		s_gui_mode = {
+	set_gui_mode,
+	get_gui_mode,
+	NULL
+};
+
 struct special		s_cookie = {
 	set_cookie_policy,
 	get_cookie_policy,
@@ -259,6 +266,7 @@ struct settings		rs[] = {
 	{ "append_next",		XT_S_INT, 0,		&append_next, NULL, NULL },
 	{ "autofocus_onload",		XT_S_INT, 0,		&autofocus_onload, NULL, NULL },
 	{ "browser_mode",		XT_S_INT, 0, NULL, NULL,&s_browser_mode },
+	{ "gui_mode",			XT_S_INT, 0, NULL, NULL,&s_gui_mode },
 	{ "color_visited_uris",		XT_S_INT, 0,		&color_visited_uris, NULL, NULL },
 	{ "cookie_policy",		XT_S_INT, 0, NULL, NULL,&s_cookie },
 	{ "cookies_enabled",		XT_S_INT, 0,		&cookies_enabled, NULL, NULL },
@@ -447,6 +455,42 @@ get_browser_mode(struct settings *s)
 		r = g_strdup("normal");
 	else if (browser_mode == XT_BM_KIOSK)
 		r = g_strdup("kiosk");
+	else
+		return (NULL);
+
+	return (r);
+}
+
+int
+set_gui_mode(struct settings *s, char *val)
+{
+	if (!strcmp(val, "classic")) {
+		fancy_bar = 1;
+		show_tabs = 1;
+		tab_style = XT_TABS_NORMAL;
+		show_url = 1;
+		show_statusbar = 0;
+	} else if (!strcmp(val, "minimal")) {
+		fancy_bar = 0;
+		show_tabs = 1;
+		tab_style = XT_TABS_COMPACT;
+		show_url = 0;
+		show_statusbar = 1;
+	} else
+		return (1);
+
+	return (0);
+}
+
+char *
+get_gui_mode(struct settings *s)
+{
+	char			*r = NULL;
+
+	if (gui_mode == XT_GM_CLASSIC)
+		r = g_strdup("classic");
+	else if (browser_mode == XT_GM_MINIMAL)
+		r = g_strdup("minimal");
 	else
 		return (NULL);
 

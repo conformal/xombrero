@@ -430,6 +430,9 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_BM_WHITELIST		(1)
 #define XT_BM_KIOSK		(2)
 
+#define XT_GM_CLASSIC		(0)
+#define XT_GM_MINIMAL		(1)
+
 #define XT_TABS_NORMAL		(0)
 #define XT_TABS_COMPACT		(1)
 
@@ -477,8 +480,10 @@ size_t		get_settings_size(void);
 int		settings_add(char *, char *);
 void		setup_proxy(char *);
 int		set_browser_mode(struct settings *, char *);
+int		set_gui_mode(struct settings *, char *);
 int		set_cookie_policy(struct settings *, char *);
 char		*get_browser_mode(struct settings *);
+char		*get_gui_mode(struct settings *);
 char		*get_cookie_policy(struct settings *);
 void		init_keybindings(void);
 void		config_parse(char *, int);
