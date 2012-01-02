@@ -35,9 +35,14 @@ cookie.o: ../cookie.o
 
 inputfocus.o: ../inputfocus.o
 
+history.o: ../history.o
+
+completion.o: ../completion.o
+
 ../xxxterm.o: ../javascript.h
 
-xxxterm: xxxterm.o freebsd.o marco.o about.o inspector.o whitelist.o settings.o cookie.o
+xxxterm: xxxterm.o freebsd.o marco.o about.o inspector.o whitelist.o settings.o \
+	cookie.o history.o completion.o
 	$(CC) $(LDFLAGS) -o $@ *.o $+ $(LDADD)
 
 install: all

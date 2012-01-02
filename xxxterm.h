@@ -275,6 +275,8 @@ void			show_oops(struct tab *, const char *, ...);
 gchar			*get_html_page(gchar *, gchar *, gchar *, bool);
 const gchar		*get_uri(struct tab *);
 const gchar		*get_title(struct tab *, bool);
+void			load_uri(struct tab *t, gchar *uri);
+gboolean		match_uri(const gchar *uri, const gchar *key);
 
 void			load_webkit_string(struct tab *, const char *, gchar *);
 void			button_set_stockid(GtkWidget *, char *);
@@ -284,6 +286,17 @@ int			remove_cookie(int);
 int			remove_cookie_domain(int);
 void			print_cookie(char *msg, SoupCookie *);
 void			setup_cookies(void);
+
+/* history */
+int			insert_history_item(const gchar *uri, const gchar *title, time_t time);
+int			save_global_history_to_disk(struct tab *t);
+int			restore_global_history(void);
+char			*color_visited_helper(void);
+int			color_visited(struct tab *t, char *visited);
+
+/* completion */
+void			completion_add(struct tab *);
+void			completion_add_uri(const gchar *uri);
 
 /* proxy */
 #define XT_PRXY_SHOW		(1<<0)
@@ -567,10 +580,12 @@ extern SoupCookieJar	*s_cookiejar;
 extern SoupCookieJar	*p_cookiejar;
 extern SoupSession	*session;
 extern GtkNotebook	*notebook;
+extern GtkListStore	*completion_model;
 
 extern void	(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 
 extern struct history_list	hl;
+extern int			hl_purge_count;
 extern struct download_list	downloads;
 extern struct tab_list		tabs;
 extern struct about_type	about_list[];

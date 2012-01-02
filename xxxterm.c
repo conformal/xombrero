@@ -90,18 +90,12 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_SAVED_TABS_FILE	("main_session")
 #define XT_RESTART_TABS_FILE	("restart_tabs")
 #define XT_SOCKET_FILE		("socket")
-#define XT_HISTORY_FILE		("history")
 #define XT_SAVE_SESSION_ID	("SESSION_NAME=")
 #define XT_SEARCH_FILE		("search_history")
 #define XT_COMMAND_FILE		("command_history")
 #define XT_DLMAN_REFRESH	"10"
 #define XT_MAX_URL_LENGTH	(4096) /* 1 page is atomic, don't make bigger */
 #define XT_MAX_UNDO_CLOSE_TAB	(32)
-#define XT_MAX_HL_PURGE_COUNT	(1000) /* Purge the history for every
-					* MAX_HL_PURGE_COUNT items inserted into
-					* history and delete all items older
-					* than MAX_HISTORY_AGE. */
-#define XT_MAX_HISTORY_AGE	(60.0 * 60.0 * 24 * 14) /* 14 days */
 #define XT_RESERVED_CHARS	"$&+,/:;=?@ \"<>#%%{}|^~[]`"
 #define XT_PRINT_EXTRA_MARGIN	10
 #define XT_URL_REGEX		("^[[:blank:]]*[^[:blank:]]*([[:alnum:]-]+\\.)+[[:alnum:]-][^[:blank:]]*[[:blank:]]*$")
@@ -267,8 +261,6 @@ int			next_download_id = 1;
 
 void			xxx_dir(char *);
 int			icon_size_map(int);
-void			completion_add(struct tab *);
-void			completion_add_uri(const gchar *);
 
 void
 history_delete(struct command_list *l, int *counter)
@@ -1090,160 +1082,6 @@ userstyle(struct tab *t, struct karg *args)
 }
 
 int
-purge_history(void)
-{
-	struct history		*h, *next;
-	double			age = 0.0;
-
-	DNPRINTF(XT_D_HISTORY, "%s: hl_purge_count = %d (%d is max)\n",
-	    __func__, hl_purge_count, XT_MAX_HL_PURGE_COUNT);
-
-	if (hl_purge_count == XT_MAX_HL_PURGE_COUNT) {
-		hl_purge_count = 0;
-
-		for (h = RB_MIN(history_list, &hl); h != NULL; h = next) {
-
-			next = RB_NEXT(history_list, &hl, h);
-
-			age = difftime(time(NULL), h->time);
-
-			if (age > XT_MAX_HISTORY_AGE) {
-				DNPRINTF(XT_D_HISTORY, "%s: removing %s (age %.1f)\n",
-				    __func__, h->uri, age);
-
-				RB_REMOVE(history_list, &hl, h);
-				g_free(h->uri);
-				g_free(h->title);
-				g_free(h);
-			} else {
-				DNPRINTF(XT_D_HISTORY, "%s: keeping %s (age %.1f)\n",
-				    __func__, h->uri, age);
-			}
-		}
-	}
-
-	return (0);
-}
-
-int
-insert_history_item(const gchar *uri, const gchar *title, time_t time)
-{
-	struct history		*h;
-
-	if (!(uri && strlen(uri) && title && strlen(title)))
-		return (1);
-
-	h = g_malloc(sizeof(struct history));
-	h->uri = g_strdup(uri);
-	h->title = g_strdup(title);
-	h->time = time;
-
-	DNPRINTF(XT_D_HISTORY, "%s: adding %s\n", __func__, h->uri);
-
-	RB_INSERT(history_list, &hl, h);
-	completion_add_uri(h->uri);
-	hl_purge_count++;
-
-	purge_history();
-	update_history_tabs(NULL);
-
-	return (0);
-}
-
-int
-restore_global_history(void)
-{
-	char			file[PATH_MAX];
-	FILE			*f;
-	gchar			*uri, *title, *stime, *err = NULL;
-	time_t			time;
-	struct tm		tm;
-	const char		delim[3] = {'\\', '\\', '\0'};
-
-	snprintf(file, sizeof file, "%s/%s", work_dir, XT_HISTORY_FILE);
-
-	if ((f = fopen(file, "r")) == NULL) {
-		warnx("%s: fopen", __func__);
-		return (1);
-	}
-
-	for (;;) {
-		if ((uri = fparseln(f, NULL, NULL, delim, 0)) == NULL)
-			if (feof(f) || ferror(f))
-				break;
-
-		if ((title = fparseln(f, NULL, NULL, delim, 0)) == NULL)
-			if (feof(f) || ferror(f)) {
-				err = "broken history file (title)";
-				goto done;
-			}
-
-		if ((stime = fparseln(f, NULL, NULL, delim, 0)) == NULL)
-			if (feof(f) || ferror(f)) {
-				err = "broken history file (time)";
-				goto done;
-			}
-
-		if (strptime(stime, "%a %b %d %H:%M:%S %Y", &tm) == NULL) {
-			err = "strptime failed to parse time";
-			goto done;
-		}
-
-		time = mktime(&tm);
-
-		if (insert_history_item(uri, title, time)) {
-			err = "failed to insert item";
-			goto done;
-		}
-
-		free(uri);
-		free(title);
-		free(stime);
-		uri = NULL;
-		title = NULL;
-		stime = NULL;
-	}
-
-done:
-	if (err && strlen(err)) {
-		warnx("%s: %s\n", __func__, err);
-		free(uri);
-		free(title);
-		free(stime);
-
-		return (1);
-	}
-
-	return (0);
-}
-
-int
-save_global_history_to_disk(struct tab *t)
-{
-	char			file[PATH_MAX];
-	FILE			*f;
-	struct history		*h;
-
-	snprintf(file, sizeof file, "%s/%s", work_dir, XT_HISTORY_FILE);
-
-	if ((f = fopen(file, "w")) == NULL) {
-		show_oops(t, "%s: global history file: %s",
-		    __func__, strerror(errno));
-		return (1);
-	}
-
-	RB_FOREACH_REVERSE(h, history_list, &hl) {
-		if (h->uri && h->title && h->time)
-			fprintf(f, "%s\n%s\n%s", h->uri, h->title,
-			    ctime(&h->time));
-	}
-
-	fclose(f);
-
-	return (0);
-}
-
-int
 quit(struct tab *t, struct karg *args)
 {
 	if (save_global_history)
@@ -1423,62 +1261,6 @@ save_tabs_and_quit(struct tab *t, struct karg *args)
 	quit(t, NULL);
 
 	return (1);
-}
-
-/* Marshall the internal record of visited URIs into a Javascript hash table in
- * string form. */
-char *
-color_visited_helper(void)
-{
-	char			*s = NULL;
-	struct history		*h;
-
-	RB_FOREACH_REVERSE(h, history_list, &hl) {
-		if (s == NULL)
-			s = g_strdup_printf("'%s':'dummy'", h->uri);
-		else
-			s = g_strjoin(",", s,
-			    g_strdup_printf("'%s':'dummy'", h->uri), NULL);
-	}
-
-	s = g_strdup_printf("{%s}", s);
-
-	DNPRINTF(XT_D_VISITED, "%s: s = %s\n", __func__, s);
-
-	return (s);
-}
-
-int
-color_visited(struct tab *t, char *visited)
-{
-	char		*s;
-
-	if (t == NULL || visited == NULL) {
-		show_oops(NULL, "%s: invalid parameters", __func__);
-		return (1);
-	}
-
-	/* Create a string representing an annonymous Javascript function, which
-	 * takes a hash table of visited URIs as an argument, goes through the
-	 * links at the current web page and colors them if they indeed been
-	 * visited.
-	 */
-	s = g_strconcat(
-	    "(function(visitedUris) {",
-	    "    for (var i = 0; i < document.links.length; i++)",
-	    "        if (visitedUris[document.links[i].href])",
-	    "            document.links[i].style.color = 'purple';",
-	    "})",
-	    /* Apply the annonymous function to the hash table containing
-	     * visited URIs. */
-	    g_strdup_printf("(%s);", visited),
-	    NULL);
-
-	run_script(t, s);
-	g_free(s);
-	g_free(visited);
-
-	return (0);
 }
 
 int
@@ -7284,81 +7066,6 @@ build_socket(void)
 done:
 	close(s);
 	return (-1);
-}
-
-gboolean
-completion_select_cb(GtkEntryCompletion *widget, GtkTreeModel *model,
-    GtkTreeIter *iter, struct tab *t)
-{
-	gchar			*value;
-
-	gtk_tree_model_get(model, iter, 0, &value, -1);
-	load_uri(t, value);
-	g_free(value);
-
-	return (FALSE);
-}
-
-gboolean
-completion_hover_cb(GtkEntryCompletion *widget, GtkTreeModel *model,
-    GtkTreeIter *iter, struct tab *t)
-{
-	gchar			*value;
-
-	gtk_tree_model_get(model, iter, 0, &value, -1);
-	gtk_entry_set_text(GTK_ENTRY(t->uri_entry), value);
-	gtk_editable_set_position(GTK_EDITABLE(t->uri_entry), -1);
-	g_free(value);
-
-	return (TRUE);
-}
-
-void
-completion_add_uri(const gchar *uri)
-{
-	GtkTreeIter		iter;
-
-	/* add uri to list_store */
-	gtk_list_store_append(completion_model, &iter);
-	gtk_list_store_set(completion_model, &iter, 0, uri, -1);
-}
-
-gboolean
-completion_match(GtkEntryCompletion *completion, const gchar *key,
-    GtkTreeIter *iter, gpointer user_data)
-{
-	gchar			*value;
-	gboolean		match = FALSE;
-
-	gtk_tree_model_get(GTK_TREE_MODEL(completion_model), iter, 0, &value,
-	    -1);
-
-	if (value == NULL)
-		return FALSE;
-
-	match = match_uri(value, key);
-
-	g_free(value);
-	return (match);
-}
-
-void
-completion_add(struct tab *t)
-{
-	/* enable completion for tab */
-	t->completion = gtk_entry_completion_new();
-	gtk_entry_completion_set_text_column(t->completion, 0);
-	gtk_entry_set_completion(GTK_ENTRY(t->uri_entry), t->completion);
-	gtk_entry_completion_set_model(t->completion,
-	    GTK_TREE_MODEL(completion_model));
-	gtk_entry_completion_set_match_func(t->completion, completion_match,
-	    NULL, NULL);
-	gtk_entry_completion_set_minimum_key_length(t->completion, 1);
-	gtk_entry_completion_set_inline_selection(t->completion, TRUE);
-	g_signal_connect(G_OBJECT (t->completion), "match-selected",
-	    G_CALLBACK(completion_select_cb), t);
-	g_signal_connect(G_OBJECT (t->completion), "cursor-on-match",
-	    G_CALLBACK(completion_hover_cb), t);
 }
 
 void
