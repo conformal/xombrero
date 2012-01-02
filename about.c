@@ -620,7 +620,7 @@ remove_favorite(struct tab *t, int index)
 	}
 
 	if (fwrite(new_favs, strlen(new_favs), 1, f) != 1)
-		show_oops(t, "%s: can't fwrite"); /* shut gcc up */
+		show_oops(t, "%s: can't fwrite", __func__);
 	fclose(f);
 
 clean:

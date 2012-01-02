@@ -5028,7 +5028,11 @@ buffercmd_abort(struct tab *t)
 {
 	int			i;
 
-	DNPRINTF(XT_D_BUFFERCMD, "buffercmd_abort: clearing buffer\n");
+	if (t == NULL)
+		return;
+
+	DNPRINTF(XT_D_BUFFERCMD, "%s: clearing buffer\n", __func__);
+
 	for (i = 0; i < LENGTH(bcmd); i++)
 		bcmd[i] = '\0';
 
