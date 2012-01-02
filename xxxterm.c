@@ -239,6 +239,7 @@ struct undo_tailq	undos;
 struct keybinding_list	kbl;
 struct sp_list		spl;
 struct user_agent_list	ua_list;
+int			user_agent_count = 0;
 struct command_list	chl;
 struct command_list	shl;
 struct command_entry	*history_at;
@@ -4114,7 +4115,7 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 		t->load_images = FALSE;
 	}
 
-	/* if this is an xtp url, we don't load anything else */
+	/* If this is an xtp url, we don't load anything else. */
 	if (parse_xtp_url(t, uri))
 		    return (TRUE);
 
@@ -4125,8 +4126,8 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 		return (TRUE); /* we made the decission */
 	}
 
-	/* change user agent */
-	if (user_agent_roundrobin ) {
+	/* Change user agent if more than one has been given. */
+	if (user_agent_count > 1) {
 		struct user_agent *ua;
 
 		if ((ua = TAILQ_NEXT(user_agent, entry)) == NULL)

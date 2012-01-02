@@ -73,7 +73,6 @@ int		allow_volatile_cookies = 0;
 int		color_visited_uris = 1;
 int		save_global_history = 0; /* save global history to disk */
 struct user_agent	*user_agent = NULL;
-int		user_agent_roundrobin = 0; /* change user-agent after each request */
 int		save_rejected_cookies = 0;
 int		session_autosave = 0;
 int		guess_search = 0;
@@ -120,7 +119,6 @@ int		set_runtime_dir(struct settings *, char *);
 int		set_tab_style(struct settings *, char *);
 int		set_edit_mode(struct settings *, char *);
 int		set_work_dir(struct settings *, char *);
-int		set_ua_roundrobin(char *);
 int		set_auto_load_images(char *value);
 
 void		walk_mime_type(struct settings *, void (*)(struct settings *,
@@ -316,7 +314,6 @@ struct settings		rs[] = {
 	{ "window_maximize",		XT_S_INT, 0,		&window_maximize, NULL, NULL },
 	{ "work_dir",			XT_S_STR, 0, NULL, NULL,&s_work_dir },
 	{ "xterm_workaround",		XT_S_INT, 0,		&xterm_workaround, NULL, NULL },
-	{ "user_agent_roundrobin",	XT_S_INT, 0,		&user_agent_roundrobin, NULL, NULL, NULL, set_ua_roundrobin },
 	{ "auto_load_images",		XT_S_INT, 0, 		&auto_load_images, NULL, NULL, NULL, set_auto_load_images },
 
 	/* font settings */
@@ -997,6 +994,7 @@ add_ua(struct settings *s, char *value)
 
 	/* use the last added user agent */
 	user_agent = TAILQ_FIRST(&ua_list);
+	user_agent_count++;
 
 	return (0);
 }
@@ -1016,13 +1014,6 @@ walk_ua(struct settings *s,
 	TAILQ_FOREACH(ua, &ua_list, entry) {
 		cb(s, ua->value, cb_args);
 	}
-}
-
-int
-set_ua_roundrobin(char *value)
-{
-	user_agent_roundrobin = atoi(value);
-	return (0);
 }
 
 int

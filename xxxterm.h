@@ -544,7 +544,6 @@ extern int	allow_volatile_cookies;
 extern int	color_visited_uris;
 extern int	save_global_history;
 extern struct user_agent	*user_agent;
-extern int	user_agent_roundrobin;
 extern int	save_rejected_cookies;
 extern int	session_autosave;
 extern int	guess_search;
@@ -597,6 +596,7 @@ extern struct mime_type_list	mtl;
 extern struct keybinding_list	kbl;
 extern struct sp_list		spl;
 extern struct user_agent_list	ua_list;
+extern int			user_agent_count;
 
 extern PangoFontDescription	*cmd_font;
 extern PangoFontDescription	*oops_font;
