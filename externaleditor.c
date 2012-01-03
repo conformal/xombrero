@@ -74,7 +74,7 @@ open_external_editor_cb (gpointer data)
 		g_free(args->cb_data);
 		g_free(args);
 		return (0);
-	}else if ( rv == 0 && st.st_mtime > args->mtime) {
+	} else if ( rv == 0 && st.st_mtime > args->mtime) {
 		DPRINTF("File %s has been modified\n", args->path);
 		args->mtime = st.st_mtime;
 
@@ -199,7 +199,7 @@ open_external_editor(struct tab *t, const char *contents, const char *suffix,
 				ptr += 5;
 				nb += strlen(filename);
 			}
-		}else
+		} else
 			command[nb++] = *ptr;
 	}
 	command[nb] = '\0';
