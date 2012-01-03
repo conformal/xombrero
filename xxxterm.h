@@ -583,6 +583,7 @@ extern char		*version;
 extern char		*icons[];
 extern char		rc_fname[PATH_MAX];
 extern char		work_dir[PATH_MAX];
+extern char		temp_dir[PATH_MAX];
 extern struct passwd	*pwd;
 long long unsigned int	blocked_cookies;
 extern SoupCookieJar	*s_cookiejar;
