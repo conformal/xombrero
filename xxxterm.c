@@ -85,6 +85,7 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_CERT_DIR		("certs/")
 #define XT_JS_DIR		("js/")
 #define XT_SESSIONS_DIR		("sessions/")
+#define XT_TEMP_DIR		("tmp")
 #define XT_CONF_FILE		("xxxterm.conf")
 #define XT_QMARKS_FILE		("quickmarks")
 #define XT_SAVED_TABS_FILE	("main_session")
@@ -649,6 +650,7 @@ char			certs_dir[PATH_MAX];
 char			js_dir[PATH_MAX];
 char			cache_dir[PATH_MAX];
 char			sessions_dir[PATH_MAX];
+char			temp_dir[PATH_MAX];
 char			cookie_file[PATH_MAX];
 SoupSession		*session;
 SoupCookieJar		*s_cookiejar;
@@ -788,7 +790,7 @@ guess_url_type(char *url_in)
 			}
 			free(cwd);
 		}
-	}else
+	} else
 		url_out = g_strdup_printf("http://%s", url_in); /* guess http */
 done:
 	DNPRINTF(XT_D_URL, "guess_url_type: guessed %s\n", url_out);
@@ -2927,6 +2929,8 @@ struct cmd {
 	{ "hinting",		0,	command,		'.',			0 },
 	{ "hinting_newtab",	0,	command,		',',			0 },
 	{ "togglesrc",		0,	toggle_src,		0,			0 },
+	{ "editsrc",		0,	edit_src,		0,			0 },
+	{ "editelement",	0,	edit_element,		0,			0 },
 
 	/* yanking and pasting */
 	{ "yankuri",		0,	yank_uri,		0,			0 },
@@ -5173,9 +5177,10 @@ cmd_getlist(int id, char *key)
 			return;
 		} else if (cmds[id].type & XT_SETARG) {
 			for (i = 0; i < get_settings_size(); i++)
-				if(!strncmp(key, get_setting_name(i),
+				if (!strncmp(key, get_setting_name(i),
 				    strlen(key)))
-					cmd_status.list[c++] = get_setting_name(i);
+					cmd_status.list[c++] =
+					    get_setting_name(i);
 			cmd_status.len = c;
 			return;
 		}
@@ -7294,6 +7299,10 @@ main(int argc, char *argv[])
 	/* js dir */
 	snprintf(js_dir, sizeof js_dir, "%s/%s", work_dir, XT_JS_DIR);
 	xxx_dir(js_dir);
+
+	/* temp dir */
+	snprintf(temp_dir, sizeof temp_dir, "%s/%s", work_dir, XT_TEMP_DIR);
+	xxx_dir(temp_dir);
 
 	/* runtime settings that can override config file */
 	if (runtime_settings[0] != '\0')

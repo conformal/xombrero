@@ -404,6 +404,14 @@ Toggle the global page style mode.
 Will also affect new tabs.
 .Pq Cm userstyle_global
 .El
+.Ss Insert-mode commands
+The following commands are only available when editing an input-field
+.Pp
+.Bl -tag -width Ds -offset indent -compact
+.It Cm C-i
+Edit the contents of the currently active input-element in an external editor.
+.Pq Cm editelement
+.El
 .Sh COMMAND MODE
 Command mode works in a similar fashion to the
 .Xr vi 1
@@ -470,6 +478,17 @@ If
 is not set
 .Nm
 will display the current tab encoding.
+.It Cm editsrc
+Opens the source for the current tab in the editor specified by the
+setting
+.Cm external_editor
+and then checks for changes to the file opened. If it is changed, the
+page will be updated.
+.It Cm editelement
+If a text-element is currently active (<input> or <textarea>), it's
+contents will be opened in the same fashion as for the command
+.Cm editsrc
+above
 .It Cm fav
 Show favorites.
 .It Cm favadd
@@ -1053,6 +1072,16 @@ option.
 Set the default encoding.
 E.g.
 .Pa encoding = ISO-8859-1 .
+.It Cm external_editor
+Set which editor to use for external editing.
+the string <file> will be replaced by the current filename.
+E.g.
+.Pa external_editor = gvim -f <file>
+Note!
+.Cm xxxterm
+relies on the editor
+.Pa not forking
+into the background.
 .It Cm fancy_bar
 Enables a backward, forward, and stop button to the toolbar.
 Additionally if

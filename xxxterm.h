@@ -28,6 +28,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <fcntl.h>
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -299,6 +300,10 @@ int			color_visited(struct tab *t, char *visited);
 void			completion_add(struct tab *);
 void			completion_add_uri(const gchar *uri);
 
+/* external editor */
+int			edit_src(struct tab *t, struct karg *args);
+int			edit_element(struct tab *t, struct karg *a);
+
 /* proxy */
 #define XT_PRXY_SHOW		(1<<0)
 #define XT_PRXY_TOGGLE		(1<<1)
@@ -539,6 +544,7 @@ extern int	append_next;
 extern char	*home;
 extern char	*search_string;
 extern char	*http_proxy;
+extern char	*external_editor;
 extern char	download_dir[PATH_MAX];
 extern char	runtime_settings[PATH_MAX];
 extern int	allow_volatile_cookies;

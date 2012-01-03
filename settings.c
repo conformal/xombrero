@@ -95,6 +95,7 @@ int		auto_load_images = 1;
 int		enable_autoscroll = 0;
 int		enable_favicon_entry = 1;
 int		enable_favicon_tabs = 0;
+char		*external_editor = NULL;
 
 char		*cmd_font_name = NULL;
 char		*oops_font_name = NULL;
@@ -126,6 +127,7 @@ int		set_auto_load_images(char *value);
 int		set_enable_autoscroll(char *value);
 int		set_enable_favicon_entry(char *value);
 int		set_enable_favicon_tabs(char *value);
+int		set_external_editor(char *);
 
 void		walk_mime_type(struct settings *, void (*)(struct settings *,
 		    char *, void *), void *);
@@ -288,6 +290,7 @@ struct settings		rs[] = {
 	{ "enable_socket",		XT_S_INT, XT_SF_RESTART,&enable_socket, NULL, NULL },
 	{ "enable_spell_checking",	XT_S_INT, 0,		&enable_spell_checking, NULL, NULL },
 	{ "encoding",			XT_S_STR, 0, NULL,	&encoding, NULL },
+	{ "external_editor",		XT_S_STR,0, NULL,	&external_editor, NULL, NULL, set_external_editor },
 	{ "fancy_bar",			XT_S_INT, XT_SF_RESTART,&fancy_bar, NULL, NULL },
 	{ "guess_search",		XT_S_INT, 0,		&guess_search, NULL, NULL },
 	{ "history_autosave",		XT_S_INT, 0,		&history_autosave, NULL, NULL },
@@ -732,6 +735,7 @@ struct key_binding	keys[] = {
 	{ "help",		0,	1,	GDK_F1		},
 	{ "run_script",		MOD1,	1,	GDK_r		},
 	{ "proxy toggle",	0,	1,	GDK_F2		},
+	{ "editelement",	CTRL,	1,	GDK_i		},
 
 	/* search */
 	{ "searchnext",		0,	0,	GDK_n		},
@@ -1057,6 +1061,17 @@ int
 set_enable_favicon_tabs(char *value)
 {
 	enable_favicon_tabs = atoi(value);
+	return (0);
+}
+
+int
+set_external_editor(char *editor)
+{
+	if (external_editor)
+		g_free(external_editor);
+
+	external_editor = g_strdup(editor);
+
 	return (0);
 }
 
