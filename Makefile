@@ -30,7 +30,8 @@ CLEANFILES += ${.CURDIR}/javascript.h xxxterm.cat1 xxxterm.core
 
 ${.CURDIR}/javascript.h: hinting.js input-focus.js
 	perl ${.CURDIR}/js-merge-helper.pl ${.CURDIR}/hinting.js \
-	    ${.CURDIR}/input-focus.js >  ${.CURDIR}/javascript.h
+	    ${.CURDIR}/input-focus.js ${.CURDIR}/autoscroll.js \
+	    > ${.CURDIR}/javascript.h
 
 beforeinstall:
 	install -m 755 -d ${PREFIX}/share/xxxterm
