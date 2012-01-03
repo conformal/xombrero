@@ -28,7 +28,7 @@ MANDIR= ${PREFIX}/man/man
 
 CLEANFILES += ${.CURDIR}/javascript.h xxxterm.cat1 xxxterm.core
 
-${.CURDIR}/javascript.h: hinting.js input-focus.js
+${.CURDIR}/javascript.h: hinting.js input-focus.js autoscroll.js
 	perl ${.CURDIR}/js-merge-helper.pl ${.CURDIR}/hinting.js \
 	    ${.CURDIR}/input-focus.js ${.CURDIR}/autoscroll.js \
 	    > ${.CURDIR}/javascript.h
