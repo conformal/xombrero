@@ -92,6 +92,9 @@ int		js_autorun_enabled = 1;
 int		edit_mode = XT_EM_HYBRID;
 int		userstyle_global = 0;
 int		auto_load_images = 1;
+int		enable_autoscroll = 0;
+int		enable_favicon_entry = 1;
+int		enable_favicon_tabs = 0;
 
 char		*cmd_font_name = NULL;
 char		*oops_font_name = NULL;
@@ -120,6 +123,9 @@ int		set_tab_style(struct settings *, char *);
 int		set_edit_mode(struct settings *, char *);
 int		set_work_dir(struct settings *, char *);
 int		set_auto_load_images(char *value);
+int		set_enable_autoscroll(char *value);
+int		set_enable_favicon_entry(char *value);
+int		set_enable_favicon_tabs(char *value);
 
 void		walk_mime_type(struct settings *, void (*)(struct settings *,
 		    char *, void *), void *);
@@ -315,6 +321,9 @@ struct settings		rs[] = {
 	{ "work_dir",			XT_S_STR, 0, NULL, NULL,&s_work_dir },
 	{ "xterm_workaround",		XT_S_INT, 0,		&xterm_workaround, NULL, NULL },
 	{ "auto_load_images",		XT_S_INT, 0, 		&auto_load_images, NULL, NULL, NULL, set_auto_load_images },
+	{ "enable_autoscroll",		XT_S_INT, 0, 		&enable_autoscroll, NULL, NULL, NULL, set_enable_autoscroll },
+	{ "enable_favicon_entry",	XT_S_INT, 0, 		&enable_favicon_entry, NULL, NULL, NULL, set_enable_favicon_entry },
+	{ "enable_favicon_tabs",	XT_S_INT, 0, 		&enable_favicon_tabs, NULL, NULL, NULL, set_enable_favicon_tabs },
 
 	/* font settings */
 	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL },
@@ -1027,6 +1036,27 @@ set_auto_load_images(char *value)
 		    "auto-load-images", auto_load_images, (char *)NULL);
 		webkit_web_view_set_settings(t->wv, t->settings);
 	}
+	return (0);
+}
+
+int
+set_enable_autoscroll(char *value)
+{
+	enable_autoscroll = atoi(value);
+	return (0);
+}
+
+int
+set_enable_favicon_entry(char *value)
+{
+	enable_favicon_entry = atoi(value);
+	return (0);
+}
+
+int
+set_enable_favicon_tabs(char *value)
+{
+	enable_favicon_tabs = atoi(value);
 	return (0);
 }
 

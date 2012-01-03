@@ -50,7 +50,7 @@ while (@ARGV) {
 	my @fn = split /\//, $jsfile;
 	my $fn = pop @fn;
 	$fn =~ /^(.*)\.js$/;
-	
+
 	$define = "JS_".uc($1);
 	$define =~ s/\-/_/;
 

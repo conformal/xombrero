@@ -152,6 +152,7 @@ struct tab {
 	GtkWidget		*tab_content;
 	struct {
 		GtkWidget	*label;
+		GtkWidget	*favicon;
 		GtkWidget	*eventbox;
 		GtkWidget	*box;
 		GtkWidget	*sep;
@@ -567,6 +568,9 @@ extern char	*tabbar_font_name;
 extern int	edit_mode;
 extern int	userstyle_global;
 extern int	auto_load_images;
+extern int	enable_autoscroll;
+extern int	enable_favicon_entry;
+extern int	enable_favicon_tabs;
 
 /* globals */
 extern char		*version;

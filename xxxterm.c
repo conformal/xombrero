@@ -956,28 +956,6 @@ js_ref_to_string(JSContextRef context, JSValueRef ref)
 	return (s);
 }
 
-void
-disable_hints(struct tab *t)
-{
-	DNPRINTF(XT_D_JS, "%s: tab %d\n", __func__, t->tab_id);
-
-	run_script(t, "hints.clearHints();");
-	t->mode = XT_MODE_COMMAND;
-	t->new_tab = 0;
-}
-
-void
-enable_hints(struct tab *t)
-{
-	DNPRINTF(XT_D_JS, "%s: tab %d\n", __func__, t->tab_id);
-
-	if (t->new_tab)
-		run_script(t, "hints.createHints('', 'F');");
-	else
-		run_script(t, "hints.createHints('', 'f');");
-	t->mode = XT_MODE_HINT;
-}
-
 #define XT_JS_DONE		("done;")
 #define XT_JS_DONE_LEN		(strlen(XT_JS_DONE))
 #define XT_JS_INSERT		("insert;")
@@ -992,7 +970,7 @@ run_script(struct tab *t, char *s)
 	JSValueRef		val, exception;
 	char			*es;
 
-	DNPRINTF(XT_D_JS, "run_script: tab %d %s\n",
+	DNPRINTF(XT_D_JS, "%s: tab %d %s\n", __func__,
 	    t->tab_id, s == (char *)JS_HINTING ? "JS_HINTING" : s);
 
 	frame = webkit_web_view_get_main_frame(t->wv);
@@ -1003,12 +981,11 @@ run_script(struct tab *t, char *s)
 	    NULL, 0, &exception);
 	JSStringRelease(str);
 
-	DNPRINTF(XT_D_JS, "run_script: val %p\n", val);
+	DNPRINTF(XT_D_JS, "%s: val %p\n", __func__, val);
 	if (val == NULL) {
 		es = js_ref_to_string(ctx, exception);
 		if (es) {
-			/* show_oops(t, "script exception: %s", es); */
-			DNPRINTF(XT_D_JS, "run_script: exception %s\n", es);
+			DNPRINTF(XT_D_JS, "%s: exception %s\n", __func__, es);
 			g_free(es);
 		}
 		return (1);
@@ -1022,12 +999,34 @@ run_script(struct tab *t, char *s)
 			; /* do nothing */
 #endif
 		if (es) {
-			DNPRINTF(XT_D_JS, "run_script: val %s\n", es);
+			DNPRINTF(XT_D_JS, "%s: val %s\n", __func__, es);
 			g_free(es);
 		}
 	}
 
 	return (0);
+}
+
+void
+enable_hints(struct tab *t)
+{
+	DNPRINTF(XT_D_JS, "%s: tab %d\n", __func__, t->tab_id);
+
+	if (t->new_tab)
+		run_script(t, "hints.createHints('', 'F');");
+	else
+		run_script(t, "hints.createHints('', 'f');");
+	t->mode = XT_MODE_HINT;
+}
+
+void
+disable_hints(struct tab *t)
+{
+	DNPRINTF(XT_D_JS, "%s: tab %d\n", __func__, t->tab_id);
+
+	run_script(t, "hints.clearHints();");
+	t->mode = XT_MODE_COMMAND;
+	t->new_tab = 0;
 }
 
 int
@@ -2755,11 +2754,6 @@ done:
 int
 script_cmd(struct tab *t, struct karg *args)
 {
-	JSGlobalContextRef	ctx;
-	WebKitWebFrame		*frame;
-	JSStringRef		str;
-	JSValueRef		val, exception;
-	char			*es;
 	struct stat		sb;
 	FILE			*f = NULL;
 	char			*buf = NULL;
@@ -2783,38 +2777,8 @@ script_cmd(struct tab *t, struct karg *args)
 		goto done;
 	}
 
-	/* this code needs to be redone */
-	frame = webkit_web_view_get_main_frame(t->wv);
-	ctx = webkit_web_frame_get_global_context(frame);
-
-	str = JSStringCreateWithUTF8CString(buf);
-	val = JSEvaluateScript(ctx, str, JSContextGetGlobalObject(ctx),
-	    NULL, 0, &exception);
-	JSStringRelease(str);
-
-	DNPRINTF(XT_D_JS, "%s: val %p\n", __func__, val);
-	if (val == NULL) {
-		es = js_ref_to_string(ctx, exception);
-		if (es) {
-			show_oops(t, "script exception: %s", es);
-			g_free(es);
-		}
-		goto done;
-	} else {
-		es = js_ref_to_string(ctx, val);
-#if 0
-		/* return values */
-		if (!strncmp(es, XT_JS_DONE, XT_JS_DONE_LEN))
-			; /* do nothing */
-		if (!strncmp(es, XT_JS_INSERT, XT_JS_INSERT_LEN))
-			; /* do nothing */
-#endif
-		if (es) {
-			show_oops(t, "script complete return value: '%s'", es);
-			g_free(es);
-		} else
-			show_oops(t, "script complete: without a return value");
-	}
+	DNPRINTF(XT_D_JS, "%s: about to run script\n", __func__);
+	run_script(t, buf);
 
 done:
 	if (f)
@@ -3505,6 +3469,9 @@ free_favicon(struct tab *t)
 void
 xt_icon_from_name(struct tab *t, gchar *name)
 {
+	if (!enable_favicon_entry)
+		return;
+
 	gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->uri_entry),
 	    GTK_ENTRY_ICON_PRIMARY, "text-html");
 	if (show_url == 0)
@@ -3526,14 +3493,25 @@ xt_icon_from_pixbuf(struct tab *t, GdkPixbuf *pb)
 	else
 		pb_scaled = pb;
 
-	gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->uri_entry),
-	    GTK_ENTRY_ICON_PRIMARY, pb_scaled);
-	if (show_url == 0)
-		gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->sbe.statusbar),
+	if (enable_favicon_entry) {
+
+		/* Classic tabs. */
+		gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->uri_entry),
 		    GTK_ENTRY_ICON_PRIMARY, pb_scaled);
-	else
-		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->sbe.statusbar),
-		    GTK_ENTRY_ICON_PRIMARY, NULL);
+
+		/* Minimal tabs. */
+		if (show_url == 0) {
+			gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->sbe.statusbar),
+			    GTK_ENTRY_ICON_PRIMARY, pb_scaled);
+		} else
+			gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->sbe.statusbar),
+			    GTK_ENTRY_ICON_PRIMARY, NULL);
+	}
+
+	/* XXX: Only supports the minimal tabs atm. */
+	if (enable_favicon_tabs)
+		gtk_image_set_from_pixbuf(GTK_IMAGE(t->tab_elems.favicon),
+		    pb_scaled);
 
 	if (pb_scaled != pb)
 		g_object_unref(pb_scaled);
@@ -3836,6 +3814,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 		show_ca_status(t, uri);
 		run_script(t, JS_HINTING);
+		if (enable_autoscroll)
+			run_script(t, JS_AUTOSCROLL);
 		break;
 
 	case WEBKIT_LOAD_FIRST_VISUALLY_NON_EMPTY_LAYOUT:
@@ -3953,11 +3933,6 @@ js_autorun(struct tab *t)
 	char			deff[PATH_MAX], hostf[PATH_MAX];
 	char			*js = NULL, *jsat, *domain = NULL;
 	FILE			*deffile = NULL, *hostfile = NULL;
-	JSGlobalContextRef	ctx;
-	WebKitWebFrame		*frame;
-	JSStringRef		str;
-	JSValueRef		val, exception;
-	char			*es;
 
 	if (js_autorun_enabled == 0)
 		return;
@@ -4025,39 +4000,9 @@ nofile:
 		}
 	}
 
-	/* this code needs to be redone */
-	frame = webkit_web_view_get_main_frame(t->wv);
-	ctx = webkit_web_frame_get_global_context(frame);
+	DNPRINTF(XT_D_JS, "%s: about to run script\n", __func__);
+	run_script(t, js);
 
-	str = JSStringCreateWithUTF8CString(js);
-	val = JSEvaluateScript(ctx, str, JSContextGetGlobalObject(ctx),
-	    NULL, 0, &exception);
-	JSStringRelease(str);
-
-	DNPRINTF(XT_D_JS, "%s: val %p\n", __func__, val);
-	if (val == NULL) {
-		es = js_ref_to_string(ctx, exception);
-		if (es) {
-			show_oops(t, "script exception: %s", es);
-			g_free(es);
-		}
-		goto done;
-	} else {
-		es = js_ref_to_string(ctx, val);
-		g_free(es);
-#if 0
-		/* return values */
-		if (!strncmp(es, XT_JS_DONE, XT_JS_DONE_LEN))
-			; /* do nothing */
-		if (!strncmp(es, XT_JS_INSERT, XT_JS_INSERT_LEN))
-			; /* do nothing */
-		if (es) {
-			show_oops(t, "script complete return value: '%s'", es);
-			g_free(es);
-		} else
-			show_oops(t, "script complete: without a return value");
-#endif
-	}
 done:
 	if (su)
 		soup_uri_free(su);
@@ -6518,6 +6463,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 
 	/* compact tab bar */
 	t->tab_elems.label = gtk_label_new(title);
+	t->tab_elems.favicon = gtk_image_new();
 	gtk_label_set_width_chars(GTK_LABEL(t->tab_elems.label), 1.0);
 	gtk_misc_set_alignment(GTK_MISC(t->tab_elems.label), 0.0, 0.0);
 	gtk_misc_set_padding(GTK_MISC(t->tab_elems.label), 4.0, 4.0);
@@ -6534,6 +6480,8 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gdk_color_parse(XT_COLOR_CT_SEPARATOR, &color);
 	gtk_widget_modify_bg(t->tab_elems.sep, GTK_STATE_NORMAL, &color);
 
+	gtk_box_pack_start(GTK_BOX(t->tab_elems.box), t->tab_elems.favicon, FALSE,
+	    FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(t->tab_elems.box), t->tab_elems.label, TRUE,
 	    TRUE, 0);
 	gtk_box_pack_start(GTK_BOX(t->tab_elems.box), t->tab_elems.sep, FALSE,
