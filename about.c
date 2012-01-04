@@ -971,7 +971,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	for (i = 1;;) {
 		if ((title = fparseln(f, &len, &lineno, delim, 0)) == NULL)
 			break;
-		if (strlen(title) == 0 || title[0] == '#') {
+		if (strlen(title) == 0) {
 			free(title);
 			title = NULL;
 			continue;
