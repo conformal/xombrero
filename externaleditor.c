@@ -118,7 +118,7 @@ open_external_editor_cb (gpointer data)
 
 	/* Check if child has terminated */
 	rv = waitpid(args->child_pid, &status, WNOHANG);
-	if (rv == -1 || WIFEXITED(status)) {
+	if (rv == -1 /* || WIFEXITED(status) */) {
 
 		/* Delete the file */
 		unlink(args->path);
