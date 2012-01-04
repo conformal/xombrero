@@ -66,7 +66,8 @@ open_external_editor_cb(gpointer data)
 
 	rv = stat(args->path, &st);
 	if (rv == -1 && errno != ENOENT) {
-		DPRINTF("open_external_editor_cb: stat error, file %s, error: %s\n", args->path, strerror(errno));
+		DPRINTF("open_external_editor_cb: stat error, file %s, "
+		    "error: %s\n", args->path, strerror(errno));
 		show_oops(args->tab, "stat error : %s", strerror(errno));
 		goto done;
 	} else if ( rv == 0 && st.st_mtime > args->mtime) {
@@ -76,7 +77,8 @@ open_external_editor_cb(gpointer data)
 		contents = g_string_sized_new(XT_EE_BUFSZ);
 		fd = open(args->path, O_RDONLY);
 		if (fd == -1) {
-			DPRINTF("open_external_editor_cb, open error, %s\n", strerror(errno));
+			DPRINTF("open_external_editor_cb, open error, %s\n",
+			    strerror(errno));
 			goto done;
 		}
 
@@ -146,11 +148,12 @@ open_external_editor(struct tab *t, const char *contents, const char *suffix,
 	if (suffix == NULL)
 		suffix = "";
 
-	filename = g_malloc(strlen(temp_dir) + strlen("/xxxtermXXXXXX") + strlen(suffix) + 1);
+	filename = g_malloc(strlen(temp_dir) + strlen("/xxxtermXXXXXX") +
+	    strlen(suffix) + 1);
 	sprintf(filename, "%s/xxxtermXXXXXX%s", temp_dir, suffix);
 
 	/* Create a temporary file */
-	fd = mkstemps(filename,strlen(suffix));
+	fd = mkstemps(filename, strlen(suffix));
 	if (fd == -1) {
 		show_oops(t, "Cannot create temporary file");
 		return (1);
@@ -190,7 +193,8 @@ open_external_editor(struct tab *t, const char *contents, const char *suffix,
 
 		if (*ptr == '<') {
 			if (strncasecmp(ptr, "<file>", 6) == 0) {
-				strncpy(command+nb, filename, sizeof(command) - nb - 1);
+				strlcpy(command+nb, filename,
+				    sizeof(command) - nb);
 				ptr += 5;
 				nb += strlen(filename);
 			}
@@ -220,7 +224,8 @@ open_external_editor(struct tab *t, const char *contents, const char *suffix,
 		a->cb_data = cb_data;
 
 		/* Check every 100 ms if file has changed */
-		g_timeout_add(100, (GSourceFunc)open_external_editor_cb, (gpointer)a);
+		g_timeout_add(100, (GSourceFunc)open_external_editor_cb,
+		    (gpointer)a);
 		return (0);
 	}
 
