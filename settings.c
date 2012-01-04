@@ -323,10 +323,10 @@ struct settings		rs[] = {
 	{ "window_maximize",		XT_S_INT, 0,		&window_maximize, NULL, NULL },
 	{ "work_dir",			XT_S_STR, 0, NULL, NULL,&s_work_dir },
 	{ "xterm_workaround",		XT_S_INT, 0,		&xterm_workaround, NULL, NULL },
-	{ "auto_load_images",		XT_S_INT, 0, 		&auto_load_images, NULL, NULL, NULL, set_auto_load_images },
-	{ "enable_autoscroll",		XT_S_INT, 0, 		&enable_autoscroll, NULL, NULL, NULL, set_enable_autoscroll },
-	{ "enable_favicon_entry",	XT_S_INT, 0, 		&enable_favicon_entry, NULL, NULL, NULL, set_enable_favicon_entry },
-	{ "enable_favicon_tabs",	XT_S_INT, 0, 		&enable_favicon_tabs, NULL, NULL, NULL, set_enable_favicon_tabs },
+	{ "auto_load_images",		XT_S_INT, 0,		&auto_load_images, NULL, NULL, NULL, set_auto_load_images },
+	{ "enable_autoscroll",		XT_S_INT, 0,		&enable_autoscroll, NULL, NULL, NULL, set_enable_autoscroll },
+	{ "enable_favicon_entry",	XT_S_INT, 0,		&enable_favicon_entry, NULL, NULL, NULL, set_enable_favicon_entry },
+	{ "enable_favicon_tabs",	XT_S_INT, 0,		&enable_favicon_tabs, NULL, NULL, NULL, set_enable_favicon_tabs },
 
 	/* font settings */
 	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL },
