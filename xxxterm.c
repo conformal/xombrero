@@ -538,6 +538,7 @@ hide_buffers(struct tab *t)
 
 enum {
 	COL_ID		= 0,
+	COL_FAVICON,
 	COL_TITLE,
 	NUM_COLS
 };
@@ -575,6 +576,8 @@ buffers_make_list(void)
 			gtk_list_store_set(buffers_store, &iter,
 			    COL_ID, i + 1, /* Enumerate the tabs starting from 1
 					    * rather than 0. */
+			    COL_FAVICON, gtk_image_get_pixbuf
+			        (GTK_IMAGE(stabs[i]->tab_elems.favicon)),
 			    COL_TITLE, title,
 			    -1);
 		}
@@ -5996,6 +5999,11 @@ create_buffers(struct tab *t)
 	gtk_tree_view_insert_column_with_attributes
 	    (GTK_TREE_VIEW(view), -1, "Id", renderer, "text", COL_ID, (char *)NULL);
 
+	renderer = gtk_cell_renderer_pixbuf_new();
+	gtk_tree_view_insert_column_with_attributes
+	    (GTK_TREE_VIEW(view), -1, "Favicon", renderer, "pixbuf", COL_FAVICON,
+	    (char *)NULL);
+
 	renderer = gtk_cell_renderer_text_new();
 	gtk_tree_view_insert_column_with_attributes
 	    (GTK_TREE_VIEW(view), -1, "Title", renderer, "text", COL_TITLE,
@@ -7427,7 +7435,7 @@ main(int argc, char *argv[])
 
 	/* buffers */
 	buffers_store = gtk_list_store_new
-	    (NUM_COLS, G_TYPE_UINT, G_TYPE_STRING);
+	    (NUM_COLS, G_TYPE_UINT, GDK_TYPE_PIXBUF, G_TYPE_STRING);
 
 	qmarks_load();
 
