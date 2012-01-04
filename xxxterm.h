@@ -77,7 +77,6 @@ u_int32_t	arc4random_uniform(u_int32_t);
 #include <pthread.h>
 #endif
 
-#include "version.h"
 #include "javascript.h"
 /*
 javascript.h borrowed from vimprobable2 under the following license:

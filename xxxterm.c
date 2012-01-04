@@ -20,6 +20,7 @@
  */
 
 #include "xxxterm.h"
+#include "version.h"
 
 char		*version = XXXTERM_VERSION;
 
