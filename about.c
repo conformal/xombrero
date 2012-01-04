@@ -499,6 +499,7 @@ xtp_handle_dl(struct tab *t, uint8_t cmd, int id)
 	switch (cmd) {
 	case XT_XTP_DL_CANCEL:
 		webkit_download_cancel(d->download);
+		g_object_unref(d->download);
 		break;
 	case XT_XTP_DL_UNLINK:
 		unlink(webkit_download_get_destination_uri(d->download) +
