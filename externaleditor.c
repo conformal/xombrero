@@ -360,12 +360,14 @@ edit_element(struct tab *t, struct karg *a)
 int
 edit_element(struct tab *t, struct karg *a)
 {
+	show_oops(t, "external editor feature requires webkit >= 1.5.0");
 	return (1);
 }
 
 int
 edit_src(struct tab *t, struct karg *args)
 {
+	show_oops(t, "external editor feature requires webkit >= 1.5.0");
 	return (1);
 }
 
