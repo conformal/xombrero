@@ -34,19 +34,17 @@ struct open_external_editor_cb_args {
 };
 
 int
-open_external_editor_cb (gpointer data)
+open_external_editor_cb(gpointer data)
 {
 	struct open_external_editor_cb_args	*args;
 	struct stat				st;
 	struct tab				*t;
 
-	int					fd;
+	int					fd = -1;
 	int					rv, nb;
 	int					status;
 	int					found_tab = 0;
 	GString					*contents = NULL;
-
-	contents = NULL;
 
 	args = (struct open_external_editor_cb_args*)data;
 
@@ -69,11 +67,7 @@ open_external_editor_cb (gpointer data)
 	if (rv == -1 && errno != ENOENT) {
 		DPRINTF("open_external_editor_cb: stat error, file %s, error: %s\n", args->path, strerror(errno));
 		show_oops(args->tab, "stat error : %s", strerror(errno));
-
-		g_free(args->path);
-		g_free(args->cb_data);
-		g_free(args);
-		return (0);
+		goto done;
 	} else if ( rv == 0 && st.st_mtime > args->mtime) {
 		DPRINTF("File %s has been modified\n", args->path);
 		args->mtime = st.st_mtime;
@@ -82,10 +76,7 @@ open_external_editor_cb (gpointer data)
 		fd = open(args->path, O_RDONLY);
 		if (fd == -1) {
 			DPRINTF("open_external_editor_cb, open error, %s\n", strerror(errno));
-			g_free(args->path);
-			g_free(args->cb_data);
-			g_free(args);
-			return (0);
+			goto done;
 		}
 
 		char buf[1024];
@@ -95,10 +86,7 @@ open_external_editor_cb (gpointer data)
 			if (nb < 0) {
 				g_string_free(contents, TRUE);
 				show_oops(args->tab,strerror(errno));
-				g_free(args->path);
-				g_free(args->cb_data);
-				g_free(args);
-				return (0);
+				goto done;
 			}
 
 			buf[nb] = '\0';
@@ -108,6 +96,7 @@ open_external_editor_cb (gpointer data)
 				break;
 		}
 		close(fd);
+		fd = -1;
 
 		DPRINTF("external_editor_cb: contents updated\n");
 		if (args->callback)
@@ -122,13 +111,19 @@ open_external_editor_cb (gpointer data)
 
 		/* Delete the file */
 		unlink(args->path);
-		g_free(args->path);
-		g_free(args->cb_data);
-		g_free(args);
-		return (0);
+		goto done;
 	}
 
 	return (1);
+done:
+	g_free(args->path);
+	g_free(args->cb_data);
+	g_free(args);
+
+	if (fd != -1)
+		close(fd);
+
+	return (0);
 }
 
 int
