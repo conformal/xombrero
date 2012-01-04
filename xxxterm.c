@@ -4930,7 +4930,6 @@ int
 wv_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 {
 	char			s[2];
-	void			*active = NULL;
 
 	/* don't use w directly; use t->whatever instead */
 
@@ -4961,7 +4960,7 @@ wv_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		return (XT_CB_PASSTHROUGH);
 
 	/* check if we are some sort of text input thing in the dom */
-	active = input_check_mode(t);
+	input_check_mode(t);
 
 	if (t->mode == XT_MODE_HINT) {
 		/* XXX make sure cmd entry is enabled */
