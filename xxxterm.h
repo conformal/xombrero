@@ -300,6 +300,7 @@ void			completion_add(struct tab *);
 void			completion_add_uri(const gchar *uri);
 
 /* external editor */
+#define XT_EE_BUFSZ	(64 * 1024)
 int			edit_src(struct tab *t, struct karg *args);
 int			edit_element(struct tab *t, struct karg *a);
 

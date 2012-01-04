@@ -45,6 +45,7 @@ open_external_editor_cb(gpointer data)
 	int					status;
 	int					found_tab = 0;
 	GString					*contents = NULL;
+	char					buf[XT_EE_BUFSZ];
 
 	args = (struct open_external_editor_cb_args*)data;
 
@@ -72,27 +73,26 @@ open_external_editor_cb(gpointer data)
 		DPRINTF("File %s has been modified\n", args->path);
 		args->mtime = st.st_mtime;
 
-		contents = g_string_sized_new(1024);
+		contents = g_string_sized_new(XT_EE_BUFSZ);
 		fd = open(args->path, O_RDONLY);
 		if (fd == -1) {
 			DPRINTF("open_external_editor_cb, open error, %s\n", strerror(errno));
 			goto done;
 		}
 
-		char buf[1024];
 		nb = 0;
 		for (;;) {
-			nb = read(fd, buf, 1024);
+			nb = read(fd, buf, XT_EE_BUFSZ);
 			if (nb < 0) {
 				g_string_free(contents, TRUE);
-				show_oops(args->tab,strerror(errno));
+				show_oops(args->tab, strerror(errno));
 				goto done;
 			}
 
 			buf[nb] = '\0';
 			contents = g_string_append(contents, buf);
 
-			if (nb < 1024)
+			if (nb < XT_EE_BUFSZ)
 				break;
 		}
 		close(fd);
@@ -158,8 +158,8 @@ open_external_editor(struct tab *t, const char *contents, const char *suffix,
 
 	nb = 0;
 	while (nb < strlen(contents)) {
-		if (strlen(contents) - nb > 1024)
-			cnt = 1024;
+		if (strlen(contents) - nb > XT_EE_BUFSZ)
+			cnt = XT_EE_BUFSZ;
 		else
 			cnt = strlen(contents) - nb;
 
