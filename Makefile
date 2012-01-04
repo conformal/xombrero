@@ -51,7 +51,7 @@ beforeinstall:
 	install -m 644 ${.CURDIR}/xxxtermicon128.png ${PREFIX}/share/xxxterm
 	install -m 644 ${.CURDIR}/style.css ${PREFIX}/share/xxxterm
 
-${PROG} ${OBJS} beforedepend: ${.CURDIR}/javascript.h
+${PROG} ${OBJS} beforedepend: javascript.h
 
 # clang targets
 .if ${.TARGETS:M*analyze*}
