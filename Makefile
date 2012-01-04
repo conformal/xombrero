@@ -8,6 +8,7 @@ SRCS= cookie.c inspector.c marco.c about.c whitelist.c settings.c inputfocus.c
 SRCS+= history.c completion.c externaleditor.c xxxterm.c
 CFLAGS+= -O2 -Wall -Wno-format-extra-args -Wunused
 CFLAGS+= -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare
+CFLAGS+= -I.
 DEBUG= -ggdb3
 LDADD= -lutil -lgcrypt
 LIBS+= gtk+-2.0
@@ -26,12 +27,19 @@ CPPFLAGS+= -DXXXTERM_BUILDSTR=\"$(BUILDVERSION)\"
 
 MANDIR= ${PREFIX}/man/man
 
-CLEANFILES += ${.CURDIR}/javascript.h xxxterm.cat1 xxxterm.core
+CLEANFILES += ${.CURDIR}/javascript.h javascript.h xxxterm.cat1 xxxterm.core
 
-${.CURDIR}/javascript.h: hinting.js input-focus.js autoscroll.js
-	perl ${.CURDIR}/js-merge-helper.pl ${.CURDIR}/hinting.js \
-	    ${.CURDIR}/input-focus.js ${.CURDIR}/autoscroll.js \
-	    > ${.CURDIR}/javascript.h
+JSFILES += hinting.js
+JSFILES += input-focus.js
+JSFILES += autoscroll.js
+
+.for _js in ${JSFILES}
+JSCURDIR += ${.CURDIR}/${_js}
+.endfor
+
+javascript.h: ${JSFILES} js-merge-helper.pl
+	perl ${.CURDIR}/js-merge-helper.pl \
+		${JSCURDIR} > javascript.h
 
 beforeinstall:
 	install -m 755 -d ${PREFIX}/share/xxxterm
