@@ -15,7 +15,7 @@ CC?= cc
 
 all: ../javascript.h xxxterm
 
-../javascript.h: ../js-merge-helper.pl ../hinting.js
+../javascript.h: ../js-merge-helper.pl ../hinting.js ../autoscroll.js
 	perl ../js-merge-helper.pl ../hinting.js ../input-focus.js \
 	../autoscroll.js > ../javascript.h
 

@@ -108,11 +108,11 @@ MouseAutoScroll = (function() {
   }
   function mouseDown (e) {
     var t = e.target;
-    if (ev.button == 0) {
+    if (e.button == 0) {
       if (span) {
         clear();
       }
-    } else if (ev.button == 1) {
+    } else if (e.button == 1) {
       if (span) {
         clear();
       }
