@@ -4552,8 +4552,10 @@ qmark(struct tab *t, struct karg *arg)
 
 	switch (arg->i) {
 	case XT_QMARK_SET:
-		if (qmarks[index] != NULL)
+		if (qmarks[index] != NULL) {
 			g_free(qmarks[index]);
+			qmarks[index] = NULL;
+		}
 
 		qmarks_load(); /* sync if multiple instances */
 		qmarks[index] = g_strdup(get_uri(t));
