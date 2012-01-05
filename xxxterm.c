@@ -1362,6 +1362,8 @@ paste_uri(struct tab *t, struct karg *args)
 		    NULL,
 		    &len,
 		    (guchar **)&p)) {
+			if (p == NULL)
+				goto done;
 			/* yes sir, we need to NUL the string */
 			p[len] = '\0';
 		}
@@ -6820,6 +6822,8 @@ clipb_primary_cb(GtkClipboard *primary, GdkEvent *event, gpointer notused)
 		    NULL,
 		    &len,
 		    (guchar **)&p)) {
+			if (p == NULL)
+				return;
 			/* yes sir, we need to NUL the string */
 			p[len] = '\0';
 			gtk_clipboard_set_text(primary, p, -1);
