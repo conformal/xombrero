@@ -319,6 +319,10 @@ WebKitWebView*		inspector_inspect_web_view_cb(WebKitWebInspector *,
 void			setup_inspector(struct tab *);
 int			inspector_cmd(struct tab *, struct karg *);
 
+/* tld public suffix */
+void			tld_tree_init();
+char			*tld_get_suffix(const char *);
+
 /* about */
 #define XT_XTP_STR		"xxxt://"
 #define XT_URI_ABOUT		("about:")

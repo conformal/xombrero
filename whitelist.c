@@ -37,11 +37,7 @@ find_domain(const gchar *s, int toplevel)
 	}
 
 	if (toplevel && !isdigit(uri->host[strlen(uri->host) - 1])) {
-		if ((p = strrchr(uri->host, '.')) != NULL) {
-			while(--p >= uri->host && *p != '.');
-			p++;
-		} else
-			p = uri->host;
+		p = tld_get_suffix(uri->host);
 	} else
 		p = uri->host;
 

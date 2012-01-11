@@ -125,6 +125,7 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 	struct domain		*d = NULL;
 	SoupCookie		*c;
 	FILE			*r_cookie_f;
+	char			*public_suffix;
 
 	DNPRINTF(XT_D_COOKIE, "soup_cookie_jar_add_cookie: %p %p %p\n",
 	    jar, p_cookiejar, s_cookiejar);
@@ -145,8 +146,12 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 	if (jar == NULL || cookie == NULL)
 		return;
 
-	if (enable_cookie_whitelist &&
-	    (d = wl_find(cookie->domain, &c_wl)) == NULL) {
+	/* check if domain is valid */
+	public_suffix = tld_get_suffix(cookie->domain);
+
+	if (public_suffix == NULL ||
+	    (enable_cookie_whitelist &&
+	    (d = wl_find(cookie->domain, &c_wl)) == NULL)) {
 		blocked_cookies++;
 		DNPRINTF(XT_D_COOKIE,
 		    "soup_cookie_jar_add_cookie: reject %s\n",

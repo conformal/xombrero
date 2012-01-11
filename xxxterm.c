@@ -7448,6 +7448,9 @@ main(int argc, char *argv[])
 		exit(0);
 	}
 
+	/* tld list */
+	tld_tree_init();
+
 	/* uri completion */
 	completion_model = gtk_list_store_new(1, G_TYPE_STRING);
 

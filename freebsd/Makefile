@@ -41,10 +41,12 @@ completion.o: ../completion.o
 
 externaleditor.o: ../externaleditor.o
 
+tldlist.o: ../tldlist.o
+
 ../xxxterm.o: ../javascript.h
 
 xxxterm: xxxterm.o freebsd.o marco.o about.o inspector.o whitelist.o settings.o \
-	cookie.o history.o completion.o inputfocus.o externaleditor.o
+	cookie.o history.o completion.o inputfocus.o tldlist.o externaleditor.o
 	$(CC) $(LDFLAGS) -o $@ *.o $+ $(LDADD)
 
 install: all

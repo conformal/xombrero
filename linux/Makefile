@@ -43,6 +43,7 @@ install: all
 	install -m 644 ../xxxtermicon48.png $(DESTDIR)$(RESDIR)
 	install -m 644 ../xxxtermicon64.png $(DESTDIR)$(RESDIR)
 	install -m 644 ../xxxtermicon128.png $(DESTDIR)$(RESDIR)
+	install -m 644 ../tld-rules $(DESTDIR)$(RESDIR)
 	install -m 644 ../style.css $(DESTDIR)$(RESDIR)
 
 uninstall:
