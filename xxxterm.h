@@ -201,6 +201,7 @@ struct tab {
 #define XT_MODE_COMMAND		(0)
 #define XT_MODE_INSERT		(1)
 #define XT_MODE_HINT		(2)
+#define XT_MODE_PASSTHROUGH	(3)
 	int			focus_wv;
 	int			ctrl_click;
 	gchar			*status;

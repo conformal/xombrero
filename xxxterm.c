@@ -1036,6 +1036,13 @@ disable_hints(struct tab *t)
 }
 
 int
+passthrough(struct tab *t, struct karg *args)
+{
+	t->mode = XT_MODE_PASSTHROUGH;
+	return (0);
+}
+
+int
 hint(struct tab *t, struct karg *args)
 {
 
@@ -2937,6 +2944,7 @@ struct cmd {
 	{ "togglesrc",		0,	toggle_src,		0,			0 },
 	{ "editsrc",		0,	edit_src,		0,			0 },
 	{ "editelement",	0,	edit_element,		0,			0 },
+	{ "passthrough",	0,	passthrough,		0,	0 },
 
 	/* yanking and pasting */
 	{ "yankuri",		0,	yank_uri,		0,			0 },
@@ -4970,6 +4978,10 @@ wv_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	if (t->mode == XT_MODE_HINT) {
 		/* XXX make sure cmd entry is enabled */
 		return (XT_CB_HANDLED);
+	} else if (t->mode == XT_MODE_PASSTHROUGH) {
+		if (CLEAN(e->state) == 0 && e->keyval == GDK_Escape)
+			t->mode = XT_MODE_COMMAND;
+		return (XT_CB_PASSTHROUGH);
 	} else if (t->mode == XT_MODE_COMMAND) {
 		/* prefix input */
 		snprintf(s, sizeof s, "%c", e->keyval);

@@ -209,8 +209,6 @@ input_check_mode(struct tab *t)
 
 	if (dom_is_input(t, &active))
 		t->mode = XT_MODE_INSERT;
-	else
-		t->mode = XT_MODE_COMMAND;
 
 	return (active);
 }
