@@ -144,6 +144,8 @@ dom_is_input(struct tab *t, WebKitDOMElement **active)
 {
 	WebKitDOMDocument	*doc;
 	WebKitDOMElement	*a;
+	WebKitDOMHTMLElement	*aa;
+	WebKitDOMHTMLObjectElement *object;
 
 	WebKitDOMHTMLFrameElement *frame;
 	WebKitDOMHTMLIFrameElement *iframe;
@@ -159,20 +161,6 @@ dom_is_input(struct tab *t, WebKitDOMElement **active)
 		if (a == NULL)
 			return (0);
 
-		/*
-		 * I think this is a total hack because this property isn't
-		 * set for textareas or input however, it is set for jquery
-		 * textareas that do rich text.  Since this works around issues
-		 * in RT we'll simply keep it!
-		 *
-		 * This might break some other stuff but for now it helps.
-		 */
-		if (webkit_dom_html_element_get_is_content_editable(
-		    (WebKitDOMHTMLElement*)a)) {
-			*active = a;
-			return (1);
-		}
-
 		frame = (WebKitDOMHTMLFrameElement *)a;
 		if (WEBKIT_DOM_IS_HTML_FRAME_ELEMENT(frame)) {
 			doc = webkit_dom_html_frame_element_get_content_document(
@@ -187,6 +175,27 @@ dom_is_input(struct tab *t, WebKitDOMElement **active)
 			continue;
 		}
 
+		object = (WebKitDOMHTMLObjectElement *)a;
+		if (WEBKIT_DOM_IS_HTML_OBJECT_ELEMENT(object)) {
+			doc = webkit_dom_html_object_element_get_content_document(
+			    object);
+			continue;
+		}
+
+		/*
+		 * I think this is a total hack because this property isn't
+		 * set for textareas or input however, it is set for jquery
+		 * textareas that do rich text.  Since this works around issues
+		 * in RT we'll simply keep it!
+		 *
+		 * This might break some other stuff but for now it helps.
+		 */
+		aa = (WebKitDOMHTMLElement*)a;
+		if (WEBKIT_DOM_IS_HTML_ELEMENT(aa) &&
+		    webkit_dom_html_element_get_is_content_editable(aa)) {
+			*active = a;
+			return (1);
+		}
 		break;
 	}
 
