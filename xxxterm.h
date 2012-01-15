@@ -281,6 +281,7 @@ const gchar		*get_uri(struct tab *);
 const gchar		*get_title(struct tab *, bool);
 void			load_uri(struct tab *t, gchar *uri);
 gboolean		match_uri(const gchar *uri, const gchar *key);
+int			valid_url_type(char *);
 
 void			load_webkit_string(struct tab *, const char *, gchar *);
 void			button_set_stockid(GtkWidget *, char *);
@@ -469,6 +470,11 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_DM_ASK		(1)
 #define XT_DM_ADD		(2)
 
+#define XT_REFERER_ALWAYS	(0)
+#define XT_REFERER_NEVER	(1)
+#define XT_REFERER_SAME_DOMAIN	(2)
+#define XT_REFERER_CUSTOM	(3)
+
 #define CTRL			GDK_CONTROL_MASK
 #define MOD1			GDK_MOD1_MASK
 #define SHFT			GDK_SHIFT_MASK
@@ -593,6 +599,8 @@ extern int	auto_load_images;
 extern int	enable_autoscroll;
 extern int	enable_favicon_entry;
 extern int	enable_favicon_tabs;
+extern int	referer_mode;
+extern char	*referer_custom;
 
 /* globals */
 extern char		*version;

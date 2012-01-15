@@ -97,6 +97,8 @@ int		enable_autoscroll = 0;
 int		enable_favicon_entry = 1;
 int		enable_favicon_tabs = 0;
 char		*external_editor = NULL;
+int		referer_mode = XT_REFERER_ALWAYS;
+char		*referer_custom = NULL;
 
 char		*cmd_font_name = NULL;
 char		*oops_font_name = NULL;
@@ -110,6 +112,7 @@ char		*get_tab_style(struct settings *);
 char		*get_edit_mode(struct settings *);
 char		*get_download_mode(struct settings *);
 char		*get_work_dir(struct settings *);
+char		*get_referer(struct settings *);
 
 int		add_cookie_wl(struct settings *, char *);
 int		add_js_wl(struct settings *, char *);
@@ -131,6 +134,8 @@ int		set_enable_favicon_entry(char *value);
 int		set_enable_favicon_tabs(char *value);
 int		set_download_mode(struct settings *, char *);
 int		set_download_mode_rt(char *);
+int		set_referer(struct settings *, char *);
+int		set_referer_rt(char *);
 int		set_external_editor(char *);
 
 void		walk_mime_type(struct settings *, void (*)(struct settings *,
@@ -277,6 +282,12 @@ struct special		s_ua = {
 	walk_ua
 };
 
+struct special		s_referer = {
+	set_referer,
+	get_referer,
+	NULL
+};
+
 struct settings		rs[] = {
 	{ "allow_volatile_cookies",	XT_S_INT, 0,		&allow_volatile_cookies, NULL, NULL },
 	{ "append_next",		XT_S_INT, 0,		&append_next, NULL, NULL },
@@ -338,6 +349,7 @@ struct settings		rs[] = {
 	{ "enable_autoscroll",		XT_S_INT, 0,		&enable_autoscroll, NULL, NULL, NULL, set_enable_autoscroll },
 	{ "enable_favicon_entry",	XT_S_INT, 0,		&enable_favicon_entry, NULL, NULL, NULL, set_enable_favicon_entry },
 	{ "enable_favicon_tabs",	XT_S_INT, 0,		&enable_favicon_tabs, NULL, NULL, NULL, set_enable_favicon_tabs },
+	{ "referer",			XT_S_STR, 0, NULL, NULL,&s_referer, NULL, set_referer_rt },
 
 	/* font settings */
 	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL },
@@ -1074,6 +1086,51 @@ set_enable_favicon_tabs(char *value)
 {
 	enable_favicon_tabs = atoi(value);
 	return (0);
+}
+
+char *
+get_referer(struct settings *s)
+{
+	if (referer_mode == XT_REFERER_ALWAYS)
+		return (g_strdup("always"));
+	if (referer_mode == XT_REFERER_NEVER)
+		return (g_strdup("never"));
+	if (referer_mode == XT_REFERER_SAME_DOMAIN)
+		return (g_strdup("same-domain"));
+	if (referer_mode == XT_REFERER_CUSTOM)
+		return (g_strdup(referer_custom));
+	return (NULL);
+}
+
+int
+set_referer(struct settings *s, char *value)
+{
+	if (referer_custom)
+		g_free(referer_custom);
+
+	if (!strcmp(value, "always"))
+		referer_mode = XT_REFERER_ALWAYS;
+	else if (!strcmp(value, "never"))
+		referer_mode = XT_REFERER_NEVER;
+	else if (!strcmp(value, "same-domain"))
+		referer_mode = XT_REFERER_SAME_DOMAIN;
+	else if (!valid_url_type(value)) {
+		referer_mode = XT_REFERER_CUSTOM;
+		referer_custom = g_strdup(value);
+	} else {
+		/* we've already free'd the custom referer */
+		if (referer_mode == XT_REFERER_CUSTOM)
+			referer_mode = XT_REFERER_NEVER;
+		return (1);
+	}
+
+	return (0);
+}
+
+int
+set_referer_rt(char *value)
+{
+	return set_referer(NULL, value);
 }
 
 int

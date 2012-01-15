@@ -4057,6 +4057,45 @@ webview_progress_changed_cb(WebKitWebView *wv, int progress, struct tab *t)
 	update_statusbar_position(NULL, NULL);
 }
 
+void
+session_rq_cb(SoupSession *s, SoupMessage *msg, SoupSocket *socket, gpointer data)
+{
+	SoupURI			*dest;
+	const char		*ref;
+
+	if (s == NULL || msg == NULL)
+		return;
+
+	if (referer_mode == XT_REFERER_ALWAYS)
+		return;
+
+	/* Check if referer is set - and what the user requested for referers */
+	ref = soup_message_headers_get_one(msg->request_headers, "Referer");
+	if (ref) {
+		DNPRINTF(XT_D_NAV, "session_rq_cb: Referer: %s\n", ref);
+		switch (referer_mode) {
+		case XT_REFERER_NEVER:
+			DNPRINTF(XT_D_NAV, "session_rq_cb: removing referer\n");
+			soup_message_headers_remove(msg->request_headers,
+			    "Referer");
+			break;
+		case XT_REFERER_SAME_DOMAIN:
+			dest = soup_message_get_uri(msg);
+
+			if (dest && !strstr(ref, dest->host)) {
+				soup_message_headers_remove(msg->request_headers, "Referer");
+				DNPRINTF(XT_D_NAV, "session_rq_cb: removing referer (not same domain)\n");
+			}
+			break;
+		case XT_REFERER_CUSTOM:
+			DNPRINTF(XT_D_NAV, "session_rq_cb: setting referer to %s\n", referer_custom);
+			soup_message_headers_replace(msg->request_headers,
+			    "Referer", referer_custom);
+			break;
+		}
+	}
+}
+
 int
 webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
     WebKitNetworkRequest *request, WebKitWebNavigationAction *na,
@@ -7522,6 +7561,9 @@ main(int argc, char *argv[])
 	g_object_set(session, "max-conns", max_connections, (char *)NULL);
 	g_object_set(session, "max-conns-per-host", max_host_connections,
 	    (char *)NULL);
+
+	g_signal_connect(session, "request-queued", G_CALLBACK(session_rq_cb),
+	    NULL);
 
 	/* see if there is already an xxxterm running */
 	if (single_instance && is_running()) {
