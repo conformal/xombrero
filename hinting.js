@@ -110,19 +110,37 @@ function Hints() {
                 var leftpos = Math.max((rect.left + scrollX), scrollX);
                 var toppos = Math.max((rect.top + scrollY), scrollY);
 
+                /* check if we already created a hint for this URL */
+                var hintNumber = hintCount;
+                if (elem.nodeName.toLowerCase() == "a") {
+                        for (var j = 0; j < hints.length; j++) {
+                                var h = hints[j];
+                                if (h.elem.nodeName.toLowerCase() != "a")
+                                        continue;
+                                if (h.elem.href.toLowerCase() == elem.href.toLowerCase()){
+                                        hintNumber = h.number - 1;
+                                        break;
+                                }
+                        }
+                }
+
                 /* making this block DOM compliant */
                 var hint = hintSpan.cloneNode(false);
-                hint.setAttribute("id", "vimprobablehint" + hintCount);
+                hint.setAttribute("id", "vimprobablehint" + hintNumber);
                 hint.style.left = leftpos + "px";
                 hint.style.top =  toppos + "px";
-                text = doc.createTextNode(hintCount + 1);
+                text = doc.createTextNode(hintNumber + 1);
                 hint.appendChild(text);
 
                 hintContainer.appendChild(hint);
-                hintCount++;
+                if (hintNumber == hintCount)
+                        hintCount++;
+                else
+                        hintNumber = -2; /* do not follow dupes */
+
                 hints.push({
                     elem:       elem,
-                    number:     hintCount,
+                    number:     hintNumber+1,
                     span:       hint,
                     background: elem.style.background,
                     foreground: elem.style.color}
