@@ -75,8 +75,8 @@ adapt(int delta, int numpoints, int firsttime)
 int
 get_minimum_char(char *str, int n)
 {
-	gunichar ch = 0;
-	gunichar min = 0xffffff;
+	gunichar	ch = 0;
+	gunichar	min = 0xffffff;
 
 	for(; *str; str = g_utf8_next_char(str)) {
 		ch = g_utf8_get_char(str);
@@ -92,7 +92,7 @@ encode_digit(int n)
 {
 	if (n < 26)
 		return n + 'a';
-	return (n-26) + '0';
+	return (n - 26) + '0';
 }
 
 char *
@@ -276,6 +276,8 @@ tld_tree_init()
 		 * better than nothing.
 		 */
 		tld_tree_add("*");
+		startpage_add("Could not open %s ant this file is required"
+		    "to handle TLD whitelisting properly", file);
 		return;
 	}
 
