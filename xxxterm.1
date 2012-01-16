@@ -1193,6 +1193,17 @@ terminated.
 .It Cm refresh_interval
 Refresh interval while in the download manager.
 The default is 10.
+.It Cm referer
+Control how 'Referer' is handled in http-requests.
+.Bd -literal -offset indent
+always      - always send referer
+never       - never send referer
+same-domain - only send referer if it's
+              for the same domain
+.Ed
+Any other value that is also a valid URL will use this
+custom value as referer. (E.g. you could set it to http://no-referer.com)
+The default value is "always"
 .It Cm resource_dir
 Directory that contains various
 .Nm
