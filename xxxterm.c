@@ -4354,22 +4354,22 @@ webview_mimetype_cb(WebKitWebView *wv, WebKitWebFrame *frame,
 }
 
 int
-webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download,
-    struct tab *t)
+download_start(struct tab *t, struct download *d, int flag)
 {
+	WebKitNetworkRequest	*req;
 	struct stat		sb;
 	const gchar		*suggested_name;
 	gchar			*filename = NULL;
 	char			*uri = NULL;
-	struct download		*download_entry;
-	int			i, ret = TRUE;
+	int			ret = TRUE;
+	int			i;
 
-	if (wk_download == NULL || t == NULL) {
+	if (d == NULL || t == NULL) {
 		show_oops(NULL, "%s invalid parameters", __func__);
 		return (FALSE);
 	}
 
-	suggested_name = webkit_download_get_suggested_filename(wk_download);
+	suggested_name = webkit_download_get_suggested_filename(d->download);
 	if (suggested_name == NULL)
 		return (FALSE); /* abort download */
 
@@ -4392,35 +4392,126 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download,
 	DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d filename %s "
 	    "local %s\n", __func__, t->tab_id, filename, uri);
 
-	webkit_download_set_destination_uri(wk_download, uri);
+	/* if we're restarting the download, or starting
+	 * it after doing something else, we need to recreate
+	 * the download request.
+	 */
+	if (flag == XT_DL_RESTART) {
+		req = webkit_network_request_new(webkit_download_get_uri(d->download));
+		webkit_download_cancel(d->download);
+		g_object_unref(d->download);
+		d->download = webkit_download_new(req);
+	}
 
-	if (webkit_download_get_status(wk_download) ==
+	webkit_download_set_destination_uri(d->download, uri);
+
+	if (webkit_download_get_status(d->download) ==
 	    WEBKIT_DOWNLOAD_STATUS_ERROR) {
 		show_oops(t, "%s: download failed to start", __func__);
 		ret = FALSE;
 		gtk_label_set_text(GTK_LABEL(t->label), "Download Failed");
 	} else {
 		/* connect "download first" mime handler */
-		g_signal_connect(G_OBJECT(wk_download), "notify::status",
+		g_signal_connect(G_OBJECT(d->download), "notify::status",
 		    G_CALLBACK(download_status_changed_cb), NULL);
 
-		download_entry = g_malloc(sizeof(struct download));
-		download_entry->download = wk_download;
-		download_entry->tab = t;
-		download_entry->id = next_download_id++;
-		RB_INSERT(download_list, &downloads, download_entry);
 		/* get from history */
-		g_object_ref(wk_download);
+		g_object_ref(d->download);
 		gtk_label_set_text(GTK_LABEL(t->label), "Downloading");
 		show_oops(t, "Download of '%s' started...",
-		    basename((char *)webkit_download_get_destination_uri(wk_download)));
+		    basename((char *)webkit_download_get_destination_uri(d->download)));
 	}
+
+	if (flag != XT_DL_START)
+		webkit_download_start(d->download);
+
+	DNPRINTF(XT_D_DOWNLOAD, "download status : %d",
+			webkit_download_get_status(d->download));
+
+	/* sync other download manager tabs */
+	update_download_tabs(NULL);
 
 	if (uri)
 		g_free(uri);
 
 	if (filename)
 		g_free(filename);
+
+	return (ret);
+}
+
+int
+download_ask_cb(struct tab *t, GdkEventKey *e, gpointer data)
+{
+	struct download *d = data;
+
+	/* unset mode */
+	t->mode_cb = NULL;
+	t->mode_cb_data = NULL;
+
+	if (!e || !d) {
+		e->keyval = GDK_Escape;
+		return (XT_CB_PASSTHROUGH);
+	}
+
+	DPRINTF("download_ask_cb: User pressed %c\n", e->keyval);
+	if (e->keyval == 'y' || e->keyval == 'Y' || e->keyval == GDK_Return)
+		/* We need to do a RESTART, because we're not calling from
+		 * webview_download_cb
+		 */
+		download_start(t, d, XT_DL_RESTART);
+
+	/* for all other keyvals, we just let the download be */
+	e->keyval = GDK_Escape;
+	return (XT_CB_HANDLED);
+}
+
+int
+download_ask(struct tab *t, struct download *d)
+{
+	const gchar		*suggested_name;
+
+	suggested_name = webkit_download_get_suggested_filename(d->download);
+	if (suggested_name == NULL)
+		return (FALSE); /* abort download */
+
+	show_oops(t, "download file %s [y/n] ?", suggested_name);
+	t->mode_cb = download_ask_cb;
+	t->mode_cb_data = d;
+
+	return (TRUE);
+}
+
+int
+webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download,
+    struct tab *t)
+{
+	const gchar		*suggested_name;
+	struct download		*download_entry;
+	int			ret = TRUE;
+
+	if (wk_download == NULL || t == NULL) {
+		show_oops(NULL, "%s invalid parameters", __func__);
+		return (FALSE);
+	}
+
+	suggested_name = webkit_download_get_suggested_filename(wk_download);
+	if (suggested_name == NULL)
+		return (FALSE); /* abort download */
+
+	download_entry = g_malloc(sizeof(struct download));
+	download_entry->download = wk_download;
+	download_entry->tab = t;
+	download_entry->id = next_download_id++;
+	RB_INSERT(download_list, &downloads, download_entry);
+
+	if (download_mode == XT_DM_START)
+		ret = download_start(t, download_entry, XT_DL_START);
+	else if (download_mode == XT_DM_ASK)
+		ret = download_ask(t, download_entry);
+	else if (download_mode == XT_DM_ADD)
+		show_oops(t, "added %s to download manager",
+		    suggested_name);
 
 	/* sync other download manager tabs */
 	update_download_tabs(NULL);
@@ -4952,6 +5043,9 @@ wv_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	}
 
 	hide_oops(t);
+
+	if (t->mode_cb)
+		return t->mode_cb(t, e, t->mode_cb_data);
 
 	DNPRINTF(XT_D_KEY, "wv_keypress_cb: mode %d keyval 0x%x mask "
 	    "0x%x tab %d\n", t->mode, e->keyval, e->state, t->tab_id);

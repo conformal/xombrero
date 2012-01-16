@@ -68,6 +68,7 @@ char		*home = NULL;
 char		*search_string = NULL;
 char		*http_proxy = NULL;
 char		download_dir[PATH_MAX];
+int		download_mode = XT_DM_START;
 char		runtime_settings[PATH_MAX]; /* override of settings */
 int		allow_volatile_cookies = 0;
 int		color_visited_uris = 1;
@@ -107,6 +108,7 @@ char		*get_default_script(struct settings *);
 char		*get_runtime_dir(struct settings *);
 char		*get_tab_style(struct settings *);
 char		*get_edit_mode(struct settings *);
+char		*get_download_mode(struct settings *);
 char		*get_work_dir(struct settings *);
 
 int		add_cookie_wl(struct settings *, char *);
@@ -127,6 +129,8 @@ int		set_auto_load_images(char *value);
 int		set_enable_autoscroll(char *value);
 int		set_enable_favicon_entry(char *value);
 int		set_enable_favicon_tabs(char *value);
+int		set_download_mode(struct settings *, char *);
+int		set_download_mode_rt(char *);
 int		set_external_editor(char *);
 
 void		walk_mime_type(struct settings *, void (*)(struct settings *,
@@ -261,6 +265,12 @@ struct special		s_edit_mode = {
 	NULL
 };
 
+struct special		s_download_mode = {
+	set_download_mode,
+	get_download_mode,
+	NULL
+};
+
 struct special		s_ua = {
 	add_ua,
 	NULL,
@@ -280,6 +290,7 @@ struct settings		rs[] = {
 	{ "default_zoom_level",		XT_S_FLOAT, 0,		NULL, NULL, NULL, &default_zoom_level },
 	{ "default_script",		XT_S_STR, 0, NULL, NULL,&s_default_script },
 	{ "download_dir",		XT_S_STR, 0, NULL, NULL,&s_download_dir },
+	{ "download_mode",		XT_S_STR, 0, NULL, NULL,&s_download_mode, NULL, set_download_mode_rt },
 	{ "edit_mode",			XT_S_STR, 0, NULL, NULL,&s_edit_mode },
 	{ "enable_cookie_whitelist",	XT_S_INT, 0,		&enable_cookie_whitelist, NULL, NULL },
 	{ "enable_js_whitelist",	XT_S_INT, 0,		&enable_js_whitelist, NULL, NULL },
@@ -1143,6 +1154,44 @@ set_edit_mode(struct settings *s, char *val)
 		return (1);
 
 	return (0);
+}
+
+char *
+get_download_mode(struct settings *s)
+{
+	switch (download_mode) {
+	case XT_DM_START:
+		return (g_strdup("start"));
+		break;
+	case XT_DM_ASK:
+		return (g_strdup("ask"));
+		break;
+	case XT_DM_ADD:
+		return (g_strdup("add"));
+		break;
+	}
+	return (g_strdup("unknown"));
+}
+
+int
+set_download_mode(struct settings *s, char *val)
+{
+	if (!strcmp(val, "start"))
+		download_mode = XT_DM_START;
+	else if (!strcmp(val, "ask"))
+		download_mode = XT_DM_ASK;
+	else if (!strcmp(val, "add"))
+		download_mode = XT_DM_ADD;
+	else
+		return (1);
+
+	return (0);
+}
+
+int
+set_download_mode_rt(char *val)
+{
+	return set_download_mode(NULL, val);
 }
 
 char *

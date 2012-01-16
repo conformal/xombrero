@@ -1014,6 +1014,16 @@ Locations where files are downloaded to.
 This directory must exist and
 .Nm
 validates that during startup.
+.It Cm download_mode
+Controls how downloads are handled.
+Possible values are:
+.Bd -literal -offset indent
+start - automatically start download.
+ask   - ask user for confirmation.
+add   - add to downloadmanager, but
+        do not start.
+.Ed
+The default is "start".
 .It Cm enable_autoscroll
 When enabled clicking MB3 will spawn the autoscroll ball, scrolling can
 then proceed by dragging the mouse away from the ball.

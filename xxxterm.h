@@ -202,6 +202,8 @@ struct tab {
 #define XT_MODE_INSERT		(1)
 #define XT_MODE_HINT		(2)
 #define XT_MODE_PASSTHROUGH	(3)
+	int			(*mode_cb)(struct tab *, GdkEventKey *, gpointer);
+	gpointer		mode_cb_data;
 	int			focus_wv;
 	int			ctrl_click;
 	gchar			*status;
@@ -463,6 +465,10 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_EM_HYBRID		(0)
 #define XT_EM_VI		(1)
 
+#define XT_DM_START		(0)
+#define XT_DM_ASK		(1)
+#define XT_DM_ADD		(2)
+
 #define CTRL			GDK_CONTROL_MASK
 #define MOD1			GDK_MOD1_MASK
 #define SHFT			GDK_SHIFT_MASK
@@ -513,6 +519,10 @@ void		init_keybindings(void);
 void		config_parse(char *, int);
 char		*get_setting_name(int);
 
+#define		XT_DL_START	(0)
+#define		XT_DL_RESTART	(1)
+int		download_start(struct tab *, struct download *, int flag);
+
 extern int	tabless;
 extern int	enable_socket;
 extern int	single_instance;
@@ -551,6 +561,7 @@ extern char	*search_string;
 extern char	*http_proxy;
 extern char	*external_editor;
 extern char	download_dir[PATH_MAX];
+extern int	download_mode;
 extern char	runtime_settings[PATH_MAX];
 extern int	allow_volatile_cookies;
 extern int	color_visited_uris;

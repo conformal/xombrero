@@ -71,6 +71,7 @@
 #define XT_XTP_DL_CANCEL	(2)
 #define XT_XTP_DL_REMOVE	(3)
 #define XT_XTP_DL_UNLINK	(4)
+#define XT_XTP_DL_START		(5)
 
 /* XTP history actions */
 #define XT_XTP_HL_LIST		(1)
@@ -497,9 +498,16 @@ xtp_handle_dl(struct tab *t, uint8_t cmd, int id)
 
 	/* decide what to do */
 	switch (cmd) {
+	case XT_XTP_DL_START:
+		/* our downloads always needs to be
+		 * restarted if called from here
+		 */
+		download_start(t, d, XT_DL_RESTART);
+		break;
 	case XT_XTP_DL_CANCEL:
 		webkit_download_cancel(d->download);
 		g_object_unref(d->download);
+		RB_REMOVE(download_list, &downloads, d);
 		break;
 	case XT_XTP_DL_UNLINK:
 		unlink(webkit_download_get_destination_uri(d->download) +
@@ -1047,6 +1055,7 @@ xtp_page_dl_row(struct tab *t, char *html, struct download *dl)
 {
 
 	WebKitDownloadStatus	stat;
+	const gchar		*destination;
 	char			*status_html = NULL, *cmd_html = NULL, *new_html;
 	gdouble			progress;
 	char			cur_sz[FMT_SCALED_STRSIZE];
@@ -1096,30 +1105,37 @@ xtp_page_dl_row(struct tab *t, char *html, struct download *dl)
 	case WEBKIT_DOWNLOAD_STATUS_CANCELLED:
 		status_html = g_strdup_printf("Cancelled");
 		cmd_html = g_strdup_printf(
-		    "<a href='%s%d/%d'>Remove</a> / <a href='%s%d/%d'>Unlink</a>",
+		    "<a href='%s%d/%d'>Restart</a> / <a href='%s%d/%d'>Remove</a> / <a href='%s%d/%d'>Unlink</a>",
+		    xtp_prefix, XT_XTP_DL_START, dl->id,
 		    xtp_prefix, XT_XTP_DL_REMOVE, dl->id, xtp_prefix,
 		    XT_XTP_DL_UNLINK, dl->id);
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_ERROR:
 		status_html = g_strdup_printf("Error!");
 		cmd_html = g_strdup_printf(
-		    "<a href='%s%d/%d'>Remove</a> / <a href='%s%d/%d'>Unlink</a>",
+		    "<a href='%s%d/%d'>Restart</a> / <a href='%s%d/%d'>Remove</a> / <a href='%s%d/%d'>Unlink</a>",
+		    xtp_prefix, XT_XTP_DL_START, dl->id,
 		    xtp_prefix, XT_XTP_DL_REMOVE, dl->id, xtp_prefix,
 		    XT_XTP_DL_UNLINK, dl->id);
 		break;
 	case WEBKIT_DOWNLOAD_STATUS_CREATED:
-		cmd_html = g_strdup_printf("<a href='%s%d/%d'>Cancel</a>",
-		    xtp_prefix, XT_XTP_DL_CANCEL, dl->id);
-		status_html = g_strdup_printf("Starting");
+		cmd_html = g_strdup_printf("<a href='%s%d/%d'>Start</a> / <a href='%s%d/%d'>Cancel</a>",
+		    xtp_prefix, XT_XTP_DL_START, dl->id, xtp_prefix,
+		    XT_XTP_DL_CANCEL, dl->id);
+		status_html = g_strdup_printf("Created");
 		break;
 	default:
 		show_oops(t, "%s: unknown download status", __func__);
 	};
 
+	destination = webkit_download_get_destination_uri(dl->download);
+	/* we might not have a destination set yet */
+	if (!destination)
+		destination = webkit_download_get_suggested_filename(dl->download);
 	new_html = g_strdup_printf(
 	    "%s\n<tr><td>%s</td><td>%s</td>"
 	    "<td style='text-align:center'>%s</td></tr>\n",
-	    html, basename((char *)webkit_download_get_destination_uri(dl->download)),
+	    html, basename((char *)destination),
 	    status_html, cmd_html);
 	g_free(html);
 
