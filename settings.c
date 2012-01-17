@@ -440,6 +440,7 @@ set_browser_mode(struct settings *s, char *val)
 		enable_scripts = 0;
 		enable_js_whitelist = 1;
 		enable_localstorage = 0;
+		referer_mode = XT_REFERER_SAME_DOMAIN;
 	} else if (!strcmp(val, "normal")) {
 		browser_mode = XT_BM_NORMAL;
 		allow_volatile_cookies = 0;
@@ -454,6 +455,7 @@ set_browser_mode(struct settings *s, char *val)
 		enable_scripts = 1;
 		enable_js_whitelist = 0;
 		enable_localstorage = 1;
+		referer_mode = XT_REFERER_ALWAYS;
 	} else if (!strcmp(val, "kiosk")) {
 		browser_mode = XT_BM_KIOSK;
 		allow_volatile_cookies = 0;
@@ -468,6 +470,7 @@ set_browser_mode(struct settings *s, char *val)
 		enable_scripts = 1;
 		enable_js_whitelist = 0;
 		enable_localstorage = 1;
+		referer_mode = XT_REFERER_ALWAYS;
 		show_tabs = 0;
 		tabless = 1;
 	} else
