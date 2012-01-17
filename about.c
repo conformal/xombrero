@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2010, 2011 Marco Peereboom <marco@peereboom.us>
  * Copyright (c) 2011 Stevan Andjelkovic <stevan@student.chalmers.se>
- * Copyright (c) 2010, 2011 Edd Barrett <vext01@gmail.com>
+ * Copyright (c) 2010, 2011, 2012 Edd Barrett <vext01@gmail.com>
  * Copyright (c) 2011 Todd T. Fries <todd@fries.net>
  * Copyright (c) 2011 Raphael Graf <r@undefined.ch>
  * Copyright (c) 2011 Michal Mazurek <akfaew@jasminek.net>
@@ -81,6 +81,7 @@
 #define XT_XTP_CL_LIST		(1)
 #define XT_XTP_CL_REMOVE	(2)
 #define XT_XTP_CL_REMOVE_DOMAIN	(3)
+#define XT_XTP_CL_REMOVE_ALL	(4)
 
 /* XTP cookie actions */
 #define XT_XTP_FL_LIST		(1)
@@ -92,6 +93,7 @@ int			set(struct tab *, struct karg *);
 int			marco(struct tab *, struct karg *);
 int			startpage(struct tab *, struct karg *);
 const char *		marco_message(int *);
+void			update_cookie_tabs(struct tab *apart_from);
 
 struct about_type about_list[] = {
 	{ XT_URI_ABOUT_ABOUT,		about },
@@ -427,8 +429,10 @@ cookie_cmd(struct tab *t, struct karg *args)
 	} else if (args->i & XT_SAVE) {
 		args->i |= XT_WL_RELOAD;
 		wl_save(t, args, XT_WL_COOKIE);
-	} else if (args->i & XT_DELETE)
-		show_oops(t, "'cookie delete' currently unimplemented");
+	} else if (args->i & XT_DELETE) {
+		remove_cookie_all();
+		update_cookie_tabs(NULL);
+	}
 
 	return (0);
 }
@@ -730,6 +734,9 @@ xtp_handle_cl(struct tab *t, uint8_t cmd, int arg)
 		break;
 	case XT_XTP_CL_REMOVE_DOMAIN:
 		remove_cookie_domain(arg);
+		break;
+	case XT_XTP_CL_REMOVE_ALL:
+		remove_cookie_all();
 		break;
 	default:
 		show_oops(t, "%s: unknown cookie xtp command", __func__);
@@ -1189,7 +1196,10 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	pc = soup_cookie_jar_all_cookies(p_cookiejar);
 	pc_start = pc;
 
-	body = NULL;
+	body = g_strdup_printf("<div align=\"center\"><a href=\"%s%d/%s/%d\">"
+	    "[ Remove All Cookies From All Domains ]</a></div>\n",
+	    XT_XTP_STR, XT_XTP_CL, cl_session_key, XT_XTP_CL_REMOVE_ALL);
+
 	last_domain = strdup("");
 	for (; sc; sc = sc->next) {
 		c = sc->data;
@@ -1203,21 +1213,24 @@ xtp_page_cl(struct tab *t, struct karg *args)
 			if (body != NULL) {
 				tmp = body;
 				body = g_strdup_printf("%s</table>"
-				    "<h2>%s</h2>"
-				    "<a href='%s%d/%s/%d/%d'>remove all</a>%s\n",
+				    "<h2>%s</h2><div align=\"center\">"
+				    "<a href='%s%d/%s/%d/%d'>"
+				    "[ Remove All From This Domain ]"
+				    "</a></div>%s\n",
 				    body, c->domain,
-				    XT_XTP_STR, XT_XTP_CL,
-				    cl_session_key, XT_XTP_CL_REMOVE_DOMAIN, domain_id,
+				    XT_XTP_STR, XT_XTP_CL, cl_session_key,
+				    XT_XTP_CL_REMOVE_DOMAIN, domain_id,
 				    table_headers);
 				g_free(tmp);
 			} else {
 				/* first domain */
 				body = g_strdup_printf("<h2>%s</h2>"
-				    "<a href='%s%d/%s/%d/%d'>remove all</a>%s\n",
-				    c->domain,
-				    XT_XTP_STR, XT_XTP_CL,
-				    cl_session_key, XT_XTP_CL_REMOVE_DOMAIN, domain_id,
-				    table_headers);
+				    "<div align=\"center\">"
+				    "<a href='%s%d/%s/%d/%d'>"
+				    "[ Remove All From This Domain ]</a></div>%s\n",
+				    c->domain, XT_XTP_STR, XT_XTP_CL,
+				    cl_session_key, XT_XTP_CL_REMOVE_DOMAIN,
+				    domain_id, table_headers);
 			}
 		}
 

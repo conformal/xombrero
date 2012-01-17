@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2011 Conformal Systems LLC <info@conformal.com>
  * Copyright (c) 2011 Marco Peereboom <marco@peereboom.us>
+ * Copyright (c) 2010, 2011, 2012 Edd Barrett <vext01@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -305,6 +306,7 @@ void			button_set_stockid(GtkWidget *, char *);
 /* cookies */
 int			remove_cookie(int);
 int			remove_cookie_domain(int);
+int			remove_cookie_all(void);
 void			print_cookie(char *msg, SoupCookie *);
 void			setup_cookies(void);
 

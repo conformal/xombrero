@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2010, 2011 Marco Peereboom <marco@peereboom.us>
  * Copyright (c) 2011 Stevan Andjelkovic <stevan@student.chalmers.se>
- * Copyright (c) 2010, 2011 Edd Barrett <vext01@gmail.com>
+ * Copyright (c) 2010, 2011, 2012 Edd Barrett <vext01@gmail.com>
  * Copyright (c) 2011 Todd T. Fries <todd@fries.net>
  * Copyright (c) 2011 Raphael Graf <r@undefined.ch>
  * Copyright (c) 2011 Michal Mazurek <akfaew@jasminek.net>
@@ -1965,6 +1965,30 @@ remove_cookie_domain(int domain_id)
 }
 
 int
+remove_cookie_all()
+{
+	int			domain_count, rv = 1;
+	GSList			*cf;
+	SoupCookie		*c;
+
+	DNPRINTF(XT_D_COOKIE, "remove_cookie_all\n");
+
+	cf = soup_cookie_jar_all_cookies(s_cookiejar);
+
+	for (domain_count = 0; cf; cf = cf->next) {
+		c = cf->data;
+
+		print_cookie("remove cookie", c);
+		soup_cookie_jar_delete_cookie(s_cookiejar, c);
+		rv = 0;
+	}
+
+	soup_cookies_free(cf);
+
+	return (rv);
+}
+
+int
 toplevel_cmd(struct tab *t, struct karg *args)
 {
 	js_toggle_cb(t->js_toggle, t);
@@ -3048,6 +3072,7 @@ struct cmd {
 	{ "toggle",		1,	cookie_cmd,		XT_WL_TOGGLE | XT_WL_FQDN,			0 },
 	{ "domain",		2,	cookie_cmd,		XT_WL_TOGGLE | XT_WL_TOPLEVEL,			0 },
 	{ "fqdn",		2,	cookie_cmd,		XT_WL_TOGGLE | XT_WL_FQDN,			0 },
+	{ "purge",		1,	cookie_cmd,		XT_DELETE,					0 },
 
 	/* plugin command */
 	{ "plugin",		0,	pl_cmd,			XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION,	0 },
