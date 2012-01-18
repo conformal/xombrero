@@ -147,7 +147,8 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 		return;
 
 	/* check if domain is valid */
-	public_suffix = tld_get_suffix(cookie->domain);
+	public_suffix = tld_get_suffix(cookie->domain[0] == '.' ?
+			cookie->domain + 1 : cookie->domain);
 
 	if (public_suffix == NULL ||
 	    (enable_cookie_whitelist &&
