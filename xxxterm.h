@@ -77,6 +77,9 @@ u_int32_t	arc4random_uniform(u_int32_t);
 #include <pthread.h>
 #endif
 
+/* comment if you don't want to use the external editor */
+#define XT_ENABLE_EXTERNAL_EDITOR	(1)
+
 #include "javascript.h"
 /*
 javascript.h borrowed from vimprobable2 under the following license:

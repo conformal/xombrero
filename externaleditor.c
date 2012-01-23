@@ -16,7 +16,7 @@
 
 #include "xxxterm.h"
 
-#if WEBKIT_CHECK_VERSION(1, 5, 0)
+#if WEBKIT_CHECK_VERSION(1, 5, 0) && XT_ENABLE_EXTERNAL_EDITOR
 	/* we got the DOM API we need */
 
 struct edit_src_cb_args {
