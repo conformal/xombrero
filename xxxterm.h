@@ -31,7 +31,6 @@
 #include <fcntl.h>
 
 #include <sys/types.h>
-#include <sys/wait.h>
 #if defined(__linux__)
 #include "linux/util.h"
 #include "linux/tree.h"
@@ -79,6 +78,10 @@ u_int32_t	arc4random_uniform(u_int32_t);
 
 /* comment if you don't want to use the external editor */
 #define XT_ENABLE_EXTERNAL_EDITOR	(1)
+
+#ifdef XT_ENABLE_EXTERNAL_EDITOR
+#include <sys/wait.h>
+#endif
 
 #include "javascript.h"
 /*
