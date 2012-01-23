@@ -7054,6 +7054,7 @@ create_canvas(void)
 	notebook_tab_set_visibility();
 }
 
+#ifndef XT_SOCKET_DISABLE
 int
 send_cmd_to_socket(char *cmd)
 {
@@ -7193,6 +7194,7 @@ done:
 	close(s);
 	return (-1);
 }
+#endif
 
 void
 xxx_dir(char *dir)
@@ -7561,12 +7563,12 @@ main(int argc, char *argv[])
 		else
 			setup_proxy(http_proxy);
 	}
-
+#ifndef XT_SOCKET_DISABLE
 	if (opte) {
 		send_cmd_to_socket(argv[0]);
 		exit(0);
 	}
-
+#endif
 	/* set some connection parameters */
 	g_object_set(session, "max-conns", max_connections, (char *)NULL);
 	g_object_set(session, "max-conns-per-host", max_host_connections,
@@ -7575,6 +7577,7 @@ main(int argc, char *argv[])
 	g_signal_connect(session, "request-queued", G_CALLBACK(session_rq_cb),
 	    NULL);
 
+#ifndef XT_SOCKET_DISABLE
 	/* see if there is already an xxxterm running */
 	if (single_instance && is_running()) {
 		optn = 1;
@@ -7593,7 +7596,7 @@ main(int argc, char *argv[])
 		}
 		exit(0);
 	}
-
+#endif
 	/* tld list */
 	tld_tree_init();
 
@@ -7640,12 +7643,13 @@ main(int argc, char *argv[])
 
 	if (TAILQ_EMPTY(&tabs))
 		create_new_tab(home, NULL, 1, -1);
-
+#ifndef XT_SOCKET_DISABLE
 	if (enable_socket)
 		if ((s = build_socket()) != -1) {
 			channel = g_io_channel_unix_new(s);
 			g_io_add_watch(channel, G_IO_IN, socket_watcher, NULL);
 		}
+#endif
 
 	gtk_main();
 
