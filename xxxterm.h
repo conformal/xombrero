@@ -76,10 +76,8 @@ u_int32_t	arc4random_uniform(u_int32_t);
 #include <pthread.h>
 #endif
 
-/* comment if you don't want to use the external editor */
-#define XT_ENABLE_EXTERNAL_EDITOR	(1)
-
-#ifdef XT_ENABLE_EXTERNAL_EDITOR
+/* set if you don't want to use signals */
+#ifndef XT_SIGNALS_DISABLE
 #include <sys/wait.h>
 #endif
 

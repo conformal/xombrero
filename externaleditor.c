@@ -16,7 +16,7 @@
 
 #include "xxxterm.h"
 
-#if WEBKIT_CHECK_VERSION(1, 5, 0) && XT_ENABLE_EXTERNAL_EDITOR
+#if !defined(XT_SIGNALS_DISABLE) && (WEBKIT_CHECK_VERSION(1, 5, 0))
 	/* we got the DOM API we need */
 
 struct edit_src_cb_args {
@@ -230,6 +230,7 @@ open_external_editor(struct tab *t, const char *contents, const char *suffix,
 	}
 
 	/* child */
+	/* XXX KILL system PLEASE */
 	rv = system(command);
 
 	_exit(0);

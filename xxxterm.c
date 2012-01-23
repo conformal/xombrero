@@ -398,7 +398,7 @@ marktoindex(char m)
 	return (-1);
 }
 
-
+#ifndef XT_SIGNALS_DISABLE
 void
 sigchild(int sig)
 {
@@ -435,6 +435,7 @@ sigchild(int sig)
 
 	errno = saved_errno;
 }
+#endif
 
 int
 is_g_object_setting(GObject *o, char *str)
@@ -7299,7 +7300,6 @@ main(int argc, char *argv[])
 	char			*cmd = NULL;
 	FILE			*f = NULL;
 	struct karg		a;
-	struct sigaction	sact;
 	GIOChannel		*channel;
 	struct rlimit		rlp;
 
@@ -7395,12 +7395,17 @@ main(int argc, char *argv[])
 
 	xtp_generate_keys();
 
+	/* XXX this hammer is way too big but treat all signaling the same */
+#ifndef XT_SIGNALS_DISABLE
 	/* signals */
+	struct sigaction	sact;
+
 	bzero(&sact, sizeof(sact));
 	sigemptyset(&sact.sa_mask);
 	sact.sa_handler = sigchild;
 	sact.sa_flags = SA_NOCLDSTOP;
 	sigaction(SIGCHLD, &sact, NULL);
+#endif
 
 	/* set download dir */
 	pwd = getpwuid(getuid());
