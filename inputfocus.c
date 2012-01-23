@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "xxxterm.h"
+#include <xxxterm.h>
 
 #if WEBKIT_CHECK_VERSION(1, 5, 0)
 	/* we got the DOM API we need */

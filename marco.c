@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "xxxterm.h"
+#include <xxxterm.h>
 
 static const char *message[] = {
 	"I fully support your right to put restrictions on how I can modify"
