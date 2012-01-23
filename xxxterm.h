@@ -43,7 +43,7 @@ u_int32_t	arc4random_uniform(u_int32_t);
 #include <libutil.h>
 #include "freebsd/util.h"
 #include <sys/tree.h>
-#else /* OpenBSD */
+#elif defined(__OpenBSD__)
 #include <util.h>
 #include <sys/tree.h>
 #endif
