@@ -46,6 +46,8 @@ u_int32_t	arc4random_uniform(u_int32_t);
 #elif defined(__OpenBSD__)
 #include <util.h>
 #include <sys/tree.h>
+#else
+#include <sys/tree.h>
 #endif
 #include <sys/queue.h>
 #include <sys/socket.h>
