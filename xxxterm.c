@@ -1810,10 +1810,12 @@ done:
 			strlcat(serr, "not signed by CA, ", sizeof serr);
 		if (error & GNUTLS_CERT_INSECURE_ALGORITHM)
 			strlcat(serr, "insecure algorithm, ", sizeof serr);
+#if LIBGNUTLS_VERSION_MAJOR >= 2 && LIBGNUTLS_VERSION_MINOR >= 6
 		if (error & GNUTLS_CERT_NOT_ACTIVATED)
 			strlcat(serr, "not activated, ", sizeof serr);
 		if (error & GNUTLS_CERT_EXPIRED)
 			strlcat(serr, "expired, ", sizeof serr);
+#endif
 		for (i = strlen(serr) - 1; i > 0; i--)
 			if (serr[i] == ',') {
 				serr[i] = '\0';
