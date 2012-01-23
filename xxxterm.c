@@ -7301,7 +7301,6 @@ main(int argc, char *argv[])
 	FILE			*f = NULL;
 	struct karg		a;
 	GIOChannel		*channel;
-	struct rlimit		rlp;
 
 	start_argv = argv;
 
@@ -7336,6 +7335,9 @@ main(int argc, char *argv[])
 	TAILQ_INIT(&shl);
 	TAILQ_INIT(&ua_list);
 
+#ifndef XT_RESOURCE_LIMITS_DISABLE
+	struct rlimit		rlp;
+
 	/* fiddle with ulimits */
 	if (getrlimit(RLIMIT_NOFILE, &rlp) == -1)
 		warn("getrlimit");
@@ -7351,6 +7353,7 @@ main(int argc, char *argv[])
 			    "descriptors, currently it has up to %d available",
 			   __progname, rlp.rlim_cur);
 	}
+#endif
 
 	while ((c = getopt(argc, argv, "STVf:s:tne")) != -1) {
 		switch (c) {

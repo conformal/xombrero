@@ -48,7 +48,6 @@ u_int32_t	arc4random_uniform(u_int32_t);
 #include <sys/tree.h>
 #endif
 #include <sys/queue.h>
-#include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -79,6 +78,11 @@ u_int32_t	arc4random_uniform(u_int32_t);
 /* set if you don't want to use signals */
 #ifndef XT_SIGNALS_DISABLE
 #include <sys/wait.h>
+#endif
+
+/* set if you don't want to use resource limits */
+#ifndef XT_RESOURCE_LIMITS_DISABLE
+#include <sys/resource.h>
 #endif
 
 #include "javascript.h"
