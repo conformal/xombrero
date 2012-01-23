@@ -19,7 +19,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "xxxterm.h"
+#include <xxxterm.h>
 
 #define XT_HISTORY_FILE		("history")
 #define XT_MAX_HL_PURGE_COUNT	(1000) /* Purge the history for every

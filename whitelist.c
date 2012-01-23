@@ -19,7 +19,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "xxxterm.h"
+#include <xxxterm.h>
 
 gchar *
 find_domain(const gchar *s, int toplevel)
