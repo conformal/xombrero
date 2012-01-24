@@ -1122,11 +1122,17 @@ restore_sessions_list(void)
 	DIR *sdir               = NULL;
 	struct dirent *dp       = NULL;
 	struct session		*s;
+	int			reg;
 
 	sdir = opendir(sessions_dir);
 	if (sdir) {
 		while ((dp = readdir(sdir)) != NULL)
-			if (dp->d_type == DT_REG) {
+#if defined __MINGW32__
+			reg = 1; /* windows only has regular files */
+#else
+			reg = dp->d_type == DT_REG;
+#endif
+			if (reg) {
 				s = g_malloc(sizeof(struct session));
 				s->name = g_strdup(dp->d_name);
 				TAILQ_INSERT_TAIL(&sessions, s, entry);
