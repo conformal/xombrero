@@ -224,7 +224,7 @@ void		marks_clear(struct tab *t);
 
 /* globals */
 extern char		*__progname;
-char			**start_argv;
+const char		**start_argv;
 struct passwd		*pwd;
 GtkWidget		*main_window;
 GtkNotebook		*notebook;
@@ -7298,19 +7298,17 @@ mtx_unlock(void)
 }
 
 int
-main(int argc, char *argv[])
+main(int argc, char **argv)
 {
 	struct stat		sb;
-	int			c, s, optn = 0, opte = 0, focus = 1;
+	int			c, optn = 0, opte = 0, focus = 1;
 	char			conf[PATH_MAX] = { '\0' };
 	char			file[PATH_MAX];
 	char			*env_proxy = NULL;
-	char			*cmd = NULL;
 	FILE			*f = NULL;
 	struct karg		a;
-	GIOChannel		*channel;
 
-	start_argv = argv;
+	start_argv = (const char **)argv;
 
 	/* prepare gtk */
 #ifdef USE_THREADS
@@ -7345,6 +7343,9 @@ main(int argc, char *argv[])
 
 #ifndef XT_RESOURCE_LIMITS_DISABLE
 	struct rlimit		rlp;
+	char			*cmd = NULL;
+	int			s;
+	GIOChannel		*channel;
 
 	/* fiddle with ulimits */
 	if (getrlimit(RLIMIT_NOFILE, &rlp) == -1)
@@ -7572,6 +7573,8 @@ main(int argc, char *argv[])
 		send_cmd_to_socket(argv[0]);
 		exit(0);
 	}
+#else
+	opte = opte; /* shut mingw up */
 #endif
 	/* set some connection parameters */
 	g_object_set(session, "max-conns", max_connections, (char *)NULL);
@@ -7600,6 +7603,8 @@ main(int argc, char *argv[])
 		}
 		exit(0);
 	}
+#else
+	optn = optn; /* shut mingw up */
 #endif
 	/* tld list */
 	tld_tree_init();
