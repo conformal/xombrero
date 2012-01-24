@@ -1132,7 +1132,7 @@ restore_sessions_list(void)
 #else
 			reg = dp->d_type == DT_REG;
 #endif
-			if (reg) {
+			if (dp && reg) {
 				s = g_malloc(sizeof(struct session));
 				s->name = g_strdup(dp->d_name);
 				TAILQ_INSERT_TAIL(&sessions, s, entry);
