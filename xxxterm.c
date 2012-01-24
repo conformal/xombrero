@@ -1587,7 +1587,11 @@ start_tls(const gchar **error_str, int s, gnutls_session_t *gs,
 		    "gnutls_handshake failed %d fatal %d %s",
 		    rv,
 		    gnutls_error_is_fatal(rv),
+#if LIBGNUTLS_VERSION_MAJOR >= 2 && LIBGNUTLS_VERSION_MINOR >= 6
 		    gnutls_strerror_name(rv));
+#else
+		    "GNUTLS version is too old to provide human readable error");
+#endif
 		stop_tls(gsession, xcred);
 		goto done;
 	}
