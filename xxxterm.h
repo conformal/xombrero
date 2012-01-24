@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <inttypes.h>
 
 #include <sys/types.h>
 #if defined(__linux__)

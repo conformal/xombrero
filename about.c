@@ -118,7 +118,8 @@ struct about_type about_list[] = {
  */
 #define XT_XTP_SES_KEY_SZ	8
 #define XT_XTP_SES_KEY_HEX_FMT  \
-	"%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx"
+	"%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8
+
 char			*dl_session_key;	/* downloads */
 char			*hl_session_key;	/* history list */
 char			*cl_session_key;	/* cookie list */
@@ -290,14 +291,15 @@ stats(struct tab *t, struct karg *args)
 			}
 			fclose(r_cookie_f);
 			snprintf(line, sizeof line,
-			    "<br/>Cookies blocked(*) total: %llu", line_count);
+			    "<br/>Cookies blocked(*) total: %" PRIu64,
+			    line_count);
 		} else
 			show_oops(t, "Can't open blocked cookies file: %s",
 			    strerror(errno));
 	}
 
 	body = g_strdup_printf(
-	    "Cookies blocked(*) this session: %llu"
+	    "Cookies blocked(*) this session: %" PRIu64
 	    "%s"
 	    "<p><small><b>*</b> results vary based on settings</small></p>",
 	    blocked_cookies,
