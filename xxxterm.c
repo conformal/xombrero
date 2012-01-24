@@ -81,11 +81,14 @@ struct command_entry {
 TAILQ_HEAD(command_list, command_entry);
 
 /* defines */
+#ifndef	PS
+#define PS			"/"
+#endif
 #define XT_DIR			(".xxxterm")
 #define XT_CACHE_DIR		("cache")
-#define XT_CERT_DIR		("certs/")
-#define XT_JS_DIR		("js/")
-#define XT_SESSIONS_DIR		("sessions/")
+#define XT_CERT_DIR		("certs")
+#define XT_JS_DIR		("js")
+#define XT_SESSIONS_DIR		("sessions")
 #define XT_TEMP_DIR		("tmp")
 #define XT_CONF_FILE		("xxxterm.conf")
 #define XT_QMARKS_FILE		("quickmarks")
@@ -7213,6 +7216,7 @@ xxx_dir(char *dir)
 
 	if (stat(dir, &sb)) {
 #if defined __MINGW32__
+printf("making: %s\n", dir);
 		if (mkdir(dir) == -1)
 #else
 		if (mkdir(dir, S_IRWXU) == -1)
@@ -7453,7 +7457,7 @@ main(int argc, char **argv)
 
 	/* read config file */
 	if (strlen(conf) == 0)
-		snprintf(conf, sizeof conf, "%s/.%s",
+		snprintf(conf, sizeof conf, "%s" PS ".%s",
 		    pwd->pw_dir, XT_CONF_FILE);
 	config_parse(conf, 0);
 
@@ -7465,29 +7469,29 @@ main(int argc, char **argv)
 
 	/* working directory */
 	if (strlen(work_dir) == 0)
-		snprintf(work_dir, sizeof work_dir, "%s/%s",
+		snprintf(work_dir, sizeof work_dir, "%s" PS "%s",
 		    pwd->pw_dir, XT_DIR);
 	xxx_dir(work_dir);
 
 	/* icon cache dir */
-	snprintf(cache_dir, sizeof cache_dir, "%s/%s", work_dir, XT_CACHE_DIR);
+	snprintf(cache_dir, sizeof cache_dir, "%s" PS "%s", work_dir, XT_CACHE_DIR);
 	xxx_dir(cache_dir);
 
 	/* certs dir */
-	snprintf(certs_dir, sizeof certs_dir, "%s/%s", work_dir, XT_CERT_DIR);
+	snprintf(certs_dir, sizeof certs_dir, "%s" PS "%s", work_dir, XT_CERT_DIR);
 	xxx_dir(certs_dir);
 
 	/* sessions dir */
-	snprintf(sessions_dir, sizeof sessions_dir, "%s/%s",
+	snprintf(sessions_dir, sizeof sessions_dir, "%s" PS "%s",
 	    work_dir, XT_SESSIONS_DIR);
 	xxx_dir(sessions_dir);
 
 	/* js dir */
-	snprintf(js_dir, sizeof js_dir, "%s/%s", work_dir, XT_JS_DIR);
+	snprintf(js_dir, sizeof js_dir, "%s" PS "%s", work_dir, XT_JS_DIR);
 	xxx_dir(js_dir);
 
 	/* temp dir */
-	snprintf(temp_dir, sizeof temp_dir, "%s/%s", work_dir, XT_TEMP_DIR);
+	snprintf(temp_dir, sizeof temp_dir, "%s" PS "%s", work_dir, XT_TEMP_DIR);
 	xxx_dir(temp_dir);
 
 	/* runtime settings that can override config file */
@@ -7496,11 +7500,11 @@ main(int argc, char **argv)
 
 	/* download dir */
 	if (!strcmp(download_dir, pwd->pw_dir))
-		strlcat(download_dir, "/downloads", sizeof download_dir);
+		strlcat(download_dir, PS "downloads", sizeof download_dir);
 	xxx_dir(download_dir);
 
 	/* favorites file */
-	snprintf(file, sizeof file, "%s/%s", work_dir, XT_FAVS_FILE);
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_FAVS_FILE);
 	if (stat(file, &sb)) {
 		warnx("favorites file doesn't exist, creating it");
 		if ((f = fopen(file, "w")) == NULL)
@@ -7509,7 +7513,7 @@ main(int argc, char **argv)
 	}
 
 	/* quickmarks file */
-	snprintf(file, sizeof file, "%s/%s", work_dir, XT_QMARKS_FILE);
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_QMARKS_FILE);
 	if (stat(file, &sb)) {
 		warnx("quickmarks file doesn't exist, creating it");
 		if ((f = fopen(file, "w")) == NULL)
@@ -7519,7 +7523,7 @@ main(int argc, char **argv)
 
 	/* search history */
 	if (history_autosave) {
-		snprintf(search_file, sizeof search_file, "%s/%s",
+		snprintf(search_file, sizeof search_file, "%s" PS "%s",
 		    work_dir, XT_SEARCH_FILE);
 		if (stat(search_file, &sb)) {
 			warnx("search history file doesn't exist, creating it");
@@ -7532,7 +7536,7 @@ main(int argc, char **argv)
 
 	/* command history */
 	if (history_autosave) {
-		snprintf(command_file, sizeof command_file, "%s/%s",
+		snprintf(command_file, sizeof command_file, "%s" PS "%s",
 		    work_dir, XT_COMMAND_FILE);
 		if (stat(command_file, &sb)) {
 			warnx("command history file doesn't exist, creating it");
