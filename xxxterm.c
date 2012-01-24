@@ -7212,7 +7212,11 @@ xxx_dir(char *dir)
 	struct stat		sb;
 
 	if (stat(dir, &sb)) {
+#if defined __MINGW32__
+		if (mkdir(dir) == -1)
+#else
 		if (mkdir(dir, S_IRWXU) == -1)
+#endif
 			err(1, "mkdir %s", dir);
 		if (stat(dir, &sb))
 			err(1, "stat %s", dir);
