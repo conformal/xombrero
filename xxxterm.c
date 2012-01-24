@@ -5144,7 +5144,7 @@ hint_continue(struct tab *t)
 	char			*s;
 	const gchar		*errstr = NULL;
 	gboolean		rv = TRUE;
-	long long		i;
+	int			i;
 
 	if (!(c[0] == '.' || c[0] == ','))
 		goto done;
@@ -5161,7 +5161,7 @@ hint_continue(struct tab *t)
 			show_oops(t, "invalid numerical hint %s", &c[1]);
 			goto done;
 		}
-		s = g_strdup_printf("hints.updateHints(%lld);", i);
+		s = g_strdup_printf("hints.updateHints(%d", i);
 		run_script(t, s);
 		g_free(s);
 	} else {
