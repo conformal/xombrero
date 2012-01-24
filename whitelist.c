@@ -139,7 +139,7 @@ wl_save(struct tab *t, struct karg *args, int list)
 		goto done;
 	}
 
-	snprintf(file, sizeof file, "%s/%s", work_dir, runtime_settings);
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, runtime_settings);
 	if ((f = fopen(file, "r+")) == NULL) {
 		show_oops(t, "can't open file %s");
 		goto done;

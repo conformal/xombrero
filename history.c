@@ -99,7 +99,7 @@ restore_global_history(void)
 	struct tm		tm;
 	const char		delim[3] = {'\\', '\\', '\0'};
 
-	snprintf(file, sizeof file, "%s/%s", work_dir, XT_HISTORY_FILE);
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_HISTORY_FILE);
 
 	if ((f = fopen(file, "r")) == NULL) {
 		warnx("%s: fopen", __func__);
@@ -163,7 +163,7 @@ save_global_history_to_disk(struct tab *t)
 	FILE			*f;
 	struct history		*h;
 
-	snprintf(file, sizeof file, "%s/%s", work_dir, XT_HISTORY_FILE);
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_HISTORY_FILE);
 
 	if ((f = fopen(file, "w")) == NULL) {
 		show_oops(t, "%s: global history file: %s",

@@ -189,7 +189,7 @@ load_webkit_string(struct tab *t, const char *str, gchar *title)
 		gtk_spinner_stop(GTK_SPINNER(t->spinner));
 		gtk_widget_hide(t->spinner);
 #endif
-		snprintf(file, sizeof file, "%s/%s", resource_dir, icons[0]);
+		snprintf(file, sizeof file, "%s" PS "%s", resource_dir, icons[0]);
 		xt_icon_from_file(t, file);
 	}
 }
@@ -577,7 +577,7 @@ remove_favorite(struct tab *t, int index)
 	size_t			len, lineno;
 
 	/* open favorites */
-	snprintf(file, sizeof file, "%s/%s", work_dir, XT_FAVS_FILE);
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_FAVS_FILE);
 
 	if ((f = fopen(file, "r")) == NULL) {
 		show_oops(t, "%s: can't open favorites: %s",
@@ -661,7 +661,7 @@ add_favorite(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	snprintf(file, sizeof file, "%s/%s", work_dir, XT_FAVS_FILE);
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_FAVS_FILE);
 	if ((f = fopen(file, "r+")) == NULL) {
 		show_oops(t, "Can't open favorites file: %s", strerror(errno));
 		return (1);
@@ -967,7 +967,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 		generate_xtp_session_key(&fl_session_key);
 
 	/* open favorites */
-	snprintf(file, sizeof file, "%s/%s", work_dir, XT_FAVS_FILE);
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_FAVS_FILE);
 	if ((f = fopen(file, "r")) == NULL) {
 		show_oops(t, "Can't open favorites file: %s", strerror(errno));
 		return (1);

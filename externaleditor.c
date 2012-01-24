@@ -148,9 +148,9 @@ open_external_editor(struct tab *t, const char *contents, const char *suffix,
 	if (suffix == NULL)
 		suffix = "";
 
-	filename = g_malloc(strlen(temp_dir) + strlen("/xxxtermXXXXXX") +
+	filename = g_malloc(strlen(temp_dir) + strlen(PS "xxxtermXXXXXX") +
 	    strlen(suffix) + 1);
-	sprintf(filename, "%s/xxxtermXXXXXX%s", temp_dir, suffix);
+	sprintf(filename, "%s" PS "xxxtermXXXXXX%s", temp_dir, suffix);
 
 	/* Create a temporary file */
 	fd = mkstemps(filename, strlen(suffix));

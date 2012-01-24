@@ -221,11 +221,11 @@ setup_cookies(void)
 
 	/* rejected cookies */
 	if (save_rejected_cookies)
-		snprintf(rc_fname, sizeof file, "%s/%s", work_dir,
+		snprintf(rc_fname, sizeof file, "%s" PS "%s", work_dir,
 		    XT_REJECT_FILE);
 
 	/* persistent cookies */
-	snprintf(file, sizeof file, "%s/%s", work_dir, XT_COOKIE_FILE);
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_COOKIE_FILE);
 	p_cookiejar = soup_cookie_jar_text_new(file, read_only_cookies);
 
 	/* session cookies */

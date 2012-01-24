@@ -269,7 +269,7 @@ tld_tree_init()
 	char		*rule, *rp;
 	char		extra_ch;
 
-	snprintf(file, sizeof file, "%s/tld-rules", resource_dir);
+	snprintf(file, sizeof file, "%s" PS "tld-rules", resource_dir);
 	fd = fopen(file, "r");
 	if (fd == NULL) {
 		/* a poor replacement for the real list - but it's

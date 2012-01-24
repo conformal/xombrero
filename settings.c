@@ -576,7 +576,7 @@ int
 set_default_script(struct settings *s, char *val)
 {
 	if (val[0] == '~')
-		snprintf(default_script, sizeof default_script, "%s/%s",
+		snprintf(default_script, sizeof default_script, "%s" PS "%s",
 		    pwd->pw_dir, &val[1]);
 	else
 		strlcpy(default_script, val, sizeof default_script);
@@ -596,7 +596,7 @@ int
 set_download_dir(struct settings *s, char *val)
 {
 	if (val[0] == '~')
-		snprintf(download_dir, sizeof download_dir, "%s/%s",
+		snprintf(download_dir, sizeof download_dir, "%s" PS "%s",
 		    pwd->pw_dir, &val[1]);
 	else
 		strlcpy(download_dir, val, sizeof download_dir);
@@ -1266,7 +1266,7 @@ int
 set_work_dir(struct settings *s, char *val)
 {
 	if (val[0] == '~')
-		snprintf(work_dir, sizeof work_dir, "%s/%s",
+		snprintf(work_dir, sizeof work_dir, "%s" PS "%s",
 		    pwd->pw_dir, &val[1]);
 	else
 		strlcpy(work_dir, val, sizeof work_dir);
@@ -1384,7 +1384,7 @@ config_parse(char *filename, int runtime)
 		return;
 
 	if (runtime && runtime_settings[0] != '\0') {
-		snprintf(file, sizeof file, "%s/%s",
+		snprintf(file, sizeof file, "%s" PS "%s",
 		    work_dir, runtime_settings);
 		if (stat(file, &sb)) {
 			warnx("runtime file doesn't exist, creating it");
