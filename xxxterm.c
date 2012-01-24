@@ -1158,7 +1158,7 @@ open_tabs(struct tab *t, struct karg *a)
 
 	ti = TAILQ_LAST(&tabs, tab_list);
 
-	snprintf(file, sizeof file, "%s/%s", sessions_dir, a->s);
+	snprintf(file, sizeof file, "%s" PS "%s", sessions_dir, a->s);
 	if ((f = fopen(file, "r")) == NULL)
 		goto done;
 
@@ -1214,7 +1214,7 @@ restore_saved_tabs(void)
 	struct karg	a;
 	int		rv = 0;
 
-	snprintf(file, sizeof file, "%s/%s",
+	snprintf(file, sizeof file, "%s" PS "%s",
 	    sessions_dir, XT_RESTART_TABS_FILE);
 	if (stat(file, &sb) == -1)
 		a.s = XT_SAVED_TABS_FILE;
@@ -1245,10 +1245,10 @@ save_tabs(struct tab *t, struct karg *a)
 	if (a == NULL)
 		return (1);
 	if (a->s == NULL)
-		snprintf(file, sizeof file, "%s/%s",
+		snprintf(file, sizeof file, "%s" PS "%s",
 		    sessions_dir, named_session);
 	else
-		snprintf(file, sizeof file, "%s/%s", sessions_dir, a->s);
+		snprintf(file, sizeof file, "%s" PS "%s", sessions_dir, a->s);
 
 	if ((f = fopen(file, "w")) == NULL) {
 		show_oops(t, "Can't open save_tabs file: %s", strerror(errno));
@@ -1314,7 +1314,7 @@ run_page_script(struct tab *t, struct karg *args)
 	}
 
 	if (tmp[0] == '~')
-		snprintf(script, sizeof script, "%s/%s",
+		snprintf(script, sizeof script, "%s" PS "%s",
 		    pwd->pw_dir, &tmp[1]);
 	else
 		strlcpy(script, tmp, sizeof script);
@@ -1699,7 +1699,7 @@ save_certs(struct tab *t, gnutls_x509_crt_t *certs,
 	if (t == NULL || certs == NULL || cert_count <= 0 || domain == NULL)
 		return;
 
-	snprintf(file, sizeof file, "%s/%s", certs_dir, domain);
+	snprintf(file, sizeof file, "%s" PS "%s", certs_dir, domain);
 	if ((f = fopen(file, "w")) == NULL) {
 		show_oops(t, "Can't create cert file %s %s",
 		    file, strerror(errno));
@@ -1777,7 +1777,7 @@ load_compare_cert(const gchar *uri, const gchar **error_str)
 		goto done;
 	}
 
-	snprintf(file, sizeof file, "%s/%s", certs_dir, domain);
+	snprintf(file, sizeof file, "%s" PS "%s", certs_dir, domain);
 	if ((f = fopen(file, "r")) == NULL) {
 		if (!error)
 			rv = CERT_TRUSTED;
@@ -2724,7 +2724,7 @@ session_delete(struct tab *t, char *filename)
 	if (filename[0] == '.' || filename[0] == '/')
 		goto done;
 
-	snprintf(file, sizeof file, "%s/%s", sessions_dir, filename);
+	snprintf(file, sizeof file, "%s" PS "%s", sessions_dir, filename);
 	if (unlink(file))
 		goto done;
 
@@ -3720,7 +3720,7 @@ notify_icon_loaded_cb(WebKitWebView *wv, gchar *uri, struct tab *t)
 
 	/* check to see if we got the icon in cache */
 	name_hash = g_compute_checksum_for_string(G_CHECKSUM_SHA256, uri, -1);
-	snprintf(file, sizeof file, "%s/%s.ico", cache_dir, name_hash);
+	snprintf(file, sizeof file, "%s" PS "%s.ico", cache_dir, name_hash);
 	g_free(name_hash);
 
 	if (!stat(file, &sb)) {
@@ -3987,7 +3987,7 @@ js_autorun(struct tab *t)
 	    su->host, domain);
 	domain = get_domain(su->host);
 
-	snprintf(deff, sizeof deff, "%s/default.js", js_dir);
+	snprintf(deff, sizeof deff, "%s" PS "default.js", js_dir);
 	if ((deffile = fopen(deff, "r")) != NULL) {
 		if (fstat(fileno(deffile), &sb) == -1) {
 			show_oops(t, "can't stat default JS file");
@@ -3997,10 +3997,10 @@ js_autorun(struct tab *t)
 	}
 
 	/* try host first followed by domain */
-	snprintf(hostf, sizeof hostf, "%s/%s.js", js_dir, su->host);
+	snprintf(hostf, sizeof hostf, "%s" PS "%s.js", js_dir, su->host);
 	DNPRINTF(XT_D_JS, "trying file: %s\n", hostf);
 	if ((hostfile = fopen(hostf, "r")) == NULL) {
-		snprintf(hostf, sizeof hostf, "%s/%s.js", js_dir, domain);
+		snprintf(hostf, sizeof hostf, "%s" PS "%s.js", js_dir, domain);
 		DNPRINTF(XT_D_JS, "trying file: %s\n", hostf);
 		if ((hostfile = fopen(hostf, "r")) == NULL)
 			goto nofile;
@@ -4639,7 +4639,7 @@ qmarks_load(void)
 	FILE			*f;
 	size_t			linelen;
 
-	snprintf(file, sizeof file, "%s/%s", work_dir, XT_QMARKS_FILE);
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_QMARKS_FILE);
 	if ((f = fopen(file, "r+")) == NULL) {
 		show_oops(NULL, "Can't open quickmarks file: %s", strerror(errno));
 		return (1);
@@ -4680,7 +4680,7 @@ qmarks_save(void)
 	int			 i;
 	FILE			*f;
 
-	snprintf(file, sizeof file, "%s/%s", work_dir, XT_QMARKS_FILE);
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_QMARKS_FILE);
 	if ((f = fopen(file, "r+")) == NULL) {
 		show_oops(NULL, "Can't open quickmarks file: %s", strerror(errno));
 		return (1);
@@ -7050,7 +7050,7 @@ create_canvas(void)
 
 	/* icons */
 	for (i = 0; i < LENGTH(icons); i++) {
-		snprintf(file, sizeof file, "%s/%s", resource_dir, icons[i]);
+		snprintf(file, sizeof file, "%s" PS "%s", resource_dir, icons[i]);
 		pb = gdk_pixbuf_new_from_file(file, NULL);
 		l = g_list_append(l, pb);
 	}
@@ -7080,7 +7080,7 @@ send_cmd_to_socket(char *cmd)
 	}
 
 	sa.sun_family = AF_UNIX;
-	snprintf(sa.sun_path, sizeof(sa.sun_path), "%s/%s",
+	snprintf(sa.sun_path, sizeof(sa.sun_path), "%s" PS "%s",
 	    work_dir, XT_SOCKET_FILE);
 	len = SUN_LEN(&sa);
 
@@ -7154,7 +7154,7 @@ is_running(void)
 	}
 
 	sa.sun_family = AF_UNIX;
-	snprintf(sa.sun_path, sizeof(sa.sun_path), "%s/%s",
+	snprintf(sa.sun_path, sizeof(sa.sun_path), "%s" PS "%s",
 	    work_dir, XT_SOCKET_FILE);
 	len = SUN_LEN(&sa);
 
@@ -7181,7 +7181,7 @@ build_socket(void)
 	}
 
 	sa.sun_family = AF_UNIX;
-	snprintf(sa.sun_path, sizeof(sa.sun_path), "%s/%s",
+	snprintf(sa.sun_path, sizeof(sa.sun_path), "%s" PS "%s",
 	    work_dir, XT_SOCKET_FILE);
 	len = SUN_LEN(&sa);
 
