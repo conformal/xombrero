@@ -222,9 +222,16 @@ void		set_current_tab(int page_num);
 gboolean	update_statusbar_position(GtkAdjustment*, gpointer);
 void		marks_clear(struct tab *t);
 
+/* windows uses a different argv declaration */
+#if __MINGW32__
+#define	ARGV_TYPE	const char **
+#else
+#define	ARGV_TYPE	char * const *
+#endif
+
 /* globals */
 extern char		*__progname;
-char			* const *start_argv;
+ARGV_TYPE		start_argv;
 struct passwd		*pwd;
 GtkWidget		*main_window;
 GtkNotebook		*notebook;
@@ -7321,7 +7328,7 @@ main(int argc, char **argv)
 	FILE			*f = NULL;
 	struct karg		a;
 
-	start_argv = (char * const *)argv;
+	start_argv = (ARGV_TYPE)argv;
 
 	/* prepare gtk */
 #ifdef USE_THREADS
