@@ -157,6 +157,11 @@ extern u_int32_t	swm_debug;
 
 #define XT_NOMARKS		(('z' - 'a' + 1) * 2 + 10)
 
+/* Path Separator */
+#ifndef	PS
+#define PS			"/"
+#endif
+
 struct tab {
 	TAILQ_ENTRY(tab)	entry;
 	GtkWidget		*vbox;

@@ -81,9 +81,6 @@ struct command_entry {
 TAILQ_HEAD(command_list, command_entry);
 
 /* defines */
-#ifndef	PS
-#define PS			"/"
-#endif
 #define XT_DIR			(".xxxterm")
 #define XT_CACHE_DIR		("cache")
 #define XT_CERT_DIR		("certs")
@@ -227,7 +224,7 @@ void		marks_clear(struct tab *t);
 
 /* globals */
 extern char		*__progname;
-const char		**start_argv;
+char			* const *start_argv;
 struct passwd		*pwd;
 GtkWidget		*main_window;
 GtkNotebook		*notebook;
@@ -7324,7 +7321,7 @@ main(int argc, char **argv)
 	FILE			*f = NULL;
 	struct karg		a;
 
-	start_argv = (const char **)argv;
+	start_argv = (char * const *)argv;
 
 	/* prepare gtk */
 #ifdef USE_THREADS
