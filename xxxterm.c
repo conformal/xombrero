@@ -7227,11 +7227,13 @@ printf("making: %s\n", dir);
 	}
 	if (S_ISDIR(sb.st_mode) == 0)
 		errx(1, "%s not a dir", dir);
+#if !defined __MINGW32__
 	if (((sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) != S_IRWXU) {
 		warnx("fixing invalid permissions on %s", dir);
 		if (chmod(dir, S_IRWXU) == -1)
 			err(1, "chmod %s", dir);
 	}
+#endif
 }
 
 void
