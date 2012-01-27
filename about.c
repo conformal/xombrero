@@ -516,8 +516,12 @@ xtp_handle_dl(struct tab *t, uint8_t cmd, int id)
 		RB_REMOVE(download_list, &downloads, d);
 		break;
 	case XT_XTP_DL_UNLINK:
+#ifdef __MINGW32__
+		unlink(webkit_download_get_destination_uri(d->download));
+#else
 		unlink(webkit_download_get_destination_uri(d->download) +
 		    strlen("file://"));
+#endif
 		/* FALLTHROUGH */
 	case XT_XTP_DL_REMOVE:
 		webkit_download_cancel(d->download); /* just incase */

@@ -4461,10 +4461,19 @@ download_start(struct tab *t, struct download *d, int flag)
 			uri = NULL;
 			filename = g_strdup_printf("%d%s", i, suggested_name);
 		}
+#ifdef __MINGW32__
+		uri = g_strdup_printf("%s\\%s", download_dir, i ?
+		    filename : suggested_name);
+#else
 		uri = g_strdup_printf("file://%s/%s", download_dir, i ?
 		    filename : suggested_name);
+#endif
 		i++;
-	} while (!stat(uri + strlen("file://"), &sb));
+#ifdef __MINGW32__
+	} while (!stat(uri, &sb));
+#else
+	} while (!stat(uri + strlen("file://"), &sb)); /* XXX is the + strlen right? */
+#endif
 
 	DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d filename %s "
 	    "local %s\n", __func__, t->tab_id, filename, uri);
