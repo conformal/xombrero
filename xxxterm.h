@@ -283,6 +283,19 @@ struct history {
 RB_HEAD(history_list, history);
 RB_PROTOTYPE(history_list, history, entry, history_rb_cmp);
 
+#define XT_STS_FLAGS_INCLUDE_SUBDOMAINS		(1)
+#define XT_STS_FLAGS_EXPAND			(2)
+#define XT_STS_FILE				("strict-transport")
+
+struct strict_transport {
+	RB_ENTRY(strict_transport)	entry;
+	gchar				*host;
+	time_t				timeout;
+	int				flags;
+};
+RB_HEAD(strict_transport_tree, strict_transport);
+RB_PROTOTYPE(strict_transport_tree, strict_transport, entry, strict_transport_rb_cmp);
+
 /* utility */
 #define XT_NAME			("XXXTerm")
 #define XT_CB_HANDLED		(TRUE)
@@ -582,6 +595,7 @@ extern int	cookie_policy;
 extern char	*ssl_ca_file;
 extern char	*resource_dir;
 extern gboolean	ssl_strict_certs;
+extern gboolean	enable_strict_transport;
 extern int	append_next;
 extern char	*home;
 extern char	*search_string;
@@ -647,6 +661,7 @@ extern struct about_type	about_list[];
 extern struct domain_list	c_wl;
 extern struct domain_list	js_wl;
 extern struct domain_list	pl_wl;
+extern struct strict_transport_tree	st_tree;
 extern struct alias_list	aliases;
 extern struct mime_type_list	mtl;
 extern struct keybinding_list	kbl;

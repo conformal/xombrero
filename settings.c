@@ -63,6 +63,7 @@ int		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_ALWAYS;
 char		*ssl_ca_file = NULL;
 char		*resource_dir = NULL;
 gboolean	ssl_strict_certs = FALSE;
+gboolean	enable_strict_transport = TRUE;
 int		append_next = 1; /* append tab after current tab */
 char		*home = NULL;
 char		*search_string = NULL;
@@ -337,6 +338,7 @@ struct settings		rs[] = {
 	{ "spell_check_languages",	XT_S_STR, 0, NULL, &spell_check_languages, NULL },
 	{ "ssl_ca_file",		XT_S_STR, 0, NULL,	&ssl_ca_file, NULL },
 	{ "ssl_strict_certs",		XT_S_INT, 0,		&ssl_strict_certs, NULL, NULL },
+	{ "enable_strict_transport",	XT_S_INT, 0,		&enable_strict_transport, NULL, NULL },
 	{ "statusbar_elems",		XT_S_STR, 0, NULL,	&statusbar_elems, NULL },
 	{ "tab_style",			XT_S_STR, 0, NULL, NULL,&s_tab_style },
 	{ "url_regex",			XT_S_STR, 0, NULL,	&url_regex, NULL },

@@ -237,6 +237,7 @@ struct session_list	sessions;
 struct domain_list	c_wl;
 struct domain_list	js_wl;
 struct domain_list	pl_wl;
+struct strict_transport_tree	st_tree;
 struct undo_tailq	undos;
 struct keybinding_list	kbl;
 struct sp_list		spl;
@@ -657,6 +658,7 @@ char			cache_dir[PATH_MAX];
 char			sessions_dir[PATH_MAX];
 char			temp_dir[PATH_MAX];
 char			cookie_file[PATH_MAX];
+char			*strict_transport_file = NULL;
 SoupSession		*session;
 SoupCookieJar		*s_cookiejar;
 SoupCookieJar		*p_cookiejar;
@@ -4096,8 +4098,254 @@ webview_progress_changed_cb(WebKitWebView *wv, int progress, struct tab *t)
 	update_statusbar_position(NULL, NULL);
 }
 
+int
+strict_transport_rb_cmp(struct strict_transport *a, struct strict_transport *b)
+{
+	char			*p1, *p2;
+	int			l1, l2;
+
+	/* compare strings from the end */
+	l1 = strlen(a->host);
+	l2 = strlen(b->host);
+
+	p1 = a->host + l1;
+	p2 = b->host + l2;
+	for (; *p1 == *p2 && p1 > a->host && p2 > b->host;
+	    p1--, p2--)
+		;
+
+	/*
+	 * Check if we need to do pattern expansion,
+	 * or if we're just keeping the tree in order
+	 */
+	if (a->flags & XT_STS_FLAGS_EXPAND &&
+	    b->flags & XT_STS_FLAGS_INCLUDE_SUBDOMAINS) {
+		/* Check if we're matching the
+		 * 'host.xyz' part in '*.host.xyz'
+		 */
+		if (p2 == b->host && (p1 == a->host || *(p1-1) == '.')) {
+			return (0);
+		}
+	}
+
+	if (p1 == a->host && p2 == b->host)
+		return (0);
+	if (p1 == a->host)
+		return (1);
+	if (p2 == b->host)
+		return (-1);
+
+	if (*p1 < *p2)
+		return (-1);
+	if (*p1 > *p2)
+		return (1);
+
+	return (0);
+}
+RB_GENERATE(strict_transport_tree, strict_transport, entry,
+    strict_transport_rb_cmp);
+
+int
+strict_transport_add(const char *domain, time_t timeout, int subdomains)
+{
+	struct strict_transport	*d, find;
+	time_t			now;
+	FILE			*f;
+
+	if (enable_strict_transport == FALSE)
+		return (0);
+
+	DPRINTF("strict_transport_add(%s,%ld,%d)\n", domain, timeout,
+	    subdomains);
+
+	now = time(NULL);
+	if (timeout < now)
+		return (0);
+
+	find.host = (char *)domain;
+	find.flags = 0;
+	d = RB_FIND(strict_transport_tree, &st_tree, &find);
+
+	/* update flags */
+	if (d) {
+		/* check if update is needed */
+		if (d->timeout == timeout &&
+		    (d->flags & XT_STS_FLAGS_INCLUDE_SUBDOMAINS) == subdomains)
+			return (0);
+
+		d->timeout = timeout;
+		if (subdomains)
+			d->flags |= XT_STS_FLAGS_INCLUDE_SUBDOMAINS;
+
+		/* We're still initializing */
+		if (strict_transport_file == NULL)
+			return (0);
+
+		if ((f = fopen(strict_transport_file, "w")) == NULL) {
+			show_oops(NULL,
+			    "can't open strict-transport rules file");
+			return (1);
+		}
+
+		fprintf(f, "# Generated file - do not update unless you know "
+		    "what you're doing\n");
+		RB_FOREACH(d, strict_transport_tree, &st_tree) {
+			if (d->timeout < now)
+				continue;
+			fprintf(f, "%s\t%d\t%d\n", d->host, d->timeout,
+			    d->flags & XT_STS_FLAGS_INCLUDE_SUBDOMAINS);
+		}
+		fclose(f);
+	} else {
+		d = g_malloc(sizeof *d);
+		d->host= g_strdup(domain);
+		d->timeout = timeout;
+		if (subdomains)
+			d->flags = XT_STS_FLAGS_INCLUDE_SUBDOMAINS;
+		else
+			d->flags = 0;
+		RB_INSERT(strict_transport_tree, &st_tree, d);
+
+		/* We're still initializing */
+		if (strict_transport_file == NULL)
+			return (0);
+
+		if ((f = fopen(strict_transport_file, "a+")) == NULL) {
+			show_oops(NULL,
+			    "can't open strict-transport rules file");
+			return (1);
+		}
+
+		fseek(f, 0, SEEK_END);
+		fprintf(f,"%s\t%d\t%d\n", d->host, timeout, subdomains);
+		fclose(f);
+	}
+	return (0);
+}
+
+int
+strict_transport_check(const char *host)
+{
+	static struct strict_transport	*d = NULL;
+	struct strict_transport		find;
+
+	if (enable_strict_transport == FALSE)
+		return (0);
+
+	find.host = (char *)host;
+
+	/* match for domains that include subdomains */
+	find.flags = XT_STS_FLAGS_EXPAND;
+
+	/* First, check if we're already at the right node */
+	if (d != NULL && strict_transport_rb_cmp(&find, d) == 0) {
+		return (1);
+	}
+
+	d = RB_FIND(strict_transport_tree, &st_tree, &find);
+	if (d != NULL)
+		return (1);
+
+	return (0);
+}
+
+int
+strict_transport_init()
+{
+	char			file[PATH_MAX];
+	char			delim[3];
+	char			*rule;
+	char			*ptr;
+	FILE			*f;
+	size_t			len;
+	time_t			timeout, now;
+	int			subdomains;
+
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_STS_FILE);
+	if ((f = fopen(file, "r")) == NULL) {
+		strict_transport_file = g_strdup(file);
+		return (0);
+	}
+
+	delim[0] = '\\';
+	delim[1] = '\\';
+	delim[2] = '#';
+	rule = NULL;
+	now = time(NULL);
+
+	for (;;) {
+		if ((rule = fparseln(f, &len, NULL, delim, 0)) == NULL) {
+			if (!feof(f) || ferror(f))
+				goto corrupt_file;
+			else
+				break;
+		}
+
+		/* get second entry */
+		if ((ptr = strpbrk(rule, " \t")) == NULL)
+			goto corrupt_file;
+
+		*ptr++ = '\0';
+		timeout = atoi(ptr);
+
+		/* get third entry */
+		if ((ptr = strpbrk(ptr, " \t")) == NULL)
+			goto corrupt_file;
+
+		ptr ++;
+		subdomains = atoi(ptr);
+
+		if (timeout > now)
+			strict_transport_add(rule, timeout, subdomains);
+		free(rule);
+	}
+
+	fclose(f);
+	strict_transport_file = g_strdup(file);
+	return (0);
+
+corrupt_file:
+	startpage_add("strict-transport rules file ('%s') is corrupt", file);
+	if (rule)
+		free(rule);
+	fclose(f);
+	return (1);
+}
+
 void
-session_rq_cb(SoupSession *s, SoupMessage *msg, SoupSocket *socket, gpointer data)
+strict_transport_security_cb(SoupMessage *msg, gpointer data)
+{
+	SoupURI		*uri;
+	const char	*sts;
+	char		*ptr;
+	int		timeout = 0;
+	int		subdomains = FALSE;
+
+	if (msg == NULL)
+		return;
+
+	sts = soup_message_headers_get_one(msg->response_headers,
+	    "Strict-Transport-Security");
+	uri = soup_message_get_uri(msg);
+
+	if (sts == NULL || uri == NULL)
+		return;
+
+	if ((ptr = strcasestr(sts, "max-age="))) {
+		ptr += strlen("max-age=");
+		timeout = atoi(ptr);
+	} else
+		return; /* malformed header - max-age must be included */
+
+	if ((ptr = strcasestr(sts, "includeSubDomains")))
+		subdomains = TRUE;
+
+	strict_transport_add(uri->host, timeout + time(NULL), subdomains);
+}
+
+void
+session_rq_cb(SoupSession *s, SoupMessage *msg, SoupSocket *socket,
+    gpointer data)
 {
 	SoupURI			*dest;
 	const char		*ref;
@@ -4122,16 +4370,26 @@ session_rq_cb(SoupSession *s, SoupMessage *msg, SoupSocket *socket, gpointer dat
 			dest = soup_message_get_uri(msg);
 
 			if (dest && !strstr(ref, dest->host)) {
-				soup_message_headers_remove(msg->request_headers, "Referer");
-				DNPRINTF(XT_D_NAV, "session_rq_cb: removing referer (not same domain)\n");
+				soup_message_headers_remove(msg->request_headers,
+				    "Referer");
+				DNPRINTF(XT_D_NAV, "session_rq_cb: removing "
+				    "referer (not same domain) (should be %s)\n",
+				    dest->host);
 			}
 			break;
 		case XT_REFERER_CUSTOM:
-			DNPRINTF(XT_D_NAV, "session_rq_cb: setting referer to %s\n", referer_custom);
+			DNPRINTF(XT_D_NAV, "session_rq_cb: setting referer "
+			    "to %s\n", referer_custom);
 			soup_message_headers_replace(msg->request_headers,
 			    "Referer", referer_custom);
 			break;
 		}
+	}
+
+	if (enable_strict_transport) {
+		soup_message_add_header_handler(msg, "finished",
+		    "Strict-Transport-Security",
+		    G_CALLBACK(strict_transport_security_cb), NULL);
 	}
 }
 
@@ -4213,6 +4471,29 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 	}
 
 	return (FALSE);
+}
+
+void
+webview_rrs_cb(WebKitWebView *wv, WebKitWebFrame *wf, WebKitWebResource *res,
+    WebKitNetworkRequest *request, WebKitNetworkResponse *response,
+    struct tab *t)
+{
+	SoupMessage		*msg;
+	SoupURI			*uri;
+
+	msg = webkit_network_request_get_message(request);
+	if (!msg) return;
+
+	uri = soup_message_get_uri(msg);
+	if (!uri) return;
+
+	if (strcmp(soup_uri_get_scheme(uri), SOUP_URI_SCHEME_HTTP) == 0) {
+		if (strict_transport_check(uri->host)) {
+			DNPRINTF(XT_D_NAV, "webview_rrs_cb: force https for %s\n",
+					uri->host);
+			soup_uri_set_scheme(uri, SOUP_URI_SCHEME_HTTPS);
+		}
+	}
 }
 
 WebKitWebView *
@@ -6726,6 +7007,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	    "signal::mime-type-policy-decision-requested", G_CALLBACK(webview_mimetype_cb), t,
 	    "signal::navigation-policy-decision-requested", G_CALLBACK(webview_npd_cb), t,
 	    "signal::new-window-policy-decision-requested", G_CALLBACK(webview_npd_cb), t,
+	    "signal::resource-request-starting", G_CALLBACK(webview_rrs_cb), t,
 	    "signal::create-web-view", G_CALLBACK(webview_cwv_cb), t,
 	    "signal::close-web-view", G_CALLBACK(webview_closewv_cb), t,
 	    "signal::event", G_CALLBACK(webview_event_cb), t,
@@ -7345,6 +7627,7 @@ main(int argc, char **argv)
 	RB_INIT(&js_wl);
 	RB_INIT(&pl_wl);
 	RB_INIT(&downloads);
+	RB_INIT(&st_tree);
 
 	TAILQ_INIT(&sessions);
 	TAILQ_INIT(&tabs);
@@ -7625,6 +7908,9 @@ main(int argc, char **argv)
 #endif
 	/* tld list */
 	tld_tree_init();
+
+	if (enable_strict_transport)
+		strict_transport_init();
 
 	/* uri completion */
 	completion_model = gtk_list_store_new(1, G_TYPE_STRING);
