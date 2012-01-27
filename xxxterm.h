@@ -142,7 +142,7 @@ THE SOFTWARE.
 #define XT_D_INSPECTOR		0x8000
 #define XT_D_VISITED		0x10000
 #define XT_D_HISTORY		0x20000
-extern u_int32_t	swm_debug;
+extern uint32_t	swm_debug;
 #else
 #define DPRINTF(x...)
 #define DNPRINTF(n,x...)
