@@ -1960,7 +1960,7 @@ remove_cookie_domain(int domain_id)
 int
 remove_cookie_all()
 {
-	int			domain_count, rv = 1;
+	int			rv = 1;
 	GSList			*cf;
 	SoupCookie		*c;
 
@@ -1968,7 +1968,7 @@ remove_cookie_all()
 
 	cf = soup_cookie_jar_all_cookies(s_cookiejar);
 
-	for (domain_count = 0; cf; cf = cf->next) {
+	for (; cf; cf = cf->next) {
 		c = cf->data;
 
 		print_cookie("remove cookie", c);
