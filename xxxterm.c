@@ -1553,6 +1553,20 @@ done:
 	return (rv);
 }
 
+#ifdef __MINGW32__
+static ssize_t
+custom_gnutls_push(void *s, const void *buf, size_t len)
+{
+	return send((size_t)s, buf, len, 0);
+}
+
+static ssize_t
+custom_gnutls_pull(void *s, void *buf, size_t len)
+{
+	return recv((size_t)s, buf, len, 0);
+}
+#endif
+
 int
 stop_tls(gnutls_session_t gsession, gnutls_certificate_credentials_t xcred)
 {
@@ -1588,6 +1602,11 @@ start_tls(const gchar **error_str, int s, gnutls_session_t *gs,
 	gnutls_priority_set_direct(gsession, "PERFORMANCE", NULL);
 	gnutls_credentials_set(gsession, GNUTLS_CRD_CERTIFICATE, xcred);
 	gnutls_transport_set_ptr(gsession, (gnutls_transport_ptr_t)(long)s);
+#ifdef __MINGW32__
+	/* sockets on windows don't use file descriptors */
+	gnutls_transport_set_push_function(gsession, custom_gnutls_push);
+	gnutls_transport_set_pull_function(gsession, custom_gnutls_pull);
+#endif
 	if ((rv = gnutls_handshake(gsession)) < 0) {
 		snprintf(myerror, sizeof myerror,
 		    "gnutls_handshake failed %d fatal %d %s",
