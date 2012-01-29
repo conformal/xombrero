@@ -627,12 +627,12 @@ extern char		rc_fname[PATH_MAX];
 extern char		work_dir[PATH_MAX];
 extern char		temp_dir[PATH_MAX];
 extern struct passwd	*pwd;
-long long unsigned int	blocked_cookies;
 extern SoupCookieJar	*s_cookiejar;
 extern SoupCookieJar	*p_cookiejar;
 extern SoupSession	*session;
 extern GtkNotebook	*notebook;
 extern GtkListStore	*completion_model;
+extern long long unsigned int	blocked_cookies;
 
 extern void	(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 
