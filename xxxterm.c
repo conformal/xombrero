@@ -5220,7 +5220,7 @@ hint_continue(struct tab *t)
 			show_oops(t, "invalid numerical hint %s", &c[1]);
 			goto done;
 		}
-		s = g_strdup_printf("hints.updateHints(%d", i);
+		s = g_strdup_printf("hints.updateHints(%d);", i);
 		run_script(t, s);
 		g_free(s);
 	} else {
