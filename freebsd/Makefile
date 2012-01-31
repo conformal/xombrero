@@ -21,6 +21,8 @@ all: ../javascript.h xxxterm
 
 xxxterm.o: ../xxxterm.o
 
+unix.o: ../unix.o
+
 marco.o: ../marco.o
 
 whitelist.o: ../whitelist.o
@@ -46,7 +48,8 @@ tldlist.o: ../tldlist.o
 ../xxxterm.o: ../javascript.h
 
 xxxterm: xxxterm.o freebsd.o marco.o about.o inspector.o whitelist.o settings.o \
-	cookie.o history.o completion.o inputfocus.o tldlist.o externaleditor.o
+	cookie.o history.o completion.o inputfocus.o tldlist.o externaleditor.o \
+	unix.o
 	$(CC) $(LDFLAGS) -o $@ *.o $+ $(LDADD)
 
 install: all

@@ -1316,25 +1316,7 @@ run_page_script(struct tab *t, struct karg *args)
 	else
 		strlcpy(script, tmp, sizeof script);
 
-	switch (fork()) {
-	case -1:
-		show_oops(t, "can't fork to run script");
-		return (1);
-		/* NOTREACHED */
-	case 0:
-		break;
-	default:
-		return (0);
-	}
-
-	/* child */
-	execlp(script, script, uri, (void *)NULL);
-
-	_exit(0);
-
-	/* NOTREACHED */
-
-	return (0);
+	return (fork_exec(t, script, uri, "can't launch external script"));
 }
 
 int
@@ -4323,25 +4305,9 @@ run_mimehandler(struct tab *t, char *mime_type, WebKitNetworkRequest *request)
 	if (m->mt_download)
 		return (1);
 
-	switch (fork()) {
-	case -1:
-		show_oops(t, "can't fork mime handler");
-		return (1);
-		/* NOTREACHED */
-	case 0:
-		break;
-	default:
-		return (0);
-	}
-
-	/* child */
-	execlp(m->mt_action, m->mt_action,
-	    webkit_network_request_get_uri(request), (void *)NULL);
-
-	_exit(0);
-
-	/* NOTREACHED */
-	return (0);
+	return (fork_exec(t, m->mt_action,
+	    webkit_network_request_get_uri(request),
+	    "can't launch MIME handler"));
 }
 
 char *
@@ -4375,26 +4341,8 @@ run_download_mimehandler(char *mime_type, char *file)
 	if (m == NULL)
 		return (1);
 
-	switch (fork()) {
-	case -1:
-		show_oops(NULL, "can't fork download mime handler");
-		return (1);
-		/* NOTREACHED */
-	case 0:
-		break;
-	default:
-		return (0);
-	}
-
-	/* child */
-	if (g_str_has_prefix(file, "file://"))
-		file += strlen("file://");
-	execlp(m->mt_action, m->mt_action, file, (void *)NULL);
-
-	_exit(0);
-
-	/* NOTREACHED */
-	return (0);
+	return (fork_exec(NULL, m->mt_action, file,
+	    "can't launch download MIME handler"));
 }
 
 void
