@@ -4,12 +4,13 @@ BINDIR=${PREFIX}/bin
 PROG=xxxterm
 MAN=xxxterm.1
 
+DEBUG= -ggdb3
+
 SRCS= cookie.c inspector.c marco.c about.c whitelist.c settings.c inputfocus.c
 SRCS+= history.c completion.c tldlist.c externaleditor.c unix.c xxxterm.c
 CFLAGS+= -O2 -Wall -Wno-format-extra-args -Wunused
-CFLAGS+= -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare
+CFLAGS+= -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare ${DEBUG}
 CFLAGS+= -I. -I${.CURDIR}
-DEBUG= -ggdb3
 LDADD= -lutil -lgcrypt
 LIBS+= gtk+-2.0
 LIBS+= webkit-1.0
