@@ -7371,9 +7371,10 @@ main(int argc, char **argv)
 			warn("setrlimit");
 		if (getrlimit(RLIMIT_NOFILE, &rlp) == -1)
 			warn("getrlimit");
-		else if (rlp.rlim_cur <= 256)
-			startpage_add("%s requires at least 256 file "
-			    "descriptors, currently it has up to %d available",
+		else if (rlp.rlim_cur <= 1024)
+			startpage_add("%s requires at least 1024 "
+			    "(2048 recommended) file " "descriptors, "
+			    "currently it has up to %d available",
 			   __progname, rlp.rlim_cur);
 	}
 #endif
