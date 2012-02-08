@@ -4366,6 +4366,8 @@ download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
 	if (mime == NULL)
 		return;
 
+	if (g_str_has_prefix(file, "file://"))
+		file += strlen("file://");
 	run_download_mimehandler((char *)mime, (char *)file);
 	g_free(mime);
 }
