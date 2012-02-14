@@ -1318,7 +1318,7 @@ run_page_script(struct tab *t, struct karg *args)
 	else
 		strlcpy(script, tmp, sizeof script);
 
-	return (fork_exec(t, script, uri, "can't launch external script"));
+	return (fork_exec(t, script, uri, "can't launch external script", 1));
 }
 
 int
@@ -4588,7 +4588,7 @@ run_mimehandler(struct tab *t, char *mime_type, WebKitNetworkRequest *request)
 
 	return (fork_exec(t, m->mt_action,
 	    webkit_network_request_get_uri(request),
-	    "can't launch MIME handler"));
+	    "can't launch MIME handler", 0));
 }
 
 char *
@@ -4623,7 +4623,7 @@ run_download_mimehandler(char *mime_type, char *file)
 		return (1);
 
 	return (fork_exec(NULL, m->mt_action, file,
-	    "can't launch download MIME handler"));
+	    "can't launch download MIME handler", 0));
 }
 
 void

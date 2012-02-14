@@ -17,8 +17,12 @@
 #include <xxxterm.h>
 
 int
-fork_exec(struct tab *t, char *argv0, const gchar *argv1, char *error)
+fork_exec(struct tab *t, char *argv0, const gchar *argv1, char *error, int loud)
 {
+
+	if (loud)
+		show_oops(t, "running: %s %s", argv0, argv1);
+
 	switch (fork()) {
 	case -1:
 		show_oops(t, error);
