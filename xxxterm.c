@@ -4192,7 +4192,7 @@ strict_transport_add(const char *domain, time_t timeout, int subdomains)
 		RB_FOREACH(d, strict_transport_tree, &st_tree) {
 			if (d->timeout < now)
 				continue;
-			fprintf(f, "%s\t%d\t%d\n", d->host, d->timeout,
+			fprintf(f, "%s\t%d\t%d\n", d->host, (int)d->timeout,
 			    d->flags & XT_STS_FLAGS_INCLUDE_SUBDOMAINS);
 		}
 		fclose(f);
@@ -4217,7 +4217,7 @@ strict_transport_add(const char *domain, time_t timeout, int subdomains)
 		}
 
 		fseek(f, 0, SEEK_END);
-		fprintf(f,"%s\t%d\t%d\n", d->host, timeout, subdomains);
+		fprintf(f,"%s\t%d\t%d\n", d->host, (int)timeout, subdomains);
 		fclose(f);
 	}
 	return (0);
