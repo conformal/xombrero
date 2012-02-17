@@ -5025,6 +5025,7 @@ int
 go_up(struct tab *t, struct karg *args)
 {
 	int		levels;
+	int		lastidx;
 	char		*uri;
 	char		*tmp;
 	char		*p;
@@ -5044,6 +5045,13 @@ go_up(struct tab *t, struct karg *args)
 	/* if an uri starts with a slash, leave it alone (for file:///) */
 	if (tmp[0] == '/')
 		tmp++;
+
+	/* it makes no sense to strip the last slash from ".../dir/", skip it */
+	lastidx = strlen(tmp) - 1;
+	if (lastidx >= 0) {
+		if (tmp[lastidx] == '/')
+			tmp[lastidx] = '\0';
+	}
 
 	while (levels--) {
 		p = strrchr(tmp, '/');
