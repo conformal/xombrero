@@ -275,7 +275,7 @@ int
 stats(struct tab *t, struct karg *args)
 {
 	char			*page, *body, *s, line[64 * 1024];
-	long long unsigned int	line_count = 0;
+	uint64_t		line_count = 0;
 	FILE			*r_cookie_f;
 
 	if (t == NULL)

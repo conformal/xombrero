@@ -251,7 +251,7 @@ int			undo_count;
 int			cmd_history_count = 0;
 int			search_history_count = 0;
 char			*global_search;
-long long unsigned int	blocked_cookies = 0;
+uint64_t		blocked_cookies = 0;
 char			named_session[PATH_MAX];
 GtkListStore		*completion_model;
 GtkListStore		*buffers_store;

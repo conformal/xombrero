@@ -649,7 +649,7 @@ extern SoupCookieJar	*p_cookiejar;
 extern SoupSession	*session;
 extern GtkNotebook	*notebook;
 extern GtkListStore	*completion_model;
-extern long long unsigned int	blocked_cookies;
+extern uint64_t		blocked_cookies;
 
 extern void	(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 
