@@ -9,4 +9,4 @@
 # to avoid accumulating files:
 #   player = mplayer -loop 0 %s 2>/dev/null; rm -f %s
 
-cd /var/tmp && get_flash_videos -p -y $1
+cd /var/tmp && get_flash_videos --player="/usr/local/bin/mplayer -really-quiet %s 2> /dev/null" -q -p -y $1
