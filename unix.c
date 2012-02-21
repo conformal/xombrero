@@ -37,9 +37,8 @@ fork_exec(struct tab *t, char *argv0, const gchar *argv1, char *error, int loud)
 	/* child */
 	execlp(argv0, argv0, argv1, (void *)NULL);
 
-	_exit(0);
-
 	/* NOTREACHED */
+	_exit(0);
 
 	return (0);
 }
