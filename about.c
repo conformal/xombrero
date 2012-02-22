@@ -219,6 +219,9 @@ about(struct tab *t, struct karg *args)
 #ifdef XXXTERM_BUILDSTR
 	    "<br><b>Build: %s</b>"
 #endif
+	    "<br><b>WebKit: %d.%d.%d</b>"
+	    "<br><b>User Agent: %d.%d</b>"
+	    "<br><b>WebKit API: %.1f</b>"
 	    "<p>"
 	    "Authors:"
 	    "<ul>"
@@ -233,10 +236,13 @@ about(struct tab *t, struct karg *args)
 	    "<a href=\"http://opensource.conformal.com/wiki/XXXTerm\">website</a>"
 	    "</p>",
 #ifdef XXXTERM_BUILDSTR
-	    version, XXXTERM_BUILDSTR
+	    version, XXXTERM_BUILDSTR,
 #else
-	    version
+	    version,
 #endif
+	    WEBKIT_MAJOR_VERSION, WEBKIT_MINOR_VERSION, WEBKIT_MICRO_VERSION,
+	    WEBKIT_USER_AGENT_MAJOR_VERSION, WEBKIT_USER_AGENT_MINOR_VERSION,
+	    WEBKITGTK_API_VERSION
 	    );
 
 	page = get_html_page("About", body, "", 0);
