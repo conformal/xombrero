@@ -16,6 +16,11 @@ DEPS= $(addsuffix .depend, $(OBJS))
 
 CC?= gcc
 
+BUILDVERSION= $(shell sh $(CURDIR)/../buildver.sh)
+ifneq ("${BUILDVERSION}", "")
+CFLAGS+= -DXXXTERM_BUILDSTR=\"$(BUILDVERSION)\"
+endif
+
 all: javascript.h xxxterm
 
 javascript.h: ../js-merge-helper.pl ../hinting.js ../autoscroll.js
