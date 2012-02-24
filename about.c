@@ -221,7 +221,9 @@ about(struct tab *t, struct karg *args)
 #endif
 	    "<br><b>WebKit: %d.%d.%d</b>"
 	    "<br><b>User Agent: %d.%d</b>"
+#ifdef WEBKITGTK_API_VERSION
 	    "<br><b>WebKit API: %.1f</b>"
+#endif
 	    "<p>"
 	    "Authors:"
 	    "<ul>"
@@ -241,8 +243,10 @@ about(struct tab *t, struct karg *args)
 	    version,
 #endif
 	    WEBKIT_MAJOR_VERSION, WEBKIT_MINOR_VERSION, WEBKIT_MICRO_VERSION,
-	    WEBKIT_USER_AGENT_MAJOR_VERSION, WEBKIT_USER_AGENT_MINOR_VERSION,
-	    WEBKITGTK_API_VERSION
+	    WEBKIT_USER_AGENT_MAJOR_VERSION, WEBKIT_USER_AGENT_MINOR_VERSION
+#ifdef WEBKITGTK_API_VERSION
+	    ,WEBKITGTK_API_VERSION
+#endif
 	    );
 
 	page = get_html_page("About", body, "", 0);
