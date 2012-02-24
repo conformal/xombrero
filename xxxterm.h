@@ -49,7 +49,10 @@ u_int32_t	arc4random_uniform(u_int32_t);
 #include <util.h>
 #include <sys/tree.h>
 #else
-#include <sys/tree.h>
+void		arc4random_buf(void *, size_t);
+u_int32_t	arc4random_uniform(u_int32_t);
+#include "util.h"
+#include "tree.h"
 #endif
 #include <sys/queue.h>
 #include <sys/socket.h>
