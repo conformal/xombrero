@@ -182,23 +182,31 @@ save_global_history_to_disk(struct tab *t)
 	return (0);
 }
 
-/* Marshall the internal record of visited URIs into a Javascript hash table in
- * string form. */
+/*
+ * Marshall the internal record of visited URIs into a Javascript hash table in
+ * string form.
+ */
 char *
 color_visited_helper(void)
 {
-	char			*s = NULL;
+	char			*d, *s = NULL, *t;
 	struct history		*h;
 
 	RB_FOREACH_REVERSE(h, history_list, &hl) {
 		if (s == NULL)
 			s = g_strdup_printf("'%s':'dummy'", h->uri);
-		else
-			s = g_strjoin(",", s,
-			    g_strdup_printf("'%s':'dummy'", h->uri), NULL);
+		else {
+			d = g_strdup_printf("'%s':'dummy'", h->uri);
+			t = g_strjoin(",", s, d, NULL);
+			g_free(d);
+			g_free(s);
+			s = t;
+		}
 	}
 
-	s = g_strdup_printf("{%s}", s);
+	t = g_strdup_printf("{%s}", s);
+	g_free(s);
+	s = t;
 
 	DNPRINTF(XT_D_VISITED, "%s: s = %s\n", __func__, s);
 
@@ -208,31 +216,31 @@ color_visited_helper(void)
 int
 color_visited(struct tab *t, char *visited)
 {
-	char		*s;
+	char		*s, *v;
 
 	if (t == NULL || visited == NULL) {
 		show_oops(NULL, "%s: invalid parameters", __func__);
 		return (1);
 	}
 
-	/* Create a string representing an annonymous Javascript function, which
+	/*
+	 * Create a string representing an annonymous Javascript function, which
 	 * takes a hash table of visited URIs as an argument, goes through the
 	 * links at the current web page and colors them if they indeed been
 	 * visited.
 	 */
+	v = g_strdup_printf("(%s);", visited),
 	s = g_strconcat(
 	    "(function(visitedUris) {",
 	    "    for (var i = 0; i < document.links.length; i++)",
 	    "        if (visitedUris[document.links[i].href])",
 	    "            document.links[i].style.color = 'purple';",
 	    "})",
-	    /* Apply the annonymous function to the hash table containing
-	     * visited URIs. */
-	    g_strdup_printf("(%s);", visited),
-	    NULL);
+	    v, NULL);
 
 	run_script(t, s);
 	g_free(s);
+	g_free(v);
 	g_free(visited);
 
 	return (0);

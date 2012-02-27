@@ -443,18 +443,23 @@ is_g_object_setting(GObject *o, char *str)
 {
 	guint			n_props = 0, i;
 	GParamSpec		**proplist;
+	int			rv = 0;
 
-	if (! G_IS_OBJECT(o))
+	if (!G_IS_OBJECT(o))
 		return (0);
 
 	proplist = g_object_class_list_properties(G_OBJECT_GET_CLASS(o),
 	    &n_props);
 
-	for (i=0; i < n_props; i++) {
-		if (! strcmp(proplist[i]->name, str))
-			return (1);
+	for (i = 0; i < n_props; i++) {
+		if (! strcmp(proplist[i]->name, str)) {
+			rv = 1;
+			break;
+		}
 	}
-	return (0);
+
+	g_free(proplist);
+	return (rv);
 }
 
 struct tab *
