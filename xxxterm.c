@@ -1126,10 +1126,10 @@ quit(struct tab *t, struct karg *args)
 void
 restore_sessions_list(void)
 {
-	DIR *sdir               = NULL;
-	struct dirent *dp       = NULL;
-	struct session		*s;
-	int			reg;
+	DIR		*sdir = NULL;
+	struct dirent	*dp = NULL;
+	struct session	*s;
+	int		reg;
 
 	sdir = opendir(sessions_dir);
 	if (sdir) {
