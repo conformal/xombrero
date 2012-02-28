@@ -341,6 +341,7 @@ struct settings		rs[] = {
 	{ "enable_strict_transport",	XT_S_INT, 0,		&enable_strict_transport, NULL, NULL },
 	{ "statusbar_elems",		XT_S_STR, 0, NULL,	&statusbar_elems, NULL },
 	{ "tab_style",			XT_S_STR, 0, NULL, NULL,&s_tab_style },
+	{ "userstyle_global",		XT_S_INT, 0,		&userstyle_global, NULL, NULL },
 	{ "url_regex",			XT_S_STR, 0, NULL,	&url_regex, NULL },
 	{ "window_height",		XT_S_INT, 0,		&window_height, NULL, NULL },
 	{ "window_width",		XT_S_INT, 0,		&window_width, NULL, NULL },
