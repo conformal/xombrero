@@ -1133,7 +1133,7 @@ restore_sessions_list(void)
 
 	sdir = opendir(sessions_dir);
 	if (sdir) {
-		while ((dp = readdir(sdir)) != NULL)
+		while ((dp = readdir(sdir)) != NULL) {
 #if defined __MINGW32__
 			reg = 1; /* windows only has regular files */
 #else
@@ -1144,6 +1144,7 @@ restore_sessions_list(void)
 				s->name = g_strdup(dp->d_name);
 				TAILQ_INSERT_TAIL(&sessions, s, entry);
 			}
+		}
 		closedir(sdir);
 	}
 }
