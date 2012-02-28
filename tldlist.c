@@ -276,7 +276,7 @@ tld_tree_init()
 		 * better than nothing.
 		 */
 		tld_tree_add("*");
-		startpage_add("Could not open %s ant this file is required"
+		startpage_add("Could not open %s: this file is required "
 		    "to handle TLD whitelisting properly", file);
 		return;
 	}
