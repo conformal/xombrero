@@ -94,9 +94,12 @@ int			marco(struct tab *, struct karg *);
 int			startpage(struct tab *, struct karg *);
 const char *		marco_message(int *);
 void			update_cookie_tabs(struct tab *apart_from);
+int			about_webkit(struct tab *, struct karg *);
+int			allthethings(struct tab *, struct karg *);
 
 struct about_type about_list[] = {
 	{ XT_URI_ABOUT_ABOUT,		about },
+	{ XT_URI_ABOUT_ALLTHETHINGS,	allthethings },
 	{ XT_URI_ABOUT_BLANK,		blank },
 	{ XT_URI_ABOUT_CERTS,		ca_cmd },
 	{ XT_URI_ABOUT_COOKIEWL,	cookie_show_wl },
@@ -111,6 +114,7 @@ struct about_type about_list[] = {
 	{ XT_URI_ABOUT_MARCO,		marco },
 	{ XT_URI_ABOUT_STARTPAGE,	startpage },
 	{ XT_URI_ABOUT_PLUGINWL,	pl_show_wl },
+	{ XT_URI_ABOUT_WEBKIT,		about_webkit },
 };
 
 /*
@@ -1509,3 +1513,181 @@ startpage_add(const char *fmt, ...)
 	TAILQ_INSERT_TAIL(&spl, s, entry);
 }
 
+gchar *
+show_g_object_settings(GObject *o, char *str, int recurse)
+{
+	char		*b, *body, *valstr;
+	guint		n_props = 0;
+	int		i;
+	GParamSpec	*pspec;
+	const gchar	*tname;
+	GValue		value;
+	int		typeno;
+	const gchar	*string;
+	gboolean	boolean;
+	gfloat		fp;
+	gdouble		fpd;
+	gint		number;
+	guint		unumber;
+	int64_t		number64;
+	uint64_t	unumber64;
+	GObject		*object;
+	GParamSpec	**proplist;
+	char		*tmpstr, *tmpsettings;
+
+	if (!G_IS_OBJECT(o)) {
+		fprintf(stderr, "%s is not a g_object\n", str);
+		return g_strdup("");
+	}
+	proplist = g_object_class_list_properties(
+	    G_OBJECT_GET_CLASS(o), &n_props);
+	body = g_strdup_printf("%s: %3d settings\n", str, n_props);
+	for (i=0; i < n_props; i++) {
+		pspec = proplist[i];
+		tname = G_OBJECT_TYPE_NAME(pspec);
+		bzero(&value, sizeof value);
+		valstr = NULL;
+
+		if (!(pspec->flags & G_PARAM_READABLE))
+			valstr = g_strdup_printf("not a readable property");
+		else {
+			g_value_init(&value, G_PARAM_SPEC_VALUE_TYPE(pspec));
+			g_object_get_property(G_OBJECT(o), pspec->name,
+			    &value);
+		}
+
+		/* based on the type, recurse and display values */
+		if (valstr == NULL) {
+			typeno = G_TYPE_FUNDAMENTAL( G_VALUE_TYPE(&value) );
+			switch ( typeno ) {
+			case G_TYPE_ENUM:
+				number = g_value_get_enum(&value);
+				valstr = g_strdup_printf("%d", number);
+				break;
+			case G_TYPE_INT:
+				number = g_value_get_int(&value);
+				valstr = g_strdup_printf("%d", number);
+				break;
+			case G_TYPE_INT64:
+				number64 = (int64_t)g_value_get_int64(&value);
+				valstr = g_strdup_printf("%" PRIo64, number64);
+				break;
+			case G_TYPE_UINT:
+				unumber = g_value_get_uint(&value);
+				valstr = g_strdup_printf("%d", unumber);
+				break;
+			case G_TYPE_UINT64:
+				unumber64 =
+				    (uint64_t)g_value_get_uint64(&value);
+				valstr =
+				    g_strdup_printf("%" PRIu64, unumber64);
+				break;
+			case G_TYPE_FLAGS:
+				unumber = g_value_get_flags(&value);
+				valstr = g_strdup_printf("0x%x", unumber);
+				break;
+			case G_TYPE_BOOLEAN:
+				boolean = g_value_get_boolean(&value);
+				valstr = g_strdup_printf("%d", boolean);
+				break;
+			case G_TYPE_FLOAT:
+				fp = g_value_get_float(&value);
+				valstr = g_strdup_printf("%f", fp);
+				break;
+			case G_TYPE_DOUBLE:
+				fpd = g_value_get_double(&value);
+				valstr = g_strdup_printf("%f", fpd);
+				break;
+			case G_TYPE_STRING:
+				string = g_value_get_string(&value);
+				valstr = g_strdup_printf("%s", string);
+				break;
+			case G_TYPE_OBJECT:
+				object = g_value_get_object(&value);
+				if (object != NULL) {
+					if (recurse) {
+					tmpstr = g_strdup_printf("%s %s>", str,
+					    pspec->name);
+					tmpsettings = show_g_object_settings(
+					    object, tmpstr, recurse);
+					valstr = g_strdup_printf(
+					    "{\n%s%s     }\n",
+					    tmpsettings, str);
+					g_free(tmpstr);
+					g_free(tmpsettings);
+					} else {
+					valstr = g_strdup_printf("<...>");
+					}
+				} else {
+					valstr = g_strdup_printf("NULL");
+				}
+				break;
+			default:
+				valstr = g_strdup_printf("unhandled type '%s'",
+				    tname);
+			}
+		}
+
+		b = body;
+		body = g_strdup_printf(
+		    "%s%s: %3d: %s type=%s, flags=0x%x, val = %s\n",
+		    body, str, i, pspec->name, tname,
+		    pspec->flags, valstr);
+		g_free(b);
+		g_free(valstr);
+	}
+	g_free(proplist);
+	return (body);
+}
+
+int
+about_webkit(struct tab *t, struct karg *arg)
+{
+	char			*page, *body, *settingstr;
+
+	settingstr = show_g_object_settings(G_OBJECT(t->settings),
+	    "t->settings", 0);
+	body = g_strdup_printf("<pre>%s</pre>\n", settingstr);
+	g_free(settingstr);
+
+	page = get_html_page("About Webkit", body, "", 0);
+	g_free(body);
+
+	load_webkit_string(t, page, XT_URI_ABOUT_WEBKIT);
+	g_free(page);
+
+	return (0);
+}
+
+int
+allthethings(struct tab *t, struct karg *arg)
+{
+	char			*page, *body, *b, *settingstr;
+	extern GtkWidget	*main_window;
+
+	body = show_g_object_settings(G_OBJECT(t->wv), "t->wv", 1);
+	b = body;
+	settingstr = show_g_object_settings(G_OBJECT(t->inspector),
+	    "t->inspector", 1);
+	body = g_strdup_printf("%s%s", body, settingstr);
+	g_free(b);
+	g_free(settingstr);
+	b = body;
+	settingstr = show_g_object_settings(G_OBJECT(main_window),
+	    "main_window", 1);
+	body = g_strdup_printf("%s%s", body, settingstr);
+	g_free(b);
+	g_free(settingstr);
+	b = body;
+	body = g_strdup_printf("<pre>%scan paste clipboard = %d\n</pre>", body,
+	    webkit_web_view_can_paste_clipboard(t->wv));
+	g_free(b);
+
+	page = get_html_page("About AllTheSettings", body, "", 0);
+	g_free(body);
+
+	load_webkit_string(t, page, XT_URI_ABOUT_ALLTHETHINGS);
+	g_free(page);
+
+	return (0);
+}

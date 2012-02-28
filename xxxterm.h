@@ -365,6 +365,7 @@ char			*tld_get_suffix(const char *);
 #define XT_URI_ABOUT		("about:")
 #define XT_URI_ABOUT_LEN	(strlen(XT_URI_ABOUT))
 #define XT_URI_ABOUT_ABOUT	("about")
+#define XT_URI_ABOUT_ALLTHETHINGS ("allthethings")
 #define XT_URI_ABOUT_BLANK	("blank")
 #define XT_URI_ABOUT_CERTS	("certs")
 #define XT_URI_ABOUT_COOKIEWL	("cookiewl")
@@ -379,6 +380,7 @@ char			*tld_get_suffix(const char *);
 #define XT_URI_ABOUT_STATS	("stats")
 #define XT_URI_ABOUT_MARCO	("marco")
 #define XT_URI_ABOUT_STARTPAGE	("startpage")
+#define XT_URI_ABOUT_WEBKIT	("webkit")
 
 struct about_type {
 	char		*name;
