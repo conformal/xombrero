@@ -1683,7 +1683,7 @@ allthethings(struct tab *t, struct karg *arg)
 	    webkit_web_view_can_paste_clipboard(t->wv));
 	g_free(b);
 
-	page = get_html_page("\o_ About All The Things _o/", body, "", 0);
+	page = get_html_page("About All The Things _o/", body, "", 0);
 	g_free(body);
 
 	load_webkit_string(t, page, XT_URI_ABOUT_ALLTHETHINGS);
