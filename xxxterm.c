@@ -7781,7 +7781,7 @@ main(int argc, char **argv)
 		warnx("start of day file doesn't exist, creating it");
 		if ((f = fopen(file, "w")) == NULL)
 			err(1, "startofday");
-		if (fputs(version, f))
+		if (fputs(version, f) == EOF)
 			err(1, "fputs");
 		fclose(f);
 
@@ -7795,7 +7795,7 @@ main(int argc, char **argv)
 		sodversion[strcspn(sodversion, "\n")] = '\0';
 		if (strcmp(version, sodversion)) {
 			rewind(f);
-			if (fputs(version, f))
+			if (fputs(version, f) == EOF)
 				err(1, "fputs");
 
 			/* upgrade, say something smart */
