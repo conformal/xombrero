@@ -304,6 +304,7 @@ RB_PROTOTYPE(strict_transport_tree, strict_transport, entry, strict_transport_rb
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
 #define XT_FAVS_FILE		("favorites")
+#define XT_SOD_FILE		("startofday")
 
 int			run_script(struct tab *, char *);
 void			xt_icon_from_file(struct tab *, char *);

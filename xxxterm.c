@@ -7563,6 +7563,18 @@ mtx_unlock(void)
 	g_static_rec_mutex_unlock(&my_gdk_mtx);
 }
 
+void
+welcome(void)
+{
+	startpage_add("<b>Welcome to xxxterm %s!</b><p>", version);
+	startpage_add("Beware that this is the final version that will use the"
+	    " xxxterm name.<br>Moving forward the browser will be called "
+	    "xombrero.<p>", version);
+	startpage_add("Details will soon appear on the "
+	    "<a href=https://opensource.conformal.com/wiki/xombrero>xombrero "
+	    "wiki page</a>");
+}
+
 int
 main(int argc, char **argv)
 {
@@ -7570,6 +7582,7 @@ main(int argc, char **argv)
 	int			c, optn = 0, opte = 0, focus = 1;
 	char			conf[PATH_MAX] = { '\0' };
 	char			file[PATH_MAX];
+	char			sodversion[32];
 	char			*env_proxy = NULL;
 	FILE			*f = NULL;
 	struct karg		a;
@@ -7756,6 +7769,30 @@ main(int argc, char **argv)
 	if (!strcmp(download_dir, pwd->pw_dir))
 		strlcat(download_dir, PS "downloads", sizeof download_dir);
 	xxx_dir(download_dir);
+
+	/* first start file */
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_SOD_FILE);
+	if (stat(file, &sb)) {
+		warnx("start of day file doesn't exist, creating it");
+		if ((f = fopen(file, "w")) == NULL)
+			err(1, "startofday");
+		if (fputs(version, f))
+			err(1, "fputs");
+		fclose(f);
+
+		/* welcome user */
+		welcome();
+	} else {
+		if ((f = fopen(file, "r")) == NULL)
+			err(1, "startofday");
+		if (fgets(sodversion, sizeof sodversion, f) == NULL)
+			err(1, "fgets");
+		if (strcmp(version, sodversion)) {
+			/* upgrade, say something smart */
+			welcome();
+		}
+		fclose(f);
+	}
 
 	/* favorites file */
 	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_FAVS_FILE);
