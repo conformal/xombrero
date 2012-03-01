@@ -7572,7 +7572,12 @@ welcome(void)
 	    "xombrero.<p>", version);
 	startpage_add("Details will soon appear on the "
 	    "<a href=https://opensource.conformal.com/wiki/xombrero>xombrero "
-	    "wiki page</a>");
+	    "wiki page</a><p>");
+	startpage_add("Unfortunately scroogle has shut it's doors and due to "
+	   "that one has to edit search_string in ~/.xxxterm.conf.<br>"
+	   "There are various examples in the configuration file.<br>"
+	   "The authors of xxxterm are not in a position to suggest a search "
+	   "engine.");
 }
 
 int
