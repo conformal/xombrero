@@ -7783,11 +7783,16 @@ main(int argc, char **argv)
 		/* welcome user */
 		welcome();
 	} else {
-		if ((f = fopen(file, "r")) == NULL)
+		if ((f = fopen(file, "r+")) == NULL)
 			err(1, "startofday");
 		if (fgets(sodversion, sizeof sodversion, f) == NULL)
 			err(1, "fgets");
+		sodversion[strcspn(sodversion, "\n")] = '\0';
 		if (strcmp(version, sodversion)) {
+			rewind(f);
+			if (fputs(version, f))
+				err(1, "fputs");
+
 			/* upgrade, say something smart */
 			welcome();
 		}
