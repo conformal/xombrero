@@ -358,43 +358,44 @@ history_read(struct command_list *list, char *file, int *counter)
 	return (0);
 }
 
-/* marks and quickmarks array storage.
- * first a-z, then A-Z, then 0-9 */
+/* marks array storage. */
 char
 indextomark(int i)
 {
-	if (i < 0)
+	if (i < 0 || i >= XT_NOMARKS)
 		return (0);
 
-	if (i >= 0 && i <= 'z' - 'a')
-		return 'a' + i;
-
-	i -= 'z' - 'a' + 1;
-	if (i >= 0 && i <= 'Z' - 'A')
-		return 'A' + i;
-
-	i -= 'Z' - 'A' + 1;
-	if (i >= 10)
-		return (0);
-
-	return i + '0';
+	return XT_MARKS[i];
 }
 
 int
 marktoindex(char m)
 {
-	int ret = 0;
+	char *ret;
 
-	if (m >= 'a' && m <= 'z')
-		return ret + m - 'a';
+	if ((ret = strchr(XT_MARKS, m)) != NULL)
+		return ret - XT_MARKS;
 
-	ret += 'z' - 'a' + 1;
-	if (m >= 'A' && m <= 'Z')
-		return ret + m - 'A';
+	return (-1);
+}
 
-	ret += 'Z' - 'A' + 1;
-	if (m >= '0' && m <= '9')
-		return ret + m - '0';
+/* quickmarks array storage. */
+char
+indextoqmark(int i)
+{
+	if (i < 0 || i >= XT_NOQMARKS)
+		return (0);
+
+	return XT_QMARKS[i];
+}
+
+int
+qmarktoindex(char m)
+{
+	char *ret;
+
+	if ((ret = strchr(XT_QMARKS, m)) != NULL)
+		return ret - XT_QMARKS;
 
 	return (-1);
 }
@@ -4944,7 +4945,7 @@ qmarks_load(void)
 		p = strtok(line, " \t");
 
 		if (p == NULL || strlen(p) != 1 ||
-		    (index = marktoindex(*p)) == -1) {
+		    (index = qmarktoindex(*p)) == -1) {
 			warnx("corrupt quickmarks file, line %d", i);
 			break;
 		}
@@ -4975,7 +4976,7 @@ qmarks_save(void)
 
 	for (i = 0; i < XT_NOMARKS; i++)
 		if (qmarks[i] != NULL)
-			fprintf(f, "%c %s\n", indextomark(i), qmarks[i]);
+			fprintf(f, "%c %s\n", indextoqmark(i), qmarks[i]);
 
 	fclose(f);
 
@@ -4989,7 +4990,7 @@ qmark(struct tab *t, struct karg *arg)
 	int		index;
 
 	mark = arg->s[strlen(arg->s)-1];
-	index = marktoindex(mark);
+	index = qmarktoindex(mark);
 	if (index == -1)
 		return (-1);
 
