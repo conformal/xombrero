@@ -159,7 +159,7 @@ extern uint32_t	swm_debug;
 				    ~(GDK_BUTTON4_MASK) &	\
 				    ~(GDK_BUTTON5_MASK))
 
-#define XT_MARKS		"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+#define XT_MARKS		"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'"
 #define XT_NOMARKS		(sizeof(XT_MARKS) - 1)
 #define XT_QMARKS		"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 #define XT_NOQMARKS		(sizeof(XT_QMARKS) - 1)

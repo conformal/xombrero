@@ -256,7 +256,7 @@ char			named_session[PATH_MAX];
 GtkListStore		*completion_model;
 GtkListStore		*buffers_store;
 
-char			*qmarks[XT_NOMARKS];
+char			*qmarks[XT_NOQMARKS];
 int			btn_down;	/* M1 down in any wv */
 regex_t			url_re;		/* guess_search regex */
 
@@ -2197,10 +2197,12 @@ move(struct tab *t, struct karg *args)
 		break;
 	case XT_MOVE_BOTTOM:
 	case XT_MOVE_FARRIGHT:
+		t->mark[marktoindex('\'')] = gtk_adjustment_get_value(t->adjust_v);
 		gtk_adjustment_set_value(adjust, max);
 		break;
 	case XT_MOVE_TOP:
 	case XT_MOVE_FARLEFT:
+		t->mark[marktoindex('\'')] = gtk_adjustment_get_value(t->adjust_v);
 		gtk_adjustment_set_value(adjust, lower);
 		break;
 	case XT_MOVE_PAGEDOWN:
@@ -2220,9 +2222,11 @@ move(struct tab *t, struct karg *args)
 		gtk_adjustment_set_value(adjust, MAX(pos, lower));
 		break;
 	case XT_MOVE_CENTER:
+		t->mark[marktoindex('\'')] = gtk_adjustment_get_value(t->adjust_v);
 		args->s = g_strdup("50.0");
 		/* FALLTHROUGH */
 	case XT_MOVE_PERCENT:
+		t->mark[marktoindex('\'')] = gtk_adjustment_get_value(t->adjust_v);
 		percent = atoi(args->s) / 100.0;
 		pos = max * percent;
 		if (pos < 0.0 || pos > max)
@@ -4889,6 +4893,7 @@ mark(struct tab *t, struct karg *arg)
 {
 	char                    mark;
 	int                     index;
+	double			pos;
 
 	mark = arg->s[1];
 	if ((index = marktoindex(mark)) == -1)
@@ -4903,7 +4908,9 @@ mark(struct tab *t, struct karg *arg)
 		}
 		/* XXX t->mark[index] can be bigger than the maximum if ajax or
 		   something changes the document size */
+		pos = gtk_adjustment_get_value(t->adjust_v);
 		gtk_adjustment_set_value(t->adjust_v, t->mark[index]);
+		t->mark[marktoindex('\'')] = pos;
 	}
 
 	return (0);
@@ -4974,7 +4981,7 @@ qmarks_save(void)
 		return (1);
 	}
 
-	for (i = 0; i < XT_NOMARKS; i++)
+	for (i = 0; i < XT_NOQMARKS; i++)
 		if (qmarks[i] != NULL)
 			fprintf(f, "%c %s\n", indextoqmark(i), qmarks[i]);
 
@@ -5043,26 +5050,27 @@ go_up(struct tab *t, struct karg *args)
 		levels = 1;
 
 	uri = g_strdup(get_uri(t));
+	if (uri == NULL)
+		return (1);
 
 	if ((tmp = strstr(uri, XT_PROTO_DELIM)) == NULL)
 		return (1);
 
 	tmp += strlen(XT_PROTO_DELIM);
 
-	/* if an uri starts with a slash, leave it alone (for file:///) */
-	if (tmp[0] == '/')
-		tmp++;
-
 	/* it makes no sense to strip the last slash from ".../dir/", skip it */
 	lastidx = strlen(tmp) - 1;
-	if (lastidx >= 0) {
+	if (lastidx > 0) {
 		if (tmp[lastidx] == '/')
 			tmp[lastidx] = '\0';
 	}
 
 	while (levels--) {
 		p = strrchr(tmp, '/');
-		if (p != NULL)
+		if (p == tmp) { /* Are we at the root of a file://-path? */
+			p[1] = '\0';
+			break;
+		} else if (p != NULL)
 			*p = '\0';
 		else
 			break;
@@ -5147,7 +5155,7 @@ struct buffercmd {
 	{ "^zz$",		XT_PRE_NO,	"zz",	move,		XT_MOVE_CENTER },
 	{ "^gh$",		XT_PRE_NO,	"gh",	go_home,	0 },
 	{ "^m[a-zA-Z0-9]$",	XT_PRE_NO,	"m",	mark,		XT_MARK_SET },
-	{ "^['][a-zA-Z0-9]$",	XT_PRE_NO,	"'",	mark,		XT_MARK_GOTO },
+	{ "^['][a-zA-Z0-9']$",	XT_PRE_NO,	"'",	mark,		XT_MARK_GOTO },
 	{ "^[0-9]+t$",		XT_PRE_YES,	"t",	gototab,	0 },
 	{ "^g0$",		XT_PRE_YES,	"g0",	movetab,	XT_TAB_FIRST },
 	{ "^g[$]$",		XT_PRE_YES,	"g$",	movetab,	XT_TAB_LAST },

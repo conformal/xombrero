@@ -716,10 +716,11 @@ set a mark denoted by
 .Cm arg
 at the current page position. These marks behave like those in vi or
 less.
-.It Cm ['][a-zA-Z0-9]
+.It Cm ['][a-zA-Z0-9']
 go to the position where mark
 .Cm arg
-was set
+was set. The special mark "'" points to the previous page position, after a
+"gg", "gG", "zz", "%" or "'" buffer command.
 .It Cm M[a-zA-Z0-9]
 set the current uri as quickmark
 .Cm arg
