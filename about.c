@@ -1588,7 +1588,8 @@ show_g_object_settings(GObject *o, char *str, int recurse)
 				break;
 			case G_TYPE_BOOLEAN:
 				boolean = g_value_get_boolean(&value);
-				valstr = g_strdup_printf("%d", boolean);
+				valstr = g_strdup_printf("%s",
+				    boolean ? "TRUE" : "FALSE");
 				break;
 			case G_TYPE_FLOAT:
 				fp = g_value_get_float(&value);
@@ -1600,18 +1601,19 @@ show_g_object_settings(GObject *o, char *str, int recurse)
 				break;
 			case G_TYPE_STRING:
 				string = g_value_get_string(&value);
-				valstr = g_strdup_printf("%s", string);
+				valstr = g_strdup_printf("\"%s\"",
+				    string);
 				break;
 			case G_TYPE_OBJECT:
 				object = g_value_get_object(&value);
 				if (object != NULL) {
 					if (recurse) {
-					tmpstr = g_strdup_printf("%s %s>", str,
-					    pspec->name);
+					tmpstr = g_strdup_printf("%s     ",
+					    str);
 					tmpsettings = show_g_object_settings(
 					    object, tmpstr, recurse);
 					valstr = g_strdup_printf(
-					    "{\n%s%s     }\n",
+					    "{\n%s%s }\n",
 					    tmpsettings, str);
 					g_free(tmpstr);
 					g_free(tmpsettings);
@@ -1623,16 +1625,17 @@ show_g_object_settings(GObject *o, char *str, int recurse)
 				}
 				break;
 			default:
-				valstr = g_strdup_printf("unhandled type '%s'",
+				valstr = g_strdup_printf(
+				    "type %s unhandled",
 				    tname);
 			}
 		}
 
 		b = body;
 		body = g_strdup_printf(
-		    "%s%s: %3d: %s type=%s, flags=0x%x, val = %s\n",
-		    body, str, i, pspec->name, tname,
-		    pspec->flags, valstr);
+		    "%s%s: %3d: flags=0x%08x, %-13s %s = %s\n",
+		    body, str, i, pspec->flags, tname, pspec->name,
+		    valstr);
 		g_free(b);
 		g_free(valstr);
 	}
