@@ -28,83 +28,86 @@ PangoFontDescription	*oops_font;
 PangoFontDescription	*statusbar_font;
 PangoFontDescription	*tabbar_font;
 
-/* settings that require restart */
-int		tabless = 0;	/* allow only 1 tab */
-int		enable_socket = 0;
-int		single_instance = 0; /* only allow one xxxterm to run */
-int		fancy_bar = 1;	/* fancy toolbar */
-int		browser_mode = XT_BM_NORMAL;
-int		gui_mode = XT_GM_CLASSIC;
-int		enable_localstorage = 1;
-char		*statusbar_elems = NULL;
+/* non settings. what are these for? */
+int		dns_prefetch = FALSE;
 
-/* runtime settings */
-int		show_tabs = 1;	/* show tabs on notebook */
-int		tab_style = XT_TABS_NORMAL; /* tab bar style */
-int		show_url = 1;	/* show url toolbar on notebook */
-int		show_statusbar = 0; /* vimperator style status bar */
-int		ctrl_click_focus = 0; /* ctrl click gets focus */
+/* settings that require restart */
+int		allow_volatile_cookies = 0;
+int		autofocus_onload = 0;
+int		append_next = 1; /* append tab after current tab */
+int		browser_mode = XT_BM_NORMAL;
+char		*cmd_font_name = NULL;		/* 'cmd_font' setting */
+int		color_visited_uris = 1;
+int		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_ALWAYS;
 int		cookies_enabled = 1; /* enable cookies */
-int		read_only_cookies = 0; /* enable to not write cookies */
-int		enable_scripts = 1;
-int		enable_plugins = 1;
-gfloat		default_zoom_level = 1.0;
+int		ctrl_click_focus = 0; /* ctrl click gets focus */
 char		default_script[PATH_MAX];
-int		window_height = 768;
-int		window_width = 1024;
-int		window_maximize = 0;
-int		icon_size = 2; /* 1 = smallest, 2+ = bigger */
-int		refresh_interval = 10; /* download refresh interval */
-int		enable_plugin_whitelist = 0;
+gfloat		default_zoom_level = 1.0;
+char		download_dir[PATH_MAX];
+int		edit_mode = XT_EM_HYBRID;
 int		enable_cookie_whitelist = 0;
 int		enable_js_whitelist = 0;
-int		session_timeout = 3600; /* cookie session timeout */
-int		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_ALWAYS;
-char		*ssl_ca_file = NULL;
-char		*resource_dir = NULL;
-gboolean	ssl_strict_certs = FALSE;
+int		enable_localstorage = 1;
+int		enable_plugin_whitelist = 0;
+int		enable_plugins = 1;
+int		enable_scripts = 1;
+int		enable_socket = 0;
+gint		enable_spell_checking = 0;
 gboolean	enable_strict_transport = TRUE;
-int		append_next = 1; /* append tab after current tab */
-char		*home = NULL;
-char		*search_string = NULL;
-char		*http_proxy = NULL;
-char		download_dir[PATH_MAX];
-int		download_mode = XT_DM_START;
-char		runtime_settings[PATH_MAX]; /* override of settings */
-int		allow_volatile_cookies = 0;
-int		color_visited_uris = 1;
-int		save_global_history = 0; /* save global history to disk */
-struct user_agent	*user_agent = NULL;
-int		save_rejected_cookies = 0;
-int		session_autosave = 0;
+char		*encoding = NULL;
+int		fancy_bar = 1;	/* fancy toolbar */
 int		guess_search = 0;
-int		dns_prefetch = FALSE;
+int		gui_mode = XT_GM_CLASSIC;
+int		history_autosave = 0;
+char		*home = NULL;
+int		icon_size = 2; /* 1 = smallest, 2+ = bigger */
+int		js_autorun_enabled = 1;
 gint		max_connections = 25;
 gint		max_host_connections = 5;
-gint		enable_spell_checking = 0;
+char		*oops_font_name = NULL;		/* 'oops_font' setting */
+int		read_only_cookies = 0; /* enable to not write cookies */
+int		refresh_interval = 10; /* download refresh interval */
+char		*resource_dir = NULL;
+int		save_global_history = 0; /* save global history to disk */
+int		save_rejected_cookies = 0;
+char		*search_string = NULL;
+int		session_autosave = 0;
+int		session_timeout = 3600; /* cookie session timeout */
+int		single_instance = 0; /* only allow one xxxterm to run */
+int		show_statusbar = 0; /* vimperator style status bar */
+int		show_tabs = 1;	/* show tabs on notebook */
+int		show_url = 1;	/* show url toolbar on notebook -- XXX duplicate of fancy_bar? */
 char		*spell_check_languages = NULL;
-int		xterm_workaround = 0;
+char		*ssl_ca_file = NULL;
+gboolean	ssl_strict_certs = FALSE;
+char		*statusbar_elems = NULL;
+char		*statusbar_font_name = NULL;	/* 'statusbar_font' setting */
+int		tab_style = XT_TABS_NORMAL; /* tab bar style */
+char		*tabbar_font_name = NULL;	/* 'tabbar_font' setting */
+int		tabless = 0;	/* allow only 1 tab */
+struct user_agent	*user_agent = NULL;
 char		*url_regex = NULL;
-int		history_autosave = 0;
-char		search_file[PATH_MAX];
-char		command_file[PATH_MAX];
-char		*encoding = NULL;
-int		autofocus_onload = 0;
-int		js_autorun_enabled = 1;
-int		edit_mode = XT_EM_HYBRID;
 int		userstyle_global = 0;
+int		window_height = 768;
+int		window_maximize = 0;
+int		window_width = 1024;
+int		xterm_workaround = 0;
+
+/* runtime settings */
 int		auto_load_images = 1;
-int		enable_autoscroll = 0;
-int		enable_favicon_entry = 1;
+int		download_mode = XT_DM_START;
+int		enable_autoscroll = 0;	/* XXX: changing this at runtime doesn't change anything */
+int		enable_favicon_entry = 1;	/* XXX: only works on new tabs */
 int		enable_favicon_tabs = 0;
 char		*external_editor = NULL;
-int		referer_mode = XT_REFERER_ALWAYS;
-char		*referer_custom = NULL;
+char		*http_proxy = NULL;
+int		referer_mode = XT_REFERER_ALWAYS;	/* 'referer' setting */
+char		*referer_custom = NULL;			/* 'referer' setting */
+char		runtime_settings[PATH_MAX]; /* override of settings */
 
-char		*cmd_font_name = NULL;
-char		*oops_font_name = NULL;
-char		*statusbar_font_name = NULL;
-char		*tabbar_font_name = NULL;
+/* unknown */
+char		search_file[PATH_MAX];
+char		command_file[PATH_MAX];
 
 char		*get_download_dir(struct settings *);
 char		*get_default_script(struct settings *);
