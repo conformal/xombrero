@@ -127,6 +127,7 @@ int		add_kb(struct settings *, char *);
 int		add_ua(struct settings *, char *);
 
 int		set_append_next(char *);
+int		set_home(char *);
 int		set_download_dir(struct settings *, char *);
 int		set_default_script(struct settings *, char *);
 int		set_runtime_dir(struct settings *, char *);
@@ -295,7 +296,6 @@ struct special		s_referer = {
 
 struct settings		rs[] = {
 	{ "allow_volatile_cookies",	XT_S_INT, 0,		&allow_volatile_cookies, NULL, NULL, NULL, NULL},
-	{ "append_next",		XT_S_INT, 0,		&append_next, NULL, NULL, NULL, set_append_next },
 	{ "autofocus_onload",		XT_S_INT, 0,		&autofocus_onload, NULL, NULL, NULL, NULL},
 	{ "browser_mode",		XT_S_INT, 0, NULL, NULL,&s_browser_mode, NULL, NULL },
 	{ "gui_mode",			XT_S_INT, 0, NULL, NULL,&s_gui_mode, NULL, NULL },
@@ -321,7 +321,6 @@ struct settings		rs[] = {
 	{ "fancy_bar",			XT_S_INT, XT_SF_RESTART,&fancy_bar, NULL, NULL, NULL, NULL },
 	{ "guess_search",		XT_S_INT, 0,		&guess_search, NULL, NULL, NULL, NULL },
 	{ "history_autosave",		XT_S_INT, 0,		&history_autosave, NULL, NULL, NULL, NULL },
-	{ "home",			XT_S_STR, 0, NULL,	&home, NULL, NULL, NULL },
 	{ "http_proxy",			XT_S_STR, 0, NULL,	&http_proxy, NULL, NULL, set_http_proxy },
 	{ "icon_size",			XT_S_INT, 0,		&icon_size, NULL, NULL, NULL, NULL },
 	{ "js_autorun_enabled",		XT_S_INT, 0,		&js_autorun_enabled, NULL, NULL, NULL, NULL },
@@ -353,7 +352,6 @@ struct settings		rs[] = {
 	{ "work_dir",			XT_S_STR, 0, NULL, NULL,&s_work_dir, NULL, NULL },
 	{ "xterm_workaround",		XT_S_INT, 0,		&xterm_workaround, NULL, NULL, NULL, NULL },
 	{ "auto_load_images",		XT_S_INT, 0,		&auto_load_images, NULL, NULL, NULL, set_auto_load_images },
-	{ "enable_autoscroll",		XT_S_INT, 0,		&enable_autoscroll, NULL, NULL, NULL, set_enable_autoscroll },
 	{ "enable_favicon_entry",	XT_S_INT, 0,		&enable_favicon_entry, NULL, NULL, NULL, set_enable_favicon_entry },
 	{ "enable_favicon_tabs",	XT_S_INT, 0,		&enable_favicon_tabs, NULL, NULL, NULL, set_enable_favicon_tabs },
 	{ "referer",			XT_S_STR, 0, NULL, NULL,&s_referer, NULL, set_referer_rt },
@@ -365,6 +363,11 @@ struct settings		rs[] = {
 	{ "tabbar_font",		XT_S_STR, 0, NULL, &tabbar_font_name, NULL },
 
 	/* runtime settings */
+	{ "append_next",		XT_S_INT, 0,		&append_next, NULL, NULL, NULL, set_append_next },
+	{ "enable_autoscroll",		XT_S_INT, 0,		&enable_autoscroll, NULL, NULL, NULL, set_enable_autoscroll },
+	{ "home",			XT_S_STR, 0, NULL,	&home, NULL, NULL, set_home },
+
+	/* special settings */
 	{ "alias",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_alias, NULL, NULL },
 	{ "cookie_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_cookie_wl, NULL, NULL },
 	{ "js_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_js, NULL, NULL },
@@ -378,7 +381,16 @@ int
 set_append_next(char *value)
 {
 	append_next = atoi(value);
-	return 0;
+	return (0);
+}
+
+int
+set_home(char *value)
+{
+	if (home)
+		free(home);
+	home = strdup(value);
+	return (0);
 }
 
 
