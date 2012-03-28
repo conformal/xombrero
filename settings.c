@@ -34,7 +34,6 @@ int		dns_prefetch = FALSE;
 /* settings that require restart */
 int		allow_volatile_cookies = 0;
 int		autofocus_onload = 0;
-int		append_next = 1; /* append tab after current tab */
 int		browser_mode = XT_BM_NORMAL;
 char		*cmd_font_name = NULL;		/* 'cmd_font' setting */
 int		color_visited_uris = 1;
@@ -94,6 +93,7 @@ int		window_width = 1024;
 int		xterm_workaround = 0;
 
 /* runtime settings */
+int		append_next = 1; /* append tab after current tab */
 int		auto_load_images = 1;
 int		download_mode = XT_DM_START;
 int		enable_autoscroll = 0;	/* XXX: changing this at runtime doesn't change anything */
@@ -126,6 +126,7 @@ int		add_alias(struct settings *, char *);
 int		add_kb(struct settings *, char *);
 int		add_ua(struct settings *, char *);
 
+int		set_append_next(char *);
 int		set_download_dir(struct settings *, char *);
 int		set_default_script(struct settings *, char *);
 int		set_runtime_dir(struct settings *, char *);
@@ -294,7 +295,7 @@ struct special		s_referer = {
 
 struct settings		rs[] = {
 	{ "allow_volatile_cookies",	XT_S_INT, 0,		&allow_volatile_cookies, NULL, NULL, NULL, NULL},
-	{ "append_next",		XT_S_INT, 0,		&append_next, NULL, NULL, NULL, NULL },
+	{ "append_next",		XT_S_INT, 0,		&append_next, NULL, NULL, NULL, set_append_next },
 	{ "autofocus_onload",		XT_S_INT, 0,		&autofocus_onload, NULL, NULL, NULL, NULL},
 	{ "browser_mode",		XT_S_INT, 0, NULL, NULL,&s_browser_mode, NULL, NULL },
 	{ "gui_mode",			XT_S_INT, 0, NULL, NULL,&s_gui_mode, NULL, NULL },
@@ -372,6 +373,14 @@ struct settings		rs[] = {
 	{ "pl_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_pl, NULL, NULL },
 	{ "user_agent",			XT_S_STR, XT_SF_RUNTIME, NULL,	NULL, &s_ua, NULL, NULL },
 };
+
+int
+set_append_next(char *value)
+{
+	append_next = atoi(value);
+	return 0;
+}
+
 
 size_t
 get_settings_size(void)
@@ -1088,7 +1097,7 @@ set_enable_autoscroll(char *value)
                         run_script(t, JS_AUTOSCROLL);
                 }
         } else {
-		/* XXX: kill the script */
+		/* XXX: kill the script if running */
 	}
         return (0);
 }
