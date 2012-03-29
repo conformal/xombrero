@@ -4388,7 +4388,11 @@ session_rq_cb(SoupSession *s, SoupMessage *msg, SoupSocket *socket,
     gpointer data)
 {
 	SoupURI			*dest;
+	SoupURI			*ref_uri;
 	const char		*ref;
+
+	char			*ref_suffix;
+	char			*dest_suffix;
 
 	if (s == NULL || msg == NULL)
 		return;
@@ -4407,15 +4411,32 @@ session_rq_cb(SoupSession *s, SoupMessage *msg, SoupSocket *socket,
 			    "Referer");
 			break;
 		case XT_REFERER_SAME_DOMAIN:
+			ref_uri = soup_uri_new(ref);
 			dest = soup_message_get_uri(msg);
 
-			if (dest && !strstr(ref, dest->host)) {
+			ref_suffix = tld_get_suffix(ref_uri->host);
+			dest_suffix = tld_get_suffix(dest->host);
+
+			if (dest && strcmp(ref_suffix, dest_suffix) != 0) {
 				soup_message_headers_remove(msg->request_headers,
 				    "Referer");
 				DNPRINTF(XT_D_NAV, "session_rq_cb: removing "
-				    "referer (not same domain) (should be %s)\n",
+				    "referer (not same domain) (suffixes: %s - %s)\n",
+				    ref_suffix, dest_suffix);
+			}
+			soup_uri_free(ref_uri);
+			break;
+		case XT_REFERER_SAME_FQDN:
+			ref_uri = soup_uri_new(ref);
+			dest = soup_message_get_uri(msg);
+			if (dest && strcmp(ref_uri->host, dest->host) != 0) {
+				soup_message_headers_remove(msg->request_headers,
+				    "Referer");
+				DNPRINTF(XT_D_NAV, "session_rq_cb: removing "
+				    "referer (not same fqdn) (should be %s)\n",
 				    dest->host);
 			}
+			soup_uri_free(ref_uri);
 			break;
 		case XT_REFERER_CUSTOM:
 			DNPRINTF(XT_D_NAV, "session_rq_cb: setting referer "

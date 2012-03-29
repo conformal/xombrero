@@ -1208,7 +1208,9 @@ Control how 'Referer' is handled in http-requests.
 always      - always send referer
 never       - never send referer
 same-domain - only send referer if it's
-              for the same domain
+              for the same public suffix - this means that
+              it's ok for subdomains to refer to each other
+same-fqdn   - only send referer if it's FQDN match
 .Ed
 Any other value that is also a valid URL will use this
 custom value as referer. (E.g. you could set it to http://no-referer.com)

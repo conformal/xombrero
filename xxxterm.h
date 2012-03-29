@@ -517,6 +517,7 @@ int		fork_exec(struct tab *, char *, const gchar *, char *, int);
 #define XT_REFERER_NEVER	(1)
 #define XT_REFERER_SAME_DOMAIN	(2)
 #define XT_REFERER_CUSTOM	(3)
+#define XT_REFERER_SAME_FQDN	(4)
 
 #define CTRL			GDK_CONTROL_MASK
 #define MOD1			GDK_MOD1_MASK

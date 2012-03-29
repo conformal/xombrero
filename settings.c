@@ -1103,6 +1103,8 @@ get_referer(struct settings *s)
 		return (g_strdup("never"));
 	if (referer_mode == XT_REFERER_SAME_DOMAIN)
 		return (g_strdup("same-domain"));
+	if (referer_mode == XT_REFERER_SAME_FQDN)
+		return (g_strdup("same-fqdn"));
 	if (referer_mode == XT_REFERER_CUSTOM)
 		return (g_strdup(referer_custom));
 	return (NULL);
@@ -1120,6 +1122,8 @@ set_referer(struct settings *s, char *value)
 		referer_mode = XT_REFERER_NEVER;
 	else if (!strcmp(value, "same-domain"))
 		referer_mode = XT_REFERER_SAME_DOMAIN;
+	else if (!strcmp(value, "same-fqdn"))
+		referer_mode = XT_REFERER_SAME_FQDN;
 	else if (!valid_url_type(value)) {
 		referer_mode = XT_REFERER_CUSTOM;
 		referer_custom = g_strdup(value);
