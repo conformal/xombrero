@@ -1727,9 +1727,9 @@ save_certs(struct tab *t, gnutls_x509_crt_t *certs,
 	}
 
 	/* not the best spot but oh well */
-	gdk_color_parse("lightblue", &color);
+	gdk_color_parse(XT_COLOR_BLUE, &color);
 	gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
-	statusbar_modify_attr(t, XT_COLOR_BLACK, "lightblue");
+	statusbar_modify_attr(t, XT_COLOR_BLACK, XT_COLOR_BLUE);
 done:
 	fclose(f);
 }
@@ -2578,7 +2578,7 @@ int
 command(struct tab *t, struct karg *args)
 {
 	char			*s = NULL, *ss = NULL;
-	GdkColor		color;
+	gchar			*text, *base;
 	const gchar		*uri;
 	struct karg		a;
 
@@ -2642,8 +2642,13 @@ command(struct tab *t, struct karg *args)
 	DNPRINTF(XT_D_CMD, "%s: tab %d type %s\n", __func__, t->tab_id, s);
 
 	gtk_entry_set_text(GTK_ENTRY(t->cmd), s);
-	gdk_color_parse(XT_COLOR_WHITE, &color);
-	gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL, &color);
+	text = gdk_color_to_string(&t->default_style->text[GTK_STATE_NORMAL]);
+	base = gdk_color_to_string(&t->default_style->base[GTK_STATE_NORMAL]);
+	gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL,
+	    &t->default_style->base[GTK_STATE_NORMAL]);
+	statusbar_modify_attr(t, text, base);
+	g_free(text);
+	g_free(base);
 	show_cmd(t);
 	gtk_widget_grab_focus(GTK_WIDGET(t->cmd));
 	gtk_editable_set_position(GTK_EDITABLE(t->cmd), -1);
@@ -3381,7 +3386,7 @@ color_address_bar(gpointer p)
 {
 	GdkColor		color;
 	struct tab		*tt, *t = p;
-	gchar			*col_str = XT_COLOR_WHITE;
+	gchar			*col_str = XT_COLOR_WHITE, *text, *base;
 	const gchar		*uri, *u = NULL, *error_str = NULL;
 
 #ifdef USE_THREADS
@@ -3447,13 +3452,22 @@ color_address_bar(gpointer p)
 	}
 #endif
 white:
-	gdk_color_parse(col_str, &color);
-	gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
 
-	if (!strcmp(col_str, XT_COLOR_WHITE))
-		statusbar_modify_attr(t, col_str, XT_COLOR_BLACK);
-	else
+	if (!strcmp(col_str, XT_COLOR_WHITE)) {
+		text = gdk_color_to_string(
+		    &t->default_style->text[GTK_STATE_NORMAL]);
+		base = gdk_color_to_string(
+		    &t->default_style->base[GTK_STATE_NORMAL]);
+		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL,
+		    &t->default_style->base[GTK_STATE_NORMAL]);
+		statusbar_modify_attr(t, text, base);
+		g_free(text);
+		g_free(base);
+	} else {
+		gdk_color_parse(col_str, &color);
+		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
 		statusbar_modify_attr(t, XT_COLOR_BLACK, col_str);
+	}
 
 	if (error_str && error_str[0] != '\0')
 		show_oops(t, "%s", error_str);
@@ -3473,7 +3487,7 @@ void
 show_ca_status(struct tab *t, const char *uri)
 {
 	GdkColor		color;
-	gchar			*col_str = XT_COLOR_WHITE;
+	gchar			*col_str = XT_COLOR_WHITE, *text, *base;
 
 	DNPRINTF(XT_D_URL, "show_ca_status: %d %s %s\n",
 	    ssl_strict_certs, ssl_ca_file, uri);
@@ -3511,13 +3525,22 @@ show_ca_status(struct tab *t, const char *uri)
 
 done:
 	if (col_str) {
-		gdk_color_parse(col_str, &color);
-		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
 
-		if (!strcmp(col_str, XT_COLOR_WHITE))
-			statusbar_modify_attr(t, col_str, XT_COLOR_BLACK);
-		else
+		if (!strcmp(col_str, XT_COLOR_WHITE)) {
+			text = gdk_color_to_string(
+			    &t->default_style->text[GTK_STATE_NORMAL]);
+			base = gdk_color_to_string(
+			    &t->default_style->base[GTK_STATE_NORMAL]);
+			gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL,
+			    &t->default_style->base[GTK_STATE_NORMAL]);
+			statusbar_modify_attr(t, text, base);
+			g_free(text);
+			g_free(base);
+		} else {
+			gdk_color_parse(col_str, &color);
+			gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
 			statusbar_modify_attr(t, XT_COLOR_BLACK, col_str);
+		}
 	}
 }
 
@@ -3812,7 +3835,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	const gchar		*uri = NULL;
 	struct history		*h, find;
 	struct karg		a;
-	GdkColor		color;
+	gchar			*text, *base;
 
 	DNPRINTF(XT_D_URL, "notify_load_status_cb: %d  %s\n",
 	    webkit_web_view_get_load_status(wview),
@@ -3836,9 +3859,15 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), TRUE);
 
 		/* assume we are a new address */
-		gdk_color_parse("white", &color);
-		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
-		statusbar_modify_attr(t, "white", XT_COLOR_BLACK);
+		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL,
+		    &t->default_style->base[GTK_STATE_NORMAL]);
+		text = gdk_color_to_string(
+		    &t->default_style->text[GTK_STATE_NORMAL]);
+		base = gdk_color_to_string(
+		    &t->default_style->base[GTK_STATE_NORMAL]);
+		statusbar_modify_attr(t, text, base);
+		g_free(text);
+		g_free(base);
 
 		/* take focus if we are visible */
 		focus_webview(t);
@@ -5492,8 +5521,8 @@ search_cb(struct tab *t)
 		webkit_web_view_unmark_text_matches(t->wv);
 		webkit_web_view_mark_text_matches(t->wv, &c[1], FALSE, 0);
 		webkit_web_view_set_highlight_text_matches(t->wv, TRUE);
-		gdk_color_parse(XT_COLOR_WHITE, &color);
-		gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL, &color);
+		gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL,
+		    &t->default_style->base[GTK_STATE_NORMAL]);
 	}
 done:
 	t->search_id = 0;
@@ -6330,6 +6359,7 @@ create_kiosk_toolbar(struct tab *t)
 
 	/* create widgets but don't use them */
 	t->uri_entry = gtk_entry_new();
+	t->default_style = gtk_rc_get_style(t->uri_entry);
 	t->stop = create_button("Stop", GTK_STOCK_STOP, 0);
 	t->js_toggle = create_button("JS-Toggle", enable_scripts ?
 	    GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE, 0);
@@ -6404,6 +6434,7 @@ create_toolbar(struct tab *t)
 		    0);
 		gtk_box_pack_start(GTK_BOX(b), eb2, FALSE, FALSE, 0);
 	}
+	t->default_style = gtk_rc_get_style(t->uri_entry);
 
 	return (toolbar);
 }
