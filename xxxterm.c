@@ -265,6 +265,7 @@ int			next_download_id = 1;
 
 void			xxx_dir(char *);
 int			icon_size_map(int);
+void			activate_uri_entry_cb(GtkWidget*, struct tab *);
 
 void
 history_delete(struct command_list *l, int *counter)
@@ -1048,6 +1049,25 @@ int
 passthrough(struct tab *t, struct karg *args)
 {
 	t->mode = XT_MODE_PASSTHROUGH;
+	return (0);
+}
+
+int
+modurl(struct tab *t, struct karg *args)
+{
+	const gchar		*uri = NULL;
+	char			*u = NULL;
+
+	/* XXX kind of a bad hack, but oh well */
+	if (GTK_WIDGET_HAS_FOCUS(t->uri_entry)) {
+		if ((uri = gtk_entry_get_text(GTK_ENTRY(t->uri_entry))) &&
+		    (strlen(uri))) {
+			u = g_strdup_printf("www.%s.com", uri);
+			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), u);
+			g_free(u);
+			activate_uri_entry_cb(t->uri_entry, t);
+		}
+	}
 	return (0);
 }
 
@@ -3000,7 +3020,8 @@ struct cmd {
 	{ "togglesrc",		0,	toggle_src,		0,			0 },
 	{ "editsrc",		0,	edit_src,		0,			0 },
 	{ "editelement",	0,	edit_element,		0,			0 },
-	{ "passthrough",	0,	passthrough,		0,	0 },
+	{ "passthrough",	0,	passthrough,		0,			0 },
+	{ "modurl",		0,	modurl,			0,			0 },
 
 	/* yanking and pasting */
 	{ "yankuri",		0,	yank_uri,		0,			0 },

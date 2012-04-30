@@ -766,6 +766,7 @@ struct key_binding	keys[] = {
 	{ "proxy toggle",	0,	1,	GDK_F2		},
 	{ "editelement",	CTRL,	1,	GDK_i		},
 	{ "passthrough",	CTRL,	1,	GDK_z		},
+	{ "modurl",		CTRL,	1,	GDK_Return	},
 
 	/* search */
 	{ "searchnext",		0,	0,	GDK_n		},
