@@ -4216,8 +4216,8 @@ strict_transport_add(const char *domain, time_t timeout, int subdomains)
 	if (enable_strict_transport == FALSE)
 		return (0);
 
-	DPRINTF("strict_transport_add(%s,%ld,%d)\n", domain, timeout,
-	    subdomains);
+	DPRINTF("strict_transport_add(%s,%lld,%d)\n", domain,
+	    (long long)timeout, subdomains);
 
 	now = time(NULL);
 	if (timeout < now)
@@ -4253,7 +4253,7 @@ strict_transport_add(const char *domain, time_t timeout, int subdomains)
 		RB_FOREACH(d, strict_transport_tree, &st_tree) {
 			if (d->timeout < now)
 				continue;
-			fprintf(f, "%s\t%d\t%d\n", d->host, (int)d->timeout,
+			fprintf(f, "%s\t%lld\t%d\n", d->host, (long long)d->timeout,
 			    d->flags & XT_STS_FLAGS_INCLUDE_SUBDOMAINS);
 		}
 		fclose(f);
@@ -4278,7 +4278,7 @@ strict_transport_add(const char *domain, time_t timeout, int subdomains)
 		}
 
 		fseek(f, 0, SEEK_END);
-		fprintf(f,"%s\t%d\t%d\n", d->host, (int)timeout, subdomains);
+		fprintf(f,"%s\t%lld\t%d\n", d->host, (long long)timeout, subdomains);
 		fclose(f);
 	}
 	return (0);
@@ -4379,7 +4379,7 @@ strict_transport_security_cb(SoupMessage *msg, gpointer data)
 	SoupURI		*uri;
 	const char	*sts;
 	char		*ptr;
-	int		timeout = 0;
+	time_t		timeout = 0;
 	int		subdomains = FALSE;
 
 	if (msg == NULL)
@@ -4394,7 +4394,7 @@ strict_transport_security_cb(SoupMessage *msg, gpointer data)
 
 	if ((ptr = strcasestr(sts, "max-age="))) {
 		ptr += strlen("max-age=");
-		timeout = atoi(ptr);
+		timeout = atoll(ptr);
 	} else
 		return; /* malformed header - max-age must be included */
 
