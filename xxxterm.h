@@ -539,6 +539,9 @@ int		fork_exec(struct tab *, char *, const gchar *, char *, int);
 #define XT_TAB_NEXTSTYLE	(8)
 #define XT_TAB_LOAD_IMAGES	(9)
 
+#define XT_URL_SHOW		(1)
+#define XT_URL_HIDE		(2)
+
 struct key_binding {
 	char				*cmd;
 	guint				mask;
@@ -585,6 +588,8 @@ void		init_keybindings(void);
 void		config_parse(char *, int);
 char		*get_setting_name(int);
 int		tabaction(struct tab *, struct karg *);
+int		urlaction(struct tab *, struct karg *);
+struct tab	*get_current_tab(void);
 
 #define		XT_DL_START	(0)
 #define		XT_DL_RESTART	(1)

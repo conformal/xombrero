@@ -170,9 +170,6 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_ZOOM_OUT		(-2)
 #define XT_ZOOM_NORMAL		(100)
 
-#define XT_URL_SHOW		(1)
-#define XT_URL_HIDE		(2)
-
 #define XT_CMD_OPEN		(0)
 #define XT_CMD_OPEN_CURRENT	(1)
 #define XT_CMD_TABNEW		(2)

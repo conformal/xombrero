@@ -140,6 +140,7 @@ int		set_download_mode_rt(char *);
 int		set_referer(struct settings *, char *);
 int		set_referer_rt(char *);
 int		set_show_tabs(char *);
+int		set_show_url(char *);
 int		set_external_editor(char *);
 
 void		walk_mime_type(struct settings *, void (*)(struct settings *,
@@ -334,7 +335,7 @@ struct settings		rs[] = {
 	{ "session_autosave",		XT_S_INT, 0,		&session_autosave, NULL, NULL, NULL, NULL },
 	{ "single_instance",		XT_S_INT, XT_SF_RESTART,&single_instance, NULL, NULL, NULL, NULL },
 	{ "show_tabs",			XT_S_INT, 0,		&show_tabs, NULL, NULL, NULL, set_show_tabs },
-	{ "show_url",			XT_S_INT, 0,		&show_url, NULL, NULL, NULL, NULL },
+	{ "show_url",			XT_S_INT, 0,		&show_url, NULL, NULL, NULL, set_show_url },
 	{ "show_statusbar",		XT_S_INT, 0,		&show_statusbar, NULL, NULL, NULL, NULL },
 	{ "spell_check_languages",	XT_S_STR, 0, NULL,	&spell_check_languages, NULL, NULL, NULL },
 	{ "ssl_ca_file",		XT_S_STR, 0, NULL,	&ssl_ca_file, NULL, NULL, NULL },
@@ -1207,6 +1208,21 @@ set_show_tabs(char *value)
 		return (-1);
 	args.i = val ? XT_TAB_SHOW : XT_TAB_HIDE;
 	tabaction(get_current_tab(), &args);
+	return (0);
+}
+
+int
+set_show_url(char *value)
+{
+	struct karg		args = {0};
+	int			val;
+	const char		*errstr;
+
+	val = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	args.i = val ? XT_URL_SHOW : XT_URL_HIDE;
+	urlaction(get_current_tab(), &args);
 	return (0);
 }
 
