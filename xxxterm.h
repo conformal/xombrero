@@ -523,6 +523,22 @@ int		fork_exec(struct tab *, char *, const gchar *, char *, int);
 #define MOD1			GDK_MOD1_MASK
 #define SHFT			GDK_SHIFT_MASK
 
+/* actions */
+#define XT_TAB_LAST		(-4)
+#define XT_TAB_FIRST		(-3)
+#define XT_TAB_PREV		(-2)
+#define XT_TAB_NEXT		(-1)
+#define XT_TAB_INVALID		(0)
+#define XT_TAB_NEW		(1)
+#define XT_TAB_DELETE		(2)
+#define XT_TAB_DELQUIT		(3)
+#define XT_TAB_OPEN		(4)
+#define XT_TAB_UNDO_CLOSE	(5)
+#define XT_TAB_SHOW		(6)
+#define XT_TAB_HIDE		(7)
+#define XT_TAB_NEXTSTYLE	(8)
+#define XT_TAB_LOAD_IMAGES	(9)
+
 struct key_binding {
 	char				*cmd;
 	guint				mask;
@@ -568,6 +584,7 @@ char		*get_cookie_policy(struct settings *);
 void		init_keybindings(void);
 void		config_parse(char *, int);
 char		*get_setting_name(int);
+int		tabaction(struct tab *, struct karg *);
 
 #define		XT_DL_START	(0)
 #define		XT_DL_RESTART	(1)

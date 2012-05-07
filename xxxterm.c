@@ -146,21 +146,6 @@ TAILQ_HEAD(command_list, command_entry);
 
 #define XT_GO_UP_ROOT		(999)
 
-#define XT_TAB_LAST		(-4)
-#define XT_TAB_FIRST		(-3)
-#define XT_TAB_PREV		(-2)
-#define XT_TAB_NEXT		(-1)
-#define XT_TAB_INVALID		(0)
-#define XT_TAB_NEW		(1)
-#define XT_TAB_DELETE		(2)
-#define XT_TAB_DELQUIT		(3)
-#define XT_TAB_OPEN		(4)
-#define XT_TAB_UNDO_CLOSE	(5)
-#define XT_TAB_SHOW		(6)
-#define XT_TAB_HIDE		(7)
-#define XT_TAB_NEXTSTYLE	(8)
-#define XT_TAB_LOAD_IMAGES	(9)
-
 #define XT_NAV_INVALID		(0)
 #define XT_NAV_BACK		(1)
 #define XT_NAV_FORWARD		(2)

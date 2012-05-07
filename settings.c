@@ -139,6 +139,7 @@ int		set_download_mode(struct settings *, char *);
 int		set_download_mode_rt(char *);
 int		set_referer(struct settings *, char *);
 int		set_referer_rt(char *);
+int		set_show_tabs(char *);
 int		set_external_editor(char *);
 
 void		walk_mime_type(struct settings *, void (*)(struct settings *,
@@ -332,7 +333,7 @@ struct settings		rs[] = {
 	{ "session_timeout",		XT_S_INT, 0,		&session_timeout, NULL, NULL, NULL, NULL },
 	{ "session_autosave",		XT_S_INT, 0,		&session_autosave, NULL, NULL, NULL, NULL },
 	{ "single_instance",		XT_S_INT, XT_SF_RESTART,&single_instance, NULL, NULL, NULL, NULL },
-	{ "show_tabs",			XT_S_INT, 0,		&show_tabs, NULL, NULL, NULL, NULL },
+	{ "show_tabs",			XT_S_INT, 0,		&show_tabs, NULL, NULL, NULL, set_show_tabs },
 	{ "show_url",			XT_S_INT, 0,		&show_url, NULL, NULL, NULL, NULL },
 	{ "show_statusbar",		XT_S_INT, 0,		&show_statusbar, NULL, NULL, NULL, NULL },
 	{ "spell_check_languages",	XT_S_STR, 0, NULL,	&spell_check_languages, NULL, NULL, NULL },
@@ -377,7 +378,13 @@ struct settings		rs[] = {
 int
 set_append_next(char *value)
 {
-	append_next = atoi(value);
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	append_next = tmp;
 	return (0);
 }
 
@@ -1084,9 +1091,14 @@ walk_ua(struct settings *s,
 int
 set_auto_load_images(char *value)
 {
-	struct tab *t;
+	struct tab		*t;
+	int			tmp;
+	const char		*errstr;
 
-	auto_load_images = atoi(value);
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	auto_load_images = tmp;
 	TAILQ_FOREACH(t, &tabs, entry) {
 		g_object_set(G_OBJECT(t->settings),
 		    "auto-load-images", auto_load_images, (char *)NULL);
@@ -1098,21 +1110,39 @@ set_auto_load_images(char *value)
 int
 set_enable_autoscroll(char *value)
 {
-	enable_autoscroll = atoi(value);
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	enable_autoscroll = tmp;
 	return (0);
 }
 
 int
 set_enable_favicon_entry(char *value)
 {
-	enable_favicon_entry = atoi(value);
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	enable_favicon_entry = tmp;
 	return (0);
 }
 
 int
 set_enable_favicon_tabs(char *value)
 {
-	enable_favicon_tabs = atoi(value);
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	enable_favicon_tabs = tmp;
 	return (0);
 }
 
@@ -1163,6 +1193,21 @@ int
 set_referer_rt(char *value)
 {
 	return set_referer(NULL, value);
+}
+
+int
+set_show_tabs(char *value)
+{
+	struct karg		args = {0};
+	int			val;
+	const char		*errstr;
+
+	val = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	args.i = val ? XT_TAB_SHOW : XT_TAB_HIDE;
+	tabaction(get_current_tab(), &args);
+	return (0);
 }
 
 int
