@@ -1101,17 +1101,17 @@ set_auto_load_images(char *value)
 int
 set_enable_autoscroll(char *value)
 {
-        struct tab              *t;
- 
-        enable_autoscroll = atoi(value);
-        if (enable_autoscroll) {
-                TAILQ_FOREACH(t, &tabs, entry) {
-                        run_script(t, JS_AUTOSCROLL);
-                }
-        } else {
+	struct tab              *t;
+
+	enable_autoscroll = atoi(value);
+	if (enable_autoscroll) {
+		TAILQ_FOREACH(t, &tabs, entry) {
+			run_script(t, JS_AUTOSCROLL);
+		}
+	} else {
 		/* XXX: kill the script if running */
 	}
-        return (0);
+	return (0);
 }
 
 int
