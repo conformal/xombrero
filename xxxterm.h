@@ -524,6 +524,9 @@ int		fork_exec(struct tab *, char *, const gchar *, char *, int);
 #define SHFT			GDK_SHIFT_MASK
 
 /* actions */
+#define XT_STYLE_CURRENT_TAB	(0)
+#define XT_STYLE_GLOBAL		(1)
+
 #define XT_TAB_LAST		(-4)
 #define XT_TAB_FIRST		(-3)
 #define XT_TAB_PREV		(-2)
@@ -579,17 +582,22 @@ size_t		get_settings_size(void);
 int		settings_add(char *, char *);
 void		setup_proxy(char *);
 int		set_browser_mode(struct settings *, char *);
+int		set_encoding(struct tab *, struct karg *);
 int		set_gui_mode(struct settings *, char *);
 int		set_cookie_policy(struct settings *, char *);
+int		set_ssl_ca_file(char *);
 char		*get_browser_mode(struct settings *);
 char		*get_gui_mode(struct settings *);
 char		*get_cookie_policy(struct settings *);
 void		init_keybindings(void);
 void		config_parse(char *, int);
 char		*get_setting_name(int);
+void		statusbar_set_visibility(void);
 int		tabaction(struct tab *, struct karg *);
 int		urlaction(struct tab *, struct karg *);
+int		userstyle(struct tab *, struct karg *);
 struct tab	*get_current_tab(void);
+int		resizetab(struct tab *, struct karg *);
 
 #define		XT_DL_START	(0)
 #define		XT_DL_RESTART	(1)

@@ -160,9 +160,6 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_SEARCH_NEXT		(1)
 #define XT_SEARCH_PREV		(2)
 
-#define XT_STYLE_CURRENT_TAB	(0)
-#define XT_STYLE_GLOBAL		(1)
-
 #define XT_PASTE_CURRENT_TAB	(0)
 #define XT_PASTE_NEW_TAB	(1)
 
@@ -459,6 +456,33 @@ get_current_tab(void)
 	warnx("%s: no current tab", __func__);
 
 	return (NULL);
+}
+
+int
+set_ssl_ca_file(char *file)
+{
+	struct stat		sb;
+
+	if (file == NULL || strlen(file) == 0)
+		return (-1);
+	if (stat(file, &sb)) {
+		warnx("no CA file: %s", file);
+		if (ssl_ca_file == file) {	/* check and fix */
+			g_free(ssl_ca_file);
+			ssl_ca_file = NULL;
+		}
+		return (-1);
+	}
+	if (ssl_ca_file != file) {		/* set dynamically */
+		if (ssl_ca_file)
+			g_free(ssl_ca_file);
+		ssl_ca_file = g_strdup(file);
+	}
+	g_object_set(session,
+	    SOUP_SESSION_SSL_CA_FILE, ssl_ca_file,
+	    SOUP_SESSION_SSL_STRICT, ssl_strict_certs,
+	    (void *)NULL);
+	return (0);
 }
 
 void
@@ -7918,17 +7942,7 @@ main(int argc, char **argv)
 	setup_cookies();
 
 	/* certs */
-	if (ssl_ca_file) {
-		if (stat(ssl_ca_file, &sb)) {
-			warnx("no CA file: %s", ssl_ca_file);
-			g_free(ssl_ca_file);
-			ssl_ca_file = NULL;
-		} else
-			g_object_set(session,
-			    SOUP_SESSION_SSL_CA_FILE, ssl_ca_file,
-			    SOUP_SESSION_SSL_STRICT, ssl_strict_certs,
-			    (void *)NULL);
-	}
+	set_ssl_ca_file(ssl_ca_file);
 
 	/* guess_search regex */
 	if (url_regex == NULL)

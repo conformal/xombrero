@@ -27,6 +27,7 @@ PangoFontDescription	*cmd_font;
 PangoFontDescription	*oops_font;
 PangoFontDescription	*statusbar_font;
 PangoFontDescription	*tabbar_font;
+extern regex_t		url_re;
 
 /* settings that require restart */
 int		tabless = 0;	/* allow only 1 tab */
@@ -124,24 +125,57 @@ int		add_kb(struct settings *, char *);
 int		add_ua(struct settings *, char *);
 
 int		set_append_next(char *);
+int		set_cmd_font(char *);
+int		set_color_visited_uris(char *);
+int		set_cookie_policy_rt(char *);
+int		set_cookies_enabled(char *);
+int		set_ctrl_click_focus(char *);
 int		set_home(char *);
 int		set_download_dir(struct settings *, char *);
 int		set_default_script(struct settings *, char *);
+int		set_default_script_rt(char *);
+int		set_default_zoom_level(char *);
+int		set_enable_cookie_whitelist(char *);
+int		set_enable_js_whitelist(char *);
+int		set_enable_localstorage(char *);
+int		set_enable_plugins(char *);
+int		set_enable_plugin_whitelist(char *);
+int		set_enable_scripts(char *);
+int		set_enable_spell_checking(char *);
+int		set_enable_strict_transport(char *);
+int		set_encoding_rt(char *);
 int		set_runtime_dir(struct settings *, char *);
+int		set_tabbar_font(char *value);
 int		set_tab_style(struct settings *, char *);
+int		set_tab_style_rt(char *);
 int		set_edit_mode(struct settings *, char *);
 int		set_work_dir(struct settings *, char *);
-int		set_auto_load_images(char *value);
-int		set_enable_autoscroll(char *value);
-int		set_enable_favicon_entry(char *value);
-int		set_enable_favicon_tabs(char *value);
+int		set_auto_load_images(char *);
+int		set_enable_autoscroll(char *);
+int		set_enable_favicon_entry(char *);
+int		set_enable_favicon_tabs(char *);
+int		set_guess_search(char *);
 int		set_download_mode(struct settings *, char *);
 int		set_download_mode_rt(char *);
+int		set_oops_font(char *);
+int		set_read_only_cookies(char *);
 int		set_referer(struct settings *, char *);
 int		set_referer_rt(char *);
+int		set_refresh_interval(char *);
+int		set_search_string(char *s);
+int		set_session_autosave(char *);
+int		set_session_timeout(char *);
+int		set_show_statusbar(char *);
 int		set_show_tabs(char *);
 int		set_show_url(char *);
+int		set_spell_check_languages(char *);
+int		set_ssl_ca_file_rt(char *);
+int		set_ssl_strict_certs(char *);
+int		set_statusbar_font(char *);
+int		set_url_regex(char *);
+int		set_userstyle_global(char *);
 int		set_external_editor(char *);
+int		set_xterm_workaround(char *);
 
 void		walk_mime_type(struct settings *, void (*)(struct settings *,
 		    char *, void *), void *);
@@ -295,71 +329,71 @@ struct special		s_referer = {
 
 struct settings		rs[] = {
 	{ "allow_volatile_cookies",	XT_S_INT, 0,		&allow_volatile_cookies, NULL, NULL, NULL, NULL},
-	{ "autofocus_onload",		XT_S_INT, 0,		&autofocus_onload, NULL, NULL, NULL, NULL},
+	{ "autofocus_onload",		XT_S_INT, 0,		&autofocus_onload, NULL, NULL, NULL, NULL },
 	{ "browser_mode",		XT_S_INT, 0, NULL, NULL,&s_browser_mode, NULL, NULL },
 	{ "gui_mode",			XT_S_INT, 0, NULL, NULL,&s_gui_mode, NULL, NULL },
-	{ "color_visited_uris",		XT_S_INT, 0,		&color_visited_uris , NULL, NULL, NULL, NULL },
-	{ "cookie_policy",		XT_S_INT, 0, NULL, NULL,&s_cookie },
-	{ "cookies_enabled",		XT_S_INT, 0,		&cookies_enabled, NULL, NULL },
-	{ "ctrl_click_focus",		XT_S_INT, 0,		&ctrl_click_focus, NULL, NULL, NULL, NULL },
-	{ "default_zoom_level",		XT_S_FLOAT, 0,		NULL, NULL, NULL, &default_zoom_level, NULL },
-	{ "default_script",		XT_S_STR, 0, NULL, NULL,&s_default_script, NULL, NULL },
+	{ "color_visited_uris",		XT_S_INT, 0,		&color_visited_uris , NULL, NULL, NULL, set_color_visited_uris },
+	{ "cookie_policy",		XT_S_INT, 0, NULL, NULL,&s_cookie, NULL, set_cookie_policy_rt },
+	{ "cookies_enabled",		XT_S_INT, 0,		&cookies_enabled, NULL, NULL, NULL, set_cookies_enabled },
+	{ "ctrl_click_focus",		XT_S_INT, 0,		&ctrl_click_focus, NULL, NULL, NULL, set_ctrl_click_focus },
+	{ "default_zoom_level",		XT_S_FLOAT, 0,		NULL, NULL, NULL, &default_zoom_level, set_default_zoom_level },
+	{ "default_script",		XT_S_STR, 0, NULL, NULL,&s_default_script, NULL, set_default_script_rt },
 	{ "download_dir",		XT_S_STR, 0, NULL, NULL,&s_download_dir, NULL, NULL },
 	{ "download_mode",		XT_S_STR, 0, NULL, NULL,&s_download_mode, NULL, set_download_mode_rt },
 	{ "edit_mode",			XT_S_STR, 0, NULL, NULL,&s_edit_mode, NULL, NULL},
-	{ "enable_cookie_whitelist",	XT_S_INT, 0,		&enable_cookie_whitelist, NULL, NULL, NULL, NULL },
-	{ "enable_js_whitelist",	XT_S_INT, 0,		&enable_js_whitelist, NULL, NULL, NULL, NULL },
-	{ "enable_plugin_whitelist",	XT_S_INT, 0,		&enable_plugin_whitelist, NULL, NULL, NULL, NULL },
-	{ "enable_localstorage",	XT_S_INT, 0,		&enable_localstorage, NULL, NULL, NULL, NULL},
-	{ "enable_plugins",		XT_S_INT, 0,		&enable_plugins, NULL, NULL, NULL, NULL },
-	{ "enable_scripts",		XT_S_INT, 0,		&enable_scripts, NULL, NULL, NULL, NULL },
+	{ "enable_cookie_whitelist",	XT_S_INT, 0,		&enable_cookie_whitelist, NULL, NULL, NULL, set_enable_cookie_whitelist },
+	{ "enable_js_whitelist",	XT_S_INT, 0,		&enable_js_whitelist, NULL, NULL, NULL, set_enable_js_whitelist },
+	{ "enable_plugin_whitelist",	XT_S_INT, 0,		&enable_plugin_whitelist, NULL, NULL, NULL, set_enable_plugin_whitelist },
+	{ "enable_localstorage",	XT_S_INT, 0,		&enable_localstorage, NULL, NULL, NULL, set_enable_localstorage },
+	{ "enable_plugins",		XT_S_INT, 0,		&enable_plugins, NULL, NULL, NULL, set_enable_plugins },
+	{ "enable_scripts",		XT_S_INT, 0,		&enable_scripts, NULL, NULL, NULL, set_enable_scripts },
 	{ "enable_socket",		XT_S_INT, XT_SF_RESTART,&enable_socket, NULL, NULL, NULL, NULL },
-	{ "enable_spell_checking",	XT_S_INT, 0,		&enable_spell_checking, NULL, NULL, NULL, NULL },
-	{ "encoding",			XT_S_STR, 0, NULL,	&encoding, NULL, NULL, NULL },
+	{ "enable_spell_checking",	XT_S_INT, 0,		&enable_spell_checking, NULL, NULL, NULL, set_enable_spell_checking },
+	{ "encoding",			XT_S_STR, 0, NULL,	&encoding, NULL, NULL, set_encoding_rt },
 	{ "external_editor",		XT_S_STR,0, NULL,	&external_editor, NULL, NULL, set_external_editor },
 	{ "fancy_bar",			XT_S_INT, XT_SF_RESTART,&fancy_bar, NULL, NULL, NULL, NULL },
-	{ "guess_search",		XT_S_INT, 0,		&guess_search, NULL, NULL, NULL, NULL },
+	{ "guess_search",		XT_S_INT, 0,		&guess_search, NULL, NULL, NULL, set_guess_search },
 	{ "history_autosave",		XT_S_INT, 0,		&history_autosave, NULL, NULL, NULL, NULL },
 	{ "http_proxy",			XT_S_STR, 0, NULL,	&http_proxy, NULL, NULL, set_http_proxy },
 	{ "icon_size",			XT_S_INT, 0,		&icon_size, NULL, NULL, NULL, NULL },
 	{ "js_autorun_enabled",		XT_S_INT, 0,		&js_autorun_enabled, NULL, NULL, NULL, NULL },
 	{ "max_connections",		XT_S_INT, XT_SF_RESTART,&max_connections, NULL, NULL, NULL, NULL },
 	{ "max_host_connections",	XT_S_INT, XT_SF_RESTART,&max_host_connections, NULL, NULL, NULL, NULL },
-	{ "read_only_cookies",		XT_S_INT, 0,		&read_only_cookies, NULL, NULL, NULL, NULL },
-	{ "refresh_interval",		XT_S_INT, 0,		&refresh_interval, NULL, NULL, NULL, NULL },
+	{ "read_only_cookies",		XT_S_INT, 0,		&read_only_cookies, NULL, NULL, NULL, set_read_only_cookies },
+	{ "refresh_interval",		XT_S_INT, 0,		&refresh_interval, NULL, NULL, NULL, set_refresh_interval },
 	{ "resource_dir",		XT_S_STR, 0, NULL,	&resource_dir, NULL, NULL, NULL },
-	{ "search_string",		XT_S_STR, 0, NULL,	&search_string, NULL, NULL, NULL },
+	{ "search_string",		XT_S_STR, 0, NULL,	&search_string, NULL, NULL, set_search_string },
 	{ "save_global_history",	XT_S_INT, XT_SF_RESTART,&save_global_history, NULL, NULL, NULL, NULL },
 	{ "save_rejected_cookies",	XT_S_INT, XT_SF_RESTART,&save_rejected_cookies, NULL, NULL, NULL, NULL },
-	{ "session_timeout",		XT_S_INT, 0,		&session_timeout, NULL, NULL, NULL, NULL },
-	{ "session_autosave",		XT_S_INT, 0,		&session_autosave, NULL, NULL, NULL, NULL },
+	{ "session_timeout",		XT_S_INT, 0,		&session_timeout, NULL, NULL, NULL, set_session_timeout },
+	{ "session_autosave",		XT_S_INT, 0,		&session_autosave, NULL, NULL, NULL, set_session_autosave },
 	{ "single_instance",		XT_S_INT, XT_SF_RESTART,&single_instance, NULL, NULL, NULL, NULL },
 	{ "show_tabs",			XT_S_INT, 0,		&show_tabs, NULL, NULL, NULL, set_show_tabs },
 	{ "show_url",			XT_S_INT, 0,		&show_url, NULL, NULL, NULL, set_show_url },
-	{ "show_statusbar",		XT_S_INT, 0,		&show_statusbar, NULL, NULL, NULL, NULL },
-	{ "spell_check_languages",	XT_S_STR, 0, NULL,	&spell_check_languages, NULL, NULL, NULL },
-	{ "ssl_ca_file",		XT_S_STR, 0, NULL,	&ssl_ca_file, NULL, NULL, NULL },
-	{ "ssl_strict_certs",		XT_S_INT, 0,		&ssl_strict_certs, NULL, NULL, NULL, NULL },
-	{ "enable_strict_transport",	XT_S_INT, 0,		&enable_strict_transport, NULL, NULL, NULL, NULL },
+	{ "show_statusbar",		XT_S_INT, 0,		&show_statusbar, NULL, NULL, NULL, set_show_statusbar },
+	{ "spell_check_languages",	XT_S_STR, 0, NULL,	&spell_check_languages, NULL, NULL, set_spell_check_languages },
+	{ "ssl_ca_file",		XT_S_STR, 0, NULL,	&ssl_ca_file, NULL, NULL, set_ssl_ca_file_rt },
+	{ "ssl_strict_certs",		XT_S_INT, 0,		&ssl_strict_certs, NULL, NULL, NULL, set_ssl_strict_certs },
+	{ "enable_strict_transport",	XT_S_INT, 0,		&enable_strict_transport, NULL, NULL, NULL, set_enable_strict_transport },
 	{ "statusbar_elems",		XT_S_STR, 0, NULL,	&statusbar_elems, NULL, NULL, NULL },
-	{ "tab_style",			XT_S_STR, 0, NULL, NULL,&s_tab_style, NULL, NULL },
-	{ "userstyle_global",		XT_S_INT, 0,		&userstyle_global, NULL, NULL, NULL, NULL },
-	{ "url_regex",			XT_S_STR, 0, NULL,	&url_regex, NULL, NULL, NULL },
+	{ "tab_style",			XT_S_STR, 0, NULL, NULL,&s_tab_style, NULL, set_tab_style_rt },
+	{ "userstyle_global",		XT_S_INT, 0,		&userstyle_global, NULL, NULL, NULL, set_userstyle_global },
+	{ "url_regex",			XT_S_STR, 0, NULL,	&url_regex, NULL, NULL, set_url_regex },
 	{ "window_height",		XT_S_INT, 0,		&window_height, NULL, NULL, NULL, NULL },
 	{ "window_width",		XT_S_INT, 0,		&window_width, NULL, NULL, NULL, NULL },
 	{ "window_maximize",		XT_S_INT, 0,		&window_maximize, NULL, NULL, NULL, NULL },
 	{ "work_dir",			XT_S_STR, 0, NULL, NULL,&s_work_dir, NULL, NULL },
-	{ "xterm_workaround",		XT_S_INT, 0,		&xterm_workaround, NULL, NULL, NULL, NULL },
+	{ "xterm_workaround",		XT_S_INT, 0,		&xterm_workaround, NULL, NULL, NULL, set_xterm_workaround },
 	{ "auto_load_images",		XT_S_INT, 0,		&auto_load_images, NULL, NULL, NULL, set_auto_load_images },
 	{ "enable_favicon_entry",	XT_S_INT, 0,		&enable_favicon_entry, NULL, NULL, NULL, set_enable_favicon_entry },
 	{ "enable_favicon_tabs",	XT_S_INT, 0,		&enable_favicon_tabs, NULL, NULL, NULL, set_enable_favicon_tabs },
 	{ "referer",			XT_S_STR, 0, NULL, NULL,&s_referer, NULL, set_referer_rt },
 
 	/* font settings */
-	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL },
-	{ "oops_font",			XT_S_STR, 0, NULL, &oops_font_name, NULL },
-	{ "statusbar_font",		XT_S_STR, 0, NULL, &statusbar_font_name, NULL },
-	{ "tabbar_font",		XT_S_STR, 0, NULL, &tabbar_font_name, NULL },
+	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL, NULL, set_cmd_font },
+	{ "oops_font",			XT_S_STR, 0, NULL, &oops_font_name, NULL, NULL, set_oops_font },
+	{ "statusbar_font",		XT_S_STR, 0, NULL, &statusbar_font_name, NULL, NULL, set_statusbar_font },
+	{ "tabbar_font",		XT_S_STR, 0, NULL, &tabbar_font_name, NULL, NULL, set_tabbar_font },
 
 	/* runtime settings */
 	{ "append_next",		XT_S_INT, 0,		&append_next, NULL, NULL, NULL, set_append_next },
@@ -377,6 +411,34 @@ struct settings		rs[] = {
 };
 
 int
+set_default_zoom_level(char *value)
+{
+	struct karg		args = {0};
+	struct tab		*t;
+
+	if (value == NULL || strlen(value) == 0)
+		return (-1);
+	default_zoom_level = g_strtod(value, NULL);
+	args.i = 100;	/* adjust = 100 percent for no additional adjustment */
+	TAILQ_FOREACH(t, &tabs, entry)
+		resizetab(t, &args);
+	return (0);
+}
+
+int
+set_cookies_enabled(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	cookies_enabled = tmp;
+	return (0);
+}
+
+int
 set_append_next(char *value)
 {
 	int			tmp;
@@ -390,14 +452,121 @@ set_append_next(char *value)
 }
 
 int
-set_home(char *value)
+set_cmd_font(char *value)
 {
-	if (home)
-		free(home);
-	home = strdup(value);
+	struct tab		*t;
+
+	if (value == NULL || strlen(value))
+		return (-1);
+	if (cmd_font_name)
+		g_free(cmd_font_name);
+	if (cmd_font)
+		pango_font_description_free(cmd_font);
+	cmd_font_name = g_strdup(value);
+	cmd_font = pango_font_description_from_string(cmd_font_name);
+	TAILQ_FOREACH(t, &tabs, entry)
+		gtk_widget_modify_font(GTK_WIDGET(t->cmd), cmd_font);
 	return (0);
 }
 
+int
+set_oops_font(char *value)
+{
+	struct tab		*t;
+
+	if (value == NULL || strlen(value) == 0)
+		return (-1);
+	if (oops_font_name)
+		g_free(oops_font_name);
+	if (oops_font)
+		pango_font_description_free(oops_font);
+	oops_font_name = g_strdup(value);
+	oops_font = pango_font_description_from_string(oops_font_name);
+	TAILQ_FOREACH(t, &tabs, entry)
+		gtk_widget_modify_font(GTK_WIDGET(t->oops), oops_font);
+	return (0);
+}
+
+int
+set_statusbar_font(char *value)
+{
+	struct tab		*t;
+
+	if (value == NULL || strlen(value) == 0)
+		return (-1);
+	if (statusbar_font_name)
+		g_free(statusbar_font_name);
+	if (statusbar_font)
+		pango_font_description_free(statusbar_font);
+	statusbar_font_name = g_strdup(value);
+	statusbar_font = pango_font_description_from_string(
+		statusbar_font_name);
+	TAILQ_FOREACH(t, &tabs, entry) {
+		gtk_widget_modify_font(GTK_WIDGET(t->sbe.statusbar),
+		    statusbar_font);
+		gtk_widget_modify_font(GTK_WIDGET(t->sbe.buffercmd),
+		    statusbar_font);
+		gtk_widget_modify_font(GTK_WIDGET(t->sbe.zoom),
+		    statusbar_font);
+		gtk_widget_modify_font(GTK_WIDGET(t->sbe.position),
+		    statusbar_font);
+	}
+	return (0);
+}
+
+int
+set_tabbar_font(char *value)
+{
+	struct tab		*t;
+
+	if (value == NULL || strlen(value) == 0)
+		return (-1);
+	if (tabbar_font_name)
+		g_free(tabbar_font_name);
+	if (tabbar_font)
+		pango_font_description_free(tabbar_font);
+	tabbar_font_name = g_strdup(value);
+	tabbar_font = pango_font_description_from_string(tabbar_font_name);
+	TAILQ_FOREACH(t, &tabs, entry)
+		gtk_widget_modify_font(GTK_WIDGET(t->tab_elems.label),
+		    tabbar_font);
+	return (0);
+}
+
+int
+set_color_visited_uris(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	color_visited_uris = tmp;
+	return (0);
+}
+
+int
+set_home(char *value)
+{
+	if (value == NULL || strlen(value) == 0)
+		return (-1);
+	if (home)
+		g_free(home);
+	home = g_strdup(value);
+	return (0);
+}
+
+int
+set_search_string(char *value)
+{
+	if (value == NULL || strlen(value) == 0)
+		return (-1);
+	if (search_string)
+		g_free(search_string);
+	search_string = g_strdup(value);
+	return (0);
+}
 
 size_t
 get_settings_size(void)
@@ -579,6 +748,16 @@ set_cookie_policy(struct settings *s, char *val)
 	return (0);
 }
 
+int
+set_cookie_policy_rt(char *value)
+{
+	if (set_cookie_policy(NULL, value))
+		return (-1);
+	g_object_set(G_OBJECT(s_cookiejar), SOUP_COOKIE_JAR_ACCEPT_POLICY,
+	    cookie_policy, (void *)NULL);
+	return (0);
+}
+
 char *
 get_cookie_policy(struct settings *s)
 {
@@ -614,6 +793,14 @@ set_default_script(struct settings *s, char *val)
 		strlcpy(default_script, val, sizeof default_script);
 
 	return (0);
+}
+
+int
+set_default_script_rt(char *value)
+{
+	if (value == NULL || strlen(value) == 0)
+		return (-1);
+	return (set_default_script(NULL, value));
 }
 
 char *
@@ -1084,9 +1271,8 @@ walk_ua(struct settings *s,
 		return;
 	}
 
-	TAILQ_FOREACH(ua, &ua_list, entry) {
+	TAILQ_FOREACH(ua, &ua_list, entry)
 		cb(s, ua->value, cb_args);
-	}
 }
 
 int
@@ -1109,6 +1295,19 @@ set_auto_load_images(char *value)
 }
 
 int
+set_ctrl_click_focus(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	ctrl_click_focus = tmp;
+	return (0);
+}
+
+int
 set_enable_autoscroll(char *value)
 {
 	int			tmp;
@@ -1118,6 +1317,32 @@ set_enable_autoscroll(char *value)
 	if (errstr)
 		return (-1);
 	enable_autoscroll = tmp;
+	return (0);
+}
+
+int
+set_enable_cookie_whitelist(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	enable_cookie_whitelist = tmp;
+	return (0);
+}
+
+int
+set_enable_js_whitelist(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	enable_js_whitelist = tmp;
 	return (0);
 }
 
@@ -1144,6 +1369,146 @@ set_enable_favicon_tabs(char *value)
 	if (errstr)
 		return (-1);
 	enable_favicon_tabs = tmp;
+	return (0);
+}
+
+int
+set_enable_localstorage(char *value)
+{
+	struct tab		*t;
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	enable_localstorage = tmp;
+	TAILQ_FOREACH(t, &tabs, entry) {
+		g_object_set(G_OBJECT(t->settings),
+		    "enable-html5-local-storage", enable_localstorage,
+		    (char *)NULL);
+	}
+	return (0);
+}
+
+int
+set_enable_plugins(char *value)
+{
+	struct tab		*t;
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	enable_plugins = tmp;
+	TAILQ_FOREACH(t, &tabs, entry)
+		g_object_set(G_OBJECT(t->settings), "enable-plugins",
+		    enable_plugins, (char *)NULL);
+	return (0);
+}
+
+int
+set_enable_plugin_whitelist(char *value)
+{
+	/* XXX: this needs testing */
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	enable_plugin_whitelist = tmp;
+	return (0);
+}
+
+int
+set_enable_scripts(char *value)
+{
+	struct tab		*t;
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	enable_scripts = tmp;
+	TAILQ_FOREACH(t, &tabs, entry)
+		g_object_set(G_OBJECT(t->settings), "enable-scripts",
+		    enable_scripts, (char *)NULL);
+	return (0);
+}
+
+int
+set_enable_spell_checking(char *value)
+{
+	struct tab		*t;
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	enable_spell_checking = tmp;
+	TAILQ_FOREACH(t, &tabs, entry)
+		g_object_set(G_OBJECT(t->settings), "enable_spell_checking",
+		    enable_spell_checking, (char *)NULL);
+	return (0);
+}
+
+int
+set_enable_strict_transport(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	enable_strict_transport = tmp;
+	return (0);
+}
+
+int
+set_encoding_rt(char *value)
+{
+	struct karg		args = {0};
+
+	if (value == NULL || strlen(value) == 0)
+		return (-1);
+	if (encoding)
+		g_free(encoding);
+	encoding = g_strdup(value);
+	args.s = encoding;
+	set_encoding(get_current_tab(), &args);
+	return (0);
+}
+
+int
+set_guess_search(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	guess_search = tmp;
+	return (0);
+}
+
+int
+set_read_only_cookies(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	read_only_cookies = tmp;
+	g_object_set(G_OBJECT(p_cookiejar), SOUP_COOKIE_JAR_READ_ONLY,
+	    read_only_cookies, (void *)NULL);
 	return (0);
 }
 
@@ -1193,7 +1558,62 @@ set_referer(struct settings *s, char *value)
 int
 set_referer_rt(char *value)
 {
-	return set_referer(NULL, value);
+	if (value == NULL || strlen(value) == 0)
+		return (-1);
+	return (set_referer(NULL, value));
+}
+
+int
+set_refresh_interval(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, INT_MAX, &errstr);
+	if (errstr)
+		return (-1);
+	refresh_interval = tmp;
+	return (0);
+}
+
+int
+set_session_autosave(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	session_autosave = tmp;
+	return (0);
+}
+
+int
+set_session_timeout(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, INT_MAX, &errstr);
+	if (errstr)
+		return (-1);
+	session_timeout = tmp;
+	return (0);
+}
+
+int
+set_show_statusbar(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	show_statusbar = tmp;
+	statusbar_set_visibility();
+	return (0);
 }
 
 int
@@ -1223,6 +1643,56 @@ set_show_url(char *value)
 		return (-1);
 	args.i = val ? XT_URL_SHOW : XT_URL_HIDE;
 	urlaction(get_current_tab(), &args);
+	return (0);
+}
+
+int
+set_spell_check_languages(char *value)
+{
+	struct tab		*t;
+
+	if (value == NULL || strlen(value) == 0)
+		return (-1);
+	if (spell_check_languages)
+		g_free(spell_check_languages);
+	spell_check_languages = g_strdup(value);
+	TAILQ_FOREACH(t, &tabs, entry)
+		g_object_set(G_OBJECT(t->settings), "spell_checking_languages",
+		    spell_check_languages, (char *)NULL);
+	return (0);
+}
+
+int
+check_valid_file(char *name)
+{
+	struct stat		sb;
+
+	if (name == NULL || stat(name, &sb))
+		return (-1);
+	return (0);
+}
+
+int
+set_ssl_ca_file_rt(char *value)
+{
+	if (value == NULL || strlen(value) == 0)
+		return (-1);
+	if (set_ssl_ca_file(value))
+		return (-1);
+	return (0);
+}
+
+int
+set_ssl_strict_certs(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	ssl_strict_certs = tmp;
+	set_ssl_ca_file(ssl_ca_file);
 	return (0);
 }
 
@@ -1284,6 +1754,52 @@ set_tab_style(struct settings *s, char *val)
 	return (0);
 }
 
+int
+set_tab_style_rt(char *value)
+{
+	struct karg		args = {0};
+	int			old_tab_style;
+
+	old_tab_style = tab_style;
+	if (set_tab_style(NULL, value))
+		return (-1);
+	if (old_tab_style != tab_style) {
+		tab_style = old_tab_style;
+		args.i = XT_TAB_NEXTSTYLE;
+		tabaction(get_current_tab(), &args);
+	}
+	return (0);
+}
+
+int
+set_url_regex(char *value)
+{
+	if (regcomp(&url_re, value, REG_EXTENDED | REG_NOSUB))
+		return (-1);
+	if (url_regex)
+		g_free(url_regex);
+	url_regex = g_strdup(value);
+	return (0);
+}
+
+int
+set_userstyle_global(char *value)
+{
+	struct karg		args = {0};
+	int			tmp, old_style;
+	const char		*errstr;
+
+	old_style = userstyle_global;
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	if (tmp != old_style) {
+		args.i = XT_STYLE_GLOBAL;
+		userstyle(get_current_tab(), &args);
+	}
+	return (0);
+}
+
 char *
 get_edit_mode(struct settings *s)
 {
@@ -1341,7 +1857,9 @@ set_download_mode(struct settings *s, char *val)
 int
 set_download_mode_rt(char *val)
 {
-	return set_download_mode(NULL, val);
+	if (val == NULL || strlen(val) == 0)
+		return (-1);
+	return (set_download_mode(NULL, val));
 }
 
 char *
@@ -1361,6 +1879,19 @@ set_work_dir(struct settings *s, char *val)
 	else
 		strlcpy(work_dir, val, sizeof work_dir);
 
+	return (0);
+}
+
+int
+set_xterm_workaround(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	xterm_workaround = tmp;
 	return (0);
 }
 
@@ -1619,10 +2150,10 @@ set(struct tab *t, struct karg *args)
 		return (set_show(t, args));
 
 	/* we got some sort of string */
-	val = g_strrstr(p, "=");
+	val = g_strstr_len(p, strlen(p), "=");
 	if (val) {
 		*val++ = '\0';
-		val = g_strchomp(val);
+		val = g_strstrip(val);
 		p = g_strchomp(p);
 
 		for (i = 0; i < get_settings_size(); i++) {
