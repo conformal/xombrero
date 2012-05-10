@@ -3318,7 +3318,7 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 		return;
 	}
 
-	if (search_string == NULL) {
+	if (search_string == NULL || strlen(search_string) == 0) {
 		show_oops(t, "no search_string");
 		return;
 	}
@@ -6468,7 +6468,7 @@ create_toolbar(struct tab *t)
 	gtk_box_pack_start(GTK_BOX(b), eb1, TRUE, TRUE, 0);
 
 	/* search entry */
-	if (search_string) {
+	if (search_string != NULL && strlen(search_string) != 0) {
 		GtkWidget *eb2;
 		t->search_entry = gtk_entry_new();
 		gtk_entry_set_width_chars(GTK_ENTRY(t->search_entry), 30);
