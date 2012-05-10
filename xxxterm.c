@@ -4420,7 +4420,8 @@ session_rq_cb(SoupSession *s, SoupMessage *msg, SoupSocket *socket,
 			ref_suffix = tld_get_suffix(ref_uri->host);
 			dest_suffix = tld_get_suffix(dest->host);
 
-			if (dest && strcmp(ref_suffix, dest_suffix) != 0) {
+			if (dest && ref_suffix && dest_suffix &&
+			    strcmp(ref_suffix, dest_suffix) != 0) {
 				soup_message_headers_remove(msg->request_headers,
 				    "Referer");
 				DNPRINTF(XT_D_NAV, "session_rq_cb: removing "
