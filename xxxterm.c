@@ -4060,7 +4060,7 @@ js_autorun(struct tab *t)
 	char			*js = NULL, *jsat, *domain = NULL;
 	FILE			*deffile = NULL, *hostfile = NULL;
 
-	if (js_autorun_enabled == 0)
+	if (enable_js_autorun == 0)
 		return;
 
 	uri = get_uri(t);

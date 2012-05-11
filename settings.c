@@ -91,7 +91,7 @@ char		search_file[PATH_MAX];
 char		command_file[PATH_MAX];
 char		*encoding = NULL;
 int		autofocus_onload = 0;
-int		js_autorun_enabled = 1;
+int		enable_js_autorun = 1;
 int		edit_mode = XT_EM_HYBRID;
 int		userstyle_global = 0;
 int		auto_load_images = 1;
@@ -356,7 +356,7 @@ struct settings		rs[] = {
 	{ "history_autosave",		XT_S_INT, 0,		&history_autosave, NULL, NULL, NULL, NULL },
 	{ "http_proxy",			XT_S_STR, 0, NULL,	&http_proxy, NULL, NULL, set_http_proxy },
 	{ "icon_size",			XT_S_INT, 0,		&icon_size, NULL, NULL, NULL, NULL },
-	{ "js_autorun_enabled",		XT_S_INT, 0,		&js_autorun_enabled, NULL, NULL, NULL, NULL },
+	{ "enable_js_autorun",		XT_S_INT, 0,		&enable_js_autorun, NULL, NULL, NULL, NULL },
 	{ "max_connections",		XT_S_INT, XT_SF_RESTART,&max_connections, NULL, NULL, NULL, NULL },
 	{ "max_host_connections",	XT_S_INT, XT_SF_RESTART,&max_host_connections, NULL, NULL, NULL, NULL },
 	{ "read_only_cookies",		XT_S_INT, 0,		&read_only_cookies, NULL, NULL, NULL, set_read_only_cookies },
