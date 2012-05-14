@@ -1066,6 +1066,14 @@ does not exist,
 will be tried instead.  The content of the both default and
 host/domain files are read and executed on each page load.
 Default is 1.
+.Pp
+As an example, if you add the line
+.Pa alert("Hello, world");
+to your
+.Pa default.js ,
+a pop-up displaying "Hello, world" will be shown on every page reload.
+While not useful, any javascript can be run through this mechanism,
+making it useful for global or site-specific modifications.
 .It Cm enable_js_whitelist
 When enabled all domains must be in the js whitelist in order to run Java
 Script.
