@@ -136,6 +136,7 @@ int		set_default_script(struct settings *, char *);
 int		set_default_script_rt(char *);
 int		set_default_zoom_level(char *);
 int		set_enable_cookie_whitelist(char *);
+int		set_enable_js_autorun(char *);
 int		set_enable_js_whitelist(char *);
 int		set_enable_localstorage(char *);
 int		set_enable_plugins(char *);
@@ -356,7 +357,7 @@ struct settings		rs[] = {
 	{ "history_autosave",		XT_S_INT, 0,		&history_autosave, NULL, NULL, NULL, NULL },
 	{ "http_proxy",			XT_S_STR, 0, NULL,	&http_proxy, NULL, NULL, set_http_proxy },
 	{ "icon_size",			XT_S_INT, 0,		&icon_size, NULL, NULL, NULL, NULL },
-	{ "enable_js_autorun",		XT_S_INT, 0,		&enable_js_autorun, NULL, NULL, NULL, NULL },
+	{ "enable_js_autorun",		XT_S_INT, 0,		&enable_js_autorun, NULL, NULL, NULL, set_enable_js_autorun },
 	{ "max_connections",		XT_S_INT, XT_SF_RESTART,&max_connections, NULL, NULL, NULL, NULL },
 	{ "max_host_connections",	XT_S_INT, XT_SF_RESTART,&max_host_connections, NULL, NULL, NULL, NULL },
 	{ "read_only_cookies",		XT_S_INT, 0,		&read_only_cookies, NULL, NULL, NULL, set_read_only_cookies },
@@ -1330,6 +1331,19 @@ set_enable_cookie_whitelist(char *value)
 	if (errstr)
 		return (-1);
 	enable_cookie_whitelist = tmp;
+	return (0);
+}
+
+int
+set_enable_js_autorun(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	enable_js_autorun = tmp;
 	return (0);
 }
 
