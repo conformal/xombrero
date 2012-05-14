@@ -350,7 +350,7 @@ struct settings		rs[] = {
 	{ "enable_scripts",		XT_S_INT, 0,		&enable_scripts, NULL, NULL, NULL, set_enable_scripts },
 	{ "enable_socket",		XT_S_INT, XT_SF_RESTART,&enable_socket, NULL, NULL, NULL, NULL },
 	{ "enable_spell_checking",	XT_S_INT, 0,		&enable_spell_checking, NULL, NULL, NULL, set_enable_spell_checking },
-	{ "encoding",			XT_S_STR, 0, NULL,	&encoding, NULL, NULL, set_encoding_rt },
+	{ "encoding",			XT_S_STR, 0, NULL,	&encoding, NULL, NULL, NULL },
 	{ "external_editor",		XT_S_STR,0, NULL,	&external_editor, NULL, NULL, set_external_editor },
 	{ "fancy_bar",			XT_S_INT, XT_SF_RESTART,&fancy_bar, NULL, NULL, NULL, NULL },
 	{ "guess_search",		XT_S_INT, 0,		&guess_search, NULL, NULL, NULL, set_guess_search },
@@ -1425,7 +1425,6 @@ set_enable_plugins(char *value)
 int
 set_enable_plugin_whitelist(char *value)
 {
-	/* XXX: this needs testing */
 	int			tmp;
 	const char		*errstr;
 
@@ -1483,6 +1482,14 @@ set_enable_strict_transport(char *value)
 	return (0);
 }
 
+#if 0
+/*
+ * XXX: this is currently broken.  Need to figure out what to do with
+ * this.  Problemm is set_encoding will refresh the tab it's run on, so
+ * we can either put a big fat warning in the manpage and refresh every
+ * single open tab with the new encoding or scrap it as a runtime
+ * setting.
+ */
 int
 set_encoding_rt(char *value)
 {
@@ -1497,6 +1504,7 @@ set_encoding_rt(char *value)
 	set_encoding(get_current_tab(), &args);
 	return (0);
 }
+#endif
 
 int
 set_guess_search(char *value)
