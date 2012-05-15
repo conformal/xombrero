@@ -7687,12 +7687,16 @@ main(int argc, char **argv)
 
 	/* prepare gtk */
 #ifdef USE_THREADS
+	/* http://web.archiveorange.com/archive/v/UsPjxkX5PsaXBIoOjqxf */
 	XInitThreads();
+
+	/* http://developer.gnome.org/gdk/stable/gdk-Threads.html */
 	g_thread_init(NULL);
 	gdk_threads_set_lock_functions(mtx_lock, mtx_unlock);
 	gdk_threads_init();
 	gdk_threads_enter();
 
+	/* http://www.gnupg.org/documentation/manuals/gcrypt/Multi_002dThreading.html */
 	gcry_control (GCRYCTL_SET_THREAD_CBS, &gcry_threads_pthread);
 #endif
 	gtk_init(&argc, &argv);
