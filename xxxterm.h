@@ -59,6 +59,7 @@ uint32_t	arc4random_uniform(uint32_t);
 #include <sys/time.h>
 #include <sys/un.h>
 
+#include <X11/Xlib.h>
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
 
