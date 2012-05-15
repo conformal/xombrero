@@ -3423,7 +3423,7 @@ color_address_bar(gpointer p)
 
 	/* make sure t still exists */
 	if (t == NULL)
-		return;
+		goto done;
 	TAILQ_FOREACH(tt, &tabs, entry)
 		if (t == tt)
 			break;
