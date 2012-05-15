@@ -4,7 +4,7 @@ BINDIR=${PREFIX}/bin
 PROG=xxxterm
 MAN=xxxterm.1
 
-DEBUG= -ggdb3
+DEBUG= -g
 
 SRCS= cookie.c inspector.c marco.c about.c whitelist.c settings.c inputfocus.c
 SRCS+= history.c completion.c tldlist.c externaleditor.c unix.c xxxterm.c
