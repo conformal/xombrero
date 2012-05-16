@@ -80,6 +80,14 @@ uint32_t	arc4random_uniform(uint32_t);
 #ifdef USE_THREADS
 #include <gcrypt.h>
 #include <pthread.h>
+
+/* #define USE_FLUSH */
+#ifdef USE_FLUSH
+#define GDK_FLUSH()	do { gdk_flush(); } while (0)
+#else
+#define GDK_FLUSH()
+#endif /* USE_FLUSH */
+
 #endif
 
 /* set if you don't want to use signals */
