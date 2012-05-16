@@ -102,6 +102,7 @@ char		*external_editor = NULL;
 int		referer_mode = XT_REFERER_ALWAYS;
 char		*referer_custom = NULL;
 int		download_notifications = 0;
+char		*include_config = NULL;
 
 char		*cmd_font_name = NULL;
 char		*oops_font_name = NULL;
@@ -392,6 +393,7 @@ struct settings		rs[] = {
 	{ "enable_favicon_tabs",	XT_S_INT, 0,		&enable_favicon_tabs, NULL, NULL, NULL, set_enable_favicon_tabs },
 	{ "referer",			XT_S_STR, 0, NULL, NULL,&s_referer, NULL, set_referer_rt },
 	{ "download_notifications",	XT_S_INT, 0,		&download_notifications, NULL, NULL, NULL, set_download_notifications },
+	{ "include_config",		XT_S_STR, 0, NULL,	&include_config, NULL, NULL, NULL },
 
 	/* font settings */
 	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL, NULL, set_cmd_font },
@@ -1981,14 +1983,25 @@ walk_pl_wl(struct settings *s,
 int
 settings_add(char *var, char *val)
 {
-	int i, rv, *p;
-	gfloat *f;
-	char **s;
+	int			i, rv, *p;
+	gfloat			*f;
+	char			c[PATH_MAX], **s;
 
 	/* get settings */
 	for (i = 0, rv = 0; i < LENGTH(rs); i++) {
 		if (strcmp(var, rs[i].name))
 			continue;
+
+		if (!strcmp(var, "include_config")) {
+			if (val[0] == '~')
+				snprintf(c, PATH_MAX, "%s" PS "%s", pwd->pw_dir,
+				    &val[1]);
+			else
+				strlcpy(c, val, PATH_MAX);
+			config_parse(c, 0);
+			rv = 1;
+			break;
+		}
 
 		if (rs[i].s) {
 			if (rs[i].s->set(&rs[i], val))
