@@ -1029,6 +1029,21 @@ run_script(struct tab *t, char *s)
 	return (0);
 }
 
+int
+run_script_locked(struct tab *t, char *s)
+{
+	int		rv;
+#ifdef USE_THREADS
+	gdk_threads_enter();
+#endif
+	rv = run_script(t, s);
+#ifdef USE_THREADS
+	gdk_flush();
+	gdk_threads_leave();
+#endif
+	return (rv);
+}
+
 void
 enable_hints(struct tab *t)
 {
@@ -4129,7 +4144,7 @@ nofile:
 	}
 
 	DNPRINTF(XT_D_JS, "%s: about to run script\n", __func__);
-	run_script(t, js);
+	run_script_locked(t, js);
 
 done:
 	if (su)
@@ -7600,58 +7615,51 @@ int			mtx_complain;
 void
 mtx_lock(void)
 {
+	char		*s = NULL;
 	g_static_rec_mutex_lock(&my_gdk_mtx);
-	mtx_depth++;
-
-	if (mtx_depth <= 0) {
-		/* should not happen */
-		show_oops(NULL, "negative mutex locking bug, trying to "
-		    "correct");
-		fprintf(stderr, "negative mutex locking bug, trying to "
-		    "correct\n");
-		g_static_rec_mutex_unlock_full(&my_gdk_mtx);
+	if (my_gdk_mtx.depth <= 0) {
+		s = "lock <= 0";
 		g_static_rec_mutex_lock(&my_gdk_mtx);
-		mtx_depth = 1;
-		return;
-	}
-
-	if (mtx_depth != 1) {
-		/* decrease mutext depth to 1 */
+		goto complain;
+	} else if (my_gdk_mtx.depth != 1) {
+		s = "lock != 1";
 		do {
 			g_static_rec_mutex_unlock(&my_gdk_mtx);
-			mtx_depth--;
-		} while (mtx_depth > 1);
+		} while (my_gdk_mtx.depth > 1);
+		goto complain;
+	}
+	return;
+
+complain:
+	if (mtx_complain == 0) {
+		show_oops(NULL, "buggy mutex implementation detected(%s), "
+		    "work around implemented", s);
+		mtx_complain = 1;
 	}
 }
 
 void
 mtx_unlock(void)
 {
-	guint x;
+	char		*s = NULL;
 
-	/* if mutex depth isn't 1 then something went bad */
-	if (mtx_depth != 1) {
-		x = g_static_rec_mutex_unlock_full(&my_gdk_mtx);
-		if (x != 1) {
-			/* should not happen */
-			show_oops(NULL, "mutex unlocking bug, trying to "
-			    "correct");
-			fprintf(stderr, "mutex unlocking bug, trying to "
-			    "correct\n");
-		}
-		mtx_depth = 0;
-		if (mtx_complain == 0) {
-			show_oops(NULL, "buggy mutex implementation detected, "
-			    "work around implemented");
-			fprintf(stderr, "buggy mutex implementation detected, "
-			    "work around implemented");
-			mtx_complain = 1;
-		}
-		return;
+	if (my_gdk_mtx.depth <= 0) {
+		s = "unlock <= 0";
+		goto complain;
+	} else if (my_gdk_mtx.depth != 1) {
+		s = "unlock != 1";
+		g_static_rec_mutex_unlock_full(&my_gdk_mtx);
+		goto complain;
 	}
-
-	mtx_depth--;
 	g_static_rec_mutex_unlock(&my_gdk_mtx);
+	return;
+
+complain:
+	if (mtx_complain == 0) {
+		show_oops(NULL, "buggy mutex implementation detected(%s), "
+		    "work around implemented", s);
+		mtx_complain = 1;
+	}
 }
 
 void
