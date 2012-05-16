@@ -3450,7 +3450,7 @@ color_address_bar(gpointer p)
 	u = g_strdup(uri);
 
 #ifdef USE_THREADS
-	gdk_flush();
+	GDK_FLUSH();
 	gdk_threads_leave();
 #endif
 
@@ -3522,7 +3522,7 @@ done:
 	if (u)
 		g_free((gpointer)u);
 #ifdef USE_THREADS
-	gdk_flush();
+	GDK_FLUSH();
 	gdk_threads_leave();
 #endif
 }
@@ -8075,7 +8075,7 @@ main(int argc, char **argv)
 	gtk_main();
 
 #ifdef USE_THREADS
-	gdk_flush();
+	GDK_FLUSH();
 	gdk_threads_leave();
 	g_static_rec_mutex_unlock_full(&my_gdk_mtx); /* just in case */
 #endif
