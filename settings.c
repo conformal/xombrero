@@ -101,6 +101,7 @@ int		enable_favicon_tabs = 0;
 char		*external_editor = NULL;
 int		referer_mode = XT_REFERER_ALWAYS;
 char		*referer_custom = NULL;
+int		download_notifications = 0;
 
 char		*cmd_font_name = NULL;
 char		*oops_font_name = NULL;
@@ -132,6 +133,7 @@ int		set_cookies_enabled(char *);
 int		set_ctrl_click_focus(char *);
 int		set_home(char *);
 int		set_download_dir(struct settings *, char *);
+int		set_download_notifications(char *);
 int		set_default_script(struct settings *, char *);
 int		set_default_script_rt(char *);
 int		set_default_zoom_level(char *);
@@ -389,6 +391,7 @@ struct settings		rs[] = {
 	{ "enable_favicon_entry",	XT_S_INT, 0,		&enable_favicon_entry, NULL, NULL, NULL, set_enable_favicon_entry },
 	{ "enable_favicon_tabs",	XT_S_INT, 0,		&enable_favicon_tabs, NULL, NULL, NULL, set_enable_favicon_tabs },
 	{ "referer",			XT_S_STR, 0, NULL, NULL,&s_referer, NULL, set_referer_rt },
+	{ "download_notifications",	XT_S_INT, 0,		&download_notifications, NULL, NULL, NULL, set_download_notifications },
 
 	/* font settings */
 	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL, NULL, set_cmd_font },
@@ -1305,6 +1308,19 @@ set_ctrl_click_focus(char *value)
 	if (errstr)
 		return (-1);
 	ctrl_click_focus = tmp;
+	return (0);
+}
+
+int
+set_download_notifications(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	download_notifications = tmp;
 	return (0);
 }
 

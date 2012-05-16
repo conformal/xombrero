@@ -685,6 +685,7 @@ extern int	enable_favicon_entry;
 extern int	enable_favicon_tabs;
 extern int	referer_mode;
 extern char	*referer_custom;
+extern int	download_notifications;
 
 /* globals */
 extern char		*version;

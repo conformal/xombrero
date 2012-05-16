@@ -4746,6 +4746,9 @@ download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
 	if (status != WEBKIT_DOWNLOAD_STATUS_FINISHED)
 		return;
 
+	if (download_notifications)
+		show_oops(NULL, "Download of '%s' finished",
+		    basename((char *)webkit_download_get_destination_uri(download)));
 	file = webkit_download_get_destination_uri(download);
 	if (file == NULL)
 		return;
@@ -4860,8 +4863,9 @@ download_start(struct tab *t, struct download *d, int flag)
 		/* get from history */
 		g_object_ref(d->download);
 		gtk_label_set_text(GTK_LABEL(t->label), "Downloading");
-		show_oops(t, "Download of '%s' started...",
-		    basename((char *)webkit_download_get_destination_uri(d->download)));
+		if (download_notifications)
+			show_oops(t, "Download of '%s' started...",
+			    basename((char *)webkit_download_get_destination_uri(d->download)));
 	}
 
 	if (flag != XT_DL_START)
