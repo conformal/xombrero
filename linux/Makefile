@@ -1,7 +1,10 @@
-LIBS= glib-2.0 gtk+-2.0 webkit-1.0 javascriptcoregtk-1.0 libsoup-2.4 gthread-2.0 gnutls libbsd
+JS_CF=$(shell pkg-config --silence-errors --cflags javascriptcoregtk-1.0)
+JS_LD=$(shell pkg-config --silence-errors --libs javascriptcoregtk-1.0)
 
-CFLAGS+= -O2 -Wall -ggdb3 -D_GNU_SOURCE -I. -I.. $(shell pkg-config --cflags $(LIBS))
-LDADD+= $(shell pkg-config --libs $(LIBS)) -ldl -lgcrypt
+LIBS= glib-2.0 gtk+-2.0 webkit-1.0 libsoup-2.4 gthread-2.0 gnutls libbsd
+
+CFLAGS+= -O2 -Wall -ggdb3 -D_GNU_SOURCE -I. -I.. $(shell pkg-config --cflags $(LIBS)) $(JS_CF)
+LDADD+= $(shell pkg-config --libs $(LIBS)) $(JS_LD) -ldl -lgcrypt -lX11
 
 PREFIX?= /usr/local
 BINDIR?= $(PREFIX)/bin
