@@ -4731,6 +4731,8 @@ download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
 	if (status != WEBKIT_DOWNLOAD_STATUS_FINISHED)
 		return;
 
+	show_oops(NULL, "Finished downloading %s",
+	    webkit_download_get_suggested_filename(download));
 	file = webkit_download_get_destination_uri(download);
 	if (file == NULL)
 		return;
