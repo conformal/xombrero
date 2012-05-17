@@ -998,30 +998,6 @@ This field delineates the cookie policy.
 Possible values are: no3rdparty, reject 3rd party cookies.
 accept, accept all cookies.
 reject, reject all cookies.
-.It Cm include_config
-This must be a path to another configuration file.
-Configuration files are usually read from top to bottom, however, if
-this option is set,
-.Nm
-will begin reading the included file at this location and continue
-reading the rest of the configuation after the included file has
-finished being read.
-.Pp
-Any simple settings set before the include may
-be overridden by settings in the included file, and any simple
-settings set in the included file may be overridden later by settings
-after the include or at runtime using the
-.Cm :set
-command.
-However, database settings (for example,
-.Cm cookie_wl , js_wl , pl_wl ,
-and
-.Cm keybinding )
-are only ever added to the database, and so the order of an included
-configuration file is not pertinent to these database settings.
-.Pp
-This feature is likely best used as the last item in
-.Pa ~/.xombrero.conf .
 .It Cm cookie_wl
 This is a cookie whitelist item.
 Use multiple times to add multiple entries.
@@ -1204,6 +1180,30 @@ Permits icon sizes to be changed if
 .Cm fancy_bar
 is enabled.
 Size 1 is small; 2 is normal; 3 through 6 are progressively larger.
+.It Cm include_config
+This must be a path to another configuration file.
+Configuration files are usually read from top to bottom, however, if
+this option is set,
+.Nm
+will begin reading the included file at this location and continue
+reading the rest of the configuation after the included file has
+finished being read.
+.Pp
+Any simple settings set before the include may
+be overridden by settings in the included file, and any simple
+settings set in the included file may be overridden later by settings
+after the include or at runtime using the
+.Cm :set
+command.
+However, database settings (for example,
+.Cm cookie_wl , js_wl , pl_wl ,
+and
+.Cm keybinding )
+are only ever added to the database, and so the order of an included
+configuration file is not pertinent to these database settings.
+.Pp
+This feature is likely best used as the last item in
+.Pa ~/.xombrero.conf .
 .It Cm js_wl
 This is a Java Script whitelist item.
 See
