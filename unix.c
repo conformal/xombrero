@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <xxxterm.h>
+#include <xombrero.h>
 
 int
 fork_exec(struct tab *t, char *argv0, const gchar *argv1, char *error, int loud)

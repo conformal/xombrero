@@ -1,13 +1,13 @@
 PREFIX?=/usr/local
 BINDIR=${PREFIX}/bin
 
-PROG=xxxterm
-MAN=xxxterm.1
+PROG=xombrero
+MAN=xombrero.1
 
 DEBUG= -g
 
 SRCS= cookie.c inspector.c marco.c about.c whitelist.c settings.c inputfocus.c
-SRCS+= history.c completion.c tldlist.c externaleditor.c unix.c xxxterm.c
+SRCS+= history.c completion.c tldlist.c externaleditor.c unix.c xombrero.c
 CFLAGS+= -O2 -Wall -Wno-format-extra-args -Wunused
 CFLAGS+= -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare ${DEBUG}
 CFLAGS+= -I. -I${.CURDIR}
@@ -23,12 +23,12 @@ CFLAGS+= $(GTK_CFLAGS)
 LDFLAGS+= $(GTK_LDFLAGS)
 BUILDVERSION != sh "${.CURDIR}/buildver.sh"
 .if !${BUILDVERSION} == ""
-CPPFLAGS+= -DXXXTERM_BUILDSTR=\"$(BUILDVERSION)\"
+CPPFLAGS+= -DXOMBRERO_BUILDSTR=\"$(BUILDVERSION)\"
 .endif
 
 MANDIR= ${PREFIX}/man/man
 
-CLEANFILES += ${.CURDIR}/javascript.h javascript.h xxxterm.cat1 xxxterm.core
+CLEANFILES += ${.CURDIR}/javascript.h javascript.h xombrero.cat1 xombrero.core
 
 JSFILES += hinting.js
 JSFILES += input-focus.js
@@ -43,15 +43,15 @@ javascript.h: ${JSFILES} js-merge-helper.pl
 		${JSCURDIR} > javascript.h
 
 beforeinstall:
-	install -m 755 -d ${PREFIX}/share/xxxterm
-	install -m 644 ${.CURDIR}/xxxtermicon.png ${PREFIX}/share/xxxterm
-	install -m 644 ${.CURDIR}/xxxtermicon16.png ${PREFIX}/share/xxxterm
-	install -m 644 ${.CURDIR}/xxxtermicon32.png ${PREFIX}/share/xxxterm
-	install -m 644 ${.CURDIR}/xxxtermicon48.png ${PREFIX}/share/xxxterm
-	install -m 644 ${.CURDIR}/xxxtermicon64.png ${PREFIX}/share/xxxterm
-	install -m 644 ${.CURDIR}/xxxtermicon128.png ${PREFIX}/share/xxxterm
-	install -m 644 ${.CURDIR}/tld-rules ${PREFIX}/share/xxxterm
-	install -m 644 ${.CURDIR}/style.css ${PREFIX}/share/xxxterm
+	install -m 755 -d ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/xombreroicon.png ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/xombreroicon16.png ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/xombreroicon32.png ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/xombreroicon48.png ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/xombreroicon64.png ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/xombreroicon128.png ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/tld-rules ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/style.css ${PREFIX}/share/xombrero
 
 ${PROG} ${OBJS} beforedepend: javascript.h
 

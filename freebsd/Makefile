@@ -13,13 +13,13 @@ MANDIR?= $(PREFIX)/man
 
 CC?= cc
 
-all: ../javascript.h xxxterm
+all: ../javascript.h xombrero
 
 ../javascript.h: ../js-merge-helper.pl ../hinting.js ../autoscroll.js
 	perl ../js-merge-helper.pl ../hinting.js ../input-focus.js \
 	../autoscroll.js > ../javascript.h
 
-xxxterm.o: ../xxxterm.o
+xombrero.o: ../xombrero.o
 
 unix.o: ../unix.o
 
@@ -45,9 +45,9 @@ externaleditor.o: ../externaleditor.o
 
 tldlist.o: ../tldlist.o
 
-../xxxterm.o: ../javascript.h
+../xombrero.o: ../javascript.h
 
-xxxterm: xxxterm.o freebsd.o marco.o about.o inspector.o whitelist.o settings.o \
+xombrero: xombrero.o freebsd.o marco.o about.o inspector.o whitelist.o settings.o \
 	cookie.o history.o completion.o inputfocus.o tldlist.o externaleditor.o \
 	unix.o
 	$(CC) $(LDFLAGS) -o $@ *.o $+ $(LDADD)
@@ -56,11 +56,11 @@ install: all
 	install -m 755 -d $(DESTDIR)$(BINDIR)
 	install -m 755 -d $(DESTDIR)$(LIBDIR)
 	install -m 755 -d $(DESTDIR)$(MANDIR)/man1
-	install -m 755 xxxterm $(DESTDIR)$(BINDIR)
-	install -m 644 ../xxxterm.1 $(DESTDIR)$(MANDIR)/man1/xxxterm.1
+	install -m 755 xombrero $(DESTDIR)$(BINDIR)
+	install -m 644 ../xombrero.1 $(DESTDIR)$(MANDIR)/man1/xombrero.1
 
 clean:
-	rm -f xxxterm *.o
+	rm -f xombrero *.o
 	rm -f javascript.h
 
 .PHONY: all install clean

@@ -1,9 +1,9 @@
 #!/bin/sh
 # This is an example script for playing flash videos. It requires the
 # get_flash_video package to be installed on the system. You can copy this
-# file to ~/.xxxterm/, and set
-#   default_script = ~/.xxxterm/playflash.sh
-# in ~/.xxxterm.conf. Remember to make this file executable.
+# file to ~/.xombrero/, and set
+#   default_script = ~/.xombrero/playflash.sh
+# in ~/.xombrero.conf. Remember to make this file executable.
 #
 # You may wish to add the following line to ~/.get_flash_videosrc
 # to avoid accumulating files:

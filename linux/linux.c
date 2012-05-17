@@ -1,5 +1,3 @@
-/* $xxxterm$ */
-
 #include <sys/types.h>
 #include <sys/cdefs.h>
 #include <sys/socket.h>

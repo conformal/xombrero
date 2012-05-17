@@ -1,4 +1,3 @@
-/* $xxxterm$ */
 /*
  * Copyright (c) 2011 Todd T. Fries <todd@fries.net>
  *
@@ -15,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <xxxterm.h>
+#include <xombrero.h>
 
 static const char *message[] = {
 	"I fully support your right to put restrictions on how I can modify"

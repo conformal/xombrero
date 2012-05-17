@@ -19,7 +19,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <xxxterm.h>
+#include <xombrero.h>
 
 /* globals */
 SoupURI			*proxy_uri = NULL;
@@ -32,7 +32,7 @@ extern regex_t		url_re;
 /* settings that require restart */
 int		tabless = 0;	/* allow only 1 tab */
 int		enable_socket = 0;
-int		single_instance = 0; /* only allow one xxxterm to run */
+int		single_instance = 0; /* only allow one xombrero to run */
 int		fancy_bar = 1;	/* fancy toolbar */
 int		browser_mode = XT_BM_NORMAL;
 int		gui_mode = XT_GM_CLASSIC;

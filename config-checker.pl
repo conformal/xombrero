@@ -16,10 +16,10 @@
 
 
 use constant SETTINGS => "settings.c";
-use constant CONFIG   => "xxxterm.conf";
-use constant MAIN     => "xxxterm.c";
+use constant CONFIG   => "xombrero.conf";
+use constant MAIN     => "xombrero.c";
 
-# This is a script that checks if the default setting values of xxxterm
+# This is a script that checks if the default setting values of xombrero
 # (found in SETTINGS) are reflected by the CONFIG. It is meant to help
 # the developers; the end user need not bother with it.
 

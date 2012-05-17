@@ -19,13 +19,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <xxxterm.h>
+#include <xombrero.h>
 
 /*
- * xxxterm "protocol" (xtp)
+ * xombrero "protocol" (xtp)
  * We use this for managing stuff like downloads and favorites. They
  * make magical HTML pages in memory which have xxxt:// links in order
- * to communicate with xxxterm's internals. These links take the format:
+ * to communicate with xombrero's internals. These links take the format:
  * xxxt://class/session_key/action/arg
  *
  * Don't begin xtp class/actions as 0. atoi returns that on error.
@@ -220,7 +220,7 @@ about(struct tab *t, struct karg *args)
 		show_oops(NULL, "about invalid parameters");
 
 	body = g_strdup_printf("<b>Version: %s</b>"
-#ifdef XXXTERM_BUILDSTR
+#ifdef XOMBRERO_BUILDSTR
 	    "<br><b>Build: %s</b>"
 #endif
 	    "<br><b>WebKit: %d.%d.%d</b>"
@@ -238,11 +238,11 @@ about(struct tab *t, struct karg *args)
 	    "<li>Raphael Graf &lt;r@undefined.ch&gt;</li>"
 	    "<li>Michal Mazurek &lt;akfaew@jasminek.net&gt;</li>"
 	    "</ul>"
-	    "Copyrights and licenses can be found on the XXXTerm "
-	    "<a href=\"http://opensource.conformal.com/wiki/XXXTerm\">website</a>"
+	    "Copyrights and licenses can be found on the Xombrero "
+	    "<a href=\"http://opensource.conformal.com/wiki/Xombrero\">website</a>"
 	    "</p>",
-#ifdef XXXTERM_BUILDSTR
-	    version, XXXTERM_BUILDSTR,
+#ifdef XOMBRERO_BUILDSTR
+	    version, XOMBRERO_BUILDSTR,
 #else
 	    version,
 #endif
@@ -271,11 +271,11 @@ help(struct tab *t, struct karg *args)
 		show_oops(NULL, "help invalid parameters");
 
 	head = "<meta http-equiv=\"REFRESH\" content=\"0;"
-	    "url=http://opensource.conformal.com/cgi-bin/man-cgi?xxxterm\">"
+	    "url=http://opensource.conformal.com/cgi-bin/man-cgi?xombrero\">"
 	    "</head>\n";
-	body = "XXXTerm man page <a href=\"http://opensource.conformal.com/"
-	    "cgi-bin/man-cgi?xxxterm\">http://opensource.conformal.com/"
-	    "cgi-bin/man-cgi?xxxterm</a>";
+	body = "Xombrero man page <a href=\"http://opensource.conformal.com/"
+	    "cgi-bin/man-cgi?xombrero\">http://opensource.conformal.com/"
+	    "cgi-bin/man-cgi?xombrero</a>";
 
 	page = get_html_page(XT_NAME, body, head, FALSE);
 

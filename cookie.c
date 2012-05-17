@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <xxxterm.h>
+#include <xombrero.h>
 
 #define XT_REJECT_FILE		("rejected.txt")
 #define XT_COOKIE_FILE		("cookies.txt")

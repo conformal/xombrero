@@ -1,11 +1,11 @@
 [Desktop Entry]
-Name=xxxterm Browser
+Name=xombrero Browser
 Comment=Minimalist's Web Browser
 Terminal=false
 Type=Application
 Version=1.0
-Icon=xxxtermicon64.png
-Exec=xxxterm %u
+Icon=xombreroicon64.png
+Exec=xombrero %u
 StartupNotify=false
 Categories=Application;Network;
 MimeType=text/html;text/xml;application/xhtml+xml;application/vnd.mozilla.xul+xml;text/mml;

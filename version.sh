@@ -8,7 +8,7 @@ if [ ! -f "$HEADER" ]; then
 	echo "$SCRIPT: error: $HEADER does not exist" 1>&2
 	exit 1
 fi
-PAT_PREFIX='^#define[[:space:]]+XXXTERM_'
+PAT_PREFIX='^#define[[:space:]]+XOMBRERO_'
 PAT_SUFFIX='[[:space:]]+[0-9]+$'
 MAJOR=$(egrep "${PAT_PREFIX}MAJOR${PAT_SUFFIX}" $HEADER | awk '{print $3}')
 MINOR=$(egrep "${PAT_PREFIX}MINOR${PAT_SUFFIX}" $HEADER | awk '{print $3}')

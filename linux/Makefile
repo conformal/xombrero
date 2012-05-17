@@ -10,7 +10,7 @@ PREFIX?= /usr/local
 BINDIR?= $(PREFIX)/bin
 LIBDIR?= $(PREFIX)/lib
 MANDIR?= $(PREFIX)/share/man
-RESDIR?= $(PREFIX)/share/xxxterm
+RESDIR?= $(PREFIX)/share/xombrero
 
 SRCS= $(shell ls ../*.c)
 SRCS+= linux.c
@@ -21,16 +21,16 @@ CC?= gcc
 
 BUILDVERSION= $(shell sh $(CURDIR)/../buildver.sh)
 ifneq ("${BUILDVERSION}", "")
-CFLAGS+= -DXXXTERM_BUILDSTR=\"$(BUILDVERSION)\"
+CFLAGS+= -DXOMBRERO_BUILDSTR=\"$(BUILDVERSION)\"
 endif
 
-all: javascript.h xxxterm
+all: javascript.h xombrero
 
 javascript.h: ../js-merge-helper.pl ../hinting.js ../autoscroll.js
 	perl ../js-merge-helper.pl ../hinting.js ../input-focus.js \
 	../autoscroll.js > javascript.h
 
-xxxterm: $(OBJS)
+xombrero: $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $+ $(LDADD)
 
 %.o: %.c
@@ -44,29 +44,29 @@ install: all
 	install -m 755 -d $(DESTDIR)$(LIBDIR)
 	install -m 755 -d $(DESTDIR)$(MANDIR)/man1
 	install -m 755 -d $(DESTDIR)$(RESDIR)
-	install -m 755 xxxterm $(DESTDIR)$(BINDIR)
-	install -m 644 ../xxxterm.1 $(DESTDIR)$(MANDIR)/man1/xxxterm.1
-	install -m 644 ../xxxtermicon16.png $(DESTDIR)$(RESDIR)
-	install -m 644 ../xxxtermicon32.png $(DESTDIR)$(RESDIR)
-	install -m 644 ../xxxtermicon48.png $(DESTDIR)$(RESDIR)
-	install -m 644 ../xxxtermicon64.png $(DESTDIR)$(RESDIR)
-	install -m 644 ../xxxtermicon128.png $(DESTDIR)$(RESDIR)
+	install -m 755 xombrero $(DESTDIR)$(BINDIR)
+	install -m 644 ../xombrero.1 $(DESTDIR)$(MANDIR)/man1/xombrero.1
+	install -m 644 ../xombreroicon16.png $(DESTDIR)$(RESDIR)
+	install -m 644 ../xombreroicon32.png $(DESTDIR)$(RESDIR)
+	install -m 644 ../xombreroicon48.png $(DESTDIR)$(RESDIR)
+	install -m 644 ../xombreroicon64.png $(DESTDIR)$(RESDIR)
+	install -m 644 ../xombreroicon128.png $(DESTDIR)$(RESDIR)
 	install -m 644 ../tld-rules $(DESTDIR)$(RESDIR)
 	install -m 644 ../style.css $(DESTDIR)$(RESDIR)
 
 uninstall:
-	rm -f $(DESTDIR)$(BINDIR)/xxxterm
-	rm -f $(DESTDIR)$(MANDIR)/man1/xxxterm.1
-	rm -f $(DESTDIR)$(RESDIR)/xxxtermicon.png
-	rm -f $(DESTDIR)$(RESDIR)/xxxtermicon16.png
-	rm -f $(DESTDIR)$(RESDIR)/xxxtermicon32.png
-	rm -f $(DESTDIR)$(RESDIR)/xxxtermicon48.png
-	rm -f $(DESTDIR)$(RESDIR)/xxxtermicon64.png
-	rm -f $(DESTDIR)$(RESDIR)/xxxtermicon128.png
+	rm -f $(DESTDIR)$(BINDIR)/xombrero
+	rm -f $(DESTDIR)$(MANDIR)/man1/xombrero.1
+	rm -f $(DESTDIR)$(RESDIR)/xombreroicon.png
+	rm -f $(DESTDIR)$(RESDIR)/xombreroicon16.png
+	rm -f $(DESTDIR)$(RESDIR)/xombreroicon32.png
+	rm -f $(DESTDIR)$(RESDIR)/xombreroicon48.png
+	rm -f $(DESTDIR)$(RESDIR)/xombreroicon64.png
+	rm -f $(DESTDIR)$(RESDIR)/xombreroicon128.png
 	rm -f $(DESTDIR)$(RESDIR)/style.css
 	if [ -d $(DESTDIR)$(RESDIR) ]; then rmdir $(DESTDIR)$(RESDIR); fi
 clean:
-	rm -f xxxterm $(OBJS) $(DEPS)
+	rm -f xombrero $(OBJS) $(DEPS)
 	rm -f javascript.h
 
 

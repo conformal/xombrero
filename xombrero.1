@@ -1,6 +1,4 @@
-.\"	$xxxterm$
-.\"
-.\" Copyright (c) 2010, 2011 Marco Peereboom <marco@peereboom.us>
+.\" Copyright (c) 2010, 2011, 2012 Marco Peereboom <marco@peereboom.us>
 .\" Copyright (c) 2011 Jason McIntyre <jmc@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
@@ -16,13 +14,13 @@
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
 .Dd $Mdocdate: October 14 2011 $
-.Dt XXXTERM 1
+.Dt XOMBRERO 1
 .Os
 .Sh NAME
-.Nm xxxterm
+.Nm xombrero
 .Nd lightweight web browser
 .Sh SYNOPSIS
-.Nm xxxterm
+.Nm xombrero
 .Bk -words
 .Op Fl nSTtV
 .Op Fl f Ar file
@@ -67,8 +65,8 @@ section below) in a running
 .Nm
 instance. This option requires
 .Cm enable_socket
-to be enabled. Example run: xxxterm -e "tabnew openbsd.org"; xxxterm -e
-tabclose; xxxterm -e wq.
+to be enabled. Example run: xombrero -e "tabnew openbsd.org"; xombrero -e
+tabclose; xombrero -e wq.
 .It Fl S
 Disable the toolbar.
 .It Fl s Ar session_name
@@ -772,7 +770,7 @@ character (a letter or a digit), instead of a longer name. See the
 and
 .Cm gn[a-zA-Z0-9]
 buffer commands for usage. Quickmarks are stored in
-.Pa ~/.xxxterm/quickmarks
+.Pa ~/.xombrero/quickmarks
 and are saved automatically after each
 .Cm M[a-zA-Z0-9]
 buffer command.
@@ -896,18 +894,18 @@ See the
 section for additional configuration file entries and details
 that alter runtime behavior.
 .Sh FILES
-.Bl -tag -width "/etc/xxxterm.confXXX" -compact
-.It Pa ~/.xxxterm.conf
+.Bl -tag -width "/etc/xombrero.confXXX" -compact
+.It Pa ~/.xombrero.conf
 .Nm
 user specific settings.
-.It Pa ~/.xxxterm
+.It Pa ~/.xombrero
 .Nm
 scratch directory.
 .El
 .Pp
 .Nm
 tries to open the user specific file,
-.Pa ~/.xxxterm.conf .
+.Pa ~/.xombrero.conf .
 If that file is unavailable,
 it then uses built-in defaults.
 .Pp
@@ -979,7 +977,7 @@ mode the browse works just like
 mode however the toolbar only has the backward, forward and home button.
 .Pp
 This setting must be the first entry in
-.Pa ~/.xxxterm.conf
+.Pa ~/.xombrero.conf
 because it sets advanced settings that can be overridden later in the file.
 See the default config file for more details.
 .It Cm cmd_font
@@ -1023,7 +1021,7 @@ are only ever added to the database, and so the order of an included
 configuration file is not pertinent to these database settings.
 .Pp
 This feature is likely best used as the last item in
-.Pa ~/.xxxterm.conf .
+.Pa ~/.xombrero.conf .
 .It Cm cookie_wl
 This is a cookie whitelist item.
 Use multiple times to add multiple entries.
@@ -1081,7 +1079,7 @@ tabs.
 .It Cm enable_js_autorun
 Enables support for autorunning JavaScript after page loads.  When
 enabled,
-.Pa ~/.xxxterm/js/
+.Pa ~/.xombrero/js/
 will be searched for
 .Pa default.js
 and
@@ -1125,7 +1123,7 @@ Enable Java Script.
 When enabled the first instance of
 .Nm
 will create a socket in the
-.Pa ~/.xxxterm
+.Pa ~/.xombrero
 directory.
 Using the -n url option on subsequent
 .Nm
@@ -1147,7 +1145,7 @@ the string <file> will be replaced by the current filename.
 E.g.
 .Pa external_editor = gvim -f <file>
 Note!
-.Cm xxxterm
+.Cm xombrero
 relies on the editor
 .Pa not forking
 into the background.
@@ -1272,7 +1270,7 @@ resources such as icons.
 This is OS-specific and should be handled by the porter.
 .It Cm save_global_history
 If set the global history will be saved to
-.Pa ~/.xxxterm/history
+.Pa ~/.xombrero/history
 when quitting
 and restored at startup.
 See the
@@ -1286,7 +1284,7 @@ Make sure there is enough disk space to enable this feature.
 .It Cm search_string
 Default search engine string.
 See the
-.Pa xxxterm.conf
+.Pa xombrero.conf
 file for details.
 .It Cm session_autosave
 Enable session auto-saving when changing state (e.g. adding or removing a tab).
@@ -1389,7 +1387,7 @@ Set the work directory where all
 .Nm
 scratch files are stored.
 Default is
-.Cm ~/.xxxterm .
+.Cm ~/.xombrero .
 .It Cm xterm_workaround
 When enabled
 .Nm

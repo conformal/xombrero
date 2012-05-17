@@ -7,7 +7,7 @@
 #   - Tags the release
 #   - Creates a release tarball
 
-PROJECT=xxxterm
+PROJECT=xombrero
 PROJECT_UC=$(echo $PROJECT | tr '[:lower:]' '[:upper:]')
 SCRIPT=$(basename $0)
 HEADER=version.h

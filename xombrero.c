@@ -19,10 +19,10 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <xxxterm.h>
+#include <xombrero.h>
 #include "version.h"
 
-char		*version = XXXTERM_VERSION;
+char		*version = XOMBRERO_VERSION;
 
 #ifdef XT_DEBUG
 uint32_t		swm_debug = 0
@@ -52,11 +52,11 @@ GCRY_THREAD_OPTION_PTHREAD_IMPL;
 #endif
 
 char		*icons[] = {
-	"xxxtermicon16.png",
-	"xxxtermicon32.png",
-	"xxxtermicon48.png",
-	"xxxtermicon64.png",
-	"xxxtermicon128.png"
+	"xombreroicon16.png",
+	"xombreroicon32.png",
+	"xombreroicon48.png",
+	"xombreroicon64.png",
+	"xombreroicon128.png"
 };
 
 struct session {
@@ -81,13 +81,13 @@ struct command_entry {
 TAILQ_HEAD(command_list, command_entry);
 
 /* defines */
-#define XT_DIR			(".xxxterm")
+#define XT_DIR			(".xombrero")
 #define XT_CACHE_DIR		("cache")
 #define XT_CERT_DIR		("certs")
 #define XT_JS_DIR		("js")
 #define XT_SESSIONS_DIR		("sessions")
 #define XT_TEMP_DIR		("tmp")
-#define XT_CONF_FILE		("xxxterm.conf")
+#define XT_CONF_FILE		("xombrero.conf")
 #define XT_QMARKS_FILE		("quickmarks")
 #define XT_SAVED_TABS_FILE	("main_session")
 #define XT_RESTART_TABS_FILE	("restart_tabs")
@@ -6341,7 +6341,7 @@ create_window(const gchar *name)
 	else
 		gtk_window_set_default_size(GTK_WINDOW(w), window_width, window_height);
 	gtk_widget_set_name(w, name);
-	gtk_window_set_wmclass(GTK_WINDOW(w), name, "XXXTerm");
+	gtk_window_set_wmclass(GTK_WINDOW(w), name, "Xombrero");
 
 	return (w);
 }
@@ -7403,7 +7403,7 @@ create_canvas(void)
 	g_signal_connect(G_OBJECT(abtn), "button_press_event",
 	    G_CALLBACK(arrow_cb), NULL);
 
-	main_window = create_window("xxxterm");
+	main_window = create_window("xombrero");
 	gtk_container_add(GTK_CONTAINER(main_window), vbox);
 	g_signal_connect(G_OBJECT(main_window), "delete_event",
 	    G_CALLBACK(gtk_main_quit), NULL);
@@ -7669,17 +7669,14 @@ complain:
 void
 welcome(void)
 {
-	startpage_add("<b>Welcome to xxxterm %s!</b><p>", version);
-	startpage_add("Beware that this is the final version that will use the"
-	    " xxxterm name.<br>Moving forward the browser will be called "
-	    "xombrero.<p>", version);
-	startpage_add("Details will soon appear on the "
+	startpage_add("<b>Welcome to xombrero %s!</b><p>", version);
+	startpage_add("Details at "
 	    "<a href=https://opensource.conformal.com/wiki/xombrero>xombrero "
 	    "wiki page</a><p>");
 	startpage_add("Unfortunately scroogle has shut it's doors and due to "
-	   "that one has to edit search_string in ~/.xxxterm.conf.<br>"
+	   "that one has to edit search_string in ~/.xombrero.conf.<br>"
 	   "There are various examples in the configuration file.<br>"
-	   "The authors of xxxterm are not in a position to suggest a search "
+	   "The authors of xombrero are not in a position to suggest a search "
 	   "engine.");
 }
 
@@ -7767,9 +7764,9 @@ main(int argc, char **argv)
 			show_tabs = 0;
 			break;
 		case 'V':
-#ifdef XXXTERM_BUILDSTR
+#ifdef XOMBRERO_BUILDSTR
 			errx(0 , "Version: %s Build: %s",
-			    version, XXXTERM_BUILDSTR);
+			    version, XOMBRERO_BUILDSTR);
 #else
 			errx(0 , "Version: %s", version);
 #endif
@@ -7825,7 +7822,7 @@ main(int argc, char **argv)
 	/* set default string settings */
 	home = g_strdup("https://www.cyphertite.com");
 	search_string = g_strdup("https://ssl.scroogle.org/cgi-bin/nbbwssl.cgi?Gw=%s");
-	resource_dir = g_strdup("/usr/local/share/xxxterm/");
+	resource_dir = g_strdup("/usr/local/share/xombrero/");
 	strlcpy(runtime_settings, "runtime", sizeof runtime_settings);
 	cmd_font_name = g_strdup("monospace normal 9");
 	oops_font_name = g_strdup("monospace normal 9");
@@ -7998,7 +7995,7 @@ main(int argc, char **argv)
 	    NULL);
 
 #ifndef XT_SOCKET_DISABLE
-	/* see if there is already an xxxterm running */
+	/* see if there is already a xombrero running */
 	if (single_instance && is_running()) {
 		optn = 1;
 		warnx("already running");
