@@ -1842,7 +1842,7 @@ load_compare_cert(const gchar *uri, const gchar **error_str)
 			rv = CERT_BAD; /* critical */
 			goto freeit;
 		}
-		if (bcmp(r_cert_buf, cert_buf, sizeof cert_buf_sz)) {
+		if (bcmp(r_cert_buf, cert_buf, cert_buf_sz)) {
 			rv = CERT_BAD; /* critical */
 			goto freeit;
 		}
