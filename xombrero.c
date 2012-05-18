@@ -1038,7 +1038,7 @@ run_script_locked(struct tab *t, char *s)
 #endif
 	rv = run_script(t, s);
 #ifdef USE_THREADS
-	gdk_flush();
+	GDK_FLUSH();
 	gdk_threads_leave();
 #endif
 	return (rv);
