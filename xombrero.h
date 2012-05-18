@@ -38,6 +38,7 @@
 #include "linux/tree.h"
 #include <bsd/stdlib.h>
 #include <X11/Xlib.h>
+#include <sys/un.h>
 # if !defined(sane_libbsd_headers)
 void		arc4random_buf(void *, size_t);
 u_int32_t	arc4random_uniform(u_int32_t);
@@ -47,11 +48,14 @@ u_int32_t	arc4random_uniform(u_int32_t);
 #include "freebsd/util.h"
 #include <sys/tree.h>
 #include <X11/Xlib.h>
+#include <sys/un.h>
 #elif defined(__OpenBSD__)
 #include <util.h>
 #include <sys/tree.h>
 #include <X11/Xlib.h>
+#include <sys/un.h>
 #else
+/* mingw */
 void		arc4random_buf(void *, size_t);
 uint32_t	arc4random_uniform(uint32_t);
 #include "tree.h"
