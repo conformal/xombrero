@@ -4239,8 +4239,8 @@ strict_transport_add(const char *domain, time_t timeout, int subdomains)
 	if (enable_strict_transport == FALSE)
 		return (0);
 
-	DPRINTF("strict_transport_add(%s,%" PRIo64 ",%d)\n", domain,
-	    (long long)timeout, subdomains);
+	DPRINTF("strict_transport_add(%s,%" PRIi64 ",%d)\n", domain,
+	    (uint64_t)timeout, subdomains);
 
 	now = time(NULL);
 	if (timeout < now)
@@ -4276,7 +4276,8 @@ strict_transport_add(const char *domain, time_t timeout, int subdomains)
 		RB_FOREACH(d, strict_transport_tree, &st_tree) {
 			if (d->timeout < now)
 				continue;
-			fprintf(f, "%s\t%" PRIo64 "\t%d\n", d->host, (long long)d->timeout,
+			fprintf(f, "%s\t%" PRIi64 "\t%d\n", d->host,
+			    (uint64_t)d->timeout,
 			    d->flags & XT_STS_FLAGS_INCLUDE_SUBDOMAINS);
 		}
 		fclose(f);
@@ -4301,7 +4302,8 @@ strict_transport_add(const char *domain, time_t timeout, int subdomains)
 		}
 
 		fseek(f, 0, SEEK_END);
-		fprintf(f,"%s\t%" PRIo64 "\t%d\n", d->host, (long long)timeout, subdomains);
+		fprintf(f,"%s\t%" PRIi64 "\t%d\n", d->host, (uint64_t)timeout,
+		    subdomains);
 		fclose(f);
 	}
 	return (0);
