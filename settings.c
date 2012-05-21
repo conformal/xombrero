@@ -1571,8 +1571,10 @@ get_referer(struct settings *s)
 int
 set_referer(struct settings *s, char *value)
 {
-	if (referer_custom)
+	if (referer_custom) {
 		g_free(referer_custom);
+		referer_custom = NULL;
+	}
 
 	if (!strcmp(value, "always"))
 		referer_mode = XT_REFERER_ALWAYS;
