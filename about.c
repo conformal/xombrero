@@ -65,6 +65,7 @@
 #define XT_XTP_HL		(2)	/* history */
 #define XT_XTP_CL		(3)	/* cookies */
 #define XT_XTP_FL		(4)	/* favorites */
+#define XT_XTP_SL		(5)	/* search */
 
 /* XTP download actions */
 #define XT_XTP_DL_LIST		(1)
@@ -86,6 +87,9 @@
 /* XTP cookie actions */
 #define XT_XTP_FL_LIST		(1)
 #define XT_XTP_FL_REMOVE	(2)
+
+/* XPT search actions */
+#define XT_XTP_SL_SET		(1)
 
 int			js_show_wl(struct tab *, struct karg *);
 int			pl_show_wl(struct tab *, struct karg *);
@@ -115,6 +119,21 @@ struct about_type about_list[] = {
 	{ XT_URI_ABOUT_STARTPAGE,	startpage },
 	{ XT_URI_ABOUT_PLUGINWL,	pl_show_wl },
 	{ XT_URI_ABOUT_WEBKIT,		about_webkit },
+	{ XT_URI_ABOUT_SEARCH,		xtp_page_sl },
+};
+
+struct search_type {
+	const char		*name;
+	const char		*url;
+} search_list[] = {
+	{ "Google (SSL)",	"https://encrypted.google.com/search?q=%s&&client=xombrero" },
+	{ "Bing",		"http://www.bing.com/search?q=%s" },
+	{ "Yahoo",		"http://search.yahoo.com/search?p=%s" },
+	{ "DuckDuckGo",		"https://duckduckgo.com/?q=%s" },
+	{ "DuckDuckGo (HTML)",	"https://duckduckgo.com/html?q=%s" },
+	{ "DuckDuckGo (Lite)",	"https://duckduckgo.com/lite?q=%s" },
+	{ "Ixquick",		"https://ixquick.com/do/search?q=%s" },
+	{ "Startpage",		"https://startpage.com/do/search?q=%s" },
 };
 
 /*
@@ -130,11 +149,13 @@ char			*dl_session_key;	/* downloads */
 char			*hl_session_key;	/* history list */
 char			*cl_session_key;	/* cookie list */
 char			*fl_session_key;	/* favorites list */
+char			*sl_session_key;	/* search */
 
 int			updating_fl_tabs = 0;
 int			updating_dl_tabs = 0;
 int			updating_hl_tabs = 0;
 int			updating_cl_tabs = 0;
+int			updating_sl_tabs = 0;
 struct download_list	downloads;
 
 size_t
@@ -722,6 +743,25 @@ done:
 	return (0);
 }
 
+char *
+search_engine_add(char *body, const char *name, const char *url, int select)
+{
+	char			*b = body;
+
+	body = g_strdup_printf("%s<tr>"
+	    "<td>%s</td>"
+	    "<td>%s</td>"
+	    "<td style='text-align: center'>"
+	    "<a href='%s%d/%s/%d/%d'>[ Select ]</a></td>"
+	    "</tr>\n",
+	    body,
+	    name,
+	    url,
+	    XT_XTP_STR, XT_XTP_SL, sl_session_key, XT_XTP_SL_SET, select);
+	g_free(b);
+	return (body);
+}
+
 void
 xtp_handle_fl(struct tab *t, uint8_t cmd, int arg)
 {
@@ -764,6 +804,80 @@ xtp_handle_cl(struct tab *t, uint8_t cmd, int arg)
 	xtp_page_cl(t, NULL);
 }
 
+void
+xtp_handle_sl(struct tab *t, uint8_t cmd, int arg)
+{
+	struct stat		sb;
+	FILE			*f;
+	size_t			linelen;
+	int			found = 0;
+	const char		*search;
+	char			file[PATH_MAX];
+	char			delim[3] = { '\0', '\0', '\0' };
+	char			*line, *lt, *enc_search, *uri;
+	char			*contents, *tmp;
+
+	switch (cmd) {
+	case XT_XTP_SL_SET:
+		set_search_string((char *)search_list[arg].url);
+		if (runtime_settings == NULL || strlen(runtime_settings) == 0) {
+			show_oops(t, "could not set search_string in "
+			    "runtime");
+			break;
+		}
+		snprintf(file, sizeof file, "%s" PS "%s", work_dir,
+		    runtime_settings);
+		if (stat(file, &sb) || (f = fopen(file, "r+")) == NULL) {
+			show_oops(t, "could not set search_string in runtime");
+			break;
+		}
+		lt = g_strdup_printf("search_string=%s",
+		    (char *)search_list[arg].url);
+		contents = g_strdup("");
+		while (!feof(f)) {
+			line = fparseln(f, &linelen, NULL, delim, 0);
+			if (line == NULL || linelen == 0)
+				continue;
+			tmp = contents;
+			if (strstr(line, "search_string=") == NULL)
+				contents = g_strdup_printf("%s%s\n", contents,
+				    line);
+			else {
+				found = 1;
+				contents = g_strdup_printf("%s%s\n", contents,
+				    lt);
+			}
+			g_free(tmp);
+			free(line);
+			line = NULL;
+		}
+		if (found == 0) {
+			tmp = contents;
+			contents = g_strdup_printf("%s%s\n", contents, lt);
+			g_free(tmp);
+		}
+		if ((f = freopen(file, "w", f)) == NULL)
+			show_oops(t, "could not set search_string in runtime");
+		else {
+			fputs(contents, f);
+			fclose(f);
+		}
+		g_free(lt);
+		g_free(contents);
+		break;
+	default:
+		show_oops(t, "%s: unknown search xtp command", __func__);
+		break;
+	};
+
+	search = gtk_entry_get_text(GTK_ENTRY(t->search_entry)); /* static */
+	enc_search = soup_uri_encode(search, XT_RESERVED_CHARS);
+	uri = g_strdup_printf(search_string, enc_search);
+	load_uri(t, uri);
+	g_free(enc_search);
+	g_free(uri);
+}
+
 /* link an XTP class to it's session key and handler function */
 struct xtp_despatch {
 	uint8_t			xtp_class;
@@ -776,6 +890,7 @@ struct xtp_despatch		xtp_despatches[] = {
 	{ XT_XTP_HL, &hl_session_key, xtp_handle_hl },
 	{ XT_XTP_FL, &fl_session_key, xtp_handle_fl },
 	{ XT_XTP_CL, &cl_session_key, xtp_handle_cl },
+	{ XT_XTP_SL, &sl_session_key, xtp_handle_sl },
 	{ XT_XTP_INVALID, NULL, NULL }
 };
 
@@ -967,6 +1082,25 @@ update_history_tabs(struct tab *apart_from)
 			    && (t != apart_from))
 				xtp_page_hl(t, NULL);
 		updating_hl_tabs = 0;
+	}
+}
+
+/*
+ * update all search tabs apart from one. Pass NULL if
+ * you want to update all.
+ */
+void
+update_search_tabs(struct tab *apart_from)
+{
+	struct tab			*t;
+
+	if (!updating_sl_tabs) {
+		updating_sl_tabs = 1; /* stop infinite recursion */
+		TAILQ_FOREACH(t, &tabs, entry)
+			if ((t->xtp_meaning == XT_XTP_TAB_MEANING_SL)
+			    && (t != apart_from))
+				xtp_page_sl(t, NULL);
+		updating_sl_tabs = 0;
 	}
 }
 
@@ -1461,6 +1595,64 @@ xtp_page_dl(struct tab *t, struct karg *args)
 	update_download_tabs(t);
 
 	load_webkit_string(t, page, XT_URI_ABOUT_DOWNLOADS);
+	g_free(page);
+
+	return (0);
+}
+
+int
+xtp_page_sl(struct tab *t, struct karg *args)
+{
+	int			i;
+	char			*page, *body, *tmp;
+
+	DNPRINTF(XT_D_SEARCH, "%s", __func__);
+
+	/*
+	 * Generate a new session key for next page instance.
+	 * This only happens for the top level call to xtp_page_sl()
+	 * in which case updating_sl_tabs is 0.
+	 */
+	if (!updating_sl_tabs)
+		generate_xtp_session_key(&sl_session_key);
+
+	if (t == NULL) {
+		show_oops(NULL, "%s invalid parameters", __func__);
+		return (1);
+	}
+
+	body = g_strdup_printf("<p>The Xombrero authors will not choose a "
+	    "default search engine for you.  What follows is a list of search "
+	    "engines (in no particular order) you may be interested in.  "
+	    "To permanently choose a search engine, click [ Select ] to save "
+	    "<tt>search_string</tt> as a runtime setting, or set "
+	    "<tt>search_string</tt> to the appropriate URL in your Xombrero "
+	    "configuration.</p>");
+
+	tmp = body;
+	body = g_strdup_printf("%s\n<table style='table-layout:fixed'><tr>"
+	    "<th style='width: 200px'>Name</th><th>URL</th>"
+	    "<th style='width: 100px'>Select</th></tr>\n", body);
+	g_free(tmp);
+
+	for (i = 0; i < (sizeof search_list / sizeof (struct search_type)); ++i)
+		body = search_engine_add(body, search_list[i].name,
+		    search_list[i].url, i);
+
+	tmp = body;
+	body = g_strdup_printf("%s</table>", body);
+	g_free(tmp);
+
+	page = get_html_page("Choose a search engine", body, "", 1);
+	g_free(body);
+
+	/*
+	 * update all search tabs as the xtp session key has now changed. No
+	 * need to update the current tab. Already did that above.
+	 */
+	update_search_tabs(t);
+
+	load_webkit_string(t, page, XT_URI_ABOUT_SEARCH);
 	g_free(page);
 
 	return (0);

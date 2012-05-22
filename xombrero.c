@@ -98,7 +98,6 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_DLMAN_REFRESH	"10"
 #define XT_MAX_URL_LENGTH	(4096) /* 1 page is atomic, don't make bigger */
 #define XT_MAX_UNDO_CLOSE_TAB	(32)
-#define XT_RESERVED_CHARS	"$&+,/:;=?@ \"<>#%%{}|^~[]`"
 #define XT_PRINT_EXTRA_MARGIN	10
 #define XT_URL_REGEX		("^[[:blank:]]*[^[:blank:]]*([[:alnum:]-]+\\.)+[[:alnum:]-][^[:blank:]]*[[:blank:]]*$")
 #define XT_INVALID_MARK		(-1) /* XXX this is a double, maybe use something else, like a nan */
@@ -3346,7 +3345,7 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 	g_free(enc_search);
 
 	marks_clear(t);
-	webkit_web_view_load_uri(t->wv, newuri);
+	load_uri(t, newuri);
 	focus_webview(t);
 
 	if (newuri)
@@ -7676,11 +7675,6 @@ welcome(void)
 	startpage_add("Details at "
 	    "<a href=https://opensource.conformal.com/wiki/xombrero>xombrero "
 	    "wiki page</a><p>");
-	startpage_add("Unfortunately scroogle has shut it's doors and due to "
-	   "that one has to edit search_string in ~/.xombrero.conf.<br>"
-	   "There are various examples in the configuration file.<br>"
-	   "The authors of xombrero are not in a position to suggest a search "
-	   "engine.");
 }
 
 int
@@ -7825,7 +7819,7 @@ main(int argc, char **argv)
 
 	/* set default string settings */
 	home = g_strdup("https://www.cyphertite.com");
-	search_string = g_strdup("https://ssl.scroogle.org/cgi-bin/nbbwssl.cgi?Gw=%s");
+	search_string = g_strdup("about:search");
 	resource_dir = g_strdup("/usr/local/share/xombrero/");
 	strlcpy(runtime_settings, "runtime", sizeof runtime_settings);
 	cmd_font_name = g_strdup("monospace normal 9");

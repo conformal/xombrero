@@ -322,6 +322,7 @@ RB_PROTOTYPE(strict_transport_tree, strict_transport, entry, strict_transport_rb
 #define XT_CB_PASSTHROUGH	(FALSE)
 #define XT_FAVS_FILE		("favorites")
 #define XT_SOD_FILE		("startofday")
+#define XT_RESERVED_CHARS	"$&+,/:;=?@ \"<>#%%{}|^~[]`"
 
 int			run_script(struct tab *, char *);
 void			xt_icon_from_file(struct tab *, char *);
@@ -399,6 +400,7 @@ char			*tld_get_suffix(const char *);
 #define XT_URI_ABOUT_MARCO	("marco")
 #define XT_URI_ABOUT_STARTPAGE	("startpage")
 #define XT_URI_ABOUT_WEBKIT	("webkit")
+#define XT_URI_ABOUT_SEARCH	("search")
 
 struct about_type {
 	char		*name;
@@ -423,6 +425,7 @@ int			xtp_page_cl(struct tab *, struct karg *);
 int			xtp_page_dl(struct tab *, struct karg *);
 int			xtp_page_fl(struct tab *, struct karg *);
 int			xtp_page_hl(struct tab *, struct karg *);
+int			xtp_page_sl(struct tab *, struct karg *);
 int			parse_xtp_url(struct tab *, const char *);
 int			add_favorite(struct tab *, struct karg *);
 void			update_favorite_tabs(struct tab *);
@@ -445,6 +448,7 @@ void			startpage_add(const char *, ...);
 #define XT_XTP_TAB_MEANING_DL		(5)  /* download manager in this tab */
 #define XT_XTP_TAB_MEANING_FL		(6)  /* favorite manager in this tab */
 #define XT_XTP_TAB_MEANING_HL		(8)  /* history manager in this tab */
+#define XT_XTP_TAB_MEANING_SL		(9)  /* XXX whut? */
 
 /* whitelists */
 #define XT_WL_TOGGLE		(1<<0)
@@ -599,6 +603,7 @@ int		set_browser_mode(struct settings *, char *);
 int		set_encoding(struct tab *, struct karg *);
 int		set_gui_mode(struct settings *, char *);
 int		set_cookie_policy(struct settings *, char *);
+int		set_search_string(char *);
 int		set_ssl_ca_file(char *);
 char		*get_browser_mode(struct settings *);
 char		*get_gui_mode(struct settings *);
