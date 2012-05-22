@@ -7902,7 +7902,8 @@ main(int argc, char **argv)
 			err(1, "fgets");
 		sodversion[strcspn(sodversion, "\n")] = '\0';
 		if (strcmp(version, sodversion)) {
-			rewind(f);
+			if ((f = freopen(file, "w", f)) == NULL)
+				err(1, "startofday");
 			if (fputs(version, f) == EOF)
 				err(1, "fputs");
 
