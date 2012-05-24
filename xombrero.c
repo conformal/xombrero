@@ -2153,6 +2153,7 @@ navaction(struct tab *t, struct karg *args)
 	DNPRINTF(XT_D_NAV, "navaction: tab %d opcode %d\n",
 	    t->tab_id, args->i);
 
+	hide_oops(t);
 	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
 	if (t->item) {
 		if (args->i == XT_NAV_BACK)
