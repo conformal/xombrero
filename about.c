@@ -260,8 +260,8 @@ about(struct tab *t, struct karg *args)
 	    "<li>Michal Mazurek &lt;akfaew@jasminek.net&gt;</li>"
 	    "<li>Josh Rickmar &lt;jrick@devio.us&gt;</li>"
 	    "</ul>"
-	    "Copyrights and licenses can be found on the Xombrero "
-	    "<a href=\"http://opensource.conformal.com/wiki/Xombrero\">website</a>"
+	    "Copyrights and licenses can be found on the xombrero "
+	    "<a href=\"http://opensource.conformal.com/wiki/xombrero\">website</a>"
 	    "</p>",
 #ifdef XOMBRERO_BUILDSTR
 	    version, XOMBRERO_BUILDSTR,
@@ -295,7 +295,7 @@ help(struct tab *t, struct karg *args)
 	head = "<meta http-equiv=\"REFRESH\" content=\"0;"
 	    "url=http://opensource.conformal.com/cgi-bin/man-cgi?xombrero\">"
 	    "</head>\n";
-	body = "Xombrero man page <a href=\"http://opensource.conformal.com/"
+	body = "xombrero man page <a href=\"http://opensource.conformal.com/"
 	    "cgi-bin/man-cgi?xombrero\">http://opensource.conformal.com/"
 	    "cgi-bin/man-cgi?xombrero</a>";
 
@@ -1622,12 +1622,12 @@ xtp_page_sl(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	body = g_strdup_printf("<p>The Xombrero authors will not choose a "
+	body = g_strdup_printf("<p>The xombrero authors will not choose a "
 	    "default search engine for you.  What follows is a list of search "
 	    "engines (in no particular order) you may be interested in.  "
 	    "To permanently choose a search engine, click [ Select ] to save "
 	    "<tt>search_string</tt> as a runtime setting, or set "
-	    "<tt>search_string</tt> to the appropriate URL in your Xombrero "
+	    "<tt>search_string</tt> to the appropriate URL in your xombrero "
 	    "configuration.</p>");
 
 	tmp = body;

@@ -317,7 +317,7 @@ RB_HEAD(strict_transport_tree, strict_transport);
 RB_PROTOTYPE(strict_transport_tree, strict_transport, entry, strict_transport_rb_cmp);
 
 /* utility */
-#define XT_NAME			("Xombrero")
+#define XT_NAME			("xombrero")
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
 #define XT_FAVS_FILE		("favorites")
