@@ -258,6 +258,7 @@ about(struct tab *t, struct karg *args)
 	    "<li>Todd T. Fries &lt;todd@fries.net&gt;</li>"
 	    "<li>Raphael Graf &lt;r@undefined.ch&gt;</li>"
 	    "<li>Michal Mazurek &lt;akfaew@jasminek.net&gt;</li>"
+	    "<li>Josh Rickmar &lt;jrick@devio.us&gt;</li>"
 	    "</ul>"
 	    "Copyrights and licenses can be found on the Xombrero "
 	    "<a href=\"http://opensource.conformal.com/wiki/Xombrero\">website</a>"
