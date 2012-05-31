@@ -249,6 +249,7 @@ about(struct tab *t, struct karg *args)
 #ifdef WEBKITGTK_API_VERSION
 	    "<br><b>WebKit API: %.1f</b>"
 #endif
+	    "<br><b>Home dir: %s</b>"
 	    "<p>"
 	    "Authors:"
 	    "<ul>"
@@ -273,6 +274,7 @@ about(struct tab *t, struct karg *args)
 #ifdef WEBKITGTK_API_VERSION
 	    ,WEBKITGTK_API_VERSION
 #endif
+	    ,pwd->pw_dir
 	    );
 
 	page = get_html_page("About", body, "", 0);
