@@ -7692,6 +7692,9 @@ main(int argc, char **argv)
 
 	start_argv = (char * const *)argv;
 
+	if (os_init)
+		os_init();
+
 	/* prepare gtk */
 #ifdef USE_THREADS
 #if !defined __MINGW32__

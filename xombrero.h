@@ -158,6 +158,7 @@ THE SOFTWARE.
 #define XT_D_INSPECTOR		0x8000
 #define XT_D_VISITED		0x10000
 #define XT_D_HISTORY		0x20000
+#define XT_D_MISC		0x40000
 extern uint32_t	swm_debug;
 #else
 #define DPRINTF(x...)
@@ -698,6 +699,7 @@ extern char	*referer_custom;
 extern int	download_notifications;
 
 /* globals */
+extern void		(*os_init)(void);
 extern char		*version;
 extern char		*icons[];
 extern char		rc_fname[PATH_MAX];
