@@ -7692,9 +7692,6 @@ main(int argc, char **argv)
 
 	start_argv = (char * const *)argv;
 
-	if (os_init)
-		os_init();
-
 	/* prepare gtk */
 #ifdef USE_THREADS
 #if !defined __MINGW32__
@@ -7833,6 +7830,10 @@ main(int argc, char **argv)
 	statusbar_elems = g_strdup("BP");
 	spell_check_languages = g_strdup("en_US");
 	encoding = g_strdup("UTF-8");
+
+	/* override os specific settings */
+	if (os_init)
+		os_init();
 
 	/* read config file */
 	if (strlen(conf) == 0)
