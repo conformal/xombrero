@@ -1345,6 +1345,35 @@ save_tabs_and_quit(struct tab *t, struct karg *args)
 	return (1);
 }
 
+void
+expand_tilde(char *path, size_t len, const char *s)
+{
+	struct passwd		*pwd;
+	int			i;
+	char			user[LOGIN_NAME_MAX];
+	const char		*sc = s;
+
+	if (path == NULL || s == NULL)
+		errx(1, "expand_tilde");
+
+	if (s[0] != '~') {
+		strlcpy(path, sc, len);
+		return;
+	}
+
+	++s;
+	for (i = 0; s[i] != '/' && s[i] != '\0'; ++i)
+		user[i] = s[i];
+	user[i] = '\0';
+	s = &s[i];
+
+	pwd = strlen(user) == 0 ? getpwuid(getuid()) : getpwnam(user);
+	if (pwd == NULL)
+		strlcpy(path, sc, len);
+	else
+		snprintf(path, len, "%s%s", pwd->pw_dir, s);
+}
+
 int
 run_page_script(struct tab *t, struct karg *args)
 {

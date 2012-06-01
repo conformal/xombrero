@@ -335,6 +335,7 @@ const gchar		*get_title(struct tab *, bool);
 void			load_uri(struct tab *t, gchar *uri);
 gboolean		match_uri(const gchar *uri, const gchar *key);
 int			valid_url_type(char *);
+void			expand_tilde(char *, size_t, const char *);
 
 void			load_webkit_string(struct tab *, const char *, gchar *);
 void			button_set_stockid(GtkWidget *, char *);
