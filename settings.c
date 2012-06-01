@@ -28,7 +28,6 @@ PangoFontDescription	*cmd_font;
 PangoFontDescription	*oops_font;
 PangoFontDescription	*statusbar_font;
 PangoFontDescription	*tabbar_font;
-extern regex_t		url_re;
 
 /* settings that require restart */
 int		tabless = 0;	/* allow only 1 tab */
@@ -37,75 +36,74 @@ int		single_instance = 0; /* only allow one xombrero to run */
 int		fancy_bar = 1;	/* fancy toolbar */
 int		browser_mode = XT_BM_NORMAL;
 int		gui_mode = XT_GM_CLASSIC;
-int		enable_localstorage = 1;
 char		*statusbar_elems = NULL;
-
-/* runtime settings */
-int		show_tabs = 1;	/* show tabs on notebook */
-int		tab_style = XT_TABS_NORMAL; /* tab bar style */
-int		show_url = 1;	/* show url toolbar on notebook */
-int		show_statusbar = 0; /* vimperator style status bar */
-int		ctrl_click_focus = 0; /* ctrl click gets focus */
-int		cookies_enabled = 1; /* enable cookies */
-int		read_only_cookies = 0; /* enable to not write cookies */
-int		enable_scripts = 1;
-int		enable_plugins = 1;
-gfloat		default_zoom_level = 1.0;
-char		default_script[PATH_MAX];
 int		window_height = 768;
 int		window_width = 1024;
 int		window_maximize = 0;
 int		icon_size = 2; /* 1 = smallest, 2+ = bigger */
-int		refresh_interval = 10; /* download refresh interval */
-int		enable_plugin_whitelist = 0;
-int		enable_cookie_whitelist = 0;
-int		enable_js_whitelist = 0;
-int		session_timeout = 3600; /* cookie session timeout */
-int		cookie_policy = SOUP_COOKIE_JAR_ACCEPT_ALWAYS;
-char		*ssl_ca_file = NULL;
 char		*resource_dir = NULL;
-gboolean	ssl_strict_certs = FALSE;
-gboolean	enable_strict_transport = TRUE;
-int		append_next = 1; /* append tab after current tab */
-char		*home = NULL;
-char		*search_string = NULL;
-char		*http_proxy = NULL;
 char		download_dir[PATH_MAX];
-int		download_mode = XT_DM_START;
-char		runtime_settings[PATH_MAX]; /* override of settings */
 int		allow_volatile_cookies = 0;
-int		color_visited_uris = 1;
 int		save_global_history = 0; /* save global history to disk */
 struct user_agent	*user_agent = NULL;
 int		save_rejected_cookies = 0;
-int		session_autosave = 0;
-int		guess_search = 0;
-int		dns_prefetch = FALSE;
 gint		max_connections = 25;
 gint		max_host_connections = 5;
-gint		enable_spell_checking = 0;
-char		*spell_check_languages = NULL;
-int		xterm_workaround = 0;
-char		*url_regex = NULL;
 int		history_autosave = 0;
 char		search_file[PATH_MAX];
 char		command_file[PATH_MAX];
-char		*encoding = NULL;
-int		autofocus_onload = 0;
-int		enable_js_autorun = 1;
 int		edit_mode = XT_EM_HYBRID;
-int		userstyle_global = 0;
-int		auto_load_images = 1;
-int		enable_autoscroll = 0;
-int		enable_favicon_entry = 1;
-int		enable_favicon_tabs = 0;
-char		*external_editor = NULL;
-int		referer_mode = XT_REFERER_ALWAYS;
+
+/* runtime settings */
+int		show_tabs = XT_DS_SHOW_TABS;	/* show tabs on notebook */
+int		tab_style = XT_DS_TAB_STYLE; /* tab bar style */
+int		show_url = XT_DS_SHOW_URL;	/* show url toolbar on notebook */
+int		show_statusbar = XT_DS_SHOW_STATUSBAR; /* vimperator style status bar */
+int		ctrl_click_focus = XT_DS_CTRL_CLICK_FOCUS; /* ctrl click gets focus */
+int		cookies_enabled = XT_DS_COOKIES_ENABLED; /* enable cookies */
+int		read_only_cookies = XT_DS_READ_ONLY_COOKIES; /* enable to not write cookies */
+int		enable_scripts = XT_DS_ENABLE_SCRIPTS;
+int		enable_plugins = XT_DS_ENABLE_PLUGINS;
+gfloat		default_zoom_level = XT_DS_DEFAULT_ZOOM_LEVEL;
+char		default_script[PATH_MAX] = XT_DS_DEFAULT_SCRIPT;
+int		refresh_interval = XT_DS_REFRESH_INTERVAL; /* download refresh interval */
+int		enable_plugin_whitelist = XT_DS_ENABLE_PLUGIN_WHITELIST;
+int		enable_cookie_whitelist = XT_DS_ENABLE_COOKIE_WHITELIST;
+int		enable_js_whitelist = XT_DS_ENABLE_JS_WHITELIST;
+int		enable_localstorage = XT_DS_ENABLE_LOCALSTORAGE;
+int		session_timeout = XT_DS_SESSION_TIMEOUT; /* cookie session timeout */
+int		cookie_policy = XT_DS_COOKIE_POLICY;
+char		*ssl_ca_file = XT_DS_SSL_CA_FILE;
+gboolean	ssl_strict_certs = XT_DS_SSL_STRICT_CERTS;
+gboolean	enable_strict_transport = XT_DS_ENABLE_STRICT_TRANSPORT;
+int		append_next = XT_DS_APPEND_NEXT; /* append tab after current tab */
+char		*home = NULL;	/* allocated and set at startup */
+char		*search_string = NULL;
+char		*http_proxy = XT_DS_HTTP_PROXY;
+int		download_mode = XT_DM_START;
+char		runtime_settings[PATH_MAX]; /* override of settings */
+int		color_visited_uris = XT_DS_COLOR_VISITED_URIS;
+int		session_autosave = XT_DS_SESSION_AUTOSAVE;
+int		guess_search = XT_DS_GUESS_SEARCH;
+gint		enable_spell_checking = XT_DS_ENABLE_SPELL_CHECKING;
+char		*spell_check_languages = XT_DS_SPELL_CHECK_LANGUAGES;
+int		xterm_workaround = XT_DS_XTERM_WORKAROUND;
+char		*url_regex = NULL;	/* allocated/set at startup */
+char		*encoding = NULL;	/* allocated/set at startup */
+int		autofocus_onload = XT_DS_AUTOFOCUS_ONLOAD;
+int		enable_js_autorun = XT_DS_ENABLE_JS_AUTORUN;
+int		userstyle_global = XT_DS_USERSTYLE_GLOBAL;
+int		auto_load_images = XT_DS_AUTO_LOAD_IMAGES;
+int		enable_autoscroll = XT_DS_ENABLE_AUTOSCROLL;
+int		enable_favicon_entry = XT_DS_ENABLE_FAVICON_ENTRY;
+int		enable_favicon_tabs = XT_DS_ENABLE_FAVICON_TABS;
+char		*external_editor = NULL;	/* set/allocated at startup */
+int		referer_mode = XT_DS_REFERER_MODE;
 char		*referer_custom = NULL;
-int		download_notifications = 0;
+int		download_notifications = XT_DS_DOWNLOAD_NOTIFICATIONS;
 char		*include_config = NULL;
 
-char		*cmd_font_name = NULL;
+char		*cmd_font_name = NULL;	/* these are all set at startup */
 char		*oops_font_name = NULL;
 char		*statusbar_font_name = NULL;
 char		*tabbar_font_name = NULL;
@@ -130,6 +128,7 @@ int		add_cmd_alias(struct settings *, char *);
 int		add_custom_uri(struct settings *, char *);
 
 int		set_append_next(char *);
+int		set_autofocus_onload(char *);
 int		set_cmd_font(char *);
 int		set_color_visited_uris(char *);
 int		set_cookie_policy_rt(char *);
@@ -208,12 +207,9 @@ set_http_proxy(char *proxy)
 {
 	SoupURI			*uri;
 
-	if (proxy == NULL)
-		return (1);
-
-	/* see if we need to clear it instead */
-	if (strlen(proxy) == 0) {
-		setup_proxy(NULL);
+	/* see if we need to clear it */
+	if (proxy == NULL || strlen(proxy) == 0) {
+		setup_proxy(XT_DS_HTTP_PROXY);
 		return (0);
 	}
 
@@ -352,7 +348,7 @@ struct special		s_referer = {
 
 struct settings		rs[] = {
 	{ "allow_volatile_cookies",	XT_S_INT, 0,		&allow_volatile_cookies, NULL, NULL, NULL, NULL},
-	{ "autofocus_onload",		XT_S_INT, 0,		&autofocus_onload, NULL, NULL, NULL, NULL },
+	{ "autofocus_onload",		XT_S_INT, 0,		&autofocus_onload, NULL, NULL, NULL, set_autofocus_onload },
 	{ "browser_mode",		XT_S_INT, 0, NULL, NULL,&s_browser_mode, NULL, NULL },
 	{ "gui_mode",			XT_S_INT, 0, NULL, NULL,&s_gui_mode, NULL, NULL },
 	{ "color_visited_uris",		XT_S_INT, 0,		&color_visited_uris , NULL, NULL, NULL, set_color_visited_uris },
@@ -444,8 +440,9 @@ set_default_zoom_level(char *value)
 	struct tab		*t;
 
 	if (value == NULL || strlen(value) == 0)
-		return (-1);
-	default_zoom_level = g_strtod(value, NULL);
+		default_zoom_level = XT_DS_DEFAULT_ZOOM_LEVEL;
+	else
+		default_zoom_level = g_strtod(value, NULL);
 	args.i = 100;	/* adjust = 100 percent for no additional adjustment */
 	TAILQ_FOREACH(t, &tabs, entry)
 		resizetab(t, &args);
@@ -458,10 +455,14 @@ set_cookies_enabled(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	cookies_enabled = tmp;
+	if (value == NULL || strlen(value) == 0)
+		cookies_enabled = XT_DS_COOKIES_ENABLED;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		cookies_enabled = tmp;
+	}
 	return (0);
 }
 
@@ -471,10 +472,14 @@ set_append_next(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	append_next = tmp;
+	if (value == NULL || strlen(value) == 0)
+		append_next = XT_DS_APPEND_NEXT;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		append_next = tmp;
+	}
 	return (0);
 }
 
@@ -483,13 +488,14 @@ set_cmd_font(char *value)
 {
 	struct tab		*t;
 
-	if (value == NULL || strlen(value))
-		return (-1);
 	if (cmd_font_name)
 		g_free(cmd_font_name);
 	if (cmd_font)
 		pango_font_description_free(cmd_font);
-	cmd_font_name = g_strdup(value);
+	if (value == NULL || strlen(value) == 0)
+		cmd_font_name = g_strdup(XT_DS_CMD_FONT_NAME);
+	else
+		cmd_font_name = g_strdup(value);
 	cmd_font = pango_font_description_from_string(cmd_font_name);
 	TAILQ_FOREACH(t, &tabs, entry)
 		gtk_widget_modify_font(GTK_WIDGET(t->cmd), cmd_font);
@@ -501,13 +507,14 @@ set_oops_font(char *value)
 {
 	struct tab		*t;
 
-	if (value == NULL || strlen(value) == 0)
-		return (-1);
 	if (oops_font_name)
 		g_free(oops_font_name);
 	if (oops_font)
 		pango_font_description_free(oops_font);
-	oops_font_name = g_strdup(value);
+	if (value == NULL || strlen(value) == 0)
+		cmd_font_name = g_strdup(XT_DS_OOPS_FONT_NAME);
+	else
+		oops_font_name = g_strdup(value);
 	oops_font = pango_font_description_from_string(oops_font_name);
 	TAILQ_FOREACH(t, &tabs, entry)
 		gtk_widget_modify_font(GTK_WIDGET(t->oops), oops_font);
@@ -519,15 +526,16 @@ set_statusbar_font(char *value)
 {
 	struct tab		*t;
 
-	if (value == NULL || strlen(value) == 0)
-		return (-1);
 	if (statusbar_font_name)
 		g_free(statusbar_font_name);
 	if (statusbar_font)
 		pango_font_description_free(statusbar_font);
-	statusbar_font_name = g_strdup(value);
+	if (value == NULL || strlen(value) == 0)
+		statusbar_font_name = g_strdup(XT_DS_STATUSBAR_FONT_NAME);
+	else
+		statusbar_font_name = g_strdup(value);
 	statusbar_font = pango_font_description_from_string(
-		statusbar_font_name);
+	    statusbar_font_name);
 	TAILQ_FOREACH(t, &tabs, entry) {
 		gtk_widget_modify_font(GTK_WIDGET(t->sbe.statusbar),
 		    statusbar_font);
@@ -546,13 +554,14 @@ set_tabbar_font(char *value)
 {
 	struct tab		*t;
 
-	if (value == NULL || strlen(value) == 0)
-		return (-1);
 	if (tabbar_font_name)
 		g_free(tabbar_font_name);
 	if (tabbar_font)
 		pango_font_description_free(tabbar_font);
-	tabbar_font_name = g_strdup(value);
+	if (value == NULL || strlen(value) == 0)
+		tabbar_font_name = g_strdup(XT_DS_TABBAR_FONT_NAME);
+	else
+		tabbar_font_name = g_strdup(value);
 	tabbar_font = pango_font_description_from_string(tabbar_font_name);
 	TAILQ_FOREACH(t, &tabs, entry)
 		gtk_widget_modify_font(GTK_WIDGET(t->tab_elems.label),
@@ -566,32 +575,38 @@ set_color_visited_uris(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	color_visited_uris = tmp;
+	if (value == NULL || strlen(value) == 0)
+		color_visited_uris = XT_DS_COLOR_VISITED_URIS;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		color_visited_uris = tmp;
+	}
 	return (0);
 }
 
 int
 set_home(char *value)
 {
-	if (value == NULL || strlen(value) == 0)
-		return (-1);
 	if (home)
 		g_free(home);
-	home = g_strdup(value);
+	if (value == NULL || strlen(value) == 0)
+		home = g_strdup(XT_DS_HOME);
+	else
+		home = g_strdup(value);
 	return (0);
 }
 
 int
 set_search_string(char *value)
 {
-	if (value == NULL || strlen(value) == 0)
-		return (-1);
 	if (search_string)
 		g_free(search_string);
-	search_string = g_strdup(value);
+	if (value == NULL || strlen(value) == 0)
+		search_string = g_strdup(XT_DS_SEARCH_STRING);
+	else
+		search_string = g_strdup(value);
 	return (0);
 }
 
@@ -778,7 +793,9 @@ set_cookie_policy(struct settings *s, char *val)
 int
 set_cookie_policy_rt(char *value)
 {
-	if (set_cookie_policy(NULL, value))
+	if (value == NULL || strlen(value) == 0)
+		cookie_policy = XT_DS_COOKIE_POLICY;
+	else if (set_cookie_policy(NULL, value))
 		return (-1);
 	g_object_set(G_OBJECT(s_cookiejar), SOUP_COOKIE_JAR_ACCEPT_POLICY,
 	    cookie_policy, (void *)NULL);
@@ -821,7 +838,7 @@ int
 set_default_script_rt(char *value)
 {
 	if (value == NULL || strlen(value) == 0)
-		return (-1);
+		return set_default_script(NULL, "");
 	return (set_default_script(NULL, value));
 }
 
@@ -1411,14 +1428,35 @@ set_auto_load_images(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	auto_load_images = tmp;
+	if (value == NULL || strlen(value) == 0)
+		auto_load_images = XT_DS_AUTO_LOAD_IMAGES;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		auto_load_images = tmp;
+	}
 	TAILQ_FOREACH(t, &tabs, entry) {
 		g_object_set(G_OBJECT(t->settings),
 		    "auto-load-images", auto_load_images, (char *)NULL);
 		webkit_web_view_set_settings(t->wv, t->settings);
+	}
+	return (0);
+}
+
+int
+set_autofocus_onload(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	if (value == NULL || strlen(value) == 0)
+		autofocus_onload = XT_DS_AUTOFOCUS_ONLOAD;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		autofocus_onload = tmp;
 	}
 	return (0);
 }
@@ -1429,10 +1467,14 @@ set_ctrl_click_focus(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	ctrl_click_focus = tmp;
+	if (value == NULL || strlen(value) == 0)
+		ctrl_click_focus = XT_DS_CTRL_CLICK_FOCUS;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		ctrl_click_focus = tmp;
+	}
 	return (0);
 }
 
@@ -1442,10 +1484,14 @@ set_download_notifications(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	download_notifications = tmp;
+	if (value == NULL || strlen(value) == 0)
+		download_notifications = XT_DS_DOWNLOAD_NOTIFICATIONS;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		download_notifications = tmp;
+	}
 	return (0);
 }
 
@@ -1455,10 +1501,14 @@ set_enable_autoscroll(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	enable_autoscroll = tmp;
+	if (value == NULL || strlen(value) == 0)
+		enable_autoscroll = XT_DS_ENABLE_AUTOSCROLL;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		enable_autoscroll = tmp;
+	}
 	return (0);
 }
 
@@ -1468,10 +1518,14 @@ set_enable_cookie_whitelist(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	enable_cookie_whitelist = tmp;
+	if (value == NULL || strlen(value) == 0)
+		enable_cookie_whitelist = XT_DS_ENABLE_COOKIE_WHITELIST;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		enable_cookie_whitelist = tmp;
+	}
 	return (0);
 }
 
@@ -1481,10 +1535,14 @@ set_enable_js_autorun(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	enable_js_autorun = tmp;
+	if (value == NULL || strlen(value) == 0)
+		enable_js_autorun = XT_DS_ENABLE_JS_AUTORUN;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		enable_js_autorun = tmp;
+	}
 	return (0);
 }
 
@@ -1494,10 +1552,14 @@ set_enable_js_whitelist(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	enable_js_whitelist = tmp;
+	if (value == NULL || strlen(value) == 0)
+		enable_js_whitelist = XT_DS_ENABLE_JS_WHITELIST;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		enable_js_whitelist = tmp;
+	}
 	return (0);
 }
 
@@ -1507,10 +1569,14 @@ set_enable_favicon_entry(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	enable_favicon_entry = tmp;
+	if (value == NULL || strlen(value) == 0)
+		enable_favicon_entry = XT_DS_ENABLE_FAVICON_ENTRY;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		enable_favicon_entry = tmp;
+	}
 	return (0);
 }
 
@@ -1520,10 +1586,14 @@ set_enable_favicon_tabs(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	enable_favicon_tabs = tmp;
+	if (value == NULL || strlen(value) == 0)
+		enable_favicon_tabs = XT_DS_ENABLE_FAVICON_TABS;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		enable_favicon_tabs = tmp;
+	}
 	return (0);
 }
 
@@ -1534,15 +1604,18 @@ set_enable_localstorage(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	enable_localstorage = tmp;
-	TAILQ_FOREACH(t, &tabs, entry) {
+	if (value == NULL || strlen(value) == 0)
+		enable_localstorage = XT_DS_ENABLE_LOCALSTORAGE;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		enable_localstorage = tmp;
+	}
+	TAILQ_FOREACH(t, &tabs, entry)
 		g_object_set(G_OBJECT(t->settings),
 		    "enable-html5-local-storage", enable_localstorage,
 		    (char *)NULL);
-	}
 	return (0);
 }
 
@@ -1553,10 +1626,14 @@ set_enable_plugins(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	enable_plugins = tmp;
+	if (value == NULL || strlen(value) == 0)
+		enable_plugins = XT_DS_ENABLE_PLUGINS;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		enable_plugins = tmp;
+	}
 	TAILQ_FOREACH(t, &tabs, entry)
 		g_object_set(G_OBJECT(t->settings), "enable-plugins",
 		    enable_plugins, (char *)NULL);
@@ -1569,10 +1646,14 @@ set_enable_plugin_whitelist(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	enable_plugin_whitelist = tmp;
+	if (value == NULL || strlen(value) == 0)
+		enable_plugin_whitelist = XT_DS_ENABLE_PLUGIN_WHITELIST;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		enable_plugin_whitelist = tmp;
+	}
 	return (0);
 }
 
@@ -1583,10 +1664,14 @@ set_enable_scripts(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	enable_scripts = tmp;
+	if (value == NULL || strlen(value) == 0)
+		enable_scripts = XT_DS_ENABLE_SCRIPTS;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		enable_scripts = tmp;
+	}
 	TAILQ_FOREACH(t, &tabs, entry)
 		g_object_set(G_OBJECT(t->settings), "enable-scripts",
 		    enable_scripts, (char *)NULL);
@@ -1600,10 +1685,14 @@ set_enable_spell_checking(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
+	if (value == NULL || strlen(value) == 0)
+		enable_spell_checking = XT_DS_ENABLE_SPELL_CHECKING;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
 		return (-1);
-	enable_spell_checking = tmp;
+		enable_spell_checking = tmp;
+	}
 	TAILQ_FOREACH(t, &tabs, entry)
 		g_object_set(G_OBJECT(t->settings), "enable_spell_checking",
 		    enable_spell_checking, (char *)NULL);
@@ -1616,10 +1705,14 @@ set_enable_strict_transport(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	enable_strict_transport = tmp;
+	if (value == NULL || strlen(value) == 0)
+		enable_strict_transport = XT_DS_ENABLE_STRICT_TRANSPORT;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		enable_strict_transport = tmp;
+	}
 	return (0);
 }
 
@@ -1653,10 +1746,14 @@ set_guess_search(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	guess_search = tmp;
+	if (value == NULL || strlen(value) == 0)
+		guess_search = XT_DS_GUESS_SEARCH;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		guess_search = tmp;
+	}
 	return (0);
 }
 
@@ -1666,10 +1763,14 @@ set_read_only_cookies(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	read_only_cookies = tmp;
+	if (value == NULL || strlen(value) == 0)
+		read_only_cookies = XT_DS_READ_ONLY_COOKIES;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		read_only_cookies = tmp;
+	}
 	g_object_set(G_OBJECT(p_cookiejar), SOUP_COOKIE_JAR_READ_ONLY,
 	    read_only_cookies, (void *)NULL);
 	return (0);
@@ -1723,8 +1824,13 @@ set_referer(struct settings *s, char *value)
 int
 set_referer_rt(char *value)
 {
-	if (value == NULL || strlen(value) == 0)
-		return (-1);
+	if (value == NULL || strlen(value) == 0) {
+		if (referer_custom)
+			g_free(referer_custom);
+		referer_custom = g_strdup(XT_DS_REFERER_CUSTOM);
+		referer_mode = XT_DS_REFERER_MODE;
+		return (0);
+	}
 	return (set_referer(NULL, value));
 }
 
@@ -1734,10 +1840,14 @@ set_refresh_interval(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, INT_MAX, &errstr);
-	if (errstr)
-		return (-1);
-	refresh_interval = tmp;
+	if (value == NULL || strlen(value) == 0)
+		refresh_interval = XT_DS_REFRESH_INTERVAL;
+	else {
+		tmp = strtonum(value, 0, INT_MAX, &errstr);
+		if (errstr)
+			return (-1);
+		refresh_interval = tmp;
+	}
 	return (0);
 }
 
@@ -1747,10 +1857,14 @@ set_session_autosave(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
+	if (value == NULL || strlen(value) == 0)
+		session_autosave = XT_DS_SESSION_AUTOSAVE;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
 		return (-1);
-	session_autosave = tmp;
+		session_autosave = tmp;
+	}
 	return (0);
 }
 
@@ -1760,10 +1874,14 @@ set_session_timeout(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, INT_MAX, &errstr);
-	if (errstr)
-		return (-1);
-	session_timeout = tmp;
+	if (value == NULL || strlen(value) == 0)
+		session_timeout = XT_DS_SESSION_TIMEOUT;
+	else {
+		tmp = strtonum(value, 0, INT_MAX, &errstr);
+		if (errstr)
+			return (-1);
+		session_timeout = tmp;
+	}
 	return (0);
 }
 
@@ -1773,9 +1891,13 @@ set_show_statusbar(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
+	if (value == NULL || strlen(value) == 0)
+		tmp = XT_DS_SHOW_STATUSBAR;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+	}
 	show_statusbar = tmp;
 	statusbar_set_visibility();
 	return (0);
@@ -1788,9 +1910,13 @@ set_show_tabs(char *value)
 	int			val;
 	const char		*errstr;
 
-	val = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
+	if (value == NULL || strlen(value) == 0)
+		val = XT_DS_SHOW_TABS;
+	else {
+		val = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+	}
 	args.i = val ? XT_TAB_SHOW : XT_TAB_HIDE;
 	tabaction(get_current_tab(), &args);
 	return (0);
@@ -1803,9 +1929,13 @@ set_show_url(char *value)
 	int			val;
 	const char		*errstr;
 
-	val = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
+	if (value == NULL || strlen(value) == 0)
+		val = XT_DS_SHOW_URL;
+	else {
+		val = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+	}
 	args.i = val ? XT_URL_SHOW : XT_URL_HIDE;
 	urlaction(get_current_tab(), &args);
 	return (0);
@@ -1816,11 +1946,12 @@ set_spell_check_languages(char *value)
 {
 	struct tab		*t;
 
-	if (value == NULL || strlen(value) == 0)
-		return (-1);
 	if (spell_check_languages)
 		g_free(spell_check_languages);
-	spell_check_languages = g_strdup(value);
+	if (value == NULL || strlen(value) == 0)
+		spell_check_languages = g_strdup(XT_DS_SPELL_CHECK_LANGUAGES);
+	else
+		spell_check_languages = g_strdup(value);
 	TAILQ_FOREACH(t, &tabs, entry)
 		g_object_set(G_OBJECT(t->settings), "spell_checking_languages",
 		    spell_check_languages, (char *)NULL);
@@ -1840,11 +1971,14 @@ check_valid_file(char *name)
 int
 set_ssl_ca_file_rt(char *value)
 {
-	if (value == NULL || strlen(value) == 0)
-		return (-1);
-	if (set_ssl_ca_file(value))
-		return (-1);
-	return (0);
+	if (value == NULL || strlen(value) == 0) {
+		if (ssl_ca_file != NULL)
+			g_free(ssl_ca_file);
+		ssl_ca_file = XT_DS_SSL_CA_FILE;
+		g_object_set(session, SOUP_SESSION_SSL_CA_FILE, "", NULL);
+		return (0);
+	} else
+		return (set_ssl_ca_file(value));
 }
 
 int
@@ -1853,11 +1987,15 @@ set_ssl_strict_certs(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	ssl_strict_certs = tmp;
-	set_ssl_ca_file(ssl_ca_file);
+	if (value == NULL || strlen(value) == 0)
+		ssl_strict_certs = XT_DS_SSL_STRICT_CERTS;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		ssl_strict_certs = tmp;
+	}
+	g_object_set(session, SOUP_SESSION_SSL_STRICT, ssl_strict_certs, NULL);
 	return (0);
 }
 
@@ -1866,9 +2004,10 @@ set_external_editor(char *editor)
 {
 	if (external_editor)
 		g_free(external_editor);
-
-	external_editor = g_strdup(editor);
-
+	if (editor == NULL || strlen(editor) == 0)
+		external_editor = NULL;
+	else
+		external_editor = g_strdup(editor);
 	return (0);
 }
 
@@ -1925,25 +2064,38 @@ set_tab_style_rt(char *value)
 	struct karg		args = {0};
 	int			old_tab_style;
 
-	old_tab_style = tab_style;
-	if (set_tab_style(NULL, value))
-		return (-1);
-	if (old_tab_style != tab_style) {
-		tab_style = old_tab_style;
+	if (value == NULL || strlen(value) == 0) {
+		if (tab_style == XT_DS_TAB_STYLE)
+			return (0);
+		tab_style = XT_TABS_COMPACT;
 		args.i = XT_TAB_NEXTSTYLE;
-		tabaction(get_current_tab(), &args);
+	} else {
+		old_tab_style = tab_style;
+		if (set_tab_style(NULL, value))
+			return (-1);
+		if (old_tab_style != tab_style) {
+			tab_style = old_tab_style;
+			args.i = XT_TAB_NEXTSTYLE;
+		}
 	}
+	tabaction(get_current_tab(), &args);
 	return (0);
 }
 
 int
 set_url_regex(char *value)
 {
-	if (regcomp(&url_re, value, REG_EXTENDED | REG_NOSUB))
-		return (-1);
-	if (url_regex)
-		g_free(url_regex);
-	url_regex = g_strdup(value);
+	if (value == NULL || strlen(value) == 0) {
+		if (url_regex)
+			g_free(url_regex);
+		url_regex = g_strdup(XT_DS_URL_REGEX);
+	} else {
+		if (regcomp(&url_re, value, REG_EXTENDED | REG_NOSUB))
+			return (-1);
+		if (url_regex)
+			g_free(url_regex);
+		url_regex = g_strdup(value);
+	}
 	return (0);
 }
 
@@ -1954,13 +2106,21 @@ set_userstyle_global(char *value)
 	int			tmp, old_style;
 	const char		*errstr;
 
-	old_style = userstyle_global;
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	if (tmp != old_style) {
+	if (value == NULL || strlen(value) == 0) {
+		if (userstyle_global == XT_DS_USERSTYLE_GLOBAL)
+			return (0);
+		userstyle_global = 1;
 		args.i = XT_STYLE_GLOBAL;
 		userstyle(get_current_tab(), &args);
+	} else {
+		old_style = userstyle_global;
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		if (tmp != old_style) {
+			args.i = XT_STYLE_GLOBAL;
+			userstyle(get_current_tab(), &args);
+		}
 	}
 	return (0);
 }
@@ -2048,10 +2208,14 @@ set_xterm_workaround(char *value)
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	xterm_workaround = tmp;
+	if (value == NULL || strlen(value) == 0)
+		xterm_workaround = XT_DS_XTERM_WORKAROUND;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		xterm_workaround = tmp;
+	}
 	return (0);
 }
 

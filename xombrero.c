@@ -7877,17 +7877,17 @@ main(int argc, char **argv)
 	buffercmd_init();
 
 	/* set default string settings */
-	home = g_strdup("https://www.cyphertite.com");
-	search_string = g_strdup("about:search");
+	home = g_strdup(XT_DS_HOME);
+	search_string = g_strdup(XT_DS_SEARCH_STRING);
 	resource_dir = g_strdup("/usr/local/share/xombrero/");
 	strlcpy(runtime_settings, "runtime", sizeof runtime_settings);
-	cmd_font_name = g_strdup("monospace normal 9");
-	oops_font_name = g_strdup("monospace normal 9");
-	statusbar_font_name = g_strdup("monospace normal 9");
-	tabbar_font_name = g_strdup("monospace normal 9");
+	cmd_font_name = g_strdup(XT_DS_CMD_FONT_NAME);
+	oops_font_name = g_strdup(XT_DS_OOPS_FONT_NAME);
+	statusbar_font_name = g_strdup(XT_DS_STATUSBAR_FONT_NAME);
+	tabbar_font_name = g_strdup(XT_DS_TABBAR_FONT_NAME);
 	statusbar_elems = g_strdup("BP");
-	spell_check_languages = g_strdup("en_US");
-	encoding = g_strdup("UTF-8");
+	spell_check_languages = g_strdup(XT_DS_SPELL_CHECK_LANGUAGES);
+	encoding = g_strdup(XT_DS_ENCODING);
 
 	/* read config file */
 	if (strlen(conf) == 0)

@@ -542,6 +542,57 @@ int		fork_exec(struct tab *, char *, const gchar *, char *, int);
 #define MOD1			GDK_MOD1_MASK
 #define SHFT			GDK_SHIFT_MASK
 
+/* runtime default settings */
+#define XT_DS_SHOW_TABS		(1)
+#define XT_DS_TAB_STYLE		XT_TABS_NORMAL
+#define XT_DS_SHOW_URL		(1)
+#define XT_DS_SHOW_STATUSBAR	(0)
+#define XT_DS_CTRL_CLICK_FOCUS	(0)
+#define XT_DS_COOKIES_ENABLED	(1)
+#define XT_DS_READ_ONLY_COOKIES	(0)
+#define XT_DS_ENABLE_SCRIPTS	(1)
+#define XT_DS_ENABLE_PLUGINS	(1)
+#define XT_DS_DEFAULT_ZOOM_LEVEL	(1.0)
+#define XT_DS_DEFAULT_SCRIPT	("")
+#define XT_DS_REFRESH_INTERVAL	(10)
+#define XT_DS_ENABLE_PLUGIN_WHITELIST	(0)
+#define XT_DS_ENABLE_COOKIE_WHITELIST	(0)
+#define XT_DS_ENABLE_JS_WHITELIST	(0)
+#define XT_DS_ENABLE_LOCALSTORAGE	(1)
+#define XT_DS_SESSION_TIMEOUT	(3600)
+#define XT_DS_COOKIE_POLICY	SOUP_COOKIE_JAR_ACCEPT_ALWAYS
+#define XT_DS_SSL_CA_FILE	NULL
+#define XT_DS_SSL_STRICT_CERTS	FALSE
+#define XT_DS_ENABLE_STRICT_TRANSPORT	TRUE
+#define XT_DS_APPEND_NEXT	(1)
+#define XT_DS_HOME		("https://www.cyphertite.com/")
+#define XT_DS_SEARCH_STRING	("about:search")
+#define XT_DS_HTTP_PROXY	NULL
+#define XT_DS_COLOR_VISITED_URIS	(1)
+#define XT_DS_SESSION_AUTOSAVE	(0)
+#define XT_DS_GUESS_SEARCH	(0)
+#define XT_DS_ENABLE_SPELL_CHECKING	(0)
+#define XT_DS_SPELL_CHECK_LANGUAGES	("en_US")
+#define XT_DS_XTERM_WORKAROUND	(0)
+#define XT_DS_URL_REGEX		("^[[:blank:]]*[^[:blank:]]*([[:alnum:]-]+\\.)+[[:alnum:]-][^[:blank:]]*[[:blank:]]*$")
+#define XT_DS_ENCODING		("UTF-8")
+#define XT_DS_AUTOFOCUS_ONLOAD	(0)
+#define XT_DS_ENABLE_JS_AUTORUN	(1)
+#define XT_DS_USERSTYLE_GLOBAL	(0)
+#define XT_DS_AUTO_LOAD_IMAGES	(1)
+#define XT_DS_ENABLE_AUTOSCROLL	(0)
+#define XT_DS_ENABLE_FAVICON_ENTRY	(1)
+#define XT_DS_ENABLE_FAVICON_TABS	(0)
+#define XT_DS_EXTERNAL_EDITOR	("")
+#define XT_DS_REFERER_MODE	XT_REFERER_ALWAYS
+#define XT_DS_REFERER_CUSTOM	("always")
+#define XT_DS_DOWNLOAD_NOTIFICATIONS	(0)
+#define XT_DS_CMD_FONT_NAME	("monospace normal 9")
+#define XT_DS_OOPS_FONT_NAME	("monospace normal 9")
+#define XT_DS_STATUSBAR_FONT_NAME	("monospace normal 9")
+#define XT_DS_TABBAR_FONT_NAME	("monospace normal 9")
+
+
 /* actions */
 #define XT_STYLE_CURRENT_TAB	(0)
 #define XT_STYLE_GLOBAL		(1)
@@ -685,7 +736,6 @@ extern struct user_agent	*user_agent;
 extern int	save_rejected_cookies;
 extern int	session_autosave;
 extern int	guess_search;
-extern int	dns_prefetch;
 extern gint	max_connections;
 extern gint	max_host_connections;
 extern gint	enable_spell_checking;
@@ -711,6 +761,7 @@ extern int	enable_favicon_tabs;
 extern int	referer_mode;
 extern char	*referer_custom;
 extern int	download_notifications;
+extern regex_t	url_re;
 
 /* globals */
 extern void		(*os_init)(void);
