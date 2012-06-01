@@ -984,6 +984,19 @@ This setting must be the first entry in
 .Pa ~/.xombrero.conf
 because it sets advanced settings that can be overridden later in the file.
 See the default config file for more details.
+.It Cm cmd_alias
+This setting is used to define an alias for a command.
+The syntax of this setting is
+.Pa cmd_alias = alias,cmd .
+For example, if you wanted to set an alias for the
+.Pa tabnew
+command to
+.Pa tn ,
+add the line
+.Pa cmd_alias = tn,tabnew
+to your
+.Pa ~/.xombrero.conf .
+This setting may not begin with a number.
 .It Cm cmd_font
 Set the command prompt font.
 E.g.

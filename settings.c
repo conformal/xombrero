@@ -126,6 +126,7 @@ int		add_mime_type(struct settings *, char *);
 int		add_alias(struct settings *, char *);
 int		add_kb(struct settings *, char *);
 int		add_ua(struct settings *, char *);
+int		add_cmd_alias(struct settings *, char *);
 int		add_custom_uri(struct settings *, char *);
 
 int		set_append_next(char *);
@@ -197,6 +198,8 @@ void		walk_kb(struct settings *, void (*)(struct settings *, char *,
 		    void *), void *);
 void		walk_ua(struct settings *, void (*)(struct settings *, char *,
 		    void *), void *);
+void		walk_cmd_alias(struct settings *, void (*)(struct settings *,
+		    char *, void *), void *);
 void		walk_custom_uri(struct settings *, void (*)(struct settings *,
 		    char *, void *), void *);
 
@@ -255,6 +258,12 @@ struct special		s_alias = {
 	add_alias,
 	NULL,
 	walk_alias
+};
+
+struct special		s_cmd_alias = {
+	add_cmd_alias,
+	NULL,
+	walk_cmd_alias
 };
 
 struct special		s_mime = {
@@ -424,6 +433,7 @@ struct settings		rs[] = {
 	{ "mime_type",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_mime, NULL, NULL },
 	{ "pl_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_pl, NULL, NULL },
 	{ "user_agent",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_ua, NULL, NULL },
+	{ "cmd_alias",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_cmd_alias, NULL, NULL },
 	{ "custom_uri",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_uri, NULL, NULL },
 };
 
@@ -1228,6 +1238,28 @@ keybinding_add(char *cmd, char *key, int use_in_entry)
 }
 
 int
+cmd_alias_add(char *alias, char *cmd)
+{
+	struct cmd_alias	*c;
+
+	/* XXX */
+	TAILQ_FOREACH(c, &cal, entry)
+		if (!strcmp((alias), c->alias)) {
+			TAILQ_REMOVE(&cal, c, entry);
+			g_free(c);
+		}
+
+	c = g_malloc(sizeof (struct cmd_alias));
+	c->alias = g_strchug(g_strdup(alias));
+	c->cmd = g_strchug(g_strdup(cmd));
+
+	DNPRINTF(XT_D_CUSTOM_URI, "cmd_alias_add: %s %s\n", c->alias, c->cmd);
+
+	TAILQ_INSERT_HEAD(&cal, c, entry);
+	return (0);
+}
+
+int
 custom_uri_add(char *uri, char *cmd)
 {
 	struct custom_uri	*u;
@@ -1336,6 +1368,40 @@ walk_ua(struct settings *s,
 
 	TAILQ_FOREACH(ua, &ua_list, entry)
 		cb(s, ua->value, cb_args);
+}
+
+int
+add_cmd_alias(struct settings *s, char *entry)
+{
+	char			*alias, *cmd;
+
+	DNPRINTF(XT_D_CMD_ALIAS, "add_cmd_alias: %s\n", entry);
+
+	alias = strstr(entry, ",");
+	if (alias == NULL)
+		return (1);
+	*alias = '\0';
+	cmd = alias + 1;
+
+	return (cmd_alias_add(entry, cmd));
+}
+
+void
+walk_cmd_alias(struct settings *s,
+    void (*cb)(struct settings *, char *, void *), void *cb_args)
+{
+	struct cmd_alias	*c;
+	char			buf[1024];
+
+	if (s == NULL || cb == NULL) {
+		show_oops(NULL, "walk_cmd_alias invalid parameters");
+		return;
+	}
+
+	TAILQ_FOREACH(c, &cal, entry) {
+		snprintf(buf, sizeof buf, "%s --> %s", c->alias, c->cmd);
+		cb(s, buf, cb_args);
+	}
 }
 
 int

@@ -221,6 +221,7 @@ struct undo_tailq	undos;
 struct keybinding_list	kbl;
 struct sp_list		spl;
 struct user_agent_list	ua_list;
+struct cmd_alias_list	cal;
 struct custom_uri_list	cul;
 int			user_agent_count = 0;
 struct command_list	chl;
@@ -5855,32 +5856,54 @@ cmd_complete(struct tab *t, char *str, int dir)
 	g_free(sc);
 }
 
+char *
+parse_prefix_and_alias(const char *str, int *prefix)
+{
+	struct cmd_alias	*c;
+	char			*s = g_strdup(str), *sc;
+	char			hasprefix = 0;
+
+	g_strstrip(s);
+	sc = s;
+
+	if (isdigit(s[0])) {
+		hasprefix = 1;
+		sscanf(s, "%d", prefix);
+		while (isdigit(s[0]) || isspace(s[0]))
+			++s;
+	}
+
+	TAILQ_FOREACH(c, &cal, entry) {
+		if (strncmp(s, c->alias, strlen(c->alias)))
+			continue;
+
+		if (strlen(s) == strlen(c->alias)) {
+			g_free(sc);
+			return (g_strdup(c->cmd));
+		}
+
+		if (!isspace(s[strlen(c->alias)]))
+			continue;
+
+		s = g_strdup_printf("%s %s", c->cmd, &s[strlen(c->alias) + 1]);
+		g_free(sc);
+		return (s);
+	}
+	s = g_strdup(s);
+	g_free(sc);
+	return (s);
+}
+
 gboolean
 cmd_execute(struct tab *t, char *str)
 {
 	struct cmd		*cmd = NULL;
-	char			*tok, *last = NULL, *s = g_strdup(str), *sc;
-	char			prefixstr[4];
-	int			j, len, c = 0, dep = 0, matchcount = 0;
+	char			*tok, *last = NULL, *s = str;
+	int			j = 0, len, c = 0, dep = 0, matchcount = 0;
 	int			prefix = -1, rv = XT_CB_PASSTHROUGH;
 	struct karg		arg = {0, NULL, -1};
 
-	sc = s;
-
-	/* copy prefix*/
-	for (j = 0; j<3 && isdigit(s[j]); j++)
-		prefixstr[j]=s[j];
-
-	prefixstr[j]='\0';
-
-	s += j;
-	while (isspace(s[0]))
-		s++;
-
-	if (strlen(s) > 0 && strlen(prefixstr) > 0)
-		prefix = atoi(prefixstr);
-	else
-		s = sc;
+	s = parse_prefix_and_alias(s, &prefix);
 
 	for (tok = strtok_r(s, " ", &last); tok;
 	    tok = strtok_r(NULL, " ", &last)) {
@@ -5952,7 +5975,7 @@ execute_cmd:
 done:
 	if (j > 0)
 		cmd_prefix = 0;
-	g_free(sc);
+	g_free(s);
 	if (arg.s)
 		g_free(arg.s);
 

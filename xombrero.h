@@ -586,6 +586,13 @@ struct user_agent {
 };
 TAILQ_HEAD(user_agent_list, user_agent);
 
+struct cmd_alias {
+	char			*alias;
+	char			*cmd;
+	TAILQ_ENTRY(cmd_alias)	entry;
+};
+TAILQ_HEAD(cmd_alias_list, cmd_alias);
+
 struct settings {
 	char		*name;
 	int		type;
@@ -736,6 +743,7 @@ extern struct mime_type_list	mtl;
 extern struct keybinding_list	kbl;
 extern struct sp_list		spl;
 extern struct user_agent_list	ua_list;
+extern struct cmd_alias_list	cal;
 extern struct custom_uri_list	cul;
 extern int			user_agent_count;
 
