@@ -573,6 +573,13 @@ struct key_binding {
 };
 TAILQ_HEAD(keybinding_list, key_binding);
 
+struct custom_uri {
+	char			*uri;
+	char			*cmd;
+	TAILQ_ENTRY(custom_uri)	entry;
+};
+TAILQ_HEAD(custom_uri_list, custom_uri);
+
 struct user_agent {
 	char *value;
 	TAILQ_ENTRY(user_agent)	entry;
@@ -729,6 +736,7 @@ extern struct mime_type_list	mtl;
 extern struct keybinding_list	kbl;
 extern struct sp_list		spl;
 extern struct user_agent_list	ua_list;
+extern struct custom_uri_list	cul;
 extern int			user_agent_count;
 
 extern PangoFontDescription	*cmd_font;

@@ -126,6 +126,7 @@ int		add_mime_type(struct settings *, char *);
 int		add_alias(struct settings *, char *);
 int		add_kb(struct settings *, char *);
 int		add_ua(struct settings *, char *);
+int		add_custom_uri(struct settings *, char *);
 
 int		set_append_next(char *);
 int		set_cmd_font(char *);
@@ -196,6 +197,8 @@ void		walk_kb(struct settings *, void (*)(struct settings *, char *,
 		    void *), void *);
 void		walk_ua(struct settings *, void (*)(struct settings *, char *,
 		    void *), void *);
+void		walk_custom_uri(struct settings *, void (*)(struct settings *,
+		    char *, void *), void *);
 
 int
 set_http_proxy(char *proxy)
@@ -282,6 +285,12 @@ struct special		s_cookie_wl = {
 	add_cookie_wl,
 	NULL,
 	walk_cookie_wl
+};
+
+struct special		s_uri = {
+	add_custom_uri,
+	NULL,
+	walk_custom_uri,
 };
 
 struct special		s_default_script = {
@@ -414,7 +423,8 @@ struct settings		rs[] = {
 	{ "keybinding",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_kb, NULL, NULL },
 	{ "mime_type",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_mime, NULL, NULL },
 	{ "pl_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_pl, NULL, NULL },
-	{ "user_agent",			XT_S_STR, XT_SF_RUNTIME, NULL,	NULL, &s_ua, NULL, NULL },
+	{ "user_agent",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_ua, NULL, NULL },
+	{ "custom_uri",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_uri, NULL, NULL },
 };
 
 int
@@ -1218,6 +1228,28 @@ keybinding_add(char *cmd, char *key, int use_in_entry)
 }
 
 int
+custom_uri_add(char *uri, char *cmd)
+{
+	struct custom_uri	*u;
+
+	TAILQ_FOREACH(u, &cul, entry)
+		if (!strcmp((uri), u->uri) && !strcmp(cmd, u->cmd)) {
+			TAILQ_REMOVE(&cul, u, entry);
+			g_free(u);
+		}
+
+	u = g_malloc(sizeof (struct custom_uri));
+	u->uri = g_strdup(uri);
+	u->cmd = g_strdup(cmd);
+
+	DNPRINTF(XT_D_CUSTOM_URI, "custom_uri_add: %s %s\n", u->uri, u->cmd);
+
+	/* don't check here if the script is valid, wait until running it */
+	TAILQ_INSERT_HEAD(&cul, u, entry);
+	return (0);
+}
+
+int
 add_kb(struct settings *s, char *entry)
 {
 	char			*kb, *key;
@@ -1237,6 +1269,40 @@ add_kb(struct settings *s, char *entry)
 	key = kb + 1;
 
 	return (keybinding_add(entry, key, key[0] == '!'));
+}
+
+int
+add_custom_uri(struct settings *s, char *entry)
+{
+	char			*uri, *cmd;
+
+	DNPRINTF(XT_D_CUSTOM_URI, "add_custom_uri: %s\n", entry);
+
+	uri = strstr(entry, ",");
+	if (uri == NULL)
+		return (1);
+	*uri = '\0';
+	cmd = uri + 1;
+
+	return (custom_uri_add(entry, cmd));
+}
+
+void
+walk_custom_uri(struct settings *s,
+    void (*cb)(struct settings *, char *, void *), void *cb_args)
+{
+	struct custom_uri	*u;
+	char			buf[1024];
+
+	if (s == NULL || cb == NULL) {
+		show_oops(NULL, "walk_custom_uri invalid parameters");
+		return;
+	}
+
+	TAILQ_FOREACH(u, &cul, entry) {
+		snprintf(buf, sizeof buf, "%s,%s", u->uri, u->cmd);
+		cb(s, buf, cb_args);
+	}
 }
 
 int

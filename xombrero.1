@@ -1011,6 +1011,24 @@ A fully qualified host is also valid and is for example www.moo.com.
 Enable cookies.
 .It Cm ctrl_click_focus
 Give focus in newly created tab instead of opening it in the background.
+.It Cm custom_uri
+This setting provides the ability to run custom executables for
+special URIs.
+The syntax for this setting is
+.Pa custom_uri\ =\ protocol,command .
+The URI is passed as a single argument to
+.Pa command
+to be parsed and executed.
+.Pp
+For example, to add the ability to use custom
+.Pa mailto
+URIs, add the setting
+.Pa custom_uri = mailto,command
+where
+.Pa command
+is a program that will parse the
+.Pa mailto
+URI and open your mail client.
 .It Cm default_script
 Path to the script used as the default value for the run_script
 command.

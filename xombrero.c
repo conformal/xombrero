@@ -221,6 +221,7 @@ struct undo_tailq	undos;
 struct keybinding_list	kbl;
 struct sp_list		spl;
 struct user_agent_list	ua_list;
+struct custom_uri_list	cul;
 int			user_agent_count = 0;
 struct command_list	chl;
 struct command_list	shl;
@@ -3290,7 +3291,29 @@ tab_close_cb(GtkWidget *btn, GdkEventButton *e, struct tab *t)
 	return (FALSE);
 }
 
+int
+parse_custom_uri(struct tab *t, const char *uri)
+{
+	struct custom_uri	*u;
+	int			handled = 0;
+	char			*cmd, *esc_uri;
 
+	TAILQ_FOREACH(u, &cul, entry) {
+		if (strncmp(uri, u->uri, strlen(u->uri)))
+			continue;
+
+		handled = 1;
+		esc_uri = g_strescape(uri, "");
+		cmd = g_strdup_printf("%s \"%s\"", u->cmd, esc_uri);
+		if (system(cmd))
+			show_oops(t, "custom uri command failed: %s",
+			    cmd);
+		g_free(esc_uri);
+		g_free(cmd);
+	}
+
+	return (handled);
+}
 
 void
 activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
@@ -3313,6 +3336,9 @@ activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 
 	/* if xxxt:// treat specially */
 	if (parse_xtp_url(t, uri))
+		return;
+
+	if (parse_custom_uri(t, uri))
 		return;
 
 	/* otherwise continue to load page normally */
@@ -4535,7 +4561,10 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 
 	/* If this is an xtp url, we don't load anything else. */
 	if (parse_xtp_url(t, uri))
-		    return (TRUE);
+		return (TRUE);
+
+	if (parse_custom_uri(t, uri))
+		return (TRUE);
 
 	if ((t->mode == XT_MODE_HINT && t->new_tab) || t->ctrl_click) {
 		t->ctrl_click = 0;
@@ -7734,6 +7763,7 @@ main(int argc, char **argv)
 	TAILQ_INIT(&chl);
 	TAILQ_INIT(&shl);
 	TAILQ_INIT(&ua_list);
+	TAILQ_INIT(&cul);
 
 #ifndef XT_RESOURCE_LIMITS_DISABLE
 	struct rlimit		rlp;
