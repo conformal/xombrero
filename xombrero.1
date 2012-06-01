@@ -135,7 +135,7 @@ Each keyboard shortcut requires exactly one entry in the configuration file.
 A shortcut can have multiple entries in the configuration file.
 The format of the keybinding entry is as follows:
 .Pp
-.D1 keybinding = (:)action,(!)keystroke(s)
+.D1 keybinding = action,(!)keystroke(s)
 .Pp
 For example, "keybinding = tabnew,C-t" where
 .Cm tabnew
@@ -143,17 +143,6 @@ is the action and
 .Cm C-t
 are
 the keystrokes.
-.Pp
-If the action begins with a colon, the action will be entered into the
-command prompt instead of being executed.
-For example, "keybinding = :session open ,M-s" will open the command
-prompt with ":open session " entered when using the M-s keybinding.
-.Pp
-Keybindings which open the command prompt may also include the string
-<uri>, which will be replaced by the current tab's URI.
-For example, "keybinding = :open <uri>,F10" will open the command
-prompt with <uri> replaced with the current URI.
-.Pp
 GTK has some default keybindings for manipulating text inside input
 fields, such as the URI or search entry widget, for example
 .Cm C-w
@@ -216,30 +205,29 @@ Focus on search entry
 .El
 .Ss Command Aliases
 These commands allow the user to map specific actions to specific keys.
-.Pp
-.Bl -tag -width Ds -offset indent -compact
-.It Cm F1
-Alias for "help"
-.It Cm F2
-Alias for "proxy toggle"
-.It Cm F4
-Alias for "toplevel toggle"
-.El
-.Ss Prompt Aliases
-These commands allow the user to open a prompt.
-These can be useful when the
+It can be useful when the
 .Fl S
 option is used.
 .Pp
 .Bl -tag -width Ds -offset indent -compact
+.It Cm F1
+Alias for ":help"
+.It Cm F2
+Alias for ":proxy toggle"
+.It Cm F4
+Alias for ":toplevel toggle"
 .It Cm F9
-Alias for ":open "
+Alias for ":open"
+.Pq Cm promptopen
 .It Cm F10
-Alias for ":open <uri>"
+Alias for ":open current-uri"
+.Pq Cm promptopencurrent
 .It Cm F11
-Alias for ":tabnew "
+Alias for ":tabnew"
+.Pq Cm prompttabnew
 .It Cm F12
-Alias for ":tabnew <uri>"
+Alias for ":tabnew current-uri"
+.Pq Cm prompttabnewcurrent
 .El
 .Ss Navigation Commands
 These commands allow the user to navigate web pages and,

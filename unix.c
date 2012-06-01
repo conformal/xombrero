@@ -16,9 +16,6 @@
 
 #include <xombrero.h>
 
-/* put this here for now, move away if unix needs something special */
-void	(*os_init)(void);
-
 int
 fork_exec(struct tab *t, char *argv0, const gchar *argv1, char *error, int loud)
 {

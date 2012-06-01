@@ -167,6 +167,11 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_ZOOM_OUT		(-2)
 #define XT_ZOOM_NORMAL		(100)
 
+#define XT_CMD_OPEN		(0)
+#define XT_CMD_OPEN_CURRENT	(1)
+#define XT_CMD_TABNEW		(2)
+#define XT_CMD_TABNEW_CURRENT	(3)
+
 #define XT_STATUS_NOTHING	(0)
 #define XT_STATUS_LINK		(1)
 #define XT_STATUS_URI		(2)
@@ -2610,21 +2615,14 @@ movetab(struct tab *t, struct karg *args)
 
 int cmd_prefix = 0;
 
-struct prompt_sub {
-	const char		*s;
-	const char		*(*f)(struct tab *);
-} subs[] = {
-	{ "<uri>",	get_uri },
-};
 
 int
 command(struct tab *t, struct karg *args)
 {
-	struct karg		a;
-	int			i;
-	char			*s = NULL, *sp = NULL, *sl = NULL;
-	gchar			**sv;
+	char			*s = NULL, *ss = NULL;
 	gchar			*text, *base;
+	const gchar		*uri;
+	struct karg		a;
 
 	if (t == NULL || args == NULL) {
 		show_oops(NULL, "command invalid parameters");
@@ -2639,30 +2637,12 @@ command(struct tab *t, struct karg *args)
 		s = "?";
 		break;
 	case ':':
-		if (cmd_prefix == 0) {
-			if (args->s != NULL && strlen(args->s) != 0) {
-				ss = g_strdup_printf(":%s", args->s);
-				s = sp;
-			} else
-				s = ":";
-		} else {
+		if (cmd_prefix == 0)
+			s = ":";
+		else {
 			ss = g_strdup_printf(":%d", cmd_prefix);
-			s = sp;
+			s = ss;
 			cmd_prefix = 0;
-		}
-		sl = g_strdup(s);
-		if (sp) {
-			g_free(sp);
-			sp = NULL;
-		}
-		s = sl;
-		for (i = 0; i < sizeof subs / sizeof (struct prompt_sub); ++i) {
-			sv = g_strsplit(sl, subs[i].s, -1);
-			if (sl)
-				g_free(sl);
-			sl = g_strjoinv(subs[i].f(t), sv);
-			g_strfreev(sv);
-			s = sl;
 		}
 		break;
 	case '.':
@@ -2678,6 +2658,23 @@ command(struct tab *t, struct karg *args)
 		a.i = XT_HINT_NEWTAB;
 		hint(t, &a);
 		s = ",";
+		break;
+	case XT_CMD_OPEN:
+		s = ":open ";
+		break;
+	case XT_CMD_TABNEW:
+		s = ":tabnew ";
+		break;
+	case XT_CMD_OPEN_CURRENT:
+		s = ":open ";
+		/* FALL THROUGH */
+	case XT_CMD_TABNEW_CURRENT:
+		if (!s) /* FALL THROUGH? */
+			s = ":tabnew ";
+		if ((uri = get_uri(t)) != NULL) {
+			ss = g_strdup_printf("%s%s", s, uri);
+			s = ss;
+		}
 		break;
 	default:
 		show_oops(t, "command: invalid opcode %d", args->i);
@@ -2698,10 +2695,8 @@ command(struct tab *t, struct karg *args)
 	gtk_widget_grab_focus(GTK_WIDGET(t->cmd));
 	gtk_editable_set_position(GTK_EDITABLE(t->cmd), -1);
 
-	if (sp)
-		g_free(sp);
-	if (sl)
-		g_free(sl);
+	if (ss)
+		g_free(ss);
 
 	return (XT_CB_HANDLED);
 }
@@ -3197,6 +3192,12 @@ struct cmd {
 	{ "ls",			0,	buffers,		0,			0 },
 	{ "encoding",		0,	set_encoding,		0,			XT_USERARG },
 	{ "loadimages",		0,	tabaction,		XT_TAB_LOAD_IMAGES,	0 },
+
+	/* command aliases (handy when -S flag is used) */
+	{ "promptopen",		0,	command,		XT_CMD_OPEN,		0 },
+	{ "promptopencurrent",	0,	command,		XT_CMD_OPEN_CURRENT,	0 },
+	{ "prompttabnew",	0,	command,		XT_CMD_TABNEW,		0 },
+	{ "prompttabnewcurrent",0,	command,		XT_CMD_TABNEW_CURRENT,	0 },
 
 	/* settings */
 	{ "set",		0,	set,			0,			XT_SETARG },
@@ -5416,7 +5417,6 @@ done:
 gboolean
 handle_keypress(struct tab *t, GdkEventKey *e, int entry)
 {
-	struct karg		args;
 	struct key_binding	*k;
 
 	/* handle keybindings if buffercmd is empty.
@@ -5431,15 +5431,11 @@ handle_keypress(struct tab *t, GdkEventKey *e, int entry)
 				    (e->state & CTRL || e->state & MOD1))
 					return (XT_CB_PASSTHROUGH);
 
-				if ((k->mask == 0 &&
-				    (e->state & (CTRL | MOD1)) == 0) ||
-				    (e->state & k->mask) == k->mask) {
-					if (k->cmd[0] == ':') {
-						args.i = ':';
-						args.s = &k->cmd[1];
-						return command(t, &args);
-					} else
+				if (k->mask == 0) {
+					if ((e->state & (CTRL | MOD1)) == 0)
 						return (cmd_execute(t, k->cmd));
+				} else if ((e->state & k->mask) == k->mask) {
+					return (cmd_execute(t, k->cmd));
 				}
 			}
 
@@ -6453,36 +6449,38 @@ create_toolbar(struct tab *t)
 	toolbar = b;
 	gtk_container_set_border_width(GTK_CONTAINER(toolbar), 0);
 
-	/* backward button */
-	t->backward = create_button("Back", GTK_STOCK_GO_BACK, 0);
-	gtk_widget_set_sensitive(t->backward, FALSE);
-	g_signal_connect(G_OBJECT(t->backward), "clicked",
-	    G_CALLBACK(backward_cb), t);
-	gtk_box_pack_start(GTK_BOX(b), t->backward, FALSE, FALSE, 0);
+	if (fancy_bar) {
+		/* backward button */
+		t->backward = create_button("Back", GTK_STOCK_GO_BACK, 0);
+		gtk_widget_set_sensitive(t->backward, FALSE);
+		g_signal_connect(G_OBJECT(t->backward), "clicked",
+		    G_CALLBACK(backward_cb), t);
+		gtk_box_pack_start(GTK_BOX(b), t->backward, FALSE, FALSE, 0);
 
-	/* forward button */
-	t->forward = create_button("Forward",GTK_STOCK_GO_FORWARD, 0);
-	gtk_widget_set_sensitive(t->forward, FALSE);
-	g_signal_connect(G_OBJECT(t->forward), "clicked",
-	    G_CALLBACK(forward_cb), t);
-	gtk_box_pack_start(GTK_BOX(b), t->forward, FALSE,
-	    FALSE, 0);
+		/* forward button */
+		t->forward = create_button("Forward",GTK_STOCK_GO_FORWARD, 0);
+		gtk_widget_set_sensitive(t->forward, FALSE);
+		g_signal_connect(G_OBJECT(t->forward), "clicked",
+		    G_CALLBACK(forward_cb), t);
+		gtk_box_pack_start(GTK_BOX(b), t->forward, FALSE,
+		    FALSE, 0);
 
-	/* stop button */
-	t->stop = create_button("Stop", GTK_STOCK_STOP, 0);
-	gtk_widget_set_sensitive(t->stop, FALSE);
-	g_signal_connect(G_OBJECT(t->stop), "clicked",
-	    G_CALLBACK(stop_cb), t);
-	gtk_box_pack_start(GTK_BOX(b), t->stop, FALSE,
-	    FALSE, 0);
+		/* stop button */
+		t->stop = create_button("Stop", GTK_STOCK_STOP, 0);
+		gtk_widget_set_sensitive(t->stop, FALSE);
+		g_signal_connect(G_OBJECT(t->stop), "clicked",
+		    G_CALLBACK(stop_cb), t);
+		gtk_box_pack_start(GTK_BOX(b), t->stop, FALSE,
+		    FALSE, 0);
 
-	/* JS button */
-	t->js_toggle = create_button("JS-Toggle", enable_scripts ?
-	    GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE, 0);
-	gtk_widget_set_sensitive(t->js_toggle, TRUE);
-	g_signal_connect(G_OBJECT(t->js_toggle), "clicked",
-	    G_CALLBACK(js_toggle_cb), t);
-	gtk_box_pack_start(GTK_BOX(b), t->js_toggle, FALSE, FALSE, 0);
+		/* JS button */
+		t->js_toggle = create_button("JS-Toggle", enable_scripts ?
+		    GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE, 0);
+		gtk_widget_set_sensitive(t->js_toggle, TRUE);
+		g_signal_connect(G_OBJECT(t->js_toggle), "clicked",
+		    G_CALLBACK(js_toggle_cb), t);
+		gtk_box_pack_start(GTK_BOX(b), t->js_toggle, FALSE, FALSE, 0);
+	}
 
 	t->uri_entry = gtk_entry_new();
 	g_signal_connect(G_OBJECT(t->uri_entry), "activate",
@@ -6496,7 +6494,7 @@ create_toolbar(struct tab *t)
 	gtk_box_pack_start(GTK_BOX(b), eb1, TRUE, TRUE, 0);
 
 	/* search entry */
-	if (search_string != NULL && strlen(search_string) != 0) {
+	if (fancy_bar && search_string != NULL && strlen(search_string) != 0) {
 		GtkWidget *eb2;
 		t->search_entry = gtk_entry_new();
 		gtk_entry_set_width_chars(GTK_ENTRY(t->search_entry), 30);
@@ -6890,7 +6888,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 		    0);
 	} else {
 		t->toolbar = create_toolbar(t);
-		if (fancy_bar)
+		if (show_url)
 			gtk_box_pack_start(GTK_BOX(t->vbox), t->toolbar, FALSE,
 			    FALSE, 0);
 	}
@@ -7696,6 +7694,9 @@ main(int argc, char **argv)
 
 	start_argv = (char * const *)argv;
 
+	if (os_init)
+		os_init();
+
 	/* prepare gtk */
 #ifdef USE_THREADS
 #if !defined __MINGW32__
@@ -7834,10 +7835,6 @@ main(int argc, char **argv)
 	statusbar_elems = g_strdup("BP");
 	spell_check_languages = g_strdup("en_US");
 	encoding = g_strdup("UTF-8");
-
-	/* override os specific settings */
-	if (os_init)
-		os_init();
 
 	/* read config file */
 	if (strlen(conf) == 0)

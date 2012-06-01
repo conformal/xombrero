@@ -1066,10 +1066,10 @@ struct key_binding	keys[] = {
 	{ "focusreset",		CTRL,	1,	GDK_0		},
 
 	/* command aliases (handy when -S flag is used) */
-	{ ":open ",		0,	1,	GDK_F9		},
-	{ ":open <uri>",	0,	1,	GDK_F10		},
-	{ ":tabnew ",		0,	1,	GDK_F11		},
-	{ ":tabnew <uri>",	0,	1,	GDK_F12		},
+	{ "promptopen",		0,	1,	GDK_F9		},
+	{ "promptopencurrent",	0,	1,	GDK_F10		},
+	{ "prompttabnew",	0,	1,	GDK_F11		},
+	{ "prompttabnewcurrent",0,	1,	GDK_F12		},
 };
 
 void
