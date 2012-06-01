@@ -793,12 +793,7 @@ get_default_script(struct settings *s)
 int
 set_default_script(struct settings *s, char *val)
 {
-	if (val[0] == '~')
-		snprintf(default_script, sizeof default_script, "%s" PS "%s",
-		    pwd->pw_dir, &val[1]);
-	else
-		strlcpy(default_script, val, sizeof default_script);
-
+	expand_tilde(default_script, sizeof default_script, val);
 	return (0);
 }
 
@@ -821,12 +816,7 @@ get_download_dir(struct settings *s)
 int
 set_download_dir(struct settings *s, char *val)
 {
-	if (val[0] == '~')
-		snprintf(download_dir, sizeof download_dir, "%s" PS "%s",
-		    pwd->pw_dir, &val[1]);
-	else
-		strlcpy(download_dir, val, sizeof download_dir);
-
+	expand_tilde(download_dir, sizeof download_dir, val);
 	return (0);
 }
 
@@ -1916,12 +1906,7 @@ get_work_dir(struct settings *s)
 int
 set_work_dir(struct settings *s, char *val)
 {
-	if (val[0] == '~')
-		snprintf(work_dir, sizeof work_dir, "%s" PS "%s",
-		    pwd->pw_dir, &val[1]);
-	else
-		strlcpy(work_dir, val, sizeof work_dir);
-
+	expand_tilde(work_dir, sizeof work_dir, val);
 	return (0);
 }
 
@@ -1996,11 +1981,7 @@ settings_add(char *var, char *val)
 			continue;
 
 		if (!strcmp(var, "include_config")) {
-			if (val[0] == '~')
-				snprintf(c, PATH_MAX, "%s" PS "%s", pwd->pw_dir,
-				    &val[1]);
-			else
-				strlcpy(c, val, PATH_MAX);
+			expand_tilde(c, sizeof c, val);
 			config_parse(c, 0);
 			rv = 1;
 			break;
