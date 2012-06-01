@@ -7500,7 +7500,7 @@ socket_watcher(GIOChannel *source, GIOCondition condition, gpointer data)
 	if (n <= 0)
 		return (TRUE);
 
-	tt = TAILQ_LAST(&tabs, tab_list);
+	tt = get_current_tab();
 	cmd_execute(tt, str);
 	return (TRUE);
 }
