@@ -321,6 +321,7 @@ RB_PROTOTYPE(strict_transport_tree, strict_transport, entry, strict_transport_rb
 #define XT_NAME			("xombrero")
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
+#define XT_CONF_FILE		("xombrero.conf")
 #define XT_FAVS_FILE		("favorites")
 #define XT_SOD_FILE		("startofday")
 #define XT_RESERVED_CHARS	"$&+,/:;=?@ \"<>#%%{}|^~[]`"
@@ -417,12 +418,12 @@ TAILQ_HEAD(sp_list, sp);
 
 int			blank(struct tab *, struct karg *);
 int			help(struct tab *, struct karg *);
-int			about(struct tab *, struct karg *);
 int			stats(struct tab *, struct karg *);
 void			show_certs(struct tab *, gnutls_x509_crt_t *,
 			    size_t, char *);
 int			ca_cmd(struct tab *, struct karg *);
 int			cookie_show_wl(struct tab *, struct karg *);
+int			xtp_page_ab(struct tab *, struct karg *);
 int			xtp_page_cl(struct tab *, struct karg *);
 int			xtp_page_dl(struct tab *, struct karg *);
 int			xtp_page_fl(struct tab *, struct karg *);
@@ -450,7 +451,8 @@ void			startpage_add(const char *, ...);
 #define XT_XTP_TAB_MEANING_DL		(5)  /* download manager in this tab */
 #define XT_XTP_TAB_MEANING_FL		(6)  /* favorite manager in this tab */
 #define XT_XTP_TAB_MEANING_HL		(8)  /* history manager in this tab */
-#define XT_XTP_TAB_MEANING_SL		(9)  /* XXX whut? */
+#define XT_XTP_TAB_MEANING_SL		(9)  /* search engine chooser */
+#define XT_XTP_TAB_MEANING_AB		(10) /* about:about in this tab */
 
 /* whitelists */
 #define XT_WL_TOGGLE		(1<<0)

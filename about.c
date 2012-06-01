@@ -5,6 +5,7 @@
  * Copyright (c) 2011 Todd T. Fries <todd@fries.net>
  * Copyright (c) 2011 Raphael Graf <r@undefined.ch>
  * Copyright (c) 2011 Michal Mazurek <akfaew@jasminek.net>
+ * Copyright (c) 2012 Josh Rickmar <jrick@devio.us>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -66,6 +67,7 @@
 #define XT_XTP_CL		(3)	/* cookies */
 #define XT_XTP_FL		(4)	/* favorites */
 #define XT_XTP_SL		(5)	/* search */
+#define XT_XTP_AB		(6)	/* about */
 
 /* XTP download actions */
 #define XT_XTP_DL_LIST		(1)
@@ -91,6 +93,9 @@
 /* XPT search actions */
 #define XT_XTP_SL_SET		(1)
 
+/* XPT about actions */
+#define XT_XTP_AB_EDIT_CONF	(1)
+
 int			js_show_wl(struct tab *, struct karg *);
 int			pl_show_wl(struct tab *, struct karg *);
 int			set(struct tab *, struct karg *);
@@ -102,7 +107,7 @@ int			about_webkit(struct tab *, struct karg *);
 int			allthethings(struct tab *, struct karg *);
 
 struct about_type about_list[] = {
-	{ XT_URI_ABOUT_ABOUT,		about },
+	{ XT_URI_ABOUT_ABOUT,		xtp_page_ab },
 	{ XT_URI_ABOUT_ALLTHETHINGS,	allthethings },
 	{ XT_URI_ABOUT_BLANK,		blank },
 	{ XT_URI_ABOUT_CERTS,		ca_cmd },
@@ -150,7 +155,9 @@ char			*hl_session_key;	/* history list */
 char			*cl_session_key;	/* cookie list */
 char			*fl_session_key;	/* favorites list */
 char			*sl_session_key;	/* search */
+char			*ab_session_key;	/* about */
 
+int			updating_ab_tabs = 0;
 int			updating_fl_tabs = 0;
 int			updating_dl_tabs = 0;
 int			updating_hl_tabs = 0;
@@ -228,58 +235,6 @@ blank(struct tab *t, struct karg *args)
 		show_oops(NULL, "blank invalid parameters");
 
 	load_webkit_string(t, "", XT_URI_ABOUT_BLANK);
-
-	return (0);
-}
-
-int
-about(struct tab *t, struct karg *args)
-{
-	char			*page, *body;
-
-	if (t == NULL)
-		show_oops(NULL, "about invalid parameters");
-
-	body = g_strdup_printf("<b>Version: %s</b>"
-#ifdef XOMBRERO_BUILDSTR
-	    "<br><b>Build: %s</b>"
-#endif
-	    "<br><b>WebKit: %d.%d.%d</b>"
-	    "<br><b>User Agent: %d.%d</b>"
-#ifdef WEBKITGTK_API_VERSION
-	    "<br><b>WebKit API: %.1f</b>"
-#endif
-	    "<p>"
-	    "Authors:"
-	    "<ul>"
-	    "<li>Marco Peereboom &lt;marco@peereboom.us&gt;</li>"
-	    "<li>Stevan Andjelkovic &lt;stevan@student.chalmers.se&gt;</li>"
-	    "<li>Edd Barrett &lt;vext01@gmail.com&gt;</li>"
-	    "<li>Todd T. Fries &lt;todd@fries.net&gt;</li>"
-	    "<li>Raphael Graf &lt;r@undefined.ch&gt;</li>"
-	    "<li>Michal Mazurek &lt;akfaew@jasminek.net&gt;</li>"
-	    "<li>Josh Rickmar &lt;jrick@devio.us&gt;</li>"
-	    "</ul>"
-	    "Copyrights and licenses can be found on the xombrero "
-	    "<a href=\"http://opensource.conformal.com/wiki/xombrero\">website</a>"
-	    "</p>",
-#ifdef XOMBRERO_BUILDSTR
-	    version, XOMBRERO_BUILDSTR,
-#else
-	    version,
-#endif
-	    WEBKIT_MAJOR_VERSION, WEBKIT_MINOR_VERSION, WEBKIT_MICRO_VERSION,
-	    WEBKIT_USER_AGENT_MAJOR_VERSION, WEBKIT_USER_AGENT_MINOR_VERSION
-#ifdef WEBKITGTK_API_VERSION
-	    ,WEBKITGTK_API_VERSION
-#endif
-	    );
-
-	page = get_html_page("About", body, "", 0);
-	g_free(body);
-
-	load_webkit_string(t, page, XT_URI_ABOUT_ABOUT);
-	g_free(page);
 
 	return (0);
 }
@@ -764,6 +719,47 @@ search_engine_add(char *body, const char *name, const char *url, int select)
 }
 
 void
+xtp_handle_ab(struct tab *t, uint8_t cmd, int arg)
+{
+	pid_t			pid;
+	char			config[PATH_MAX];
+	char			*cmdstr;
+	char			**sv;
+
+	switch (cmd) {
+	case XT_XTP_AB_EDIT_CONF:
+		if (external_editor == NULL || strlen(external_editor) == 0) {
+			show_oops(t, "external_editor is unset");
+			break;
+		}
+		snprintf(config, sizeof config, "%s" PS ".%s", pwd->pw_dir,
+		    XT_CONF_FILE);
+		sv = g_strsplit(external_editor, "<file>", -1);
+		cmdstr = g_strjoinv(config, sv);
+		g_strfreev(sv);
+		switch (pid = fork()) {
+		case -1:
+			/* no process created */
+			show_oops(t, "%s: could not fork process", __func__);
+			break;
+		case 0:
+			/* child */
+			sv = g_strsplit_set(cmdstr, " \t", -1);
+			execvp(sv[0], sv);
+			g_strfreev(sv);
+			_exit(0);
+		default:
+			/* parent */
+			break;
+		}
+		break;
+	default:
+		show_oops(t, "%s, invalid about command", __func__);
+		break;
+	};
+	xtp_page_ab(t, NULL);
+}
+void
 xtp_handle_fl(struct tab *t, uint8_t cmd, int arg)
 {
 	switch (cmd) {
@@ -892,6 +888,7 @@ struct xtp_despatch		xtp_despatches[] = {
 	{ XT_XTP_FL, &fl_session_key, xtp_handle_fl },
 	{ XT_XTP_CL, &cl_session_key, xtp_handle_cl },
 	{ XT_XTP_SL, &sl_session_key, xtp_handle_sl },
+	{ XT_XTP_AB, &ab_session_key, xtp_handle_ab },
 	{ XT_XTP_INVALID, NULL, NULL }
 };
 
@@ -926,6 +923,7 @@ xtp_generate_keys(void)
 	generate_xtp_session_key(&hl_session_key);
 	generate_xtp_session_key(&cl_session_key);
 	generate_xtp_session_key(&fl_session_key);
+	generate_xtp_session_key(&ab_session_key);
 }
 
 /*
@@ -1103,6 +1101,93 @@ update_search_tabs(struct tab *apart_from)
 				xtp_page_sl(t, NULL);
 		updating_sl_tabs = 0;
 	}
+}
+
+/*
+ * update all about tabs apart from one. Pass NULL if
+ * you want to update all.
+ */
+void
+update_about_tabs(struct tab *apart_from)
+{
+	struct tab			*t;
+
+	if (!updating_ab_tabs) {
+		updating_ab_tabs = 1; /* stop infinite recursion */
+		TAILQ_FOREACH(t, &tabs, entry)
+			if ((t->xtp_meaning == XT_XTP_TAB_MEANING_AB)
+			    && (t != apart_from))
+				xtp_page_ab(t, NULL);
+		updating_ab_tabs = 0;
+	}
+}
+
+int
+xtp_page_ab(struct tab *t, struct karg *args)
+{
+	char			*page, *body;
+
+	if (t == NULL)
+		show_oops(NULL, "about invalid parameters");
+
+	/*
+	 * Generate a new session key for next page instance.
+	 * This only happens for the top level call to xtp_page_ab()
+	 * in which case updating_sl_tabs is 0.
+	 */
+	if (!updating_ab_tabs)
+		generate_xtp_session_key(&ab_session_key);
+
+	body = g_strdup_printf("<b>Version: %s</b>"
+#ifdef XOMBRERO_BUILDSTR
+	    "<br><b>Build: %s</b>"
+#endif
+	    "<br><b>WebKit: %d.%d.%d</b>"
+	    "<br><b>User Agent: %d.%d</b>"
+#ifdef WEBKITGTK_API_VERSION
+	    "<br><b>WebKit API: %.1f</b>"
+#endif
+	    "<br><b>Configuration: %s" PS "<a href='%s%d/%s/%d'>%s</a>"
+	    " (remember to reload after any changes)</b>"
+	    "<p>"
+	    "Authors:"
+	    "<ul>"
+	    "<li>Marco Peereboom &lt;marco@peereboom.us&gt;</li>"
+	    "<li>Stevan Andjelkovic &lt;stevan@student.chalmers.se&gt;</li>"
+	    "<li>Edd Barrett &lt;vext01@gmail.com&gt;</li>"
+	    "<li>Todd T. Fries &lt;todd@fries.net&gt;</li>"
+	    "<li>Raphael Graf &lt;r@undefined.ch&gt;</li>"
+	    "<li>Michal Mazurek &lt;akfaew@jasminek.net&gt;</li>"
+	    "<li>Josh Rickmar &lt;jrick@devio.us&gt;</li>"
+	    "</ul>"
+	    "Copyrights and licenses can be found on the xombrero "
+	    "<a href=\"http://opensource.conformal.com/wiki/xombrero\">website</a>"
+	    "</p>",
+#ifdef XOMBRERO_BUILDSTR
+	    version, XOMBRERO_BUILDSTR,
+#else
+	    version,
+#endif
+	    WEBKIT_MAJOR_VERSION, WEBKIT_MINOR_VERSION, WEBKIT_MICRO_VERSION,
+	    WEBKIT_USER_AGENT_MAJOR_VERSION, WEBKIT_USER_AGENT_MINOR_VERSION
+#ifdef WEBKITGTK_API_VERSION
+	    ,WEBKITGTK_API_VERSION
+#endif
+	    ,pwd->pw_dir,
+	    XT_XTP_STR,
+	    XT_XTP_AB,
+	    ab_session_key,
+	    XT_XTP_AB_EDIT_CONF,
+	    XT_CONF_FILE
+	    );
+
+	page = get_html_page("About", body, "", 0);
+	g_free(body);
+
+	load_webkit_string(t, page, XT_URI_ABOUT_ABOUT);
+	g_free(page);
+
+	return (0);
 }
 
 /* show a list of favorites (bookmarks) */

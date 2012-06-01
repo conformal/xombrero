@@ -88,7 +88,6 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_JS_DIR		("js")
 #define XT_SESSIONS_DIR		("sessions")
 #define XT_TEMP_DIR		("tmp")
-#define XT_CONF_FILE		("xombrero.conf")
 #define XT_QMARKS_FILE		("quickmarks")
 #define XT_SAVED_TABS_FILE	("main_session")
 #define XT_RESTART_TABS_FILE	("restart_tabs")
@@ -3134,9 +3133,9 @@ struct cmd {
 	{ "w",			0,	save_tabs,		0,			0 },
 	{ "wq",			0,	save_tabs_and_quit,	0,			0 },
 	{ "help",		0,	help,			0,			0 },
-	{ "about",		0,	about,			0,			0 },
+	{ "about",		0,	xtp_page_ab,		0,			0 },
 	{ "stats",		0,	stats,			0,			0 },
-	{ "version",		0,	about,			0,			0 },
+	{ "version",		0,	xtp_page_ab,		0,			0 },
 
 	/* js command */
 	{ "js",			0,	js_cmd,			XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION,	0 },
