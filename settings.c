@@ -73,7 +73,7 @@ int		enable_js_whitelist = XT_DS_ENABLE_JS_WHITELIST;
 int		enable_localstorage = XT_DS_ENABLE_LOCALSTORAGE;
 int		session_timeout = XT_DS_SESSION_TIMEOUT; /* cookie session timeout */
 int		cookie_policy = XT_DS_COOKIE_POLICY;
-char		*ssl_ca_file = XT_DS_SSL_CA_FILE;
+char		*ssl_ca_file = NULL;
 gboolean	ssl_strict_certs = XT_DS_SSL_STRICT_CERTS;
 gboolean	enable_strict_transport = XT_DS_ENABLE_STRICT_TRANSPORT;
 int		append_next = XT_DS_APPEND_NEXT; /* append tab after current tab */
@@ -1289,7 +1289,7 @@ custom_uri_add(char *uri, char *cmd)
 
 	u = g_malloc(sizeof (struct custom_uri));
 	u->uri = g_strdup(uri);
-	u->cmd = g_strdup(cmd);
+	expand_tilde(u->cmd, sizeof u->cmd, cmd);
 
 	DNPRINTF(XT_D_CUSTOM_URI, "custom_uri_add: %s %s\n", u->uri, u->cmd);
 
@@ -1974,7 +1974,7 @@ set_ssl_ca_file_rt(char *value)
 	if (value == NULL || strlen(value) == 0) {
 		if (ssl_ca_file != NULL)
 			g_free(ssl_ca_file);
-		ssl_ca_file = XT_DS_SSL_CA_FILE;
+		ssl_ca_file = NULL;
 		g_object_set(session, SOUP_SESSION_SSL_CA_FILE, "", NULL);
 		return (0);
 	} else
@@ -2398,7 +2398,7 @@ struct settings_args {
 void
 print_setting(struct settings *s, char *val, void *cb_args)
 {
-	char			*tmp, *color;
+	char			*enc_val, *tmp, *color;
 	struct settings_args	*sa = cb_args;
 
 	if (sa == NULL)
@@ -2409,6 +2409,7 @@ print_setting(struct settings *s, char *val, void *cb_args)
 	else
 		color = "#cccccc";
 
+	enc_val = html_escape(val);
 	tmp = *sa->body;
 	*sa->body = g_strdup_printf(
 	    "%s\n<tr>"
@@ -2418,9 +2419,11 @@ print_setting(struct settings *s, char *val, void *cb_args)
 	    color,
 	    s->name,
 	    color,
-	    val
+	    enc_val == NULL ? "" : enc_val
 	    );
 	g_free(tmp);
+	if (enc_val)
+		g_free(enc_val);
 	sa->i++;
 }
 

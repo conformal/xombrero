@@ -463,17 +463,11 @@ set_ssl_ca_file(char *file)
 		return (-1);
 	if (stat(file, &sb)) {
 		warnx("no CA file: %s", file);
-		if (ssl_ca_file == file) {	/* check and fix */
-			g_free(ssl_ca_file);
-			ssl_ca_file = NULL;
-		}
 		return (-1);
 	}
-	if (ssl_ca_file != file) {		/* set dynamically */
-		if (ssl_ca_file)
-			g_free(ssl_ca_file);
-		ssl_ca_file = g_strdup(file);
-	}
+	if (ssl_ca_file)
+		g_free(ssl_ca_file);
+	ssl_ca_file = g_strdup(file);
 	g_object_set(session,
 	    SOUP_SESSION_SSL_CA_FILE, ssl_ca_file,
 	    SOUP_SESSION_SSL_STRICT, ssl_strict_certs,
@@ -922,6 +916,30 @@ find_mime_type(char *mime_type)
 		rv = def;
 
 	return (rv);
+}
+
+/*
+ * This only escapes the & and < characters, as per the discussion found here:
+ * http://lists.apple.com/archives/Webkitsdk-dev/2007/May/msg00056.html
+ */
+char *
+html_escape(const char *val)
+{
+	char			*s, *sp;
+	char			**sv;
+
+	if (val == NULL)
+		return NULL;
+
+	sv = g_strsplit(val, "&", -1);
+	s = g_strjoinv("&amp", sv);
+	g_strfreev(sv);
+	sp = s;
+	sv = g_strsplit(val, "<", -1);
+	s = g_strjoinv("&lt", sv);
+	g_strfreev(sv);
+	g_free(sp);
+	return (s);
 }
 
 struct domain *
@@ -3325,20 +3343,26 @@ parse_custom_uri(struct tab *t, const char *uri)
 {
 	struct custom_uri	*u;
 	int			handled = 0;
-	char			*cmd, *esc_uri;
 
 	TAILQ_FOREACH(u, &cul, entry) {
 		if (strncmp(uri, u->uri, strlen(u->uri)))
 			continue;
 
 		handled = 1;
-		esc_uri = g_strescape(uri, "");
-		cmd = g_strdup_printf("%s \"%s\"", u->cmd, esc_uri);
-		if (system(cmd))
-			show_oops(t, "custom uri command failed: %s",
-			    cmd);
-		g_free(esc_uri);
-		g_free(cmd);
+		switch (fork()) {
+		case -1:
+			show_oops(t, "%s: unable to fork", __func__);
+			break;
+		case 0:
+			/* child */
+			printf("cmd: %s\n", u->cmd);
+			execlp(u->cmd, u->cmd, uri, (char *)0);
+			_exit(0);
+			/* NOTREACHED */
+		default:
+			/* parent */
+			break;
+		}
 	}
 
 	return (handled);
@@ -5894,13 +5918,11 @@ parse_prefix_and_alias(const char *str, int *prefix)
 {
 	struct cmd_alias	*c;
 	char			*s = g_strdup(str), *sc;
-	char			hasprefix = 0;
 
 	g_strstrip(s);
 	sc = s;
 
 	if (isdigit(s[0])) {
-		hasprefix = 1;
 		sscanf(s, "%d", prefix);
 		while (isdigit(s[0]) || isspace(s[0]))
 			++s;

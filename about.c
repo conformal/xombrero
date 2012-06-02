@@ -732,11 +732,6 @@ xtp_handle_ab(struct tab *t, uint8_t cmd, int arg)
 			show_oops(t, "external_editor is unset");
 			break;
 		}
-		snprintf(config, sizeof config, "%s" PS ".%s", pwd->pw_dir,
-		    XT_CONF_FILE);
-		sv = g_strsplit(external_editor, "<file>", -1);
-		cmdstr = g_strjoinv(config, sv);
-		g_strfreev(sv);
 		switch (pid = fork()) {
 		case -1:
 			/* no process created */
@@ -744,9 +739,18 @@ xtp_handle_ab(struct tab *t, uint8_t cmd, int arg)
 			break;
 		case 0:
 			/* child */
+			snprintf(config, sizeof config, "%s" PS ".%s",
+			    pwd->pw_dir, XT_CONF_FILE);
+
+			sv = g_strsplit(external_editor, "<file>", -1);
+			cmdstr = g_strjoinv(config, sv);
+			g_strfreev(sv);
+
 			sv = g_strsplit_set(cmdstr, " \t", -1);
+
 			execvp(sv[0], sv);
 			g_strfreev(sv);
+			g_free(cmdstr);
 			_exit(0);
 		default:
 			/* parent */

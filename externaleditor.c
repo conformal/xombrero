@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012 Elias Norberg <xyzzy@kudzu.se>
+ * Copyright (c) 2012 Josh Rickmar <jrick@devio.us>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -133,9 +134,9 @@ open_external_editor(struct tab *t, const char *contents, const char *suffix,
     int (*callback)(const char *, gpointer), gpointer cb_data)
 {
 	struct open_external_editor_cb_args	*a;
-	char					command[PATH_MAX];
-	char					*filename;
-	char					*ptr;
+	char					*cmdstr;
+	char					filename[PATH_MAX];
+	char					**sv;
 	int					fd;
 	int					nb, rv;
 	int					cnt;
@@ -148,9 +149,8 @@ open_external_editor(struct tab *t, const char *contents, const char *suffix,
 	if (suffix == NULL)
 		suffix = "";
 
-	filename = g_malloc(strlen(temp_dir) + strlen(PS "xombreroXXXXXX") +
-	    strlen(suffix) + 1);
-	sprintf(filename, "%s" PS "xombreroXXXXXX%s", temp_dir, suffix);
+	snprintf(filename, sizeof filename, "%s" PS "xombreroXXXXXX%s",
+	    temp_dir, suffix);
 
 	/* Create a temporary file */
 	fd = mkstemps(filename, strlen(suffix));
@@ -168,7 +168,6 @@ open_external_editor(struct tab *t, const char *contents, const char *suffix,
 
 		rv = write(fd, contents+nb, cnt);
 		if (rv < 0) {
-			g_free(filename);
 			close(fd);
 			show_oops(t,strerror(errno));
 			return (1);
@@ -178,8 +177,7 @@ open_external_editor(struct tab *t, const char *contents, const char *suffix,
 	}
 
 	rv = fstat(fd, &st);
-	if (rv == -1){
-		g_free(filename);
+	if (rv == -1) {
 		close(fd);
 		show_oops(t,"Cannot stat file: %s\n", strerror(errno));
 		return (1);
@@ -187,23 +185,6 @@ open_external_editor(struct tab *t, const char *contents, const char *suffix,
 	close(fd);
 
 	DPRINTF("edit_src: external_editor: %s\n", external_editor);
-
-	nb = 0;
-	for (ptr = external_editor; nb < sizeof(command) - 1 && *ptr; ptr++) {
-
-		if (*ptr == '<') {
-			if (strncasecmp(ptr, "<file>", 6) == 0) {
-				strlcpy(command+nb, filename,
-				    sizeof(command) - nb);
-				ptr += 5;
-				nb += strlen(filename);
-			}
-		} else
-			command[nb++] = *ptr;
-	}
-	command[nb] = '\0';
-
-	DPRINTF("edit_src: Launching program %s\n", command);
 
 	/* Launch editor */
 	pid = fork();
@@ -214,10 +195,10 @@ open_external_editor(struct tab *t, const char *contents, const char *suffix,
 	case 0:
 		break;
 	default:
-
+		/* parent */
 		a = g_malloc(sizeof(struct open_external_editor_cb_args));
 		a->child_pid = pid;
-		a->path = filename;
+		a->path = g_strdup(filename);
 		a->tab = t;
 		a->mtime = st.st_mtime;
 		a->callback = callback;
@@ -230,9 +211,17 @@ open_external_editor(struct tab *t, const char *contents, const char *suffix,
 	}
 
 	/* child */
-	/* XXX KILL system PLEASE */
-	rv = system(command);
+	sv = g_strsplit(external_editor, "<file>", -1);
+	cmdstr = g_strjoinv(filename, sv);
+	g_strfreev(sv);
 
+	sv = g_strsplit_set(cmdstr, " \t", -1);
+
+	DPRINTF("edit_src: Launching program %s\n", cmdstr);
+
+	execvp(sv[0], sv);
+	g_strfreev(sv);
+	g_free(cmdstr);
 	_exit(0);
 	/* NOTREACHED */
 	return (0);

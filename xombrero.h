@@ -337,6 +337,7 @@ void			load_uri(struct tab *t, gchar *uri);
 gboolean		match_uri(const gchar *uri, const gchar *key);
 int			valid_url_type(char *);
 void			expand_tilde(char *, size_t, const char *);
+char			*html_escape(const char *val);
 
 void			load_webkit_string(struct tab *, const char *, gchar *);
 void			button_set_stockid(GtkWidget *, char *);
@@ -564,7 +565,6 @@ int		fork_exec(struct tab *, char *, const gchar *, char *, int);
 #define XT_DS_ENABLE_LOCALSTORAGE	(1)
 #define XT_DS_SESSION_TIMEOUT	(3600)
 #define XT_DS_COOKIE_POLICY	SOUP_COOKIE_JAR_ACCEPT_ALWAYS
-#define XT_DS_SSL_CA_FILE	NULL
 #define XT_DS_SSL_STRICT_CERTS	FALSE
 #define XT_DS_ENABLE_STRICT_TRANSPORT	TRUE
 #define XT_DS_APPEND_NEXT	(1)
@@ -629,7 +629,7 @@ TAILQ_HEAD(keybinding_list, key_binding);
 
 struct custom_uri {
 	char			*uri;
-	char			*cmd;
+	char			cmd[PATH_MAX];
 	TAILQ_ENTRY(custom_uri)	entry;
 };
 TAILQ_HEAD(custom_uri_list, custom_uri);
