@@ -141,6 +141,7 @@ int		set_color_visited_uris(char *);
 int		set_cookie_policy_rt(char *);
 int		set_cookies_enabled(char *);
 int		set_ctrl_click_focus(char *);
+int		set_fancy_bar(char *);
 int		set_home(char *);
 int		set_download_dir(struct settings *, char *);
 int		set_download_notifications(char *);
@@ -392,7 +393,7 @@ struct settings		rs[] = {
 	{ "enable_spell_checking",	XT_S_INT, 0,		&enable_spell_checking, NULL, NULL, NULL, set_enable_spell_checking },
 	{ "encoding",			XT_S_STR, 0, NULL,	&encoding, NULL, NULL, NULL },
 	{ "external_editor",		XT_S_STR,0, NULL,	&external_editor, NULL, NULL, set_external_editor },
-	{ "fancy_bar",			XT_S_INT, XT_SF_RESTART,&fancy_bar, NULL, NULL, NULL, NULL },
+	{ "fancy_bar",			XT_S_INT, XT_SF_RESTART,&fancy_bar, NULL, NULL, NULL, set_fancy_bar },
 	{ "guess_search",		XT_S_INT, 0,		&guess_search, NULL, NULL, NULL, set_guess_search },
 	{ "history_autosave",		XT_S_INT, 0,		&history_autosave, NULL, NULL, NULL, NULL },
 	{ "http_proxy",			XT_S_STR, 0, NULL,	&http_proxy, NULL, NULL, set_http_proxy },
@@ -2039,6 +2040,38 @@ set_external_editor(char *editor)
 		external_editor = NULL;
 	else
 		external_editor = g_strdup(editor);
+	return (0);
+}
+
+int
+set_fancy_bar(char *value)
+{
+	struct tab		*t;
+	int			tmp;
+	const char		*errstr;
+
+	if (value == NULL || strlen(value) == 0)
+		fancy_bar = 1;	/* XXX */
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		fancy_bar = tmp;
+	}
+	t = get_current_tab();
+	if (fancy_bar) {
+		gtk_widget_show(t->backward);
+		gtk_widget_show(t->forward);
+		gtk_widget_show(t->stop);
+		gtk_widget_show(t->js_toggle);
+		gtk_widget_show(t->search_entry);
+	} else {
+		gtk_widget_hide(t->backward);
+		gtk_widget_hide(t->forward);
+		gtk_widget_hide(t->stop);
+		gtk_widget_hide(t->js_toggle);
+		gtk_widget_hide(t->search_entry);
+	}
 	return (0);
 }
 
