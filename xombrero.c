@@ -745,6 +745,7 @@ match_alias(char *url_in)
 	struct alias		*a;
 	char			*arg;
 	char			*url_out = NULL, *search, *enc_arg;
+	char			**sv;
 
 	search = g_strdup(url_in);
 	arg = search;
@@ -761,12 +762,14 @@ match_alias(char *url_in)
 	if (a != NULL) {
 		DNPRINTF(XT_D_URL, "match_alias: matched alias %s\n",
 		    a->a_name);
-		if (arg != NULL) {
-			enc_arg = soup_uri_encode(arg, XT_RESERVED_CHARS);
-			url_out = g_strdup_printf(a->a_uri, enc_arg);
-			g_free(enc_arg);
-		} else
-			url_out = g_strdup_printf(a->a_uri, "");
+		enc_arg = soup_uri_encode(arg, XT_RESERVED_CHARS);
+		sv = g_strsplit(a->a_uri, "%s", 2);
+		if (arg != NULL)
+			url_out = g_strjoinv(enc_arg, sv);
+		else
+			url_out = g_strjoinv("", sv);
+		g_free(enc_arg);
+		g_strfreev(sv);
 	}
 done:
 	g_free(search);
@@ -780,6 +783,7 @@ guess_url_type(char *url_in)
 	char			*url_out = NULL, *enc_search = NULL;
 	int			i;
 	char			*cwd;
+	char			**sv;
 
 
 	/* substitute aliases */
@@ -802,8 +806,10 @@ guess_url_type(char *url_in)
 		if (regexec(&url_re, url_in, 0, NULL, 0)) {
 			/* invalid URI so search instead */
 			enc_search = soup_uri_encode(url_in, XT_RESERVED_CHARS);
-			url_out = g_strdup_printf(search_string, enc_search);
+			sv = g_strsplit(search_string, "%s", 2);
+			url_out = g_strjoinv(enc_search, sv);
 			g_free(enc_search);
+			g_strfreev(sv);
 			goto done;
 		}
 	}
@@ -814,9 +820,9 @@ guess_url_type(char *url_in)
 			url_out = g_strdup_printf("file://%s", url_in);
 		else {
 			cwd = malloc(PATH_MAX);
-			if (getcwd(cwd, PATH_MAX) != NULL) {
-				url_out = g_strdup_printf("file://%s/%s",cwd, url_in);
-			}
+			if (getcwd(cwd, PATH_MAX) != NULL)
+				url_out = g_strdup_printf("file://%s/%s",cwd,
+				    url_in);
 			free(cwd);
 		}
 	} else
@@ -3509,6 +3515,7 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 	const gchar		*search = gtk_entry_get_text(GTK_ENTRY(entry));
 	char			*newuri = NULL;
 	gchar			*enc_search;
+	char			**sv;
 
 	DNPRINTF(XT_D_URL, "activate_search_entry_cb: %s\n", search);
 
@@ -3525,8 +3532,10 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
 
 	enc_search = soup_uri_encode(search, XT_RESERVED_CHARS);
-	newuri = g_strdup_printf(search_string, enc_search);
+	sv = g_strsplit(search_string, "%s", 2);
+	newuri = g_strjoinv(enc_search, sv);
 	g_free(enc_search);
+	g_strfreev(sv);
 
 	marks_clear(t);
 	load_uri(t, newuri);

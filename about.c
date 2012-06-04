@@ -826,6 +826,7 @@ xtp_handle_sl(struct tab *t, uint8_t cmd, int arg)
 	char			delim[3] = { '\0', '\0', '\0' };
 	char			*line, *lt, *enc_search, *uri;
 	char			*contents, *tmp;
+	char			**sv;
 
 	switch (cmd) {
 	case XT_XTP_SL_SET:
@@ -882,9 +883,11 @@ xtp_handle_sl(struct tab *t, uint8_t cmd, int arg)
 
 	search = gtk_entry_get_text(GTK_ENTRY(t->search_entry)); /* static */
 	enc_search = soup_uri_encode(search, XT_RESERVED_CHARS);
-	uri = g_strdup_printf(search_string, enc_search);
+	sv = g_strsplit(search_string, "%s", 2);
+	uri = g_strjoinv(enc_search, sv);
 	load_uri(t, uri);
 	g_free(enc_search);
+	g_strfreev(sv);
 	g_free(uri);
 }
 
