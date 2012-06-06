@@ -496,19 +496,20 @@ set_status(struct tab *t, gchar *s, int status)
 		break;
 	case XT_STATUS_LINK:
 		type = g_strdup_printf("Link: %s", s);
+		s = type;
 		if (!t->status)
 			t->status = g_strdup(gtk_entry_get_text(
 			    GTK_ENTRY(t->sbe.statusbar)));
-		s = type;
 		break;
 	case XT_STATUS_URI:
 		type = g_strdup_printf("%s", s);
-		if (!t->status) {
-			t->status = g_strdup(type);
-		}
 		s = type;
 		if (!t->status)
 			t->status = g_strdup(s);
+		else if (strcmp(t->status, s)) {
+			g_free(t->status);
+			t->status = g_strdup(s);
+		}
 		break;
 	case XT_STATUS_NOTHING:
 		/* FALL THROUGH */
@@ -874,7 +875,7 @@ get_uri(struct tab *t)
 		/* use tmp_uri to make sure it is g_freed */
 		if (t->tmp_uri)
 			g_free(t->tmp_uri);
-		t->tmp_uri =g_strdup_printf("%s%s", XT_URI_ABOUT,
+		t->tmp_uri = g_strdup_printf("%s%s", XT_URI_ABOUT,
 		    about_list[t->xtp_meaning].name);
 		uri = t->tmp_uri;
 	}
@@ -6808,6 +6809,7 @@ delete_tab(struct tab *t)
 	g_free(t->user_agent);
 	g_free(t->stylesheet);
 	g_free(t->tmp_uri);
+	g_free(t->status);
 	g_free(t);
 	t = NULL;
 
