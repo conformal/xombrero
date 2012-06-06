@@ -566,11 +566,11 @@ int		fork_exec(struct tab *, char *, const gchar *, char *, int);
 #define XT_DS_SESSION_TIMEOUT	(3600)
 #define XT_DS_COOKIE_POLICY	SOUP_COOKIE_JAR_ACCEPT_ALWAYS
 #define XT_DS_SSL_STRICT_CERTS	FALSE
+#define XT_DS_SSL_CA_FILE	("")
 #define XT_DS_ENABLE_STRICT_TRANSPORT	TRUE
 #define XT_DS_APPEND_NEXT	(1)
 #define XT_DS_HOME		("https://www.cyphertite.com/")
 #define XT_DS_SEARCH_STRING	("about:search")
-#define XT_DS_HTTP_PROXY	NULL
 #define XT_DS_COLOR_VISITED_URIS	(1)
 #define XT_DS_SESSION_AUTOSAVE	(0)
 #define XT_DS_GUESS_SEARCH	(0)
@@ -673,7 +673,7 @@ int		set_encoding(struct tab *, struct karg *);
 int		set_gui_mode(struct settings *, char *);
 int		set_cookie_policy(struct settings *, char *);
 int		set_search_string(char *);
-int		set_ssl_ca_file(char *);
+int		set_ssl_ca_file(struct settings *, char *);
 char		*get_browser_mode(struct settings *);
 char		*get_gui_mode(struct settings *);
 char		*get_cookie_policy(struct settings *);
@@ -720,7 +720,7 @@ extern int	enable_cookie_whitelist;
 extern int	enable_js_whitelist;
 extern int	session_timeout;
 extern int	cookie_policy;
-extern char	*ssl_ca_file;
+extern char	ssl_ca_file[PATH_MAX];
 extern char	*resource_dir;
 extern gboolean	ssl_strict_certs;
 extern gboolean	enable_strict_transport;

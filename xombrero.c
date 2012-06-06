@@ -455,7 +455,7 @@ get_current_tab(void)
 }
 
 int
-set_ssl_ca_file(char *file)
+set_ssl_ca_file(struct settings *s, char *file)
 {
 	struct stat		sb;
 
@@ -465,9 +465,7 @@ set_ssl_ca_file(char *file)
 		warnx("no CA file: %s", file);
 		return (-1);
 	}
-	if (ssl_ca_file)
-		g_free(ssl_ca_file);
-	ssl_ca_file = g_strdup(file);
+	expand_tilde(ssl_ca_file, sizeof ssl_ca_file, file);
 	g_object_set(session,
 	    SOUP_SESSION_SSL_CA_FILE, ssl_ca_file,
 	    SOUP_SESSION_SSL_STRICT, ssl_strict_certs,
@@ -1937,6 +1935,7 @@ done:
 int
 cert_cmd(struct tab *t, struct karg *args)
 {
+	struct stat		sb;
 	const gchar		*uri, *error_str = NULL;
 	char			domain[8182];
 	int			s = -1;
@@ -1948,7 +1947,7 @@ cert_cmd(struct tab *t, struct karg *args)
 	if (t == NULL)
 		return (1);
 
-	if (ssl_ca_file == NULL) {
+	if (stat(ssl_ca_file, &sb)) {
 		show_oops(t, "Can't open CA file: %s", ssl_ca_file);
 		return (1);
 	}
@@ -3611,6 +3610,7 @@ void
 show_ca_status(struct tab *t, const char *uri)
 {
 	GdkColor		color;
+	struct stat		sb;
 	gchar			*col_str = XT_COLOR_WHITE, *text, *base;
 
 	DNPRINTF(XT_D_URL, "show_ca_status: %d %s %s\n",
@@ -3621,7 +3621,7 @@ show_ca_status(struct tab *t, const char *uri)
 
 	if (uri == NULL)
 		goto done;
-	if (ssl_ca_file == NULL) {
+	if (stat(ssl_ca_file, &sb)) {
 		if (g_str_has_prefix(uri, "http://"))
 			goto done;
 		if (g_str_has_prefix(uri, "https://")) {
@@ -7932,7 +7932,7 @@ main(int argc, char **argv)
 	/* compile buffer command regexes */
 	buffercmd_init();
 
-	/* set default string settings */
+	/* set default dynamic string settings */
 	home = g_strdup(XT_DS_HOME);
 	search_string = g_strdup(XT_DS_SEARCH_STRING);
 	resource_dir = g_strdup("/usr/local/share/xombrero/");
@@ -7944,6 +7944,13 @@ main(int argc, char **argv)
 	statusbar_elems = g_strdup("BP");
 	spell_check_languages = g_strdup(XT_DS_SPELL_CHECK_LANGUAGES);
 	encoding = g_strdup(XT_DS_ENCODING);
+	spell_check_languages = g_strdup(XT_DS_SPELL_CHECK_LANGUAGES);
+
+	/* set statically allocated (struct special) settings */
+	expand_tilde(default_script, sizeof default_script,
+	    XT_DS_DEFAULT_SCRIPT);
+	expand_tilde(ssl_ca_file, sizeof ssl_ca_file,
+	    XT_DS_SSL_CA_FILE);
 
 	/* read config file */
 	if (strlen(conf) == 0)
@@ -8070,9 +8077,6 @@ main(int argc, char **argv)
 	/* cookies */
 	session = webkit_get_default_session();
 	setup_cookies();
-
-	/* certs */
-	set_ssl_ca_file(ssl_ca_file);
 
 	/* guess_search regex */
 	if (url_regex == NULL)

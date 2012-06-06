@@ -29,8 +29,13 @@ PangoFontDescription	*oops_font;
 PangoFontDescription	*statusbar_font;
 PangoFontDescription	*tabbar_font;
 
-/* settings that require restart */
+/* non-settings */
 int		tabless = 0;	/* allow only 1 tab */
+char		search_file[PATH_MAX];
+char		command_file[PATH_MAX];
+char		runtime_settings[PATH_MAX]; /* override of settings */
+
+/* settings that require restart */
 int		enable_socket = 0;
 int		single_instance = 0; /* only allow one xombrero to run */
 int		fancy_bar = 1;	/* fancy toolbar */
@@ -50,9 +55,8 @@ int		save_rejected_cookies = 0;
 gint		max_connections = 25;
 gint		max_host_connections = 5;
 int		history_autosave = 0;
-char		search_file[PATH_MAX];
-char		command_file[PATH_MAX];
 int		edit_mode = XT_EM_HYBRID;
+char		*include_config = NULL;
 
 /* runtime settings */
 int		show_tabs = XT_DS_SHOW_TABS;	/* show tabs on notebook */
@@ -65,7 +69,7 @@ int		read_only_cookies = XT_DS_READ_ONLY_COOKIES; /* enable to not write cookies
 int		enable_scripts = XT_DS_ENABLE_SCRIPTS;
 int		enable_plugins = XT_DS_ENABLE_PLUGINS;
 gfloat		default_zoom_level = XT_DS_DEFAULT_ZOOM_LEVEL;
-char		default_script[PATH_MAX] = XT_DS_DEFAULT_SCRIPT;
+char		default_script[PATH_MAX];	/* special setting - is never g_free'd */
 int		refresh_interval = XT_DS_REFRESH_INTERVAL; /* download refresh interval */
 int		enable_plugin_whitelist = XT_DS_ENABLE_PLUGIN_WHITELIST;
 int		enable_cookie_whitelist = XT_DS_ENABLE_COOKIE_WHITELIST;
@@ -73,23 +77,22 @@ int		enable_js_whitelist = XT_DS_ENABLE_JS_WHITELIST;
 int		enable_localstorage = XT_DS_ENABLE_LOCALSTORAGE;
 int		session_timeout = XT_DS_SESSION_TIMEOUT; /* cookie session timeout */
 int		cookie_policy = XT_DS_COOKIE_POLICY;
-char		*ssl_ca_file = NULL;
+char		ssl_ca_file[PATH_MAX];		/* special setting - is never g_free'd */
 gboolean	ssl_strict_certs = XT_DS_SSL_STRICT_CERTS;
 gboolean	enable_strict_transport = XT_DS_ENABLE_STRICT_TRANSPORT;
 int		append_next = XT_DS_APPEND_NEXT; /* append tab after current tab */
-char		*home = NULL;	/* allocated and set at startup */
-char		*search_string = NULL;
-char		*http_proxy = XT_DS_HTTP_PROXY;
+char		*home = NULL;			/* allocated/set at startup */
+char		*search_string = NULL;		/* allocated/set at startup */
+char		*http_proxy = NULL;
 int		download_mode = XT_DM_START;
-char		runtime_settings[PATH_MAX]; /* override of settings */
 int		color_visited_uris = XT_DS_COLOR_VISITED_URIS;
 int		session_autosave = XT_DS_SESSION_AUTOSAVE;
 int		guess_search = XT_DS_GUESS_SEARCH;
 gint		enable_spell_checking = XT_DS_ENABLE_SPELL_CHECKING;
-char		*spell_check_languages = XT_DS_SPELL_CHECK_LANGUAGES;
+char		*spell_check_languages = NULL;	/* allocated/set at startup */
 int		xterm_workaround = XT_DS_XTERM_WORKAROUND;
-char		*url_regex = NULL;	/* allocated/set at startup */
-char		*encoding = NULL;	/* allocated/set at startup */
+char		*url_regex = NULL;		/* allocated/set at startup */
+char		*encoding = NULL;		/* allocated/set at startup */
 int		autofocus_onload = XT_DS_AUTOFOCUS_ONLOAD;
 int		enable_js_autorun = XT_DS_ENABLE_JS_AUTORUN;
 int		userstyle_global = XT_DS_USERSTYLE_GLOBAL;
@@ -97,11 +100,10 @@ int		auto_load_images = XT_DS_AUTO_LOAD_IMAGES;
 int		enable_autoscroll = XT_DS_ENABLE_AUTOSCROLL;
 int		enable_favicon_entry = XT_DS_ENABLE_FAVICON_ENTRY;
 int		enable_favicon_tabs = XT_DS_ENABLE_FAVICON_TABS;
-char		*external_editor = NULL;	/* set/allocated at startup */
+char		*external_editor = NULL;
 int		referer_mode = XT_DS_REFERER_MODE;
 char		*referer_custom = NULL;
 int		download_notifications = XT_DS_DOWNLOAD_NOTIFICATIONS;
-char		*include_config = NULL;
 
 char		*cmd_font_name = NULL;	/* these are all set at startup */
 char		*oops_font_name = NULL;
@@ -116,6 +118,7 @@ char		*get_edit_mode(struct settings *);
 char		*get_download_mode(struct settings *);
 char		*get_work_dir(struct settings *);
 char		*get_referer(struct settings *);
+char		*get_ssl_ca_file(struct settings *);
 
 int		add_cookie_wl(struct settings *, char *);
 int		add_js_wl(struct settings *, char *);
@@ -209,7 +212,7 @@ set_http_proxy(char *proxy)
 
 	/* see if we need to clear it */
 	if (proxy == NULL || strlen(proxy) == 0) {
-		setup_proxy(XT_DS_HTTP_PROXY);
+		setup_proxy(NULL);
 		return (0);
 	}
 
@@ -304,6 +307,12 @@ struct special		s_default_script = {
 	NULL
 };
 
+struct special		s_ssl_ca_file = {
+	set_ssl_ca_file,
+	get_ssl_ca_file,
+	NULL
+};
+
 struct special		s_download_dir = {
 	set_download_dir,
 	get_download_dir,
@@ -391,7 +400,7 @@ struct settings		rs[] = {
 	{ "show_url",			XT_S_INT, 0,		&show_url, NULL, NULL, NULL, set_show_url },
 	{ "show_statusbar",		XT_S_INT, 0,		&show_statusbar, NULL, NULL, NULL, set_show_statusbar },
 	{ "spell_check_languages",	XT_S_STR, 0, NULL,	&spell_check_languages, NULL, NULL, set_spell_check_languages },
-	{ "ssl_ca_file",		XT_S_STR, 0, NULL,	&ssl_ca_file, NULL, NULL, set_ssl_ca_file_rt },
+	{ "ssl_ca_file",		XT_S_STR, 0, NULL, NULL,&s_ssl_ca_file, NULL, set_ssl_ca_file_rt },
 	{ "ssl_strict_certs",		XT_S_INT, 0,		&ssl_strict_certs, NULL, NULL, NULL, set_ssl_strict_certs },
 	{ "enable_strict_transport",	XT_S_INT, 0,		&enable_strict_transport, NULL, NULL, NULL, set_enable_strict_transport },
 	{ "statusbar_elems",		XT_S_STR, 0, NULL,	&statusbar_elems, NULL, NULL, NULL },
@@ -1834,6 +1843,14 @@ set_referer_rt(char *value)
 	return (set_referer(NULL, value));
 }
 
+char *
+get_ssl_ca_file(struct settings *s)
+{
+	if (strlen(ssl_ca_file) == 0)
+		return (NULL);
+	return (g_strdup(ssl_ca_file));
+}
+
 int
 set_refresh_interval(char *value)
 {
@@ -1972,13 +1989,11 @@ int
 set_ssl_ca_file_rt(char *value)
 {
 	if (value == NULL || strlen(value) == 0) {
-		if (ssl_ca_file != NULL)
-			g_free(ssl_ca_file);
-		ssl_ca_file = NULL;
+		strlcpy(ssl_ca_file, XT_DS_SSL_CA_FILE, sizeof ssl_ca_file);
 		g_object_set(session, SOUP_SESSION_SSL_CA_FILE, "", NULL);
 		return (0);
 	} else
-		return (set_ssl_ca_file(value));
+		return (set_ssl_ca_file(NULL, value));
 }
 
 int
