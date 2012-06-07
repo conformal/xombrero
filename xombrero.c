@@ -85,6 +85,7 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_DIR			(".xombrero")
 #define XT_CACHE_DIR		("cache")
 #define XT_CERT_DIR		("certs")
+#define XT_CERT_CACHE_DIR	("certs_cache")
 #define XT_JS_DIR		("js")
 #define XT_SESSIONS_DIR		("sessions")
 #define XT_TEMP_DIR		("tmp")
@@ -222,6 +223,8 @@ struct command_list	chl;
 struct command_list	shl;
 struct command_entry	*history_at;
 struct command_entry	*search_at;
+struct secviolation_list	svl;
+struct sv_ignore_list	svil;
 int			undo_count;
 int			cmd_history_count = 0;
 int			search_history_count = 0;
@@ -655,6 +658,7 @@ show_oops(struct tab *at, const char *fmt, ...)
 
 char			work_dir[PATH_MAX];
 char			certs_dir[PATH_MAX];
+char			certs_cache_dir[PATH_MAX];
 char			js_dir[PATH_MAX];
 char			cache_dir[PATH_MAX];
 char			sessions_dir[PATH_MAX];
@@ -697,6 +701,20 @@ download_rb_cmp(struct download *e1, struct download *e2)
 }
 RB_GENERATE(download_list, download, entry, download_rb_cmp);
 
+int
+secviolation_rb_cmp(struct secviolation *s1, struct secviolation *s2)
+{
+	return (s1->xtp_arg < s2->xtp_arg ? -1 : s1->xtp_arg > s2->xtp_arg);
+}
+RB_GENERATE(secviolation_list, secviolation, entry, secviolation_rb_cmp);
+
+int
+sv_ignore_rb_cmp(struct sv_ignore *s1, struct sv_ignore *s2)
+{
+	return (strcmp(s1->domain, s2->domain));
+}
+RB_GENERATE(sv_ignore_list, sv_ignore, entry, sv_ignore_rb_cmp);
+
 struct valid_url_types {
 	char		*type;
 } vut[] = {
@@ -704,6 +722,7 @@ struct valid_url_types {
 	{ "https://" },
 	{ "ftp://" },
 	{ "file://" },
+	{ XT_URI_ABOUT },
 	{ XT_XTP_STR },
 };
 
@@ -835,7 +854,8 @@ load_uri(struct tab *t, gchar *uri)
 
 	if (!strncmp(uri, XT_URI_ABOUT, XT_URI_ABOUT_LEN)) {
 		for (i = 0; i < about_list_size(); i++)
-			if (!strcmp(&uri[XT_URI_ABOUT_LEN], about_list[i].name)) {
+			if (!strcmp(&uri[XT_URI_ABOUT_LEN], about_list[i].name) &&
+			    about_list[i].func != NULL) {
 				bzero(&args, sizeof args);
 				about_list[i].func(t, &args);
 				gtk_widget_set_sensitive(GTK_WIDGET(t->stop),
@@ -1778,18 +1798,17 @@ statusbar_modify_attr(struct tab *t, const char *text, const char *base)
 
 void
 save_certs(struct tab *t, gnutls_x509_crt_t *certs,
-    size_t cert_count, char *domain)
+    size_t cert_count, const char *domain, const char *dir)
 {
 	size_t			cert_buf_sz;
 	char			cert_buf[64 * 1024], file[PATH_MAX];
 	int			i;
 	FILE			*f;
-	GdkColor		color;
 
 	if (t == NULL || certs == NULL || cert_count <= 0 || domain == NULL)
 		return;
 
-	snprintf(file, sizeof file, "%s" PS "%s", certs_dir, domain);
+	snprintf(file, sizeof file, "%s" PS "%s", dir, domain);
 	if ((f = fopen(file, "w")) == NULL) {
 		show_oops(t, "Can't create cert file %s %s",
 		    file, strerror(errno));
@@ -1809,10 +1828,6 @@ save_certs(struct tab *t, gnutls_x509_crt_t *certs,
 		}
 	}
 
-	/* not the best spot but oh well */
-	gdk_color_parse(XT_COLOR_BLUE, &color);
-	gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
-	statusbar_modify_attr(t, XT_COLOR_BLACK, XT_COLOR_BLUE);
 done:
 	fclose(f);
 }
@@ -1825,7 +1840,7 @@ enum cert_trust {
 };
 
 enum cert_trust
-load_compare_cert(const gchar *uri, const gchar **error_str)
+load_compare_cert(const gchar *uri, const gchar **error_str, const char *dir)
 {
 	char			domain[8182], file[PATH_MAX];
 	char			cert_buf[64 * 1024], r_cert_buf[64 * 1024];
@@ -1867,7 +1882,7 @@ load_compare_cert(const gchar *uri, const gchar **error_str)
 		goto done;
 	}
 
-	snprintf(file, sizeof file, "%s" PS "%s", certs_dir, domain);
+	snprintf(file, sizeof file, "%s" PS "%s", dir, domain);
 	if ((f = fopen(file, "r")) == NULL) {
 		if (!error)
 			rv = CERT_TRUSTED;
@@ -1880,7 +1895,7 @@ load_compare_cert(const gchar *uri, const gchar **error_str)
 		    cert_buf, &cert_buf_sz)) {
 			goto freeit;
 		}
-		if (fread(r_cert_buf, cert_buf_sz, 1, f) != 1) {
+		if (fread(r_cert_buf, cert_buf_sz, 1, f) != 1 && !feof(f)) {
 			rv = CERT_BAD; /* critical */
 			goto freeit;
 		}
@@ -1901,7 +1916,7 @@ done:
 		close(s);
 
 	/* only complain if we didn't save it locally */
-	if (error && rv != CERT_LOCAL) {
+	if (strlen(ssl_ca_file) != 0 && error && rv != CERT_LOCAL) {
 		strlcpy(serr, "Certificate exception(s): ", sizeof serr);
 		if (error & GNUTLS_CERT_INVALID)
 			strlcat(serr, "invalid, ", sizeof serr);
@@ -1935,7 +1950,6 @@ done:
 int
 cert_cmd(struct tab *t, struct karg *args)
 {
-	struct stat		sb;
 	const gchar		*uri, *error_str = NULL;
 	char			domain[8182];
 	int			s = -1;
@@ -1943,16 +1957,14 @@ cert_cmd(struct tab *t, struct karg *args)
 	gnutls_session_t	gsession;
 	gnutls_x509_crt_t	*certs;
 	gnutls_certificate_credentials_t xcred;
+	GdkColor		color;
 
 	if (t == NULL)
 		return (1);
 
-	if (stat(ssl_ca_file, &sb)) {
-		show_oops(t, "Can't open CA file: %s", ssl_ca_file);
-		return (1);
-	}
-
-	if ((uri = get_uri(t)) == NULL) {
+	if (args->s != NULL)
+		uri = args->s;
+	else if ((uri = get_uri(t)) == NULL) {
 		show_oops(t, "Invalid URI");
 		return (1);
 	}
@@ -1975,8 +1987,13 @@ cert_cmd(struct tab *t, struct karg *args)
 
 	if (args->i & XT_SHOW)
 		show_certs(t, certs, cert_count, "Certificate Chain");
-	else if (args->i & XT_SAVE)
-		save_certs(t, certs, cert_count, domain);
+	else if (args->i & XT_SAVE) {
+		save_certs(t, certs, cert_count, domain, certs_dir);
+		gdk_color_parse(XT_COLOR_BLUE, &color);
+		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
+		statusbar_modify_attr(t, XT_COLOR_BLACK, XT_COLOR_BLUE);
+	} else if (args->i & XT_CACHE)
+		save_certs(t, certs, cert_count, domain, certs_cache_dir);
 
 	free_connection_certs(certs, cert_count);
 done:
@@ -1986,6 +2003,65 @@ done:
 	stop_tls(gsession, xcred);
 	if (error_str && strlen(error_str))
 		show_oops(t, "%s", error_str);
+	return (0);
+}
+
+/*
+ * args must be allocated dynamically as the thread that added this function
+ * to the idle loop no longer exists
+ */
+gboolean
+warn_cert_cache_differs_idle(struct karg *args)
+{
+	if (args == NULL) {
+		show_oops(NULL, "%s: invalid parameters", __func__);
+		/* return 0 to not re-add function to the idle loop */
+		return (0);
+	}
+	xtp_page_sv((struct tab *)args->ptr, args);
+	free(args);
+	return (0);
+}
+
+int
+check_cert_changes(struct tab *t, const char *uri)
+{
+	SoupURI			*soupuri = NULL;
+	struct karg		args = {0};
+	struct sv_ignore	find;
+	const char		*errstr = NULL;
+	struct karg		*argsp;
+
+	if (!(warn_cert_changes && g_str_has_prefix(uri, "https://")))
+		return (0);
+
+	switch (load_compare_cert(uri, &errstr, certs_cache_dir)) {
+	case CERT_LOCAL:
+		/* The cached certificate is identical */
+		break;
+	case CERT_TRUSTED:	/* FALLTHROUGH */
+	case CERT_UNTRUSTED:
+		/* cache new certificate */
+		args.i = XT_CACHE;
+		cert_cmd(t, &args);
+		break;
+	case CERT_BAD:
+		if ((soupuri = soup_uri_new(uri)) == NULL)
+			break;
+		find.domain = soupuri->host;
+		if (RB_FIND(sv_ignore_list, &svil, &find))
+			break;
+		t->xtp_meaning = XT_XTP_TAB_MEANING_SV;
+		argsp = malloc(sizeof(struct karg));
+		bzero(argsp, sizeof(struct karg));
+		argsp->s = g_strdup((char *)uri);
+		argsp->ptr = (void *)t;
+		g_idle_add((GSourceFunc)warn_cert_cache_differs_idle, argsp);
+		break;
+	}
+
+	if (soupuri)
+		soup_uri_free(soupuri);
 	return (0);
 }
 
@@ -2704,7 +2780,7 @@ command(struct tab *t, struct karg *args)
 			sp = NULL;
 		}
 		s = sl;
-		for (i = 0; i < sizeof subs / sizeof (struct prompt_sub); ++i) {
+		for (i = 0; i < LENGTH(subs); ++i) {
 			sv = g_strsplit(sl, subs[i].s, -1);
 			if (sl)
 				g_free(sl);
@@ -3537,15 +3613,17 @@ color_address_bar(gpointer p)
 #endif
 
 	col_str = XT_COLOR_YELLOW;
-	switch (load_compare_cert(u, &error_str)) {
+	switch (load_compare_cert(u, &error_str, certs_dir)) {
 	case CERT_LOCAL:
 		col_str = XT_COLOR_BLUE;
 		break;
 	case CERT_TRUSTED:
-		col_str = XT_COLOR_GREEN;
+		col_str = (strlen(ssl_ca_file) == 0) ? XT_COLOR_RED
+		    : XT_COLOR_GREEN;
 		break;
 	case CERT_UNTRUSTED:
-		col_str = XT_COLOR_YELLOW;
+		col_str = (strlen(ssl_ca_file) == 0) ? XT_COLOR_RED
+		    : XT_COLOR_YELLOW;
 		break;
 	case CERT_BAD:
 		col_str = XT_COLOR_RED;
@@ -3610,10 +3688,16 @@ done:
 }
 
 void
+check_certs(gpointer p)
+{
+	color_address_bar((struct tab *)p);
+	check_cert_changes((struct tab *)p, get_uri((struct tab *)p));
+}
+
+void
 show_ca_status(struct tab *t, const char *uri)
 {
 	GdkColor		color;
-	struct stat		sb;
 	gchar			*col_str = XT_COLOR_WHITE, *text, *base;
 
 	DNPRINTF(XT_D_URL, "show_ca_status: %d %s %s\n",
@@ -3622,20 +3706,10 @@ show_ca_status(struct tab *t, const char *uri)
 	if (t == NULL)
 		return;
 
-	if (uri == NULL)
-		goto done;
-	if (stat(ssl_ca_file, &sb)) {
-		if (g_str_has_prefix(uri, "http://"))
-			goto done;
-		if (g_str_has_prefix(uri, "https://")) {
-			col_str = XT_COLOR_RED;
-			goto done;
-		}
-		return;
-	}
-	if (g_str_has_prefix(uri, "http://") ||
+	if (uri == NULL || g_str_has_prefix(uri, "http://") ||
 	    !g_str_has_prefix(uri, "https://"))
 		goto done;
+
 #ifdef USE_THREADS
 	/*
 	 * It is not necessary to see if the thread is already running.
@@ -3644,9 +3718,9 @@ show_ca_status(struct tab *t, const char *uri)
 	 */
 
 	/* thread the coloring of the address bar */
-	t->thread = g_thread_create((GThreadFunc)color_address_bar, t, TRUE, NULL);
+	t->thread = g_thread_create((GThreadFunc)check_certs, t, TRUE, NULL);
 #else
-	color_address_bar(t);
+	check_certs(t);
 #endif
 	return;
 
@@ -7834,6 +7908,8 @@ main(int argc, char **argv)
 	RB_INIT(&pl_wl);
 	RB_INIT(&downloads);
 	RB_INIT(&st_tree);
+	RB_INIT(&svl);
+	RB_INIT(&svil);
 
 	TAILQ_INIT(&sessions);
 	TAILQ_INIT(&tabs);
@@ -7980,6 +8056,11 @@ main(int argc, char **argv)
 	/* certs dir */
 	snprintf(certs_dir, sizeof certs_dir, "%s" PS "%s", work_dir, XT_CERT_DIR);
 	xxx_dir(certs_dir);
+
+	/* cert changes dir */
+	snprintf(certs_cache_dir, sizeof certs_cache_dir, "%s" PS "%s",
+	    work_dir, XT_CERT_CACHE_DIR);
+	xxx_dir(certs_cache_dir);
 
 	/* sessions dir */
 	snprintf(sessions_dir, sizeof sessions_dir, "%s" PS "%s",

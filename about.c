@@ -68,6 +68,7 @@
 #define XT_XTP_FL		(4)	/* favorites */
 #define XT_XTP_SL		(5)	/* search */
 #define XT_XTP_AB		(6)	/* about */
+#define XT_XTP_SV		(7)	/* security violation */
 
 /* XTP download actions */
 #define XT_XTP_DL_LIST		(1)
@@ -95,6 +96,11 @@
 
 /* XPT about actions */
 #define XT_XTP_AB_EDIT_CONF	(1)
+
+/* XTP security violation actions */
+#define XT_XTP_SV_SHOW_CERT	(1)
+#define XT_XTP_SV_ALLOW_SESSION	(2)
+#define XT_XTP_SV_CACHE		(3)
 
 int			js_show_wl(struct tab *, struct karg *);
 int			pl_show_wl(struct tab *, struct karg *);
@@ -125,6 +131,7 @@ struct about_type about_list[] = {
 	{ XT_URI_ABOUT_PLUGINWL,	pl_show_wl },
 	{ XT_URI_ABOUT_WEBKIT,		about_webkit },
 	{ XT_URI_ABOUT_SEARCH,		xtp_page_sl },
+	{ XT_URI_ABOUT_SECVIOLATION,	NULL },
 };
 
 struct search_type {
@@ -156,6 +163,7 @@ char			*cl_session_key;	/* cookie list */
 char			*fl_session_key;	/* favorites list */
 char			*sl_session_key;	/* search */
 char			*ab_session_key;	/* about */
+char			*sv_session_key;	/* secviolation */
 
 int			updating_ab_tabs = 0;
 int			updating_fl_tabs = 0;
@@ -163,6 +171,7 @@ int			updating_dl_tabs = 0;
 int			updating_hl_tabs = 0;
 int			updating_cl_tabs = 0;
 int			updating_sl_tabs = 0;
+int			updating_sv_tabs = 0;
 struct download_list	downloads;
 
 size_t
@@ -879,6 +888,51 @@ xtp_handle_sl(struct tab *t, uint8_t cmd, int arg)
 	g_free(uri);
 }
 
+void
+xtp_handle_sv(struct tab *t, uint8_t cmd, int id)
+{
+	SoupURI			*soupuri = NULL;
+	struct karg		args = {0};
+	struct secviolation	find, *sv;
+	struct sv_ignore	*svi = NULL;
+
+	find.xtp_arg = id;
+	if ((sv = RB_FIND(secviolation_list, &svl, &find)) == NULL)
+		return;
+
+	args.ptr = (void *)sv->t;
+	args.s = sv->uri;
+
+	switch (cmd) {
+	case XT_XTP_SV_SHOW_CERT:
+		args.i = XT_SHOW;
+		cert_cmd(t, &args);
+		break;
+	case XT_XTP_SV_ALLOW_SESSION:
+		soupuri = soup_uri_new(sv->uri);
+		svi = malloc(sizeof(struct sv_ignore));
+		svi->domain = g_strdup(soupuri->host);
+		RB_INSERT(sv_ignore_list, &svil, svi);
+		load_uri(t, sv->uri);
+		focus_webview(t);
+		break;
+	case XT_XTP_SV_CACHE:
+		args.i = XT_CACHE;
+		cert_cmd(t, &args);
+		load_uri(t, sv->uri);
+		focus_webview(t);
+		break;
+	default:
+		show_oops(t, "%s: invalid secviolation command", __func__);
+		break;
+	};
+
+	g_free(sv->uri);
+	if (soupuri)
+		soup_uri_free(soupuri);
+	RB_REMOVE(secviolation_list, &svl, sv);
+}
+
 /* link an XTP class to it's session key and handler function */
 struct xtp_despatch {
 	uint8_t			xtp_class;
@@ -893,6 +947,7 @@ struct xtp_despatch		xtp_despatches[] = {
 	{ XT_XTP_CL, &cl_session_key, xtp_handle_cl },
 	{ XT_XTP_SL, &sl_session_key, xtp_handle_sl },
 	{ XT_XTP_AB, &ab_session_key, xtp_handle_ab },
+	{ XT_XTP_SV, &sv_session_key, xtp_handle_sv },
 	{ XT_XTP_INVALID, NULL, NULL }
 };
 
@@ -928,6 +983,7 @@ xtp_generate_keys(void)
 	generate_xtp_session_key(&cl_session_key);
 	generate_xtp_session_key(&fl_session_key);
 	generate_xtp_session_key(&ab_session_key);
+	generate_xtp_session_key(&sv_session_key);
 }
 
 /*
@@ -1126,6 +1182,25 @@ update_about_tabs(struct tab *apart_from)
 	}
 }
 
+/*
+ * update all secviolation tabs apart from one. Pass NULL if
+ * you want to update all.
+ */
+void
+update_secviolation_tabs(struct tab *apart_from)
+{
+	struct tab			*t;
+
+	if (!updating_sv_tabs) {
+		updating_sv_tabs = 1; /* stop infinite recursion */
+		TAILQ_FOREACH(t, &tabs, entry)
+			if ((t->xtp_meaning == XT_XTP_TAB_MEANING_SV)
+			    && (t != apart_from))
+				xtp_page_sv(t, NULL);
+		updating_sv_tabs = 0;
+	}
+}
+
 int
 xtp_page_ab(struct tab *t, struct karg *args)
 {
@@ -1189,6 +1264,9 @@ xtp_page_ab(struct tab *t, struct karg *args)
 	g_free(body);
 
 	load_webkit_string(t, page, XT_URI_ABOUT_ABOUT);
+
+	update_about_tabs(t);
+
 	g_free(page);
 
 	return (0);
@@ -1744,6 +1822,74 @@ xtp_page_sl(struct tab *t, struct karg *args)
 
 	load_webkit_string(t, page, XT_URI_ABOUT_SEARCH);
 	g_free(page);
+
+	return (0);
+}
+
+int
+xtp_page_sv(struct tab *t, struct karg *args)
+{
+	SoupURI			*soupuri;
+	static int		arg = 0;
+	struct secviolation	find, *sv;
+	char			*page, *body;
+
+	if (t == NULL)
+		show_oops(NULL, "secviolation invalid parameters");
+
+	/* Generate a new session key for next page instance.
+	 * This only happens for the top level call to xtp_page_ab()
+	 * in which case updating_sv_tabs = 0.
+	 */
+	if (!updating_sv_tabs)
+		generate_xtp_session_key(&sv_session_key);
+
+	if (args == NULL) {
+		find.xtp_arg = t->xtp_arg;
+		sv = RB_FIND(secviolation_list, &svl, &find);
+		if (sv == NULL)
+			return (-1);
+	} else {
+		sv = g_malloc(sizeof(struct secviolation));
+		sv->xtp_arg = ++arg;
+		t->xtp_arg = arg;
+		sv->t = t;
+		sv->uri = args->s;
+		RB_INSERT(secviolation_list, &svl, sv);
+	}
+
+	if (sv->uri == NULL || (soupuri = soup_uri_new(sv->uri)) == NULL)
+		return (-1);
+
+	body = g_strdup_printf(
+	    "The domain of the page you have tried to access, %s, has a "
+	    "different remote certificate then the local cached version from a "
+	    "previous visit.  As a security precaution to help prevent against "
+	    "man-in-the-middle attacks, please choose one of the following "
+	    "actions to continue, or disable the <tt>warn_cert_changes</tt> "
+	    "setting in your xombrero configuration."
+	    "<p><b>Choose an action:"
+	    "<br><a href='%s%d/%s/%d/%d'>Show Certificate</a>"
+	    "<br><a href='%s%d/%s/%d/%d'>Allow for this Session</a>"
+	    "<br><a href='%s%d/%s/%d/%d'>Cache new certificate</a>",
+	    soupuri->host,
+	    XT_XTP_STR, XT_XTP_SV, sv_session_key, XT_XTP_SV_SHOW_CERT,
+		sv->xtp_arg,
+	    XT_XTP_STR, XT_XTP_SV, sv_session_key, XT_XTP_SV_ALLOW_SESSION,
+		sv->xtp_arg,
+	    XT_XTP_STR, XT_XTP_SV, sv_session_key, XT_XTP_SV_CACHE,
+		sv->xtp_arg);
+
+	page = get_html_page("Security Violation", body, "", 0);
+	g_free(body);
+
+	update_secviolation_tabs(t);
+
+	load_webkit_string(t, page, XT_URI_ABOUT_SECVIOLATION);
+
+	g_free(page);
+	if (soupuri)
+		soup_uri_free(soupuri);
 
 	return (0);
 }

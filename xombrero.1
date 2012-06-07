@@ -1369,12 +1369,13 @@ en_US.
 .It Cm ssl_ca_file
 If set to a valid PEM file
 all server certificates will be validated against it.
-The URL bar will be colored green (or blue when saved ) when the certificate is
+The URL bar will be colored green (or blue when saved) when the certificate is
 trusted and yellow when untrusted.
 .Pp
 If
 .Cm ssl_ca_file
-is not set then the URL bar will color all HTTPS connections red.
+is not set, the URL bar will be colored red if the certificate has not
+been saved, or blue if it has been saved.
 .Pp
 WebKit only supports a single PEM file.
 Many OS' or distributions have many PEM files.
@@ -1428,6 +1429,26 @@ user-agent string. May be specified several times for switching between
 user-agents.
 .It Cm userstyle_global
 When enabled new tabs will automatically be displayed in low contrast mode.
+.It Cm warn_cert_changes
+When enabled all SSL certificates from HTTPS websites will be
+cached in the
+.Cm ~/.xombrero/certs_cache/
+directory.
+On each page load, if the remote certificate differs from the cached
+local version, a warning page with options of what to do next will be displayed
+instead of the requested page.
+This feature may be used in addition to the coloring of the URL bar and
+can be used to help prevent against man-in-the-middle attacks, even if
+the new remote certificate is signed by a trusted certificate
+authority in
+.Cm ssl_ca_file .
+Default is 0.
+.Pp
+If a remote certificate has changed and you wish to cache the new one,
+you must manually remove the old cached certificate from the
+.Cm ~/.xombrero/certs_cache/
+directory and refresh the page.
+The certificate will be named the same as the domain.
 .It Cm window_height
 Set the default height of the browser window.
 .It Cm window_width

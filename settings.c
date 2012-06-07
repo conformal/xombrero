@@ -105,6 +105,7 @@ char		*external_editor = NULL;
 int		referer_mode = XT_DS_REFERER_MODE;
 char		*referer_custom = NULL;
 int		download_notifications = XT_DS_DOWNLOAD_NOTIFICATIONS;
+int		warn_cert_changes = 0;
 
 char		*cmd_font_name = NULL;	/* these are all set at startup */
 char		*oops_font_name = NULL;
@@ -186,6 +187,7 @@ int		set_url_regex(char *);
 int		set_userstyle_global(char *);
 int		set_external_editor(char *);
 int		set_xterm_workaround(char *);
+int		set_warn_cert_changes(char *);
 
 void		walk_mime_type(struct settings *, void (*)(struct settings *,
 		    char *, void *), void *);
@@ -420,6 +422,7 @@ struct settings		rs[] = {
 	{ "referer",			XT_S_STR, 0, NULL, NULL,&s_referer, NULL, set_referer_rt },
 	{ "download_notifications",	XT_S_INT, 0,		&download_notifications, NULL, NULL, NULL, set_download_notifications },
 	{ "include_config",		XT_S_STR, 0, NULL,	&include_config, NULL, NULL, NULL },
+	{ "warn_cert_changes",		XT_S_INT, 0,		&warn_cert_changes, NULL, NULL, NULL, set_warn_cert_changes },
 
 	/* font settings */
 	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL, NULL, set_cmd_font },
@@ -2139,6 +2142,19 @@ set_userstyle_global(char *value)
 			userstyle(get_current_tab(), &args);
 		}
 	}
+	return (0);
+}
+
+int
+set_warn_cert_changes(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	tmp = strtonum(value, 0, 1, &errstr);
+	if (errstr)
+		return (-1);
+	warn_cert_changes = tmp;
 	return (0);
 }
 

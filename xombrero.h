@@ -246,6 +246,7 @@ struct tab {
 	int			ctrl_click;
 	gchar			*status;
 	int			xtp_meaning; /* identifies dls/favorites */
+	int			xtp_arg;
 	gchar			*tmp_uri;
 	int			popup; /* 1 if cmd_entry has popup visible */
 #ifdef USE_THREADS
@@ -284,6 +285,7 @@ struct karg {
 	int		i;
 	char		*s;
 	int		precount;
+	void		*ptr;
 };
 
 struct download {
@@ -316,6 +318,22 @@ struct strict_transport {
 };
 RB_HEAD(strict_transport_tree, strict_transport);
 RB_PROTOTYPE(strict_transport_tree, strict_transport, entry, strict_transport_rb_cmp);
+
+struct secviolation {
+	RB_ENTRY(secviolation)	entry;
+	int			xtp_arg;
+	struct tab		*t;
+	char			*uri;
+};
+RB_HEAD(secviolation_list, secviolation);
+RB_PROTOTYPE(secviolation_list, secviolation, entry, secviolation_rb_cmp);
+
+struct sv_ignore {
+	RB_ENTRY(sv_ignore)	entry;
+	char			*domain;
+};
+RB_HEAD(sv_ignore_list, sv_ignore);
+RB_PROTOTYPE(sv_ignore_list, sv_ignore, entry, sv_ignore_rb_cmp);
 
 /* utility */
 #define XT_NAME			("xombrero")
@@ -405,6 +423,7 @@ char			*tld_get_suffix(const char *);
 #define XT_URI_ABOUT_STARTPAGE	("startpage")
 #define XT_URI_ABOUT_WEBKIT	("webkit")
 #define XT_URI_ABOUT_SEARCH	("search")
+#define XT_URI_ABOUT_SECVIOLATION ("secviolation")
 
 struct about_type {
 	char		*name;
@@ -430,6 +449,7 @@ int			xtp_page_dl(struct tab *, struct karg *);
 int			xtp_page_fl(struct tab *, struct karg *);
 int			xtp_page_hl(struct tab *, struct karg *);
 int			xtp_page_sl(struct tab *, struct karg *);
+int			xtp_page_sv(struct tab *, struct karg *);
 int			parse_xtp_url(struct tab *, const char *);
 int			add_favorite(struct tab *, struct karg *);
 void			update_favorite_tabs(struct tab *);
@@ -454,6 +474,7 @@ void			startpage_add(const char *, ...);
 #define XT_XTP_TAB_MEANING_HL		(8)  /* history manager in this tab */
 #define XT_XTP_TAB_MEANING_SL		(9)  /* search engine chooser */
 #define XT_XTP_TAB_MEANING_AB		(10) /* about:about in this tab */
+#define XT_XTP_TAB_MEANING_SV		(18) /* about:secviolation in tab */
 
 /* whitelists */
 #define XT_WL_TOGGLE		(1<<0)
@@ -468,6 +489,7 @@ void			startpage_add(const char *, ...);
 #define XT_DELETE		(1<<9)
 #define XT_SAVE			(1<<10)
 #define XT_OPEN			(1<<11)
+#define XT_CACHE		(1<<12)
 
 #define XT_WL_INVALID		(0)
 #define XT_WL_JAVASCRIPT	(1)
@@ -686,6 +708,8 @@ int		urlaction(struct tab *, struct karg *);
 int		userstyle(struct tab *, struct karg *);
 struct tab	*get_current_tab(void);
 int		resizetab(struct tab *, struct karg *);
+int		cert_cmd(struct tab *, struct karg *);
+void		focus_webview(struct tab *);
 
 #define		XT_DL_START	(0)
 #define		XT_DL_RESTART	(1)
@@ -765,6 +789,7 @@ extern int	enable_favicon_tabs;
 extern int	referer_mode;
 extern char	*referer_custom;
 extern int	download_notifications;
+extern int	warn_cert_changes;
 extern regex_t	url_re;
 
 /* globals */
@@ -800,6 +825,8 @@ extern struct sp_list		spl;
 extern struct user_agent_list	ua_list;
 extern struct cmd_alias_list	cal;
 extern struct custom_uri_list	cul;
+extern struct secviolation_list	svl;
+extern struct sv_ignore_list	svil;
 extern int			user_agent_count;
 
 extern PangoFontDescription	*cmd_font;
