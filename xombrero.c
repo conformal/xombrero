@@ -5591,15 +5591,11 @@ handle_keypress(struct tab *t, GdkEventKey *e, int entry)
 				    (e->state & CTRL || e->state & MOD1))
 					return (XT_CB_PASSTHROUGH);
 
-				if ((k->mask == 0 &&
-				    (e->state & (CTRL | MOD1)) == 0) ||
-				    (e->state & k->mask) == k->mask) {
-					if (k->cmd[0] == ':') {
-						args.i = ':';
-						args.s = &k->cmd[1];
-						return command(t, &args);
-					} else
-						return (cmd_execute(t, k->cmd));
+				if (k->mask == 0) {
+					if ((e->state & (CTRL | MOD1)) == 0)
+						goto runcmd;
+				} else if ((e->state & k->mask) == k->mask) {
+					goto runcmd;
 				}
 			}
 
@@ -5607,6 +5603,14 @@ handle_keypress(struct tab *t, GdkEventKey *e, int entry)
 		return buffercmd_addkey(t, e->keyval);
 
 	return (XT_CB_PASSTHROUGH);
+
+runcmd:
+	if (k->cmd[0] == ':') {
+		args.i = ':';
+		args.s = &k->cmd[1];
+		return (command(t, &args));
+	} else
+		return (cmd_execute(t, k->cmd));
 }
 
 int
