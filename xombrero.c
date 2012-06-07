@@ -6280,9 +6280,51 @@ done:
 }
 
 void
-wv_popup_cb(GtkEntry *entry, GtkMenu *menu, struct tab *t)
+wv_popup_activ_cb(GtkMenuItem *menu, struct tab *t)
 {
+	GtkAction		*a = NULL;
+	GtkClipboard		*clipboard, *primary;
+	const gchar		*name, *uri;
+
+	a = gtk_activatable_get_related_action(GTK_ACTIVATABLE(menu));
+	if (a == NULL) 
+		return;
+	name = gtk_action_get_name(a);
+
+	DNPRINTF(XT_D_CMD, "wv_popup_activ_cb: tab %d action %s\n",
+	    t->tab_id, name);
+
+	/*
+	 * context-menu-action-3    copy link location
+	 * context-menu-action-7    copy image address
+	 * context-menu-action-2030 copy video link location
+	 */
+
+	/* copy actions */
+	if ((g_strcmp0(name, "context-menu-action-3") == 0) ||
+	    (g_strcmp0(name, "context-menu-action-7") == 0) ||
+	    (g_strcmp0(name, "context-menu-action-2030") == 0)) {
+		clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
+		primary = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
+		uri = gtk_clipboard_wait_for_text(clipboard);
+		if (uri == NULL)
+			return;
+		gtk_clipboard_set_text(primary, uri, -1);
+	}
+}
+
+void
+wv_popup_cb(WebKitWebView *wview, GtkMenu *menu, struct tab *t)
+{
+	GList			*items, *l;
+
 	DNPRINTF(XT_D_CMD, "wv_popup_cb: tab %d\n", t->tab_id);
+
+	items = gtk_container_get_children(GTK_CONTAINER(menu));
+	for (l = items; l; l = l->next)
+		g_signal_connect(l->data, "activate",
+		    G_CALLBACK(wv_popup_activ_cb), t);
+	g_list_free(items);
 }
 
 void
