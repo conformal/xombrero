@@ -3070,10 +3070,13 @@ proxy_cmd(struct tab *t, struct karg *args)
 			show_oops(t, "can't toggle proxy");
 			goto done;
 		}
-		if (http_proxy)
+		if (http_proxy) {
 			setup_proxy(NULL);
-		else
+			show_oops(t, "http proxy disabled");
+		} else {
 			setup_proxy(http_proxy_save);
+			show_oops(t, "http_proxy = %s", http_proxy);
+		}
 	}
 done:
 	return (XT_CB_PASSTHROUGH);
@@ -8096,6 +8099,13 @@ main(int argc, char **argv)
 		else
 			setup_proxy(http_proxy);
 	}
+
+	/* the user can optionally have the proxy disabled at startup */
+	if ((http_proxy_starts_enabled == 0) && (http_proxy != NULL)) {
+		http_proxy_save = g_strdup(http_proxy);
+		setup_proxy(NULL);
+	}
+
 #ifndef XT_SOCKET_DISABLE
 	if (opte) {
 		send_cmd_to_socket(argv[0]);

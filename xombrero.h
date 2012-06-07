@@ -728,6 +728,7 @@ extern int	append_next;
 extern char	*home;
 extern char	*search_string;
 extern char	*http_proxy;
+extern int	http_proxy_starts_enabled;
 extern char	*external_editor;
 extern char	download_dir[PATH_MAX];
 extern int	download_mode;

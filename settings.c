@@ -84,6 +84,7 @@ int		append_next = XT_DS_APPEND_NEXT; /* append tab after current tab */
 char		*home = NULL;			/* allocated/set at startup */
 char		*search_string = NULL;		/* allocated/set at startup */
 char		*http_proxy = NULL;
+int		http_proxy_starts_enabled = 1;
 int		download_mode = XT_DM_START;
 int		color_visited_uris = XT_DS_COLOR_VISITED_URIS;
 int		session_autosave = XT_DS_SESSION_AUTOSAVE;
@@ -383,6 +384,7 @@ struct settings		rs[] = {
 	{ "guess_search",		XT_S_INT, 0,		&guess_search, NULL, NULL, NULL, set_guess_search },
 	{ "history_autosave",		XT_S_INT, 0,		&history_autosave, NULL, NULL, NULL, NULL },
 	{ "http_proxy",			XT_S_STR, 0, NULL,	&http_proxy, NULL, NULL, set_http_proxy },
+	{ "http_proxy_starts_enabled",	XT_S_INT, 0,		&http_proxy_starts_enabled, NULL, NULL, NULL, NULL },
 	{ "icon_size",			XT_S_INT, 0,		&icon_size, NULL, NULL, NULL, NULL },
 	{ "enable_js_autorun",		XT_S_INT, 0,		&enable_js_autorun, NULL, NULL, NULL, set_enable_js_autorun },
 	{ "max_connections",		XT_S_INT, XT_SF_RESTART,&max_connections, NULL, NULL, NULL, NULL },

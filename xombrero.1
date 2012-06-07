@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 14 2011 $
+.Dd $Mdocdate: June 7 2012 $
 .Dt XOMBRERO 1
 .Os
 .Sh NAME
@@ -1220,8 +1220,13 @@ not a FQDN.
 This works as expected with webkit 1.4.2.
 .Pp
 If one desires to use a socks proxy then an intermediary tool must be used.
-It has been reported that tsocks works with
+It has been reported that tsocks and polipo work with
 .Nm .
+.It Cm http_proxy_starts_enabled
+If set to 0, the http_proxy will be disabled at startup. The user can later
+enable the proxy with the
+.Cm proxy toggle
+command or keybinding.
 .It Cm icon_size
 Permits icon sizes to be changed if
 .Cm fancy_bar
