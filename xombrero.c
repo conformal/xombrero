@@ -2815,7 +2815,6 @@ command(struct tab *t, struct karg *args)
 	base = gdk_color_to_string(&t->default_style->base[GTK_STATE_NORMAL]);
 	gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL,
 	    &t->default_style->base[GTK_STATE_NORMAL]);
-	statusbar_modify_attr(t, text, base);
 	g_free(text);
 	g_free(base);
 	show_cmd(t);
