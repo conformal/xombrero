@@ -167,11 +167,6 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_ZOOM_OUT		(-2)
 #define XT_ZOOM_NORMAL		(100)
 
-#define XT_STATUS_NOTHING	(0)
-#define XT_STATUS_LINK		(1)
-#define XT_STATUS_URI		(2)
-#define XT_STATUS_LOADING	(3)
-
 #define XT_SES_DONOTHING	(0)
 #define XT_SES_CLOSETABS	(1)
 
@@ -478,43 +473,27 @@ set_ssl_ca_file(struct settings *s, char *file)
 }
 
 void
-set_status(struct tab *t, const gchar *s, int status)
+set_status(struct tab *t, gchar *fmt, ...)
 {
-	gchar *type = NULL;
+	va_list	ap;
+	gchar	*status;
 
-	if (s == NULL)
-		return;
+	va_start(ap, fmt);
 
-	switch (status) {
-	case XT_STATUS_LOADING:
-		type = g_strdup_printf("Loading: %s", s);
-		s = type;
-		break;
-	case XT_STATUS_LINK:
-		type = g_strdup_printf("Link: %s", s);
-		s = type;
-		if (!t->status)
-			t->status = g_strdup(gtk_entry_get_text(
-			    GTK_ENTRY(t->sbe.statusbar)));
-		break;
-	case XT_STATUS_URI:
-		type = g_strdup_printf("%s", s);
-		s = type;
-		if (!t->status)
-			t->status = g_strdup(s);
-		else if (strcmp(t->status, s)) {
-			g_free(t->status);
-			t->status = g_strdup(s);
-		}
-		break;
-	case XT_STATUS_NOTHING:
-		/* FALL THROUGH */
-	default:
-		break;
-	}
-	gtk_entry_set_text(GTK_ENTRY(t->sbe.statusbar), s);
-	if (type)
-		g_free(type);
+	status = g_strdup_vprintf(fmt, ap);
+
+	gtk_entry_set_text(GTK_ENTRY(t->sbe.statusbar), status);
+
+	if (!t->status)
+		t->status = status;
+	else if (strcmp(t->status, status)) {
+		/* set new status */
+		g_free(t->status);
+		t->status = status;
+	} else
+		g_free(status);
+
+	va_end(ap);
 }
 
 void
@@ -873,7 +852,7 @@ load_uri(struct tab *t, gchar *uri)
 		goto done;
 	}
 
-	set_status(t, uri, XT_STATUS_LOADING);
+	set_status(t, "Loading: %s", (char *)uri);
 	marks_clear(t);
 	webkit_web_view_load_uri(t->wv, uri);
 done:
@@ -4130,7 +4109,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 			g_free(t->status);
 			t->status = NULL;
 		}
-		set_status(t, uri, XT_STATUS_LOADING);
+		set_status(t, "Loading: %s", (char *)uri);
 
 		/* check if js white listing is enabled */
 		if (enable_plugin_whitelist)
@@ -4187,7 +4166,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 				h->time = time(NULL);
 		}
 
-		set_status(t, uri, XT_STATUS_URI);
+		set_status(t, "%s", (char *)uri);
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 #if GTK_CHECK_VERSION(2, 20, 0)
 		gtk_spinner_stop(GTK_SPINNER(t->spinner));
@@ -5195,9 +5174,13 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 	}
 
 	if (uri)
-		set_status(t, uri, XT_STATUS_LINK);
-	else if (t->status)
-		set_status(t, t->status, XT_STATUS_NOTHING);
+		set_status(t, "Link: %s", uri);
+	else {
+		const gchar *page_uri;
+
+		if ((page_uri = get_uri(t)) != NULL)
+			set_status(t, "%s", page_uri);
+	}
 }
 
 int
