@@ -4166,13 +4166,17 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 				h->time = time(NULL);
 		}
 
-		set_status(t, "%s", (char *)uri);
+		if (statusbar_style == XT_STATUSBAR_URL)
+			set_status(t, "%s", (char *)uri);
+		else
+			set_status(t, "%s", (char *)get_title(t, FALSE));
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 #if GTK_CHECK_VERSION(2, 20, 0)
 		gtk_spinner_stop(GTK_SPINNER(t->spinner));
 		gtk_widget_hide(t->spinner);
 #endif
 		break;
+
 #if WEBKIT_CHECK_VERSION(1, 1, 18)
 	case WEBKIT_LOAD_FAILED:
 		/* 4 */
@@ -4181,7 +4185,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 			    get_title(t, FALSE));
 			gtk_label_set_text(GTK_LABEL(t->tab_elems.label),
 			    get_title(t, FALSE));
-			set_status(t, get_title(t, FALSE), XT_STATUS_URI);
+			set_status(t, "%s", (char *)get_title(t, FALSE));
 			gtk_window_set_title(GTK_WINDOW(main_window),
 			    get_title(t, TRUE));
 		} else {
@@ -5176,10 +5180,13 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 	if (uri)
 		set_status(t, "Link: %s", uri);
 	else {
-		const gchar *page_uri;
+		if (statusbar_style == XT_STATUSBAR_URL) {
+			const gchar *page_uri;
 
-		if ((page_uri = get_uri(t)) != NULL)
-			set_status(t, "%s", page_uri);
+			if ((page_uri = get_uri(t)) != NULL)
+				set_status(t, "%s", page_uri);
+		} else
+			set_status(t, "%s", (char *)get_title(t, FALSE));
 	}
 }
 

@@ -359,6 +359,7 @@ gboolean		match_uri(const gchar *uri, const gchar *key);
 int			valid_url_type(char *);
 void			expand_tilde(char *, size_t, const char *);
 char			*html_escape(const char *val);
+void			set_status(struct tab *t, gchar *fmt, ...);
 
 void			load_webkit_string(struct tab *, const char *, gchar *);
 void			button_set_stockid(GtkWidget *, char *);
@@ -554,6 +555,9 @@ int		fork_exec(struct tab *, char *, const gchar *, char *, int);
 #define XT_TABS_NORMAL		(0)
 #define XT_TABS_COMPACT		(1)
 
+#define XT_STATUSBAR_URL	(0)
+#define XT_STATUSBAR_TITLE	(1)
+
 #define XT_EM_HYBRID		(0)
 #define XT_EM_VI		(1)
 
@@ -574,6 +578,7 @@ int		fork_exec(struct tab *, char *, const gchar *, char *, int);
 /* runtime default settings */
 #define XT_DS_SHOW_TABS		(1)
 #define XT_DS_TAB_STYLE		XT_TABS_NORMAL
+#define XT_DS_STATUSBAR_STYLE	XT_STATUSBAR_URL
 #define XT_DS_SHOW_URL		(1)
 #define XT_DS_SHOW_STATUSBAR	(0)
 #define XT_DS_CTRL_CLICK_FOCUS	(0)
@@ -729,6 +734,7 @@ extern SoupURI	*proxy_uri;
 
 extern int	show_tabs;
 extern int	tab_style;
+extern int	statusbar_style;
 extern int	show_url;
 extern int	show_statusbar;
 extern int	ctrl_click_focus;

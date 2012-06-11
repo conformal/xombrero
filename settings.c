@@ -61,6 +61,7 @@ char		*include_config = NULL;
 /* runtime settings */
 int		show_tabs = XT_DS_SHOW_TABS;	/* show tabs on notebook */
 int		tab_style = XT_DS_TAB_STYLE; /* tab bar style */
+int		statusbar_style = XT_DS_STATUSBAR_STYLE; /* status bar style */
 int		show_url = XT_DS_SHOW_URL;	/* show url toolbar on notebook */
 int		show_statusbar = XT_DS_SHOW_STATUSBAR; /* vimperator style status bar */
 int		ctrl_click_focus = XT_DS_CTRL_CLICK_FOCUS; /* ctrl click gets focus */
@@ -117,6 +118,7 @@ char		*get_download_dir(struct settings *);
 char		*get_default_script(struct settings *);
 char		*get_runtime_dir(struct settings *);
 char		*get_tab_style(struct settings *);
+char		*get_statusbar_style(struct settings *);
 char		*get_edit_mode(struct settings *);
 char		*get_download_mode(struct settings *);
 char		*get_work_dir(struct settings *);
@@ -162,6 +164,8 @@ int		set_runtime_dir(struct settings *, char *);
 int		set_tabbar_font(char *value);
 int		set_tab_style(struct settings *, char *);
 int		set_tab_style_rt(char *);
+int		set_statusbar_style(struct settings *, char *);
+int		set_statusbar_style_rt(char *);
 int		set_edit_mode(struct settings *, char *);
 int		set_work_dir(struct settings *, char *);
 int		set_auto_load_images(char *);
@@ -339,6 +343,12 @@ struct special		s_tab_style = {
 	NULL
 };
 
+struct special		s_statusbar_style = {
+	set_statusbar_style,
+	get_statusbar_style,
+	NULL
+};
+
 struct special		s_edit_mode = {
 	set_edit_mode,
 	get_edit_mode,
@@ -421,6 +431,7 @@ struct settings		rs[] = {
 	{ "statusbar_elems",		XT_S_STR, 0, NULL,	&statusbar_elems, NULL, NULL, NULL },
 	{ "tab_style",			XT_S_STR, 0, NULL, NULL,&s_tab_style, NULL, set_tab_style_rt },
 	{ "userstyle",			XT_S_STR, 0, NULL, NULL,&s_userstyle, NULL, set_userstyle_rt },
+	{ "statusbar_style",		XT_S_STR, 0, NULL, NULL,&s_statusbar_style, NULL, set_statusbar_style_rt },
 	{ "userstyle_global",		XT_S_INT, 0,		&userstyle_global, NULL, NULL, NULL, set_userstyle_global },
 	{ "url_regex",			XT_S_STR, 0, NULL,	&url_regex, NULL, NULL, set_url_regex },
 	{ "window_height",		XT_S_INT, 0,		&window_height, NULL, NULL, NULL, NULL },
@@ -2153,6 +2164,56 @@ set_tab_style_rt(char *value)
 		}
 	}
 	tabaction(get_current_tab(), &args);
+	return (0);
+}
+
+char *
+get_statusbar_style(struct settings *s)
+{
+	if (statusbar_style == XT_STATUSBAR_URL)
+		return (g_strdup("url"));
+	else
+		return (g_strdup("title"));
+}
+
+int
+set_statusbar_style(struct settings *s, char *val)
+{
+	if (!strcmp(val, "url"))
+		statusbar_style = XT_STATUSBAR_URL;
+	else if (!strcmp(val, "title"))
+		statusbar_style = XT_STATUSBAR_TITLE;
+	else
+		return (1);
+
+	return (0);
+}
+
+int
+set_statusbar_style_rt(char *value)
+{
+	struct tab		*t;
+	const gchar		*page_uri;
+
+	if (value == NULL || strlen(value) == 0) {
+		if (statusbar_style == XT_DS_STATUSBAR_STYLE)
+			return (0);
+		statusbar_style = XT_DS_STATUSBAR_STYLE;
+	} else {
+		if (!strcmp(value, "url"))
+			statusbar_style = XT_STATUSBAR_URL;
+		else if (!strcmp(value, "title"))
+			statusbar_style = XT_STATUSBAR_TITLE;
+	}
+
+	/* apply changes */
+	TAILQ_FOREACH(t, &tabs, entry) {
+		if (statusbar_style == XT_STATUSBAR_TITLE)
+			set_status(t, "%s", get_title(t, FALSE));
+		else if ((page_uri = get_uri(t)) != NULL)
+			set_status(t, "%s", page_uri);
+	}
+	
 	return (0);
 }
 
