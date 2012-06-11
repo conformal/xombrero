@@ -478,7 +478,7 @@ set_ssl_ca_file(struct settings *s, char *file)
 }
 
 void
-set_status(struct tab *t, gchar *s, int status)
+set_status(struct tab *t, const gchar *s, int status)
 {
 	gchar *type = NULL;
 
@@ -873,7 +873,7 @@ load_uri(struct tab *t, gchar *uri)
 		goto done;
 	}
 
-	set_status(t, (char *)uri, XT_STATUS_LOADING);
+	set_status(t, uri, XT_STATUS_LOADING);
 	marks_clear(t);
 	webkit_web_view_load_uri(t->wv, uri);
 done:
@@ -886,7 +886,8 @@ get_uri(struct tab *t)
 {
 	const gchar		*uri = NULL;
 
-	if (webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED)
+	if (webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED &&
+	    !t->download_requested)
 		return (NULL);
 	if (t->xtp_meaning == XT_XTP_TAB_MEANING_NORMAL) {
 		uri = webkit_web_view_get_uri(t->wv);
@@ -907,7 +908,8 @@ get_title(struct tab *t, bool window)
 	const gchar		*set = NULL, *title = NULL;
 	WebKitLoadStatus	status = webkit_web_view_get_load_status(t->wv);
 
-	if (status == WEBKIT_LOAD_PROVISIONAL || status == WEBKIT_LOAD_FAILED ||
+	if (status == WEBKIT_LOAD_PROVISIONAL ||
+	    (status == WEBKIT_LOAD_FAILED && !t->download_requested) ||
 	    t->xtp_meaning == XT_XTP_TAB_MEANING_BL)
 		goto notitle;
 
@@ -4092,7 +4094,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		gtk_widget_show(t->spinner);
 		gtk_spinner_start(GTK_SPINNER(t->spinner));
 #endif
-		gtk_label_set_text(GTK_LABEL(t->label), "Loading");
+		t->download_requested = 0;
 
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), TRUE);
 
@@ -4129,7 +4131,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 			g_free(t->status);
 			t->status = NULL;
 		}
-		set_status(t, (char *)uri, XT_STATUS_LOADING);
+		set_status(t, uri, XT_STATUS_LOADING);
 
 		/* check if js white listing is enabled */
 		if (enable_plugin_whitelist)
@@ -4186,16 +4188,33 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 				h->time = time(NULL);
 		}
 
-		set_status(t, (char *)uri, XT_STATUS_URI);
-#if WEBKIT_CHECK_VERSION(1, 1, 18)
-	case WEBKIT_LOAD_FAILED:
-		/* 4 */
-#endif
+		set_status(t, uri, XT_STATUS_URI);
+		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 #if GTK_CHECK_VERSION(2, 20, 0)
 		gtk_spinner_stop(GTK_SPINNER(t->spinner));
 		gtk_widget_hide(t->spinner);
 #endif
+		break;
+#if WEBKIT_CHECK_VERSION(1, 1, 18)
+	case WEBKIT_LOAD_FAILED:
+		/* 4 */
+		if (!t->download_requested) {
+			gtk_label_set_text(GTK_LABEL(t->label),
+			    get_title(t, FALSE));
+			gtk_label_set_text(GTK_LABEL(t->tab_elems.label),
+			    get_title(t, FALSE));
+			set_status(t, get_title(t, FALSE), XT_STATUS_URI);
+			gtk_window_set_title(GTK_WINDOW(main_window),
+			    get_title(t, TRUE));
+		} else {
+
+		}
+#endif
 	default:
+#if GTK_CHECK_VERSION(2, 20, 0)
+		gtk_spinner_stop(GTK_SPINNER(t->spinner));
+		gtk_widget_hide(t->spinner);
+#endif
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 		break;
 	}
@@ -5051,7 +5070,7 @@ download_start(struct tab *t, struct download *d, int flag)
 	    WEBKIT_DOWNLOAD_STATUS_ERROR) {
 		show_oops(t, "%s: download failed to start", __func__);
 		ret = FALSE;
-		gtk_label_set_text(GTK_LABEL(t->label), "Download Failed");
+		show_oops(t, "Download Failed");
 	} else {
 		/* connect "download first" mime handler */
 		g_signal_connect(G_OBJECT(d->download), "notify::status",
@@ -5059,7 +5078,6 @@ download_start(struct tab *t, struct download *d, int flag)
 
 		/* get from history */
 		g_object_ref(d->download);
-		gtk_label_set_text(GTK_LABEL(t->label), "Downloading");
 		if (download_notifications)
 			show_oops(t, "Download of '%s' started...",
 			    basename((char *)webkit_download_get_destination_uri(d->download)));
@@ -5069,7 +5087,7 @@ download_start(struct tab *t, struct download *d, int flag)
 		webkit_download_start(d->download);
 
 	DNPRINTF(XT_D_DOWNLOAD, "download status : %d",
-			webkit_download_get_status(d->download));
+	    webkit_download_get_status(d->download));
 
 	/* sync other download manager tabs */
 	update_download_tabs(NULL);
@@ -5147,6 +5165,7 @@ webview_download_cb(WebKitWebView *wv, WebKitDownload *wk_download,
 	download_entry->tab = t;
 	download_entry->id = next_download_id++;
 	RB_INSERT(download_list, &downloads, download_entry);
+	t->download_requested = 1;
 
 	if (download_mode == XT_DM_START)
 		ret = download_start(t, download_entry, XT_DL_START);
@@ -5178,10 +5197,8 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 
 	if (uri)
 		set_status(t, uri, XT_STATUS_LINK);
-	else {
-		if (t->status)
-			set_status(t, t->status, XT_STATUS_NOTHING);
-	}
+	else if (t->status)
+		set_status(t, t->status, XT_STATUS_NOTHING);
 }
 
 int
@@ -5635,7 +5652,7 @@ handle_keypress(struct tab *t, GdkEventKey *e, int entry)
 			}
 
 	if (!entry && ((e->state & (CTRL | MOD1)) == 0))
-		return buffercmd_addkey(t, e->keyval);
+		return (buffercmd_addkey(t, e->keyval));
 
 	return (XT_CB_PASSTHROUGH);
 
@@ -5663,7 +5680,7 @@ wv_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	hide_oops(t);
 
 	if (t->mode_cb)
-		return t->mode_cb(t, e, t->mode_cb_data);
+		return (t->mode_cb(t, e, t->mode_cb_data));
 
 	DNPRINTF(XT_D_KEY, "wv_keypress_cb: mode %d keyval 0x%x mask "
 	    "0x%x tab %d\n", t->mode, e->keyval, e->state, t->tab_id);

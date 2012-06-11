@@ -251,6 +251,7 @@ struct tab {
 	int			xtp_arg;
 	gchar			*tmp_uri;
 	int			popup; /* 1 if cmd_entry has popup visible */
+	int			download_requested;
 #ifdef USE_THREADS
 	/* https thread stuff */
 	GThread			*thread;
