@@ -44,6 +44,7 @@ javascript.h: ${JSFILES} js-merge-helper.pl
 
 beforeinstall:
 	install -m 755 -d ${PREFIX}/bin
+	install -m 755 -d ${PREFIX}/man/man1/
 	install -m 755 -d ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/xombreroicon.png ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/xombreroicon16.png ${PREFIX}/share/xombrero
