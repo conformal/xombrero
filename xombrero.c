@@ -1789,11 +1789,13 @@ statusbar_modify_attr(struct tab *t, const char *text, const char *base)
 	gtk_widget_modify_text(t->sbe.buffercmd, GTK_STATE_NORMAL, &c_text);
 	gtk_widget_modify_text(t->sbe.zoom, GTK_STATE_NORMAL, &c_text);
 	gtk_widget_modify_text(t->sbe.position, GTK_STATE_NORMAL, &c_text);
+	gtk_widget_modify_text(t->sbe.tabs, GTK_STATE_NORMAL, &c_text);
 
 	gtk_widget_modify_base(t->sbe.statusbar, GTK_STATE_NORMAL, &c_base);
 	gtk_widget_modify_base(t->sbe.buffercmd, GTK_STATE_NORMAL, &c_base);
 	gtk_widget_modify_base(t->sbe.zoom, GTK_STATE_NORMAL, &c_base);
 	gtk_widget_modify_base(t->sbe.position, GTK_STATE_NORMAL, &c_base);
+	gtk_widget_modify_base(t->sbe.tabs, GTK_STATE_NORMAL, &c_base);
 }
 
 void
@@ -6773,6 +6775,27 @@ recalc_tabs(void)
 	}
 }
 
+void
+update_statusbar_tabs(struct tab *t)
+{
+	int			tab_id, max_tab_id;
+	char			s[16];
+
+	if (t != NULL)
+		tab_id = t->tab_id;
+	else
+		tab_id = gtk_notebook_get_current_page(notebook);
+
+	max_tab_id = gtk_notebook_get_n_pages(notebook);
+	snprintf(s, sizeof s, "%d/%d", tab_id + 1, max_tab_id);
+
+	if (t == NULL)
+		t = get_current_tab();
+
+	if (t != NULL)
+		gtk_entry_set_text(GTK_ENTRY(t->sbe.tabs), s);
+}
+
 /* after active tab change */
 void
 recolor_compact_tabs(void)
@@ -6801,6 +6824,7 @@ set_current_tab(int page_num)
 	buffercmd_abort(get_current_tab());
 	gtk_notebook_set_current_page(notebook, page_num);
 	recolor_compact_tabs();
+	update_statusbar_tabs(NULL);
 }
 
 int
@@ -7030,7 +7054,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	GdkColor			color;
 	char				*p;
 	int				sbe_p = 0, sbe_b = 0,
-					sbe_z = 0;
+					sbe_z = 0, sbe_t = 0;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
@@ -7118,6 +7142,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	t->sbe.position = create_sbe(40);
 	t->sbe.zoom = create_sbe(40);
 	t->sbe.buffercmd = create_sbe(60);
+	t->sbe.tabs = create_sbe(40);
 
 	statusbar_modify_attr(t, XT_COLOR_WHITE, XT_COLOR_BLACK);
 
@@ -7167,6 +7192,16 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 			sbe_z = 1;
 			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
 			    t->sbe.zoom, FALSE, FALSE, FALSE);
+			break;
+		case 'T':
+			if (sbe_t) {
+				warnx("flag \"%c\" specified more than "
+				    "once in statusbar_elems\n", *p);
+				break;
+			}
+			sbe_t = 1;
+			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
+			    t->sbe.tabs, FALSE, FALSE, FALSE);
 			break;
 		default:
 			warnx("illegal flag \"%c\" in statusbar_elems\n", *p);
@@ -7380,6 +7415,7 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkWidget *nbp, guint pn,
 				/* can't use focus_webview here */
 				gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 			}
+			update_statusbar_tabs(t);
 			break;
 		}
 	}
@@ -7404,6 +7440,8 @@ notebook_pagereordered_cb(GtkNotebook *nb, GtkWidget *nbp, guint pn,
 
 	gtk_box_reorder_child(GTK_BOX(tab_bar), t->tab_elems.eventbox,
 	    t->tab_id);
+
+	update_statusbar_tabs(t);
 }
 
 void

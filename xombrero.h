@@ -207,6 +207,7 @@ struct tab {
 		GtkWidget	*buffercmd;
 		GtkWidget	*zoom;
 		GtkWidget	*position;
+		GtkWidget	*tabs;
 	} sbe;
 	GtkWidget		*cmd;
 	GtkWidget		*buffers;
