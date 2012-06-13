@@ -211,9 +211,9 @@ struct undo_tailq	undos;
 struct keybinding_list	kbl;
 struct sp_list		spl;
 struct user_agent_list	ua_list;
+struct http_accept_list	ha_list;
 struct cmd_alias_list	cal;
 struct custom_uri_list	cul;
-int			user_agent_count = 0;
 struct command_list	chl;
 struct command_list	shl;
 struct command_entry	*history_at;
@@ -694,6 +694,20 @@ sv_ignore_rb_cmp(struct sv_ignore *s1, struct sv_ignore *s2)
 	return (strcmp(s1->domain, s2->domain));
 }
 RB_GENERATE(sv_ignore_list, sv_ignore, entry, sv_ignore_rb_cmp);
+
+int
+user_agent_rb_cmp(struct user_agent *ua1, struct user_agent *ua2)
+{
+	return (ua1->id < ua2->id ? -1 : ua1->id > ua2->id);
+}
+RB_GENERATE(user_agent_list, user_agent, entry, user_agent_rb_cmp);
+
+int
+http_accept_rb_cmp(struct http_accept *ha1, struct http_accept *ha2)
+{
+	return (ha1->id < ha2->id ? -1 : ha1->id > ha2->id);
+}
+RB_GENERATE(http_accept_list, http_accept, entry, http_accept_rb_cmp);
 
 struct valid_url_types {
 	char		*type;
@@ -4699,9 +4713,10 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
     WebKitNetworkRequest *request, WebKitWebNavigationAction *na,
     WebKitWebPolicyDecision *pd, struct tab *t)
 {
-	char				*uri;
 	WebKitWebNavigationReason	reason;
+	struct user_agent		ua_find, *ua;
 	struct domain			*d = NULL;
+	char				*uri;
 
 	if (t == NULL) {
 		show_oops(NULL, "webview_npd_cb invalid parameters");
@@ -4740,13 +4755,17 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 	}
 
 	/* Change user agent if more than one has been given. */
-	if (user_agent_count > 1) {
-		struct user_agent *ua;
+	if (!RB_EMPTY(&ua_list)) {
+		ua_find.id = t->user_agent_id;
 
-		if ((ua = TAILQ_NEXT(user_agent, entry)) == NULL)
-			user_agent = TAILQ_FIRST(&ua_list);
-		else
+		if ((ua = RB_FIND(user_agent_list, &ua_list, &ua_find)) == NULL) {
+			ua_find.id = 0;
+			t->user_agent_id = 1;
+			user_agent = RB_FIND(user_agent_list, &ua_list, &ua_find);
+		} else {
+			++t->user_agent_id;
 			user_agent = ua;
+		}
 
 		free(t->user_agent);
 		t->user_agent = g_strdup(user_agent->value);
@@ -4784,6 +4803,8 @@ webview_rrs_cb(WebKitWebView *wv, WebKitWebFrame *wf, WebKitWebResource *res,
 {
 	SoupMessage		*msg;
 	SoupURI			*uri;
+	struct http_accept	ha_find, *ha;
+	const char		*accept;
 
 	msg = webkit_network_request_get_message(request);
 	if (!msg) return;
@@ -4797,6 +4818,30 @@ webview_rrs_cb(WebKitWebView *wv, WebKitWebFrame *wf, WebKitWebResource *res,
 					uri->host);
 			soup_uri_set_scheme(uri, SOUP_URI_SCHEME_HTTPS);
 		}
+	}
+
+	/* Round-robin through HTTP Accept headers if any have been set */
+	if (!RB_EMPTY(&ha_list)) {
+		accept = soup_message_headers_get_list(msg->request_headers,
+		    "Accept");
+		if (accept == NULL ||
+		    strncmp(accept, "text/html", strlen("text/html")))
+			return;
+
+		ha_find.id = t->http_accept_id;
+		ha = RB_FIND(http_accept_list, &ha_list, &ha_find);
+		if (ha == NULL) {
+			ha_find.id = 0;
+			t->http_accept_id = 1;
+			http_accept = RB_FIND(http_accept_list, &ha_list,
+			    &ha_find);
+		} else {
+			++t->http_accept_id;
+			http_accept = ha;
+		}
+
+		soup_message_headers_replace(msg->request_headers, "Accept",
+		    http_accept->value);
 	}
 }
 
@@ -7254,6 +7299,9 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	b = gtk_hbox_new(FALSE, 0);
 	t->tab_content = b;
 
+	t->user_agent_id = 0;
+	t->http_accept_id = 0;
+
 #if GTK_CHECK_VERSION(2, 20, 0)
 	t->spinner = gtk_spinner_new();
 #endif
@@ -8048,6 +8096,7 @@ main(int argc, char **argv)
 	RB_INIT(&st_tree);
 	RB_INIT(&svl);
 	RB_INIT(&svil);
+	RB_INIT(&ua_list);
 
 	TAILQ_INIT(&sessions);
 	TAILQ_INIT(&tabs);
@@ -8058,7 +8107,6 @@ main(int argc, char **argv)
 	TAILQ_INIT(&spl);
 	TAILQ_INIT(&chl);
 	TAILQ_INIT(&shl);
-	TAILQ_INIT(&ua_list);
 	TAILQ_INIT(&cul);
 
 #ifndef XT_RESOURCE_LIMITS_DISABLE

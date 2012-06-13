@@ -51,6 +51,7 @@ char		download_dir[PATH_MAX];
 int		allow_volatile_cookies = 0;
 int		save_global_history = 0; /* save global history to disk */
 struct user_agent	*user_agent = NULL;
+struct http_accept	*http_accept = NULL;
 int		save_rejected_cookies = 0;
 gint		max_connections = 25;
 gint		max_host_connections = 5;
@@ -133,6 +134,7 @@ int		add_mime_type(struct settings *, char *);
 int		add_alias(struct settings *, char *);
 int		add_kb(struct settings *, char *);
 int		add_ua(struct settings *, char *);
+int		add_http_accept(struct settings *, char *);
 int		add_cmd_alias(struct settings *, char *);
 int		add_custom_uri(struct settings *, char *);
 
@@ -212,6 +214,8 @@ void		walk_kb(struct settings *, void (*)(struct settings *, char *,
 		    void *), void *);
 void		walk_ua(struct settings *, void (*)(struct settings *, char *,
 		    void *), void *);
+void		walk_http_accept(struct settings *, void (*)(struct settings *,
+		    char *, void *), void *);
 void		walk_cmd_alias(struct settings *, void (*)(struct settings *,
 		    char *, void *), void *);
 void		walk_custom_uri(struct settings *, void (*)(struct settings *,
@@ -367,6 +371,12 @@ struct special		s_ua = {
 	walk_ua
 };
 
+struct special		s_http_accept = {
+	add_http_accept,
+	NULL,
+	walk_http_accept
+};
+
 struct special		s_referer = {
 	set_referer,
 	get_referer,
@@ -468,6 +478,7 @@ struct settings		rs[] = {
 	{ "user_agent",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_ua, NULL, NULL },
 	{ "cmd_alias",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_cmd_alias, NULL, NULL },
 	{ "custom_uri",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_uri, NULL, NULL },
+	{ "http_accept",		XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_http_accept, NULL, NULL },
 };
 
 int
@@ -1396,16 +1407,14 @@ walk_custom_uri(struct settings *s,
 int
 add_ua(struct settings *s, char *value)
 {
-	struct user_agent *ua;
+	struct user_agent	*ua;
+	static int		ua_count = 0;
 
-	ua = g_malloc0(sizeof *ua);
+	ua = g_malloc(sizeof *ua);
+	ua->id = ua_count++;
 	ua->value = g_strdup(value);
 
-	TAILQ_INSERT_HEAD(&ua_list, ua, entry);
-
-	/* use the last added user agent */
-	user_agent = TAILQ_FIRST(&ua_list);
-	user_agent_count++;
+	RB_INSERT(user_agent_list, &ua_list, ua);
 
 	return (0);
 }
@@ -1415,15 +1424,45 @@ void
 walk_ua(struct settings *s,
     void (*cb)(struct settings *, char *, void *), void *cb_args)
 {
-	struct user_agent		*ua;
+	struct user_agent	*ua;
 
 	if (s == NULL || cb == NULL) {
 		show_oops(NULL, "walk_ua invalid parameters");
 		return;
 	}
 
-	TAILQ_FOREACH(ua, &ua_list, entry)
+	RB_FOREACH(ua, user_agent_list, &ua_list)
 		cb(s, ua->value, cb_args);
+}
+
+int
+add_http_accept(struct settings *s, char *value)
+{
+	struct http_accept		*ha;
+	static int			ha_count = 0;
+
+	ha = g_malloc(sizeof *ha);
+	ha->id = ha_count++;
+	ha->value = g_strdup(value);
+
+	RB_INSERT(http_accept_list, &ha_list, ha);
+
+	return (0);
+}
+
+void
+walk_http_accept(struct settings *s,
+    void (*cb)(struct settings *, char *, void *), void *cb_args)
+{
+	struct http_accept		*ha;
+
+	if (s == NULL || cb == NULL) {
+		show_oops(NULL, "%s: invalid parameters", __func__);
+		return;
+	}
+
+	RB_FOREACH(ha, http_accept_list, &ha_list)
+		cb(s, ha->value, cb_args);
 }
 
 int

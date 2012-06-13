@@ -272,6 +272,8 @@ struct tab {
 	/* settings */
 	WebKitWebSettings	*settings;
 	gchar			*user_agent;
+	int			user_agent_id;
+	int			http_accept_id;
 	gboolean		load_images;
 
 	/* marks */
@@ -337,6 +339,22 @@ struct sv_ignore {
 };
 RB_HEAD(sv_ignore_list, sv_ignore);
 RB_PROTOTYPE(sv_ignore_list, sv_ignore, entry, sv_ignore_rb_cmp);
+
+struct user_agent {
+	RB_ENTRY(user_agent)	entry;
+	int			id;
+	char			*value;
+};
+RB_HEAD(user_agent_list, user_agent);
+RB_PROTOTYPE(user_agent_list, user_agent, entry, user_agent_rb_cmp);
+
+struct http_accept {
+	RB_ENTRY(http_accept)	entry;
+	int			id;
+	char			*value;
+};
+RB_HEAD(http_accept_list, http_accept);
+RB_PROTOTYPE(http_accept_list, http_accept, entry, http_accept_rb_cmp);
 
 /* utility */
 #define XT_NAME			("xombrero")
@@ -664,12 +682,6 @@ struct custom_uri {
 };
 TAILQ_HEAD(custom_uri_list, custom_uri);
 
-struct user_agent {
-	char *value;
-	TAILQ_ENTRY(user_agent)	entry;
-};
-TAILQ_HEAD(user_agent_list, user_agent);
-
 struct cmd_alias {
 	char			*alias;
 	char			*cmd;
@@ -771,6 +783,7 @@ extern int	allow_volatile_cookies;
 extern int	color_visited_uris;
 extern int	save_global_history;
 extern struct user_agent	*user_agent;
+extern struct http_accept	*http_accept;
 extern int	save_rejected_cookies;
 extern int	session_autosave;
 extern int	guess_search;
@@ -835,11 +848,11 @@ extern struct mime_type_list	mtl;
 extern struct keybinding_list	kbl;
 extern struct sp_list		spl;
 extern struct user_agent_list	ua_list;
+extern struct http_accept_list	ha_list;
 extern struct cmd_alias_list	cal;
 extern struct custom_uri_list	cul;
 extern struct secviolation_list	svl;
 extern struct sv_ignore_list	svil;
-extern int			user_agent_count;
 
 extern PangoFontDescription	*cmd_font;
 extern PangoFontDescription	*oops_font;
