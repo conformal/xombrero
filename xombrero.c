@@ -6778,22 +6778,21 @@ void
 recolor_compact_tabs(void)
 {
 	struct tab		*t;
-	int			 curid = 0;
-	GdkColor		 color;
+	int			curid = 0;
+	GdkColor		color_active, color_inactive;
 
-	gdk_color_parse(XT_COLOR_CT_INACTIVE, &color);
-	TAILQ_FOREACH(t, &tabs, entry)
-		gtk_widget_modify_fg(t->tab_elems.label, GTK_STATE_NORMAL,
-		    &color);
-
+	gdk_color_parse(XT_COLOR_CT_ACTIVE, &color_active);
+	gdk_color_parse(XT_COLOR_CT_INACTIVE, &color_inactive);
 	curid = gtk_notebook_get_current_page(notebook);
-	TAILQ_FOREACH(t, &tabs, entry)
+	TAILQ_FOREACH(t, &tabs, entry) {
 		if (t->tab_id == curid) {
-			gdk_color_parse(XT_COLOR_CT_ACTIVE, &color);
 			gtk_widget_modify_fg(t->tab_elems.label,
-			    GTK_STATE_NORMAL, &color);
-			break;
+			    GTK_STATE_NORMAL, &color_active);
+		} else {
+			gtk_widget_modify_fg(t->tab_elems.label, GTK_STATE_NORMAL,
+			    &color_inactive);
 		}
+	}
 }
 
 void
