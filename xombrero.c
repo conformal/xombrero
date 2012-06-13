@@ -7381,6 +7381,7 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkWidget *nbp, guint pn,
 				/* can't use focus_webview here */
 				gtk_widget_grab_focus(GTK_WIDGET(t->wv));
 			}
+			break;
 		}
 	}
 }
