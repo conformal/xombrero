@@ -4330,13 +4330,10 @@ webview_load_finished_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 void
 webview_progress_changed_cb(WebKitWebView *wv, int progress, struct tab *t)
 {
-	if (show_url == 0) {
-		gtk_entry_set_progress_fraction(GTK_ENTRY(t->sbe.statusbar),
-		    progress == 100 ? 0 : (double)progress / 100);
-	} else {
-		gtk_entry_set_progress_fraction(GTK_ENTRY(t->uri_entry),
-		    progress == 100 ? 0 : (double)progress / 100);
-	}
+	gtk_entry_set_progress_fraction(GTK_ENTRY(t->sbe.statusbar),
+	    progress == 100 ? 0 : (double)progress / 100);
+	gtk_entry_set_progress_fraction(GTK_ENTRY(t->uri_entry),
+	    progress == 100 ? 0 : (double)progress / 100);
 
 	update_statusbar_position(NULL, NULL);
 }
