@@ -4330,10 +4330,11 @@ webview_load_finished_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 void
 webview_progress_changed_cb(WebKitWebView *wv, int progress, struct tab *t)
 {
-	gtk_entry_set_progress_fraction(GTK_ENTRY(t->uri_entry),
-	    progress == 100 ? 0 : (double)progress / 100);
 	if (show_url == 0) {
 		gtk_entry_set_progress_fraction(GTK_ENTRY(t->sbe.statusbar),
+		    progress == 100 ? 0 : (double)progress / 100);
+	} else {
+		gtk_entry_set_progress_fraction(GTK_ENTRY(t->uri_entry),
 		    progress == 100 ? 0 : (double)progress / 100);
 	}
 
@@ -7099,9 +7100,8 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 		    0);
 	} else {
 		t->toolbar = create_toolbar(t);
-		if (show_url)
-			gtk_box_pack_start(GTK_BOX(t->vbox), t->toolbar, FALSE,
-			    FALSE, 0);
+		gtk_box_pack_start(GTK_BOX(t->vbox), t->toolbar, FALSE, FALSE,
+		    0);
 	}
 
 	/* marks */
