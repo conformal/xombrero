@@ -6807,11 +6807,11 @@ set_current_tab(int page_num)
 int
 undo_close_tab_save(struct tab *t)
 {
-	int				m, n;
-	const gchar			*uri;
-	struct undo			*u1, *u2;
-	GList				*items;
-	WebKitWebHistoryItem		*item;
+	int			m, n;
+	const gchar		*uri;
+	struct undo		*u1, *u2;
+	GList			*items;
+	WebKitWebHistoryItem	*item;
 
 	if ((uri = get_uri(t)) == NULL)
 		return (1);
