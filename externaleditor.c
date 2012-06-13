@@ -83,7 +83,6 @@ open_external_editor_cb(gpointer data)
 			goto done;
 		}
 
-		nb = 0;
 		for (;;) {
 			nb = read(fd, buf, XT_EE_BUFSZ);
 			if (nb < 0) {
