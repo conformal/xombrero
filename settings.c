@@ -96,6 +96,7 @@ char		*url_regex = NULL;		/* allocated/set at startup */
 char		*encoding = NULL;		/* allocated/set at startup */
 int		autofocus_onload = XT_DS_AUTOFOCUS_ONLOAD;
 int		enable_js_autorun = XT_DS_ENABLE_JS_AUTORUN;
+char		*userstyle = NULL;		/* allocated/set at startup */
 int		userstyle_global = XT_DS_USERSTYLE_GLOBAL;
 int		auto_load_images = XT_DS_AUTO_LOAD_IMAGES;
 int		enable_autoscroll = XT_DS_ENABLE_AUTOSCROLL;
@@ -121,6 +122,7 @@ char		*get_download_mode(struct settings *);
 char		*get_work_dir(struct settings *);
 char		*get_referer(struct settings *);
 char		*get_ssl_ca_file(struct settings *);
+char		*get_userstyle(struct settings *);
 
 int		add_cookie_wl(struct settings *, char *);
 int		add_js_wl(struct settings *, char *);
@@ -184,6 +186,8 @@ int		set_ssl_ca_file_rt(char *);
 int		set_ssl_strict_certs(char *);
 int		set_statusbar_font(char *);
 int		set_url_regex(char *);
+int		set_userstyle(struct settings *, char *);
+int		set_userstyle_rt(char *);
 int		set_userstyle_global(char *);
 int		set_external_editor(char *);
 int		set_xterm_workaround(char *);
@@ -358,6 +362,12 @@ struct special		s_referer = {
 	NULL
 };
 
+struct special		s_userstyle = {
+	set_userstyle,
+	get_userstyle,
+	NULL
+};
+
 struct settings		rs[] = {
 	{ "allow_volatile_cookies",	XT_S_INT, 0,		&allow_volatile_cookies, NULL, NULL, NULL, NULL},
 	{ "autofocus_onload",		XT_S_INT, 0,		&autofocus_onload, NULL, NULL, NULL, set_autofocus_onload },
@@ -409,6 +419,7 @@ struct settings		rs[] = {
 	{ "enable_strict_transport",	XT_S_INT, 0,		&enable_strict_transport, NULL, NULL, NULL, set_enable_strict_transport },
 	{ "statusbar_elems",		XT_S_STR, 0, NULL,	&statusbar_elems, NULL, NULL, NULL },
 	{ "tab_style",			XT_S_STR, 0, NULL, NULL,&s_tab_style, NULL, set_tab_style_rt },
+	{ "userstyle",			XT_S_STR, 0, NULL, NULL,&s_userstyle, NULL, set_userstyle_rt },
 	{ "userstyle_global",		XT_S_INT, 0,		&userstyle_global, NULL, NULL, NULL, set_userstyle_global },
 	{ "url_regex",			XT_S_STR, 0, NULL,	&url_regex, NULL, NULL, set_url_regex },
 	{ "window_height",		XT_S_INT, 0,		&window_height, NULL, NULL, NULL, NULL },
@@ -2120,6 +2131,38 @@ set_url_regex(char *value)
 }
 
 int
+set_userstyle(struct settings *s, char *value)
+{
+	char		script[PATH_MAX] = {'\0'};
+
+	if (userstyle)
+		g_free(userstyle);
+	if (value == NULL || strlen(value) == 0)
+		userstyle = g_strdup_printf("file://%s" PS "style.css",
+		    resource_dir);
+	else {
+		expand_tilde(script, sizeof script, value);
+		userstyle = g_strdup_printf("file://%s", script);
+	}
+	if (stylesheet)
+		g_free(stylesheet);
+	stylesheet = g_strdup(userstyle);
+	return (0);
+}
+
+char *
+get_userstyle(struct settings *s)
+{
+	return (g_strdup(userstyle + strlen("file://")));
+}
+
+int
+set_userstyle_rt(char *value)
+{
+	return (set_userstyle(NULL, value));
+}
+
+int
 set_userstyle_global(char *value)
 {
 	struct karg		args = {0};
@@ -2131,7 +2174,7 @@ set_userstyle_global(char *value)
 			return (0);
 		userstyle_global = 1;
 		args.i = XT_STYLE_GLOBAL;
-		userstyle(get_current_tab(), &args);
+		userstyle_cmd(get_current_tab(), &args);
 	} else {
 		old_style = userstyle_global;
 		tmp = strtonum(value, 0, 1, &errstr);
@@ -2139,7 +2182,7 @@ set_userstyle_global(char *value)
 			return (-1);
 		if (tmp != old_style) {
 			args.i = XT_STYLE_GLOBAL;
-			userstyle(get_current_tab(), &args);
+			userstyle_cmd(get_current_tab(), &args);
 		}
 	}
 	return (0);

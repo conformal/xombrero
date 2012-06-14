@@ -405,6 +405,10 @@ Quit
 .Ss Low-Contrast Color Scheme
 These commands toggle the page style between the default CSS and a
 low-contrast color scheme with light grey text on a dark grey background.
+If the
+.Cm userstyle
+setting is changed, that stylesheet will be used instead of the
+low-contrast color scheme.
 .Pp
 .Bl -tag -width Ds -offset indent -compact
 .It Cm s
@@ -669,8 +673,38 @@ permanently adding the top level domain to the persistent whitelist.
 Hide url entry and tool bar.
 .It Cm urlshow , urls
 Show url entry and tool bar.
-.It Cm userstyle
-Toggle between normal and low contrast mode.
+.It Cm userstyle <stylesheet>
+Toggle the current tab between using a custom stylesheet and the
+page's default CSS.
+If there is no stylesheet argument to this command, the stylesheet
+specified by the
+.Cm userstyle
+setting will be used instead.
+This
+.Cm userstyle
+setting is set by default to a low-contrast color scheme.
+If a stylesheet is specified, the current tab will be toggled with
+this stylesheet instead.
+.Pp
+If the
+.Cm userstyle
+setting is left unchanged, this command without any arguments will
+toggle between the default page's CSS and the low-contrast color
+scheme.
+.Pp
+Additional stylesheets may be used in addition to the low-contrast
+color scheme by specifying additonal keybindings.  For example,
+.Pp
+.D1 keybinding = userstyle ~/style.css,v
+.D1 keybinding = userstyle_global ~/style.css,V
+.Pp
+will map toggling between ~/style.css to the v and V keys while
+keeping the low-contrast feature mapped to the s and S keys.
+.It Cm userstyle_global <stylesheet>
+Same as
+.Cm userstyle
+but the change affects all open tabs, and newly created tabs will use
+this style.
 .It Cm w
 Save open tabs to current session.
 The tabs will be restored next time the session is opened.
@@ -1428,8 +1462,18 @@ Set to override the default
 .Nm
 user-agent string. May be specified several times for switching between
 user-agents.
+.It Cm userstyle
+Set the stylesheet to be used as a default for the
+.Cm userstyle
+and
+.Cm userstyle_global
+commands when no extra parameters are given.
+The default is a low-contrast stylesheet.
 .It Cm userstyle_global
-When enabled new tabs will automatically be displayed in low contrast mode.
+When enabled new tabs will automatically be displayed using the custom
+stylesheet specified by the
+.Cm userstyle
+setting.
 .It Cm warn_cert_changes
 When enabled all SSL certificates from HTTPS websites will be
 cached in the

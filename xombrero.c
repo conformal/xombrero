@@ -233,6 +233,7 @@ uint64_t		blocked_cookies = 0;
 char			named_session[PATH_MAX];
 GtkListStore		*completion_model;
 GtkListStore		*buffers_store;
+char			*stylesheet;
 
 char			*qmarks[XT_NOQMARKS];
 int			btn_down;	/* M1 down in any wv */
@@ -1158,31 +1159,55 @@ remove_style(struct tab *t)
 }
 
 int
-userstyle(struct tab *t, struct karg *args)
+userstyle_cmd(struct tab *t, struct karg *args)
 {
+	char			script[PATH_MAX] = {'\0'};
+	char			*script_uri;
 	struct tab		*tt;
 
-	DNPRINTF(XT_D_JS, "userstyle: tab %d\n", t->tab_id);
+	DNPRINTF(XT_D_JS, "userstyle_cmd: tab %d\n", t->tab_id);
+
+	if (args->s != NULL && strlen(args->s)) {
+		expand_tilde(script, sizeof script, args->s);
+		script_uri = g_strdup_printf("file://%s", script);
+	} else
+		script_uri = g_strdup(userstyle);
 
 	switch (args->i) {
 	case XT_STYLE_CURRENT_TAB:
-		if (t->styled)
+		if (t->styled && !strcmp(script_uri, t->stylesheet))
 			remove_style(t);
-		else
+		else {
+			if (t->stylesheet)
+				g_free(t->stylesheet);
+			t->stylesheet = g_strdup(script_uri);
 			apply_style(t);
+		}
 		break;
 	case XT_STYLE_GLOBAL:
-		if (userstyle_global) {
+		if (userstyle_global && !strcmp(script_uri, t->stylesheet)) {
 			userstyle_global = 0;
 			TAILQ_FOREACH(tt, &tabs, entry)
 				remove_style(tt);
 		} else {
 			userstyle_global = 1;
-			TAILQ_FOREACH(tt, &tabs, entry)
+
+			/* need to save this stylesheet for new tabs */
+			if (stylesheet)
+				g_free(stylesheet);
+			stylesheet = g_strdup(script_uri);
+
+			TAILQ_FOREACH(tt, &tabs, entry) {
+				if (tt->stylesheet)
+					g_free(tt->stylesheet);
+				tt->stylesheet = g_strdup(script_uri);
 				apply_style(tt);
+			}
 		}
 		break;
 	}
+
+	g_free(script_uri);
 
 	return (0);
 }
@@ -3197,8 +3222,8 @@ struct cmd {
 	{ "hinting_newtab",	0,	hint,			XT_HINT_NEWTAB,		0 },
 
 	/* custom stylesheet */
-	{ "userstyle",		0,	userstyle,		XT_STYLE_CURRENT_TAB,	0 },
-	{ "userstyle_global",	0,	userstyle,		XT_STYLE_GLOBAL,	0 },
+	{ "userstyle",		0,	userstyle_cmd,		XT_STYLE_CURRENT_TAB,	XT_USERARG },
+	{ "userstyle_global",	0,	userstyle_cmd,		XT_STYLE_GLOBAL,	XT_USERARG },
 
 	/* navigation */
 	{ "goback",		0,	navaction,		XT_NAV_BACK,		0 },
@@ -6615,7 +6640,7 @@ create_browser(struct tab *t)
 	} else
 		t->user_agent = g_strdup(user_agent->value);
 
-	t->stylesheet = g_strdup_printf("file://%s/style.css", resource_dir);
+	t->stylesheet = g_strdup(stylesheet);
 	t->load_images = auto_load_images;
 
 	adjustment =
@@ -8104,6 +8129,7 @@ main(int argc, char **argv)
 	spell_check_languages = g_strdup(XT_DS_SPELL_CHECK_LANGUAGES);
 	encoding = g_strdup(XT_DS_ENCODING);
 	spell_check_languages = g_strdup(XT_DS_SPELL_CHECK_LANGUAGES);
+	userstyle = g_strdup_printf("file://%s" PS "style.css", resource_dir);
 
 	/* set statically allocated (struct special) settings */
 	expand_tilde(default_script, sizeof default_script,
