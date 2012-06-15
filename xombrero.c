@@ -1821,12 +1821,14 @@ statusbar_modify_attr(struct tab *t, const char *text, const char *base)
 	gtk_widget_modify_text(t->sbe.zoom, GTK_STATE_NORMAL, &c_text);
 	gtk_widget_modify_text(t->sbe.position, GTK_STATE_NORMAL, &c_text);
 	gtk_widget_modify_text(t->sbe.tabs, GTK_STATE_NORMAL, &c_text);
+	gtk_widget_modify_text(t->sbe.proxy, GTK_STATE_NORMAL, &c_text);
 
 	gtk_widget_modify_base(t->sbe.statusbar, GTK_STATE_NORMAL, &c_base);
 	gtk_widget_modify_base(t->sbe.buffercmd, GTK_STATE_NORMAL, &c_base);
 	gtk_widget_modify_base(t->sbe.zoom, GTK_STATE_NORMAL, &c_base);
 	gtk_widget_modify_base(t->sbe.position, GTK_STATE_NORMAL, &c_base);
 	gtk_widget_modify_base(t->sbe.tabs, GTK_STATE_NORMAL, &c_base);
+	gtk_widget_modify_base(t->sbe.proxy, GTK_STATE_NORMAL, &c_base);
 }
 
 void
@@ -7127,8 +7129,9 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	GList				*items;
 	GdkColor			color;
 	char				*p;
-	int				sbe_p = 0, sbe_b = 0,
-					sbe_z = 0, sbe_t = 0;
+	int				sbe_P = 0, sbe_B = 0,
+					sbe_Z = 0, sbe_T = 0,
+					sbe_p = 0;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
@@ -7216,6 +7219,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	t->sbe.zoom = create_sbe(40);
 	t->sbe.buffercmd = create_sbe(60);
 	t->sbe.tabs = create_sbe(40);
+	t->sbe.proxy = create_sbe(60);
 
 	statusbar_modify_attr(t, XT_COLOR_WHITE, XT_COLOR_BLACK);
 
@@ -7237,6 +7241,46 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 			break;
 		}
 		case 'P':
+			if (sbe_P) {
+				warnx("flag \"%c\" specified more than "
+				    "once in statusbar_elems\n", *p);
+				break;
+			}
+			sbe_P = 1;
+			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
+			    t->sbe.position, FALSE, FALSE, FALSE);
+			break;
+		case 'B':
+			if (sbe_B) {
+				warnx("flag \"%c\" specified more than "
+				    "once in statusbar_elems\n", *p);
+				break;
+			}
+			sbe_B = 1;
+			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
+			    t->sbe.buffercmd, FALSE, FALSE, FALSE);
+			break;
+		case 'Z':
+			if (sbe_Z) {
+				warnx("flag \"%c\" specified more than "
+				    "once in statusbar_elems\n", *p);
+				break;
+			}
+			sbe_Z = 1;
+			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
+			    t->sbe.zoom, FALSE, FALSE, FALSE);
+			break;
+		case 'T':
+			if (sbe_T) {
+				warnx("flag \"%c\" specified more than "
+				    "once in statusbar_elems\n", *p);
+				break;
+			}
+			sbe_T = 1;
+			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
+			    t->sbe.tabs, FALSE, FALSE, FALSE);
+			break;
+		case 'p':
 			if (sbe_p) {
 				warnx("flag \"%c\" specified more than "
 				    "once in statusbar_elems\n", *p);
@@ -7244,37 +7288,10 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 			}
 			sbe_p = 1;
 			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
-			    t->sbe.position, FALSE, FALSE, FALSE);
-			break;
-		case 'B':
-			if (sbe_b) {
-				warnx("flag \"%c\" specified more than "
-				    "once in statusbar_elems\n", *p);
-				break;
-			}
-			sbe_b = 1;
-			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
-			    t->sbe.buffercmd, FALSE, FALSE, FALSE);
-			break;
-		case 'Z':
-			if (sbe_z) {
-				warnx("flag \"%c\" specified more than "
-				    "once in statusbar_elems\n", *p);
-				break;
-			}
-			sbe_z = 1;
-			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
-			    t->sbe.zoom, FALSE, FALSE, FALSE);
-			break;
-		case 'T':
-			if (sbe_t) {
-				warnx("flag \"%c\" specified more than "
-				    "once in statusbar_elems\n", *p);
-				break;
-			}
-			sbe_t = 1;
-			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
-			    t->sbe.tabs, FALSE, FALSE, FALSE);
+			    t->sbe.proxy, FALSE, FALSE, FALSE);
+			if (proxy_uri)
+				gtk_entry_set_text(GTK_ENTRY(t->sbe.proxy),
+				    "proxy");
 			break;
 		default:
 			warnx("illegal flag \"%c\" in statusbar_elems\n", *p);

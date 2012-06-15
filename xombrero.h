@@ -208,6 +208,7 @@ struct tab {
 		GtkWidget	*zoom;
 		GtkWidget	*position;
 		GtkWidget	*tabs;
+		GtkWidget	*proxy;
 	} sbe;
 	GtkWidget		*cmd;
 	GtkWidget		*buffers;
@@ -723,6 +724,7 @@ extern int	fancy_bar;
 extern int	browser_mode;
 extern int	enable_localstorage;
 extern char	*statusbar_elems;
+extern SoupURI	*proxy_uri;
 
 extern int	show_tabs;
 extern int	tab_style;

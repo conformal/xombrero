@@ -571,6 +571,8 @@ set_statusbar_font(char *value)
 		    statusbar_font);
 		gtk_widget_modify_font(GTK_WIDGET(t->sbe.position),
 		    statusbar_font);
+		gtk_widget_modify_font(GTK_WIDGET(t->sbe.proxy),
+		    statusbar_font);
 	}
 	return (0);
 }
@@ -2078,10 +2080,14 @@ set_fancy_bar(char *value)
 void
 setup_proxy(char *uri)
 {
+	struct tab		*t;
+
 	if (proxy_uri) {
 		g_object_set(session, "proxy_uri", NULL, (char *)NULL);
 		soup_uri_free(proxy_uri);
 		proxy_uri = NULL;
+		TAILQ_FOREACH(t, &tabs, entry)
+			gtk_entry_set_text(GTK_ENTRY(t->sbe.proxy), "");
 	}
 	if (http_proxy) {
 		if (http_proxy != uri) {
@@ -2094,9 +2100,13 @@ setup_proxy(char *uri)
 		http_proxy = g_strdup(uri);
 		DNPRINTF(XT_D_CONFIG, "setup_proxy: %s\n", uri);
 		proxy_uri = soup_uri_new(http_proxy);
-		if (!(proxy_uri == NULL || !SOUP_URI_VALID_FOR_HTTP(proxy_uri)))
+		if (proxy_uri != NULL && SOUP_URI_VALID_FOR_HTTP(proxy_uri)) {
 			g_object_set(session, "proxy-uri", proxy_uri,
 			    (char *)NULL);
+			TAILQ_FOREACH(t, &tabs, entry)
+				gtk_entry_set_text(GTK_ENTRY(t->sbe.proxy),
+				    "proxy");
+		}
 	}
 }
 
