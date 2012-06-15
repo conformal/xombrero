@@ -3469,7 +3469,6 @@ parse_custom_uri(struct tab *t, const char *uri)
 			break;
 		case 0:
 			/* child */
-			printf("cmd: %s\n", u->cmd);
 			execlp(u->cmd, u->cmd, uri, (char *)0);
 			_exit(0);
 			/* NOTREACHED */
