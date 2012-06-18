@@ -7624,15 +7624,19 @@ arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 {
 	GtkWidget		*menu, *menu_items;
 	GdkEventButton		*bevent;
+	struct tab		**stabs = NULL;
+	int			i, num_tabs;
 	const gchar		*uri;
-	struct tab		*ti;
 
 	if (event->type == GDK_BUTTON_PRESS) {
 		bevent = (GdkEventButton *) event;
 		menu = gtk_menu_new();
 
-		TAILQ_FOREACH(ti, &tabs, entry) {
-			if ((uri = get_uri(ti)) == NULL)
+		num_tabs = sort_tabs_by_page_num(&stabs);
+		for (i = 0; i < num_tabs; ++i) {
+			if (stabs[i] == NULL)
+				continue;
+			if ((uri = get_uri(stabs[i])) == NULL)
 				/* XXX make sure there is something to print */
 				/* XXX add gui pages in here to look purdy */
 				uri = "(untitled)";
@@ -7642,8 +7646,9 @@ arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 
 			g_signal_connect_swapped((menu_items),
 			    "activate", G_CALLBACK(menuitem_response),
-			    (gpointer)ti);
+			    (gpointer)stabs[i]);
 		}
+		g_free(stabs);
 
 		gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
 		    bevent->button, bevent->time);
