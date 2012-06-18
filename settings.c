@@ -2110,20 +2110,20 @@ set_fancy_bar(char *value)
 			return (-1);
 		fancy_bar = tmp;
 	}
-	t = get_current_tab();
-	if (fancy_bar) {
-		gtk_widget_show(t->backward);
-		gtk_widget_show(t->forward);
-		gtk_widget_show(t->stop);
-		gtk_widget_show(t->js_toggle);
-		gtk_widget_show(t->search_entry);
-	} else {
-		gtk_widget_hide(t->backward);
-		gtk_widget_hide(t->forward);
-		gtk_widget_hide(t->stop);
-		gtk_widget_hide(t->js_toggle);
-		gtk_widget_hide(t->search_entry);
-	}
+	TAILQ_FOREACH(t, &tabs, entry)
+		if (fancy_bar) {
+			gtk_widget_show(t->backward);
+			gtk_widget_show(t->forward);
+			gtk_widget_show(t->stop);
+			gtk_widget_show(t->js_toggle);
+			gtk_widget_show(t->search_entry);
+		} else {
+			gtk_widget_hide(t->backward);
+			gtk_widget_hide(t->forward);
+			gtk_widget_hide(t->stop);
+			gtk_widget_hide(t->js_toggle);
+			gtk_widget_hide(t->search_entry);
+		}
 	return (0);
 }
 
