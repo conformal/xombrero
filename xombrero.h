@@ -231,8 +231,6 @@ struct tab {
 	gchar			*icon_dest_uri;
 
 	/* adjustments for browser */
-	GtkScrollbar		*sb_h;
-	GtkScrollbar		*sb_v;
 	GtkAdjustment		*adjust_h;
 	GtkAdjustment		*adjust_v;
 

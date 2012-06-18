@@ -6704,12 +6704,11 @@ create_browser(struct tab *t)
 		return (NULL);
 	}
 
-	t->sb_h = GTK_SCROLLBAR(gtk_hscrollbar_new(NULL));
-	t->sb_v = GTK_SCROLLBAR(gtk_vscrollbar_new(NULL));
-	t->adjust_h = gtk_range_get_adjustment(GTK_RANGE(t->sb_h));
-	t->adjust_v = gtk_range_get_adjustment(GTK_RANGE(t->sb_v));
-
-	w = gtk_scrolled_window_new(t->adjust_h, t->adjust_v);
+	w = gtk_scrolled_window_new(NULL, NULL);
+	t->adjust_h = gtk_scrolled_window_get_hadjustment(
+	    GTK_SCROLLED_WINDOW(w));
+	t->adjust_v = gtk_scrolled_window_get_vadjustment(
+	    GTK_SCROLLED_WINDOW(w));
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(w),
 	    GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
