@@ -537,10 +537,23 @@ buffers_make_list(void)
 void
 show_buffers(struct tab *t)
 {
+	GtkTreeIter		iter;
+	GtkTreeSelection	*sel;
+	GtkTreePath		*path;
+	int			index;
+
 	if (gtk_widget_get_visible(GTK_WIDGET(t->buffers)))
 		return;
 
 	buffers_make_list();
+
+	sel = gtk_tree_view_get_selection(GTK_TREE_VIEW(t->buffers));
+	index = gtk_notebook_get_current_page(notebook);
+	path = gtk_tree_path_new_from_indices(index, -1);
+	if (gtk_tree_model_get_iter(GTK_TREE_MODEL(buffers_store), &iter, path))
+		gtk_tree_selection_select_iter(sel, &iter);
+	gtk_tree_path_free(path);
+
 	gtk_widget_show(t->buffers);
 	gtk_widget_grab_focus(GTK_WIDGET(t->buffers));
 }
