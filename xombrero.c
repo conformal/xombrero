@@ -7122,7 +7122,106 @@ create_sbe(int width)
 	gtk_entry_set_alignment(GTK_ENTRY(sbe), 1.0);
 	gtk_widget_set_size_request(sbe, width, -1);
 
-	return sbe;
+	return (sbe);
+}
+
+int
+add_sbe(struct tab *t, char flag, int *used, GtkWidget *sbe)
+{
+	if (t == NULL || used == NULL || sbe == NULL) {
+		DPRINTF("%s: invalid parameters", __func__);
+		return (1);
+	}
+
+	if (*used) {
+		warnx("flag \"%c\" specified more than "
+		    "once in statusbar_elems\n", flag);
+		return (1);
+	}
+
+	gtk_box_pack_start(GTK_BOX(t->statusbar_box),
+	    sbe, FALSE, FALSE, FALSE);
+	*used = 1;
+
+	return (0);
+}
+
+int
+statusbar_create(struct tab *t)
+{
+	char			*p;
+	GdkColor		color;
+	GtkWidget		*sep;
+	int			sbe_P = 0, sbe_B = 0, sbe_Z = 0, sbe_T = 0,
+				sbe_p = 0;
+
+	if (t == NULL) {
+		DPRINTF("%s: invalid parameters", __func__);
+		return (1);
+	}
+
+	t->statusbar_box = gtk_hbox_new(FALSE, 0);
+
+	t->sbe.statusbar = gtk_entry_new();
+	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.statusbar), NULL);
+	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.statusbar), FALSE);
+	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.statusbar), FALSE);
+	gtk_widget_modify_font(GTK_WIDGET(t->sbe.statusbar), statusbar_font);
+
+	/* create these widgets only if specified in statusbar_elems */
+	t->sbe.position = create_sbe(40);
+	t->sbe.zoom = create_sbe(40);
+	t->sbe.buffercmd = create_sbe(60);
+	t->sbe.tabs = create_sbe(40);
+	t->sbe.proxy = create_sbe(60);
+
+	statusbar_modify_attr(t, XT_COLOR_WHITE, XT_COLOR_BLACK);
+
+	gtk_box_pack_start(GTK_BOX(t->statusbar_box), t->sbe.statusbar, TRUE,
+	    TRUE, FALSE);
+
+	/*
+	 * gtk widgets cannot be added to a box twice. The sbe_* variables
+	 * make sure of this
+	 */
+	for (p = statusbar_elems; *p != '\0'; p++) {
+		switch (*p) {
+		case '|':
+			sep = gtk_vseparator_new();
+
+			gdk_color_parse(XT_COLOR_SB_SEPARATOR, &color);
+			gtk_widget_modify_bg(sep, GTK_STATE_NORMAL, &color);
+			gtk_box_pack_start(GTK_BOX(t->statusbar_box), sep,
+			    FALSE, FALSE, FALSE);
+			break;
+		case 'P':
+			add_sbe(t, *p, &sbe_P, t->sbe.position);
+			break;
+		case 'B':
+			add_sbe(t, *p, &sbe_B, t->sbe.buffercmd);
+			break;
+		case 'Z':
+			add_sbe(t, *p, &sbe_Z, t->sbe.zoom);
+			break;
+		case 'T':
+			add_sbe(t, *p, &sbe_T, t->sbe.tabs);
+			break;
+		case 'p':
+			if (add_sbe(t, *p, &sbe_p, t->sbe.proxy) == 0) {
+				if (proxy_uri)
+					gtk_entry_set_text(
+					    GTK_ENTRY(t->sbe.proxy), "proxy");
+			}
+			break;
+		default:
+			warnx("illegal flag \"%c\" in statusbar_elems\n", *p);
+			break;
+		}
+	}
+
+	gtk_box_pack_end(GTK_BOX(t->vbox), t->statusbar_box, FALSE, FALSE, 0);
+
+	return (0);
 }
 
 struct tab *
@@ -7134,10 +7233,6 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	WebKitWebHistoryItem		*item;
 	GList				*items;
 	GdkColor			color;
-	char				*p;
-	int				sbe_P = 0, sbe_B = 0,
-					sbe_Z = 0, sbe_T = 0,
-					sbe_p = 0;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
@@ -7211,101 +7306,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_widget_modify_font(GTK_WIDGET(t->cmd), cmd_font);
 
 	/* status bar */
-	t->statusbar_box = gtk_hbox_new(FALSE, 0);
-
-	t->sbe.statusbar = gtk_entry_new();
-	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.statusbar), NULL);
-	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.statusbar), FALSE);
-	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.statusbar), FALSE);
-	gtk_widget_modify_font(GTK_WIDGET(t->sbe.statusbar), statusbar_font);
-
-	/* create these widgets only if specified in statusbar_elems */
-
-	t->sbe.position = create_sbe(40);
-	t->sbe.zoom = create_sbe(40);
-	t->sbe.buffercmd = create_sbe(60);
-	t->sbe.tabs = create_sbe(40);
-	t->sbe.proxy = create_sbe(60);
-
-	statusbar_modify_attr(t, XT_COLOR_WHITE, XT_COLOR_BLACK);
-
-	gtk_box_pack_start(GTK_BOX(t->statusbar_box), t->sbe.statusbar, TRUE,
-	    TRUE, FALSE);
-
-	/* gtk widgets cannot be added to a box twice. sbe_* variables
-	   make sure of this */
-	for (p = statusbar_elems; *p != '\0'; p++) {
-		switch (*p) {
-		case '|':
-		{
-			GtkWidget *sep = gtk_vseparator_new();
-
-			gdk_color_parse(XT_COLOR_SB_SEPARATOR, &color);
-			gtk_widget_modify_bg(sep, GTK_STATE_NORMAL, &color);
-			gtk_box_pack_start(GTK_BOX(t->statusbar_box), sep,
-			    FALSE, FALSE, FALSE);
-			break;
-		}
-		case 'P':
-			if (sbe_P) {
-				warnx("flag \"%c\" specified more than "
-				    "once in statusbar_elems\n", *p);
-				break;
-			}
-			sbe_P = 1;
-			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
-			    t->sbe.position, FALSE, FALSE, FALSE);
-			break;
-		case 'B':
-			if (sbe_B) {
-				warnx("flag \"%c\" specified more than "
-				    "once in statusbar_elems\n", *p);
-				break;
-			}
-			sbe_B = 1;
-			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
-			    t->sbe.buffercmd, FALSE, FALSE, FALSE);
-			break;
-		case 'Z':
-			if (sbe_Z) {
-				warnx("flag \"%c\" specified more than "
-				    "once in statusbar_elems\n", *p);
-				break;
-			}
-			sbe_Z = 1;
-			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
-			    t->sbe.zoom, FALSE, FALSE, FALSE);
-			break;
-		case 'T':
-			if (sbe_T) {
-				warnx("flag \"%c\" specified more than "
-				    "once in statusbar_elems\n", *p);
-				break;
-			}
-			sbe_T = 1;
-			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
-			    t->sbe.tabs, FALSE, FALSE, FALSE);
-			break;
-		case 'p':
-			if (sbe_p) {
-				warnx("flag \"%c\" specified more than "
-				    "once in statusbar_elems\n", *p);
-				break;
-			}
-			sbe_p = 1;
-			gtk_box_pack_start(GTK_BOX(t->statusbar_box),
-			    t->sbe.proxy, FALSE, FALSE, FALSE);
-			if (proxy_uri)
-				gtk_entry_set_text(GTK_ENTRY(t->sbe.proxy),
-				    "proxy");
-			break;
-		default:
-			warnx("illegal flag \"%c\" in statusbar_elems\n", *p);
-			break;
-		}
-	}
-
-	gtk_box_pack_end(GTK_BOX(t->vbox), t->statusbar_box, FALSE, FALSE, 0);
+	statusbar_create(t);
 
 	/* buffer list */
 	t->buffers = create_buffers(t);
