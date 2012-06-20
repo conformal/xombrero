@@ -37,7 +37,7 @@ focus_input_document(struct tab *t, WebKitDOMDocument *doc)
 		n = webkit_dom_node_list_item(input, i);
 		in = (WebKitDOMHTMLInputElement*)n;
 		g_object_get(G_OBJECT(in), "type", &es, (char *)NULL);
-		if ((!g_str_equal("text", es) && !g_str_equal("password",es)) ||
+		if ((g_strcmp0("text", es) && g_strcmp0("password",es)) ||
 		    webkit_dom_html_input_element_get_disabled(in)) {
 			/* skip not text */
 			g_free(es);
