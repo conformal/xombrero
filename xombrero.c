@@ -4085,6 +4085,9 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		g_free(text);
 		g_free(base);
 
+		/* DOM is changing, unreference the previous focused element */
+		t->active = NULL;
+
 		/* take focus if we are visible */
 		focus_webview(t);
 		t->focus_wv = 1;
@@ -7325,6 +7328,8 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 
 	t->user_agent_id = 0;
 	t->http_accept_id = 0;
+
+	t->active = NULL;
 
 #if GTK_CHECK_VERSION(2, 20, 0)
 	t->spinner = gtk_spinner_new();
