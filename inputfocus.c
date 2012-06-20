@@ -44,6 +44,7 @@ focus_input_document(struct tab *t, WebKitDOMDocument *doc)
 			continue;
 		}
 		webkit_dom_element_focus((WebKitDOMElement*)in);
+		webkit_dom_html_element_click((WebKitDOMHTMLElement*)in);
 		g_free(es);
 		rv = 1; /* found */
 		goto done;
@@ -59,6 +60,7 @@ focus_input_document(struct tab *t, WebKitDOMDocument *doc)
 			continue;
 		}
 		webkit_dom_element_focus((WebKitDOMElement*)ta);
+		webkit_dom_html_element_click((WebKitDOMHTMLElement*)in);
 		rv = 1; /* found */
 		goto done;
 	}
