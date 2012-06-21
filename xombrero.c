@@ -8207,6 +8207,7 @@ main(int argc, char **argv)
 	encoding = g_strdup(XT_DS_ENCODING);
 	spell_check_languages = g_strdup(XT_DS_SPELL_CHECK_LANGUAGES);
 	userstyle = g_strdup_printf("file://%s" PS "style.css", resource_dir);
+	stylesheet = g_strdup(userstyle);
 
 	/* set statically allocated (struct special) settings */
 	expand_tilde(default_script, sizeof default_script,
