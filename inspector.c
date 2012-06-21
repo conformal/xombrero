@@ -79,7 +79,7 @@ inspector_show_window(WebKitWebInspector *inspector, struct tab *t)
 	DNPRINTF(XT_D_INSPECTOR, "%s: tab %d\n", __func__, t->tab_id);
 
 	if (t->inspector_window) {
-		g_signal_emit_by_name(inspector, "attach-window", NULL);
+		g_signal_emit_by_name(inspector, "attach-window", t, NULL);
 		gtk_widget_show_all(t->inspector_window);
 		gtk_window_present(GTK_WINDOW(t->inspector_window));
 		return (TRUE); /* handled */
