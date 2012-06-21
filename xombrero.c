@@ -8215,6 +8215,9 @@ main(int argc, char **argv)
 	expand_tilde(ssl_ca_file, sizeof ssl_ca_file,
 	    XT_DS_SSL_CA_FILE);
 
+	/* soup session */
+	session = webkit_get_default_session();
+
 	/* read config file */
 	if (strlen(conf) == 0)
 		snprintf(conf, sizeof conf, "%s" PS ".%s",
@@ -8343,7 +8346,6 @@ main(int argc, char **argv)
 	}
 
 	/* cookies */
-	session = webkit_get_default_session();
 	setup_cookies();
 
 	/* guess_search regex */
