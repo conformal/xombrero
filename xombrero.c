@@ -1448,11 +1448,7 @@ run_page_script(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	if (tmp[0] == '~')
-		snprintf(script, sizeof script, "%s" PS "%s",
-		    pwd->pw_dir, &tmp[1]);
-	else
-		strlcpy(script, tmp, sizeof script);
+	expand_tilde(script, sizeof script, tmp);
 
 	return (fork_exec(t, script, uri, "can't launch external script", 1));
 }
