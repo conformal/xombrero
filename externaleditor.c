@@ -26,7 +26,7 @@ struct edit_src_cb_args {
 };
 
 struct open_external_editor_cb_args {
-		int		child_pid;
+		GPid		child_pid;
 		char		*path;
 		time_t		mtime;
 		struct tab	*tab;
@@ -110,7 +110,6 @@ open_external_editor_cb(gpointer data)
 	/* Check if child has terminated */
 	rv = waitpid(args->child_pid, &status, WNOHANG);
 	if (rv == -1 /* || WIFEXITED(status) */) {
-
 		/* Delete the file */
 		unlink(args->path);
 		goto done;
@@ -118,6 +117,7 @@ open_external_editor_cb(gpointer data)
 
 	return (1);
 done:
+	g_spawn_close_pid(args->child_pid);
 	g_free(args->path);
 	g_free(args->cb_data);
 	g_free(args);
@@ -132,15 +132,15 @@ int
 open_external_editor(struct tab *t, const char *contents, const char *suffix,
     int (*callback)(const char *, gpointer), gpointer cb_data)
 {
+	struct stat				st;
 	struct open_external_editor_cb_args	*a;
+	GPid					pid;
 	char					*cmdstr;
 	char					filename[PATH_MAX];
 	char					**sv;
 	int					fd;
 	int					nb, rv;
 	int					cnt;
-	struct stat				st;
-	pid_t					pid;
 
 	if (external_editor == NULL)
 		return (0);
@@ -185,44 +185,34 @@ open_external_editor(struct tab *t, const char *contents, const char *suffix,
 
 	DPRINTF("edit_src: external_editor: %s\n", external_editor);
 
-	/* Launch editor */
-	pid = fork();
-	switch (pid) {
-	case -1:
-		show_oops(t, "can't fork to execute editor");
-		return (1);
-	case 0:
-		break;
-	default:
-		/* parent */
-		a = g_malloc(sizeof(struct open_external_editor_cb_args));
-		a->child_pid = pid;
-		a->path = g_strdup(filename);
-		a->tab = t;
-		a->mtime = st.st_mtime;
-		a->callback = callback;
-		a->cb_data = cb_data;
-
-		/* Check every 100 ms if file has changed */
-		g_timeout_add(100, (GSourceFunc)open_external_editor_cb,
-		    (gpointer)a);
-		return (0);
-	}
-
-	/* child */
 	sv = g_strsplit(external_editor, "<file>", -1);
 	cmdstr = g_strjoinv(filename, sv);
 	g_strfreev(sv);
-
 	sv = g_strsplit_set(cmdstr, " \t", -1);
+	if (!g_spawn_async(NULL, sv, NULL,
+	    (G_SPAWN_SEARCH_PATH | G_SPAWN_DO_NOT_REAP_CHILD), NULL, NULL, &pid,
+	    NULL)) {
+		show_oops(t, "%s: could not spawn process");
+		g_strfreev(sv);
+		g_free(cmdstr);
+		return (1);
+	}
 
-	DPRINTF("edit_src: Launching program %s\n", cmdstr);
-
-	execvp(sv[0], sv);
+	/* parent */
 	g_strfreev(sv);
 	g_free(cmdstr);
-	_exit(0);
-	/* NOTREACHED */
+
+	a = g_malloc(sizeof(struct open_external_editor_cb_args));
+	a->child_pid = pid;
+	a->path = g_strdup(filename);
+	a->tab = t;
+	a->mtime = st.st_mtime;
+	a->callback = callback;
+	a->cb_data = cb_data;
+
+	/* Check every 100 ms if file has changed */
+	g_timeout_add(100, (GSourceFunc)open_external_editor_cb,
+	    (gpointer)a);
 	return (0);
 }
 

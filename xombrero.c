@@ -375,45 +375,6 @@ qmarktoindex(char m)
 	return (-1);
 }
 
-#ifndef XT_SIGNALS_DISABLE
-void
-sigchild(int sig)
-{
-	int			saved_errno, status;
-	pid_t			pid;
-
-	saved_errno = errno;
-
-	while ((pid = waitpid(WAIT_ANY, &status, WNOHANG)) != 0) {
-		if (pid == -1) {
-			if (errno == EINTR)
-				continue;
-			if (errno != ECHILD) {
-				/*
-				clog_warn("sigchild: waitpid:");
-				*/
-			}
-			break;
-		}
-
-		if (WIFEXITED(status)) {
-			if (WEXITSTATUS(status) != 0) {
-				/*
-				clog_warnx("sigchild: child exit status: %d",
-				    WEXITSTATUS(status));
-				*/
-			}
-		} else {
-			/*
-			clog_warnx("sigchild: child is terminated abnormally");
-			*/
-		}
-	}
-
-	errno = saved_errno;
-}
-#endif
-
 int
 is_g_object_setting(GObject *o, char *str)
 {
@@ -1436,6 +1397,7 @@ run_page_script(struct tab *t, struct karg *args)
 {
 	const gchar		*uri;
 	char			*tmp, script[PATH_MAX];
+	char			*sv[3];
 
 	tmp = args->s != NULL && strlen(args->s) > 0 ? args->s : default_script;
 	if (tmp[0] == '\0') {
@@ -1450,7 +1412,16 @@ run_page_script(struct tab *t, struct karg *args)
 
 	expand_tilde(script, sizeof script, tmp);
 
-	return (fork_exec(t, script, uri, "can't launch external script", 1));
+	sv[0] = script;
+	sv[1] = (char *)uri;
+	sv[2] = NULL;
+	if (!g_spawn_async(NULL, sv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
+	    NULL, NULL)) {
+		show_oops(t, "%s: could not spawn process", __func__);
+		return (1);
+	}
+	return (0);
+	
 }
 
 int
@@ -3446,25 +3417,19 @@ parse_custom_uri(struct tab *t, const char *uri)
 {
 	struct custom_uri	*u;
 	int			handled = 0;
+	char			*sv[3];
 
 	TAILQ_FOREACH(u, &cul, entry) {
 		if (strncmp(uri, u->uri, strlen(u->uri)))
 			continue;
 
 		handled = 1;
-		switch (fork()) {
-		case -1:
-			show_oops(t, "%s: unable to fork", __func__);
-			break;
-		case 0:
-			/* child */
-			execlp(u->cmd, u->cmd, uri, (char *)0);
-			_exit(0);
-			/* NOTREACHED */
-		default:
-			/* parent */
-			break;
-		}
+		sv[0] = u->cmd;
+		sv[1] = (char *)uri;
+		sv[2] = NULL;
+		if (!g_spawn_async(NULL, sv, NULL, G_SPAWN_SEARCH_PATH, NULL,
+		    NULL, NULL, NULL))
+			show_oops(t, "%s: could not spawn process", __func__);
 	}
 
 	return (handled);
@@ -4924,6 +4889,7 @@ int
 run_mimehandler(struct tab *t, char *mime_type, WebKitNetworkRequest *request)
 {
 	struct mime_type	*m;
+	char			*sv[3];
 
 	m = find_mime_type(mime_type);
 	if (m == NULL)
@@ -4931,9 +4897,14 @@ run_mimehandler(struct tab *t, char *mime_type, WebKitNetworkRequest *request)
 	if (m->mt_download)
 		return (1);
 
-	return (fork_exec(t, m->mt_action,
-	    webkit_network_request_get_uri(request),
-	    "can't launch MIME handler", 0));
+	sv[0] = m->mt_action;
+	sv[1] = (char *)webkit_network_request_get_uri(request);
+	sv[2] = NULL;
+	if (!g_spawn_async(NULL, sv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
+	    NULL, NULL))
+		/* No show_oops here to handle "donothing" example in config */
+		warnx("%s: could not spawn process", __func__);
+	return (0);
 }
 
 char *
@@ -4962,13 +4933,21 @@ int
 run_download_mimehandler(char *mime_type, char *file)
 {
 	struct mime_type	*m;
+	char			*sv[3];
 
 	m = find_mime_type(mime_type);
 	if (m == NULL)
 		return (1);
 
-	return (fork_exec(NULL, m->mt_action, file,
-	    "can't launch download MIME handler", 0));
+	sv[0] = m->mt_action;
+	sv[1] = file;
+	sv[2] = NULL;
+	if (!g_spawn_async(NULL, sv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
+	    NULL, NULL)) {
+		show_oops(NULL, "%s: could not spawn process");
+		return (1);
+	}
+	return (0);
 }
 
 void
@@ -8171,18 +8150,6 @@ main(int argc, char **argv)
 	init_keybindings();
 
 	xtp_generate_keys();
-
-	/* XXX this hammer is way too big but treat all signaling the same */
-#ifndef XT_SIGNALS_DISABLE
-	/* signals */
-	struct sigaction	sact;
-
-	bzero(&sact, sizeof(sact));
-	sigemptyset(&sact.sa_mask);
-	sact.sa_handler = sigchild;
-	sact.sa_flags = SA_NOCLDSTOP;
-	sigaction(SIGCHLD, &sact, NULL);
-#endif
 
 	/* set download dir */
 	pwd = getpwuid(getuid());

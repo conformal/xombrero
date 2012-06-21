@@ -18,30 +18,3 @@
 
 /* put this here for now, move away if unix needs something special */
 void	(*os_init)(void);
-
-int
-fork_exec(struct tab *t, char *argv0, const gchar *argv1, char *error, int loud)
-{
-
-	if (loud)
-		show_oops(t, "running: %s %s", argv0, argv1);
-
-	switch (fork()) {
-	case -1:
-		show_oops(t, error);
-		return (1);
-		/* NOTREACHED */
-	case 0:
-		break;
-	default:
-		return (0);
-	}
-
-	/* child */
-	execlp(argv0, argv0, argv1, (void *)NULL);
-
-	/* NOTREACHED */
-	_exit(0);
-
-	return (0);
-}

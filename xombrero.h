@@ -559,9 +559,6 @@ void		input_focus_blur(struct tab *, void *);
 void		*input_check_mode(struct tab *);
 int		command_mode(struct tab *, struct karg *);
 
-/* OS specific */
-int		fork_exec(struct tab *, char *, const gchar *, char *, int);
-
 /* settings */
 #define XT_BM_NORMAL		(0)
 #define XT_BM_WHITELIST		(1)

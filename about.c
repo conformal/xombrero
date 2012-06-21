@@ -730,7 +730,6 @@ search_engine_add(char *body, const char *name, const char *url, int select)
 void
 xtp_handle_ab(struct tab *t, uint8_t cmd, int arg)
 {
-	pid_t			pid;
 	char			config[PATH_MAX];
 	char			*cmdstr;
 	char			**sv;
@@ -741,30 +740,20 @@ xtp_handle_ab(struct tab *t, uint8_t cmd, int arg)
 			show_oops(t, "external_editor is unset");
 			break;
 		}
-		switch (pid = fork()) {
-		case -1:
-			/* no process created */
-			show_oops(t, "%s: could not fork process", __func__);
-			break;
-		case 0:
-			/* child */
-			snprintf(config, sizeof config, "%s" PS ".%s",
-			    pwd->pw_dir, XT_CONF_FILE);
 
-			sv = g_strsplit(external_editor, "<file>", -1);
-			cmdstr = g_strjoinv(config, sv);
-			g_strfreev(sv);
+		snprintf(config, sizeof config, "%s" PS ".%s", pwd->pw_dir,
+		    XT_CONF_FILE);
+		sv = g_strsplit(external_editor, "<file>", -1);
+		cmdstr = g_strjoinv(config, sv);
+		g_strfreev(sv);
+		sv = g_strsplit_set(cmdstr, " \t", -1);
 
-			sv = g_strsplit_set(cmdstr, " \t", -1);
+		if (!g_spawn_async(NULL, sv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
+		    NULL, NULL))
+			show_oops(t, "%s: could not spawn process", __func__);
 
-			execvp(sv[0], sv);
-			g_strfreev(sv);
-			g_free(cmdstr);
-			_exit(0);
-		default:
-			/* parent */
-			break;
-		}
+		g_strfreev(sv);
+		g_free(cmdstr);
 		break;
 	default:
 		show_oops(t, "%s, invalid about command", __func__);
