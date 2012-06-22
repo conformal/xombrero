@@ -2277,15 +2277,17 @@ int
 set_userstyle(struct settings *s, char *value)
 {
 	char		script[PATH_MAX] = {'\0'};
+	char		*path;
 
 	if (userstyle)
 		g_free(userstyle);
-	if (value == NULL || strlen(value) == 0)
-		userstyle = g_strdup_printf("file://%s" PS "style.css",
-		    resource_dir);
-	else {
+	if (value == NULL || strlen(value) == 0) {
+		path = g_strdup_printf("%s" PS "style.css", resource_dir);
+		userstyle = g_filename_to_uri(path, NULL, NULL);
+		g_free(path);
+	} else {
 		expand_tilde(script, sizeof script, value);
-		userstyle = g_strdup_printf("file://%s", script);
+		userstyle = g_filename_to_uri(script, NULL, NULL);
 	}
 	if (stylesheet)
 		g_free(stylesheet);
@@ -2296,7 +2298,7 @@ set_userstyle(struct settings *s, char *value)
 char *
 get_userstyle(struct settings *s)
 {
-	return (g_strdup(userstyle + strlen("file://")));
+	return (g_filename_from_uri(userstyle, NULL, NULL));
 }
 
 int

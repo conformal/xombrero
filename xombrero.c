@@ -736,7 +736,7 @@ guess_url_type(char *url_in)
 	struct stat		sb;
 	char			*url_out = NULL, *enc_search = NULL;
 	int			i;
-	char			*cwd;
+	char			*cwd, *path;
 	char			**sv;
 
 
@@ -771,13 +771,15 @@ guess_url_type(char *url_in)
 	/* XXX not sure about this heuristic */
 	if (stat(url_in, &sb) == 0) {
 		if (url_in[0] == '/')
-			url_out = g_strdup_printf("file://%s", url_in);
+			url_out = g_filename_to_uri(url_in, NULL, NULL);
 		else {
 			cwd = malloc(PATH_MAX);
 			if (getcwd(cwd, PATH_MAX) != NULL)
-				url_out = g_strdup_printf("file://%s/%s",cwd,
+				path = g_strdup_printf("%s" PS "%s", cwd,
 				    url_in);
+				url_out = g_filename_to_uri(path, NULL, NULL);
 			free(cwd);
+			free(path);
 		}
 	} else
 		url_out = g_strdup_printf("http://%s", url_in); /* guess http */
@@ -1131,9 +1133,12 @@ userstyle_cmd(struct tab *t, struct karg *args)
 
 	if (args->s != NULL && strlen(args->s)) {
 		expand_tilde(script, sizeof script, args->s);
-		script_uri = g_strdup_printf("file://%s", script);
+		script_uri = g_filename_to_uri(script, NULL, NULL);
 	} else
 		script_uri = g_strdup(userstyle);
+
+	if (script_uri == NULL)
+		return (1);
 
 	switch (args->i) {
 	case XT_STYLE_CURRENT_TAB:
@@ -3804,12 +3809,18 @@ xt_icon_from_pixbuf(struct tab *t, GdkPixbuf *pb)
 }
 
 void
-xt_icon_from_file(struct tab *t, char *file)
+xt_icon_from_file(struct tab *t, char *uri)
 {
 	GdkPixbuf		*pb;
+	char			*file;
 
-	if (g_str_has_prefix(file, "file://"))
-		file += strlen("file://");
+	if (g_str_has_prefix(uri, "file://"))
+		file = g_filename_from_uri(uri, NULL, NULL);
+	else
+		file = g_strdup(uri);
+
+	if (file == NULL)
+		return;
 
 	pb = gdk_pixbuf_new_from_file(file, NULL);
 	if (pb) {
@@ -3817,6 +3828,8 @@ xt_icon_from_file(struct tab *t, char *file)
 		g_object_unref(pb);
 	} else
 		xt_icon_from_name(t, "text-html");
+
+	g_free(file);
 }
 
 gboolean
@@ -3843,15 +3856,22 @@ is_valid_icon(char *file)
 }
 
 void
-set_favicon_from_file(struct tab *t, char *file)
+set_favicon_from_file(struct tab *t, char *uri)
 {
 	struct stat		sb;
+	char			*file;
 
-	if (t == NULL || file == NULL)
+	if (t == NULL || uri == NULL)
 		return;
 
-	if (g_str_has_prefix(file, "file://"))
-		file += strlen("file://");
+	if (g_str_has_prefix(uri, "file://"))
+		file = g_filename_from_uri(uri, NULL, NULL);
+	else
+		file = g_strdup(uri);
+
+	if (file == NULL)
+		return;
+
 	DNPRINTF(XT_D_DOWNLOAD, "%s: loading %s\n", __func__, file);
 
 	if (!stat(file, &sb)) {
@@ -3861,10 +3881,12 @@ set_favicon_from_file(struct tab *t, char *file)
 			    __func__, file);
 			unlink(file);
 			/* no need to set icon to default here */
-			return;
+			goto done;
 		}
 	}
 	xt_icon_from_file(t, file);
+done:
+	g_free(file);
 }
 
 void
@@ -4002,7 +4024,8 @@ notify_icon_loaded_cb(WebKitWebView *wv, gchar *uri, struct tab *t)
 		return;
 
 	/* we have to free icon_dest_uri later */
-	t->icon_dest_uri = g_strdup_printf("file://%s", file);
+	if ((t->icon_dest_uri = g_filename_to_uri(file, NULL, NULL)) == NULL)
+		return;
 	webkit_download_set_destination_uri(t->icon_download,
 	    t->icon_dest_uri);
 
@@ -4908,15 +4931,26 @@ run_mimehandler(struct tab *t, char *mime_type, WebKitNetworkRequest *request)
 }
 
 char *
-get_mime_type(const char *file)
+get_mime_type(const char *uri)
 {
-	const gchar		*m;
-	char			*mime_type = NULL;
 	GFileInfo		*fi;
 	GFile			*gf;
+	const gchar		*m;
+	char			*mime_type = NULL;
+	char			*file;
 
-	if (g_str_has_prefix(file, "file://"))
-		file += strlen("file://");
+	if (uri == NULL) {
+		show_oops(NULL, "%s: invalid parameters", __func__);
+		return (NULL);
+	}
+
+	if (g_str_has_prefix(uri, "file://"))
+		file = g_filename_from_uri(uri, NULL, NULL);
+	else
+		file = g_strdup(uri);
+
+	if (file == NULL)
+		return (NULL);
 
 	gf = g_file_new_for_path(file);
 	fi = g_file_query_info(gf, G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE, 0,
@@ -4925,6 +4959,7 @@ get_mime_type(const char *file)
 		mime_type = g_strdup(m);
 	g_object_unref(fi);
 	g_object_unref(gf);
+	g_free(file);
 
 	return (mime_type);
 }
@@ -4955,7 +4990,8 @@ download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
     WebKitWebView *wv)
 {
 	WebKitDownloadStatus	status;
-	const char		*file = NULL;
+	const char		*uri;
+	char			*file = NULL;
 	char			*mime = NULL;
 
 	if (download == NULL)
@@ -4967,16 +5003,24 @@ download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
 	if (download_notifications)
 		show_oops(NULL, "Download of '%s' finished",
 		    basename((char *)webkit_download_get_destination_uri(download)));
-	file = webkit_download_get_destination_uri(download);
-	if (file == NULL)
+	uri = webkit_download_get_destination_uri(download);
+	if (uri == NULL)
 		return;
-	mime = get_mime_type(file);
+	mime = get_mime_type(uri);
 	if (mime == NULL)
 		return;
 
-	if (g_str_has_prefix(file, "file://"))
-		file += strlen("file://");
-	run_download_mimehandler((char *)mime, (char *)file);
+	if (g_str_has_prefix(uri, "file://"))
+		file = g_filename_from_uri(uri, NULL, NULL);
+	else
+		file = g_strdup(uri);
+
+	if (file == NULL)
+		goto done;
+
+	run_download_mimehandler((char *)mime, file);
+
+done:
 	g_free(mime);
 }
 
@@ -5015,6 +5059,7 @@ download_start(struct tab *t, struct download *d, int flag)
 	const gchar		*suggested_name;
 	gchar			*filename = NULL;
 	char			*uri = NULL;
+	char			*path;
 	int			ret = TRUE;
 	int			i;
 
@@ -5039,17 +5084,20 @@ download_start(struct tab *t, struct download *d, int flag)
 			filename = g_strdup_printf("%d%s", i, suggested_name);
 		}
 #ifdef __MINGW32__
+		/* XXX using urls doesn't work properly in windows? */
 		uri = g_strdup_printf("%s\\%s", download_dir, i ?
 		    filename : suggested_name);
 #else
-		uri = g_strdup_printf("file://%s/%s", download_dir, i ?
+		path = g_strdup_printf("%s" PS "%s", download_dir, i ?
 		    filename : suggested_name);
+		if ((uri = g_filename_to_uri(path, NULL, NULL)) == NULL)
+			break;	/* XXX */
 #endif
 		i++;
 #ifdef __MINGW32__
 	} while (!stat(uri, &sb));
 #else
-	} while (!stat(uri + strlen("file://"), &sb)); /* XXX is the + strlen right? */
+	} while (!stat(path, &sb));
 #endif
 
 	DNPRINTF(XT_D_DOWNLOAD, "%s: tab %d filename %s "
@@ -5096,7 +5144,8 @@ download_start(struct tab *t, struct download *d, int flag)
 
 	if (uri)
 		g_free(uri);
-
+	if (path)
+		g_free(path);
 	if (filename)
 		g_free(filename);
 
@@ -8035,6 +8084,7 @@ main(int argc, char **argv)
 	char			file[PATH_MAX];
 	char			sodversion[32];
 	char			*env_proxy = NULL;
+	char			*path;
 	FILE			*f = NULL;
 	struct karg		a;
 
@@ -8173,7 +8223,9 @@ main(int argc, char **argv)
 	spell_check_languages = g_strdup(XT_DS_SPELL_CHECK_LANGUAGES);
 	encoding = g_strdup(XT_DS_ENCODING);
 	spell_check_languages = g_strdup(XT_DS_SPELL_CHECK_LANGUAGES);
-	userstyle = g_strdup_printf("file://%s" PS "style.css", resource_dir);
+	path = g_strdup_printf("%s" PS "style.css", resource_dir);
+	userstyle = g_filename_to_uri(path, NULL, NULL);
+	g_free(path);
 	stylesheet = g_strdup(userstyle);
 
 	/* set statically allocated (struct special) settings */
