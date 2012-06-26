@@ -2544,7 +2544,7 @@ tabaction(struct tab *t, struct karg *args)
 	int			rv = XT_CB_HANDLED;
 	char			*url = args->s;
 	struct undo		*u;
-	struct tab		*tt;
+	struct tab		*tt, *tv;
 
 	DNPRINTF(XT_D_TAB, "tabaction: %p %d\n", t, args->i);
 
@@ -2573,6 +2573,11 @@ tabaction(struct tab *t, struct karg *args)
 			delete_tab(t);
 		else
 			quit(t, args);
+		break;
+	case XT_TAB_ONLY:
+		TAILQ_FOREACH_SAFE(tt, &tabs, entry, tv)
+			if (t != tt)
+				delete_tab(tt);
 		break;
 	case XT_TAB_OPEN:
 		if (strlen(url) > 0)
@@ -3316,6 +3321,7 @@ struct cmd {
 	{ "tabnew",		0,	tabaction,		XT_TAB_NEW,		XT_PREFIX | XT_URLARG },
 	{ "tabnext",		0,	movetab,		XT_TAB_NEXT,		XT_PREFIX | XT_INTARG},
 	{ "tabnextstyle",	0,	tabaction,		XT_TAB_NEXTSTYLE,	0 },
+	{ "tabonly",		0,	tabaction,		XT_TAB_ONLY,		0 },
 	{ "tabprevious",	0,	movetab,		XT_TAB_PREV,		XT_PREFIX | XT_INTARG},
 	{ "tabrewind",		0,	movetab,		XT_TAB_FIRST,		0 },
 	{ "tabshow",		0,	tabaction,		XT_TAB_SHOW,		0 },
