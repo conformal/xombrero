@@ -80,6 +80,7 @@
 /* XTP history actions */
 #define XT_XTP_HL_LIST		(1)
 #define XT_XTP_HL_REMOVE	(2)
+#define XT_XTP_HL_REMOVE_ALL	(3)
 
 /* XTP cookie actions */
 #define XT_XTP_CL_LIST		(1)
@@ -544,14 +545,10 @@ xtp_handle_dl(struct tab *t, uint8_t cmd, int id)
 	xtp_page_dl(t, NULL);
 }
 
-/*
- * Actions on history, only does one thing for now, but
- * we provide the function for future actions
- */
 void
 xtp_handle_hl(struct tab *t, uint8_t cmd, int id)
 {
-	struct history		*h, *next;
+	struct history		*h, *next, *ht;
 	int			i = 1;
 
 	switch (cmd) {
@@ -568,6 +565,10 @@ xtp_handle_hl(struct tab *t, uint8_t cmd, int id)
 			}
 			i++;
 		}
+		break;
+	case XT_XTP_HL_REMOVE_ALL:
+		RB_FOREACH_SAFE(h, history_list, &hl, ht)
+			RB_REMOVE(history_list, &hl, h);
 		break;
 	case XT_XTP_HL_LIST:
 		/* Nothing - just xtp_page_hl() below */
@@ -1638,8 +1639,12 @@ xtp_page_hl(struct tab *t, struct karg *args)
 		generate_xtp_session_key(&hl_session_key);
 
 	/* body */
-	body = g_strdup_printf("<table style='table-layout:fixed'><tr>"
-	    "<th>URI</th><th>Title</th><th>Last visited</th><th style='width: 40px'>Rm</th></tr>\n");
+	body = g_strdup_printf("<div align=\"center\"><a href=\"%s%d/%s/%d\">"
+	    "[ Remove All ]</a></div>"
+	    "<table style='table-layout:fixed'><tr>"
+	    "<th>URI</th><th>Title</th><th>Last visited</th>"
+	    "<th style='width: 40px'>Rm</th></tr>\n",
+	    XT_XTP_STR, XT_XTP_HL, hl_session_key, XT_XTP_HL_REMOVE_ALL);
 
 	RB_FOREACH_REVERSE(h, history_list, &hl) {
 		tmp = body;
@@ -1662,7 +1667,7 @@ xtp_page_hl(struct tab *t, struct karg *args)
 	if (i == 1) {
 		tmp = body;
 		body = g_strdup_printf("%s\n<tr><td style='text-align:center'"
-		    "colspan='3'>No History</td></tr>\n", body);
+		    "colspan='4'>No History</td></tr>\n", body);
 		g_free(tmp);
 	}
 
