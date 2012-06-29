@@ -3993,9 +3993,21 @@ notify_icon_loaded_cb(WebKitWebView *wv, gchar *uri, struct tab *t)
 
 #if WEBKIT_CHECK_VERSION(1, 4, 0)
 	/* take icon from WebKitIconDatabase */
-	GdkPixbuf		*pb;
+	GdkPixbuf		*pb = NULL;
 
-	pb = webkit_web_view_get_icon_pixbuf(wv);
+/* webkit_web_view_get_icon_pixbuf is depreciated in 1.8 */
+#if WEBKIT_CHECK_VERSION(1, 8, 0)
+	/*
+	 * If the page was not loaded (for example, via ssl_strict_certs), do
+	 * not attempt to get the webview's pixbuf.  This prevents a CRITICAL
+	 * glib warning.
+	 */
+	if (wv && webkit_web_view_get_uri(wv))
+		pb = webkit_web_view_try_get_favicon_pixbuf(wv, 0, 0);
+#else
+	if (wv && webkit_web_view_get_uri(wv))
+		pb = webkit_web_view_get_icon_pixbuf(wv);
+#endif
 	if (pb) {
 		xt_icon_from_pixbuf(t, pb);
 		g_object_unref(pb);
