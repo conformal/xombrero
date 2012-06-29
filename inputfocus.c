@@ -45,7 +45,9 @@ focus_input_document(struct tab *t, WebKitDOMDocument *doc)
 			continue;
 		}
 		webkit_dom_element_focus((WebKitDOMElement*)in);
+#if WEBKIT_CHECK_VERSION(1, 8, 0)
 		webkit_dom_html_element_click((WebKitDOMHTMLElement*)in);
+#endif
 		g_free(es);
 		rv = 1; /* found */
 		goto done;
@@ -61,7 +63,9 @@ focus_input_document(struct tab *t, WebKitDOMDocument *doc)
 			continue;
 		}
 		webkit_dom_element_focus((WebKitDOMElement*)ta);
-		webkit_dom_html_element_click((WebKitDOMHTMLElement*)in);
+#if WEBKIT_CHECK_VERSION(1, 8, 0)
+		webkit_dom_html_element_click((WebKitDOMHTMLElement*)ta);
+#endif
 		rv = 1; /* found */
 		goto done;
 	}
@@ -129,7 +133,9 @@ focus_input(struct tab *t)
 	if (WEBKIT_DOM_IS_HTML_INPUT_ELEMENT((WebKitDOMNode *)t->active) ||
 	    WEBKIT_DOM_IS_HTML_TEXT_AREA_ELEMENT((WebKitDOMNode *)t->active)) {
 		webkit_dom_element_focus((WebKitDOMElement*)t->active);
+#if WEBKIT_CHECK_VERSION(1, 8, 0)
 		webkit_dom_html_element_click((WebKitDOMHTMLElement*)t->active);
+#endif
 		rv = 1; /* found */
 		goto done;
 	}
