@@ -8432,6 +8432,8 @@ main(int argc, char **argv)
 	g_object_set(session, "max-conns", max_connections, (char *)NULL);
 	g_object_set(session, "max-conns-per-host", max_host_connections,
 	    (char *)NULL);
+	g_object_set(session, SOUP_SESSION_SSL_STRICT, ssl_strict_certs,
+	    (char *)NULL);
 
 	g_signal_connect(session, "request-queued", G_CALLBACK(session_rq_cb),
 	    NULL);
