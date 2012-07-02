@@ -6664,6 +6664,16 @@ setup_webkit(struct tab *t)
 	    "full-content-zoom", TRUE, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
 	    "auto-load-images", auto_load_images, (char *)NULL);
+	if (is_g_object_setting(G_OBJECT(t->settings),
+	    "enable-display-of-insecure-content"))
+		g_object_set(G_OBJECT(t->settings),
+		    "enable-display-of-insecure-content",
+		    allow_insecure_content, (char *)NULL);
+	if (is_g_object_setting(G_OBJECT(t->settings),
+	    "enable-running-of-insecure-content"))
+		g_object_set(G_OBJECT(t->settings),
+		    "enable-running-of-insecure-content",
+		    allow_insecure_scripts, (char *)NULL);
 
 	webkit_web_view_set_settings(t->wv, t->settings);
 }

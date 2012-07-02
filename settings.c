@@ -109,6 +109,8 @@ int		referer_mode = XT_DS_REFERER_MODE;
 char		*referer_custom = NULL;
 int		download_notifications = XT_DS_DOWNLOAD_NOTIFICATIONS;
 int		warn_cert_changes = 0;
+int		allow_insecure_content = XT_DS_ALLOW_INSECURE_CONTENT;
+int		allow_insecure_scripts = XT_DS_ALLOW_INSECURE_SCRIPTS;
 
 char		*cmd_font_name = NULL;	/* these are all set at startup */
 char		*oops_font_name = NULL;
@@ -199,6 +201,8 @@ int		set_userstyle_global(char *);
 int		set_external_editor(char *);
 int		set_xterm_workaround(char *);
 int		set_warn_cert_changes(char *);
+int		set_allow_insecure_content(char *);
+int		set_allow_insecure_scripts(char *);
 
 void		walk_mime_type(struct settings *, void (*)(struct settings *,
 		    char *, void *), void *);
@@ -456,6 +460,8 @@ struct settings		rs[] = {
 	{ "download_notifications",	XT_S_INT, 0,		&download_notifications, NULL, NULL, NULL, set_download_notifications },
 	{ "include_config",		XT_S_STR, 0, NULL,	&include_config, NULL, NULL, NULL },
 	{ "warn_cert_changes",		XT_S_INT, 0,		&warn_cert_changes, NULL, NULL, NULL, set_warn_cert_changes },
+	{ "allow_insecure_content",	XT_S_INT, 0,		&allow_insecure_content, NULL, NULL, NULL, set_allow_insecure_content },
+	{ "allow_insecure_scripts",	XT_S_INT, 0,		&allow_insecure_scripts, NULL, NULL, NULL, set_allow_insecure_scripts },
 
 	/* font settings */
 	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL, NULL, set_cmd_font },
@@ -734,6 +740,8 @@ set_browser_mode(struct settings *s, char *val)
 		enable_js_whitelist = 1;
 		enable_localstorage = 0;
 		referer_mode = XT_REFERER_SAME_DOMAIN;
+		allow_insecure_content = 0;
+		allow_insecure_scripts = 0;
 	} else if (!strcmp(val, "normal")) {
 		browser_mode = XT_BM_NORMAL;
 		allow_volatile_cookies = 0;
@@ -749,6 +757,8 @@ set_browser_mode(struct settings *s, char *val)
 		enable_js_whitelist = 0;
 		enable_localstorage = 1;
 		referer_mode = XT_REFERER_ALWAYS;
+		allow_insecure_content = 1;
+		allow_insecure_scripts = 1;
 	} else if (!strcmp(val, "kiosk")) {
 		browser_mode = XT_BM_KIOSK;
 		allow_volatile_cookies = 0;
@@ -764,6 +774,8 @@ set_browser_mode(struct settings *s, char *val)
 		enable_js_whitelist = 0;
 		enable_localstorage = 1;
 		referer_mode = XT_REFERER_ALWAYS;
+		allow_insecure_content = 1;
+		allow_insecure_scripts = 1;
 		show_tabs = 0;
 		tabless = 1;
 	} else
@@ -1497,6 +1509,58 @@ walk_cmd_alias(struct settings *s,
 		snprintf(buf, sizeof buf, "%s --> %s", c->alias, c->cmd);
 		cb(s, buf, cb_args);
 	}
+}
+
+int
+set_allow_insecure_content(char *value)
+{
+	struct tab		*t;
+	int			tmp;
+	const char		*errstr;
+
+	if (value == NULL || strlen(value) == 0)
+		allow_insecure_content = XT_DS_ALLOW_INSECURE_CONTENT;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		allow_insecure_content = tmp;
+	}
+	TAILQ_FOREACH(t, &tabs, entry)
+		if (is_g_object_setting(G_OBJECT(t->settings),
+		    "enable-display-of-insecure-content")) {
+			g_object_set(G_OBJECT(t->settings),
+			    "enable-display-of-insecure-content",
+			    allow_insecure_content, (char *)NULL);
+			webkit_web_view_set_settings(t->wv, t->settings);
+		}
+	return (0);
+}
+
+int
+set_allow_insecure_scripts(char *value)
+{
+	struct tab		*t;
+	int			tmp;
+	const char		*errstr;
+
+	if (value == NULL || strlen(value) == 0)
+		allow_insecure_scripts = XT_DS_ALLOW_INSECURE_SCRIPTS;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		allow_insecure_scripts = tmp;
+	}
+	TAILQ_FOREACH(t, &tabs, entry)
+		if (is_g_object_setting(G_OBJECT(t->settings),
+		    "enable-running-of-insecure-content")) {
+			g_object_set(G_OBJECT(t->settings),
+			    "enable-running-of-insecure-content",
+			    allow_insecure_scripts, (char *)NULL);
+			webkit_web_view_set_settings(t->wv, t->settings);
+		}
+	return (0);
 }
 
 int

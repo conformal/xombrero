@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: June 28 2012 $
+.Dd $Mdocdate: July 02 2012 $
 .Dt XOMBRERO 1
 .Os
 .Sh NAME
@@ -979,6 +979,15 @@ the alias on the address bar is substituted.
 For example, if g,http://www.google.com/search?q=%s is defined as an alias,
 then the URL http://www.google.com/search?q=foo is loaded when navigating to
 "g foo".
+.It Cm allow_insecure_content
+If set, all content referenced by a page will be loaded.
+If unset, encrypted pages will refuse to load content that is linked
+from an insecure location.
+.It Cm allow_insecure_scripts
+If set, all scripts referenced by a page will be loaded and run using
+the current javascript policy.
+If unset, encrypted pages will refuse to run scripts that are linked
+from an insecure location.
 .It Cm allow_volatile_cookies
 If set cookies are stored in the session cache but will be discarded once
 .Nm
@@ -1021,6 +1030,8 @@ items.
 If a domain does not appear in the whitelists
 .Nm
 disallows cookies, Java Script and plugin execution.
+If insecure web content or scripts are referenced by a secure website,
+they will be blocked from loading or running.
 .Pp
 In
 .Pa kiosk

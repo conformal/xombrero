@@ -639,6 +639,8 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_DS_OOPS_FONT_NAME	("monospace normal 9")
 #define XT_DS_STATUSBAR_FONT_NAME	("monospace normal 9")
 #define XT_DS_TABBAR_FONT_NAME	("monospace normal 9")
+#define XT_DS_ALLOW_INSECURE_CONTENT	(TRUE)
+#define XT_DS_ALLOW_INSECURE_SCRIPTS	(TRUE)
 
 
 /* actions */
@@ -728,6 +730,7 @@ struct tab	*get_current_tab(void);
 int		resizetab(struct tab *, struct karg *);
 int		cert_cmd(struct tab *, struct karg *);
 void		focus_webview(struct tab *);
+int		is_g_object_setting(GObject *, char *);
 
 #define		XT_DL_START	(0)
 #define		XT_DL_RESTART	(1)
@@ -814,6 +817,8 @@ extern char	*referer_custom;
 extern int	download_notifications;
 extern int	warn_cert_changes;
 extern regex_t	url_re;
+extern int	allow_insecure_content;
+extern int	allow_insecure_scripts;
 
 /* globals */
 extern void		(*os_init)(void);
