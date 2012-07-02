@@ -394,7 +394,11 @@ struct special		s_userstyle = {
 };
 
 struct settings		rs[] = {
+	{ "allow_insecure_content",	XT_S_INT, 0,		&allow_insecure_content, NULL, NULL, NULL, set_allow_insecure_content },
+	{ "allow_insecure_scripts",	XT_S_INT, 0,		&allow_insecure_scripts, NULL, NULL, NULL, set_allow_insecure_scripts },
 	{ "allow_volatile_cookies",	XT_S_INT, 0,		&allow_volatile_cookies, NULL, NULL, NULL, NULL},
+	{ "append_next",		XT_S_INT, 0,		&append_next, NULL, NULL, NULL, set_append_next },
+	{ "auto_load_images",		XT_S_INT, 0,		&auto_load_images, NULL, NULL, NULL, set_auto_load_images },
 	{ "autofocus_onload",		XT_S_INT, 0,		&autofocus_onload, NULL, NULL, NULL, set_autofocus_onload },
 	{ "browser_mode",		XT_S_INT, 0, NULL, NULL,&s_browser_mode, NULL, NULL },
 	{ "gui_mode",			XT_S_INT, 0, NULL, NULL,&s_gui_mode, NULL, NULL },
@@ -406,8 +410,12 @@ struct settings		rs[] = {
 	{ "default_script",		XT_S_STR, 0, NULL, NULL,&s_default_script, NULL, set_default_script_rt },
 	{ "download_dir",		XT_S_STR, 0, NULL, NULL,&s_download_dir, NULL, NULL },
 	{ "download_mode",		XT_S_STR, 0, NULL, NULL,&s_download_mode, NULL, set_download_mode_rt },
+	{ "download_notifications",	XT_S_INT, 0,		&download_notifications, NULL, NULL, NULL, set_download_notifications },
 	{ "edit_mode",			XT_S_STR, 0, NULL, NULL,&s_edit_mode, NULL, NULL},
+	{ "enable_autoscroll",		XT_S_INT, 0,		&enable_autoscroll, NULL, NULL, NULL, set_enable_autoscroll },
 	{ "enable_cookie_whitelist",	XT_S_INT, 0,		&enable_cookie_whitelist, NULL, NULL, NULL, set_enable_cookie_whitelist },
+	{ "enable_favicon_entry",	XT_S_INT, 0,		&enable_favicon_entry, NULL, NULL, NULL, set_enable_favicon_entry },
+	{ "enable_favicon_tabs",	XT_S_INT, 0,		&enable_favicon_tabs, NULL, NULL, NULL, set_enable_favicon_tabs },
 	{ "enable_js_whitelist",	XT_S_INT, 0,		&enable_js_whitelist, NULL, NULL, NULL, set_enable_js_whitelist },
 	{ "enable_plugin_whitelist",	XT_S_INT, 0,		&enable_plugin_whitelist, NULL, NULL, NULL, set_enable_plugin_whitelist },
 	{ "enable_localstorage",	XT_S_INT, 0,		&enable_localstorage, NULL, NULL, NULL, set_enable_localstorage },
@@ -420,13 +428,16 @@ struct settings		rs[] = {
 	{ "fancy_bar",			XT_S_INT, XT_SF_RESTART,&fancy_bar, NULL, NULL, NULL, set_fancy_bar },
 	{ "guess_search",		XT_S_INT, 0,		&guess_search, NULL, NULL, NULL, set_guess_search },
 	{ "history_autosave",		XT_S_INT, 0,		&history_autosave, NULL, NULL, NULL, NULL },
+	{ "home",			XT_S_STR, 0, NULL,	&home, NULL, NULL, set_home },
 	{ "http_proxy",			XT_S_STR, 0, NULL,	&http_proxy, NULL, NULL, set_http_proxy },
 	{ "http_proxy_starts_enabled",	XT_S_INT, 0,		&http_proxy_starts_enabled, NULL, NULL, NULL, NULL },
 	{ "icon_size",			XT_S_INT, 0,		&icon_size, NULL, NULL, NULL, NULL },
+	{ "include_config",		XT_S_STR, 0, NULL,	&include_config, NULL, NULL, NULL },
 	{ "enable_js_autorun",		XT_S_INT, 0,		&enable_js_autorun, NULL, NULL, NULL, set_enable_js_autorun },
 	{ "max_connections",		XT_S_INT, XT_SF_RESTART,&max_connections, NULL, NULL, NULL, NULL },
 	{ "max_host_connections",	XT_S_INT, XT_SF_RESTART,&max_host_connections, NULL, NULL, NULL, NULL },
 	{ "read_only_cookies",		XT_S_INT, 0,		&read_only_cookies, NULL, NULL, NULL, set_read_only_cookies },
+	{ "referer",			XT_S_STR, 0, NULL, NULL,&s_referer, NULL, set_referer_rt },
 	{ "refresh_interval",		XT_S_INT, 0,		&refresh_interval, NULL, NULL, NULL, set_refresh_interval },
 	{ "resource_dir",		XT_S_STR, 0, NULL,	&resource_dir, NULL, NULL, NULL },
 	{ "search_string",		XT_S_STR, 0, NULL,	&search_string, NULL, NULL, set_search_string },
@@ -453,26 +464,13 @@ struct settings		rs[] = {
 	{ "window_maximize",		XT_S_INT, 0,		&window_maximize, NULL, NULL, NULL, NULL },
 	{ "work_dir",			XT_S_STR, 0, NULL, NULL,&s_work_dir, NULL, NULL },
 	{ "xterm_workaround",		XT_S_INT, 0,		&xterm_workaround, NULL, NULL, NULL, set_xterm_workaround },
-	{ "auto_load_images",		XT_S_INT, 0,		&auto_load_images, NULL, NULL, NULL, set_auto_load_images },
-	{ "enable_favicon_entry",	XT_S_INT, 0,		&enable_favicon_entry, NULL, NULL, NULL, set_enable_favicon_entry },
-	{ "enable_favicon_tabs",	XT_S_INT, 0,		&enable_favicon_tabs, NULL, NULL, NULL, set_enable_favicon_tabs },
-	{ "referer",			XT_S_STR, 0, NULL, NULL,&s_referer, NULL, set_referer_rt },
-	{ "download_notifications",	XT_S_INT, 0,		&download_notifications, NULL, NULL, NULL, set_download_notifications },
-	{ "include_config",		XT_S_STR, 0, NULL,	&include_config, NULL, NULL, NULL },
 	{ "warn_cert_changes",		XT_S_INT, 0,		&warn_cert_changes, NULL, NULL, NULL, set_warn_cert_changes },
-	{ "allow_insecure_content",	XT_S_INT, 0,		&allow_insecure_content, NULL, NULL, NULL, set_allow_insecure_content },
-	{ "allow_insecure_scripts",	XT_S_INT, 0,		&allow_insecure_scripts, NULL, NULL, NULL, set_allow_insecure_scripts },
 
 	/* font settings */
 	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL, NULL, set_cmd_font },
 	{ "oops_font",			XT_S_STR, 0, NULL, &oops_font_name, NULL, NULL, set_oops_font },
 	{ "statusbar_font",		XT_S_STR, 0, NULL, &statusbar_font_name, NULL, NULL, set_statusbar_font },
 	{ "tabbar_font",		XT_S_STR, 0, NULL, &tabbar_font_name, NULL, NULL, set_tabbar_font },
-
-	/* runtime settings */
-	{ "append_next",		XT_S_INT, 0,		&append_next, NULL, NULL, NULL, set_append_next },
-	{ "enable_autoscroll",		XT_S_INT, 0,		&enable_autoscroll, NULL, NULL, NULL, set_enable_autoscroll },
-	{ "home",			XT_S_STR, 0, NULL,	&home, NULL, NULL, set_home },
 
 	/* special settings */
 	{ "alias",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_alias, NULL, NULL },
