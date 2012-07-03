@@ -749,7 +749,7 @@ guess_url_type(char *url_in)
 	struct stat		sb;
 	char			*url_out = NULL, *enc_search = NULL;
 	int			i;
-	char			*cwd, *path;
+	char			*cwd, *path = NULL;
 	char			**sv;
 
 
