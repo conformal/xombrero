@@ -159,6 +159,9 @@ THE SOFTWARE.
 #define XT_D_VISITED		0x10000
 #define XT_D_HISTORY		0x20000
 #define XT_D_MISC		0x40000
+#define XT_D_CUSTOM_URI		0x80000
+#define XT_D_CMD_ALIAS		0x100000
+#define XT_D_SEARCH		0x200000
 extern uint32_t	swm_debug;
 #else
 #define DPRINTF(x...)
