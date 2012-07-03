@@ -16,5 +16,10 @@
 
 #include <xombrero.h>
 
-/* put this here for now, move away if unix needs something special */
-void	(*os_init)(void);
+void
+init_unix(void)
+{
+	resource_dir = g_strdup("/usr/local/share/xombrero/");
+}
+
+void	(*os_init)(void) = init_unix;

@@ -8265,7 +8265,6 @@ main(int argc, char **argv)
 	/* set default dynamic string settings */
 	home = g_strdup(XT_DS_HOME);
 	search_string = g_strdup(XT_DS_SEARCH_STRING);
-	resource_dir = g_strdup("/usr/local/share/xombrero/");
 	strlcpy(runtime_settings, "runtime", sizeof runtime_settings);
 	cmd_font_name = g_strdup(XT_DS_CMD_FONT_NAME);
 	oops_font_name = g_strdup(XT_DS_OOPS_FONT_NAME);
