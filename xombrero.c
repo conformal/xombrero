@@ -1440,8 +1440,8 @@ run_page_script(struct tab *t, struct karg *args)
 		show_oops(t, "%s: could not spawn process", __func__);
 		return (1);
 	}
+
 	return (0);
-	
 }
 
 int
@@ -4949,6 +4949,7 @@ run_mimehandler(struct tab *t, char *mime_type, WebKitNetworkRequest *request)
 {
 	struct mime_type	*m;
 	char			*sv[3];
+	GError			*gerr = NULL;
 
 	m = find_mime_type(mime_type);
 	if (m == NULL)
@@ -4960,9 +4961,10 @@ run_mimehandler(struct tab *t, char *mime_type, WebKitNetworkRequest *request)
 	sv[1] = (char *)webkit_network_request_get_uri(request);
 	sv[2] = NULL;
 	if (!g_spawn_async(NULL, sv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
-	    NULL, NULL))
+	    NULL, &gerr))
 		/* No show_oops here to handle "donothing" example in config */
-		warnx("%s: could not spawn process", __func__);
+		warnx("%s: could not spawn process (%s)", __func__,
+		    gerr ? gerr->message : "N/A");
 	return (0);
 }
 
