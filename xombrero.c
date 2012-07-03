@@ -1400,7 +1400,7 @@ expand_tilde(char *path, size_t len, const char *s)
 	}
 
 	++s;
-	for (i = 0; s[i] != '/' && s[i] != '\0'; ++i)
+	for (i = 0; s[i] != PSC && s[i] != '\0'; ++i)
 		user[i] = s[i];
 	user[i] = '\0';
 	s = &s[i];
@@ -8280,10 +8280,12 @@ main(int argc, char **argv)
 	stylesheet = g_strdup(userstyle);
 
 	/* set statically allocated (struct special) settings */
-	expand_tilde(default_script, sizeof default_script,
-	    XT_DS_DEFAULT_SCRIPT);
-	expand_tilde(ssl_ca_file, sizeof ssl_ca_file,
-	    XT_DS_SSL_CA_FILE);
+	if (strlen(default_script) == 0)
+		expand_tilde(default_script, sizeof default_script,
+		    XT_DS_DEFAULT_SCRIPT);
+	if (strlen(ssl_ca_file) == 0)
+		expand_tilde(ssl_ca_file, sizeof ssl_ca_file,
+		    XT_DS_SSL_CA_FILE);
 
 	/* soup session */
 	session = webkit_get_default_session();

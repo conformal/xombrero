@@ -181,6 +181,7 @@ extern uint32_t	swm_debug;
 /* Path Separator */
 #ifndef	PS
 #define PS			"/"
+#define PSC			'/'
 #endif
 
 struct tab {
