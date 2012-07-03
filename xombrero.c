@@ -787,10 +787,11 @@ guess_url_type(char *url_in)
 			url_out = g_filename_to_uri(url_in, NULL, NULL);
 		else {
 			cwd = malloc(PATH_MAX);
-			if (getcwd(cwd, PATH_MAX) != NULL)
+			if (getcwd(cwd, PATH_MAX) != NULL) {
 				path = g_strdup_printf("%s" PS "%s", cwd,
 				    url_in);
-			url_out = g_filename_to_uri(path, NULL, NULL);
+				url_out = g_filename_to_uri(path, NULL, NULL);
+			}
 			free(cwd);
 			if (path)
 				free(path);
