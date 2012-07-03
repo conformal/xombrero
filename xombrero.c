@@ -5095,7 +5095,7 @@ download_start(struct tab *t, struct download *d, int flag)
 	const gchar		*suggested_name;
 	gchar			*filename = NULL;
 	char			*uri = NULL;
-	char			*path;
+	char			*path = NULL;
 	int			ret = TRUE;
 	int			i;
 
