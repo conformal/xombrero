@@ -488,6 +488,10 @@ void
 xtp_handle_dl(struct tab *t, uint8_t cmd, int id)
 {
 	struct download		find, *d = NULL;
+#ifndef	__MINGW32__
+	char			*file = NULL;
+	const char		*uri = NULL;
+#endif
 
 	DNPRINTF(XT_D_DOWNLOAD, "download control: cmd %d, id %d\n", cmd, id);
 
@@ -521,9 +525,6 @@ xtp_handle_dl(struct tab *t, uint8_t cmd, int id)
 		/* XXX uri's aren't handled properly on windows? */
 		unlink(webkit_download_get_destination_uri(d->download));
 #else
-		char *file = NULL;
-		const char *uri = NULL;
-
 		uri = webkit_download_get_destination_uri(d->download);
 		if ((file = g_filename_from_uri(uri, NULL, NULL)) != NULL) {
 			unlink(file);
