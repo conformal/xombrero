@@ -44,7 +44,7 @@ if ! type git >/dev/null 2>&1; then
 fi
 
 # verify the git repository is on the master branch
-BRANCH=$(git branch | grep '\*' | cut -c3-)
+BRANCH=$(git -c color.ui=no branch | grep '\*' | cut -c3-)
 if [ "$BRANCH" != "master" ]; then
 	report_err "git repository must be on the master branch"
 fi
