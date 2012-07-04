@@ -5169,9 +5169,8 @@ download_start(struct tab *t, struct download *d, int flag)
 
 		/* get from history */
 		g_object_ref(d->download);
-		if (download_notifications)
-			show_oops(t, "Download of '%s' started...",
-			    basename((char *)webkit_download_get_destination_uri(d->download)));
+		show_oops(t, "Download of '%s' started...",
+		    basename((char *)webkit_download_get_destination_uri(d->download)));
 	}
 
 	if (flag != XT_DL_START)
