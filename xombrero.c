@@ -1437,9 +1437,11 @@ run_page_script(struct tab *t, struct karg *args)
 	sv[2] = NULL;
 	if (!g_spawn_async(NULL, sv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
 	    NULL, NULL)) {
-		show_oops(t, "%s: could not spawn process", __func__);
+		show_oops(t, "%s: could not spawn process: %s %s", __func__,
+		    sv[0], sv[1]);
 		return (1);
-	}
+	} else
+		show_oops(t, "running: %s %s", sv[0], sv[1]);
 
 	return (0);
 }
@@ -5017,7 +5019,8 @@ run_download_mimehandler(char *mime_type, char *file)
 	sv[2] = NULL;
 	if (!g_spawn_async(NULL, sv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
 	    NULL, NULL)) {
-		show_oops(NULL, "%s: could not spawn process");
+		show_oops(NULL, "%s: could not spawn process: %s %s", __func__,
+		    sv[0], sv[1]);
 		return (1);
 	}
 	return (0);
