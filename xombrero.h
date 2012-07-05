@@ -288,6 +288,7 @@ struct tab {
 
 	/* focused text entry */
 	WebKitDOMElement	*active;
+	char			*active_text;
 };
 TAILQ_HEAD(tab_list, tab);
 

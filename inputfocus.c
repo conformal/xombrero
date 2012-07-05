@@ -239,8 +239,11 @@ dom_is_input(struct tab *t, char **text)
 		aa = (WebKitDOMHTMLElement*)a;
 		if (WEBKIT_DOM_IS_HTML_ELEMENT(aa) &&
 		    webkit_dom_html_element_get_is_content_editable(aa)) {
-			t->active = a;
+			if (t->active == NULL)
+				t->active = a;
 			*text = get_element_text((WebKitDOMNode *)a);
+			if (t->active_text == NULL)
+				t->active_text = g_strdup(*text);
 			return (1);
 		}
 		break;
@@ -251,8 +254,11 @@ dom_is_input(struct tab *t, char **text)
 
 	if (WEBKIT_DOM_IS_HTML_INPUT_ELEMENT((WebKitDOMNode *)a) ||
 	    WEBKIT_DOM_IS_HTML_TEXT_AREA_ELEMENT((WebKitDOMNode *)a)) {
-		t->active = a;
+		if (t->active == NULL)
+			t->active = a;
 		*text = get_element_text((WebKitDOMNode *)a);
+		if (t->active_text == NULL)
+			t->active_text = g_strdup(*text);
 		return (1);
 	}
 
@@ -302,7 +308,7 @@ input_autofocus(struct tab *t)
 			t->mode = XT_MODE_COMMAND;
 	} else {
 		if (dom_is_input(t, &text)) {
-			if (text != NULL && g_strcmp0(text, "")) {
+			if (text != NULL && g_strcmp0(text, t->active_text)) {
 				g_free(text);
 				t->mode = XT_MODE_INSERT;
 			} else if (t->active) {

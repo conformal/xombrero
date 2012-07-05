@@ -4122,6 +4122,10 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 		/* DOM is changing, unreference the previous focused element */
 		t->active = NULL;
+		if (t->active_text) {
+			g_free(t->active_text);
+			t->active_text = NULL;
+		}
 
 		/* take focus if we are visible */
 		focus_webview(t);
