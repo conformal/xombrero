@@ -10,10 +10,17 @@ SRCS= cookie.c inspector.c marco.c about.c whitelist.c settings.c inputfocus.c
 SRCS+= history.c completion.c tldlist.c externaleditor.c unix.c xombrero.c
 CFLAGS+= -O2 -Wall -Wno-format-extra-args -Wunused
 CFLAGS+= -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare ${DEBUG}
+CFLAGS+= -DGTK_DISABLE_SINGLE_INCLUDES -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED -DGSEAL_ENABLE
 CFLAGS+= -I. -I${.CURDIR}
 LDADD= -lutil -lgcrypt
+GTK_VERSION ?= gtk3
+.if ${GTK_VERSION} == "gtk2"
 LIBS+= gtk+-2.0
 LIBS+= webkit-1.0
+.else
+LIBS+= gtk+-3.0
+LIBS+= webkitgtk-3.0
+.endif
 LIBS+= libsoup-2.4
 LIBS+= gnutls
 LIBS+= gthread-2.0
@@ -46,6 +53,7 @@ beforeinstall:
 	install -m 755 -d ${PREFIX}/bin
 	install -m 755 -d ${PREFIX}/man/man1/
 	install -m 755 -d ${PREFIX}/share/xombrero
+	install -m 644 $(.CURDIR)/xombrero.css ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/xombreroicon.png ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/xombreroicon16.png ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/xombreroicon32.png ${PREFIX}/share/xombrero

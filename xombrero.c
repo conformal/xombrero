@@ -118,6 +118,13 @@ TAILQ_HEAD(command_list, command_entry);
 
 #define XT_COLOR_SB_SEPARATOR	"#555555"
 
+/* CSS element names */
+#define XT_CSS_NORMAL		""
+#define XT_CSS_RED		"red"
+#define XT_CSS_YELLOW		"yellow"
+#define XT_CSS_GREEN		"green"
+#define XT_CSS_BLUE		"blue"
+
 #define XT_PROTO_DELIM		"://"
 
 /* actions */
@@ -1093,7 +1100,7 @@ modurl(struct tab *t, struct karg *args)
 	char			*u = NULL;
 
 	/* XXX kind of a bad hack, but oh well */
-	if (GTK_WIDGET_HAS_FOCUS(t->uri_entry)) {
+	if (gtk_widget_has_focus(t->uri_entry)) {
 		if ((uri = gtk_entry_get_text(GTK_ENTRY(t->uri_entry))) &&
 		    (strlen(uri))) {
 			u = g_strdup_printf("www.%s.com", uri);
@@ -1792,6 +1799,18 @@ free_connection_certs(gnutls_x509_crt_t *certs, size_t cert_count)
 	g_free(certs);
 }
 
+#if GTK_CHECK_VERSION(3, 0, 0)
+void
+statusbar_modify_attr(struct tab *t, const char *css_name)
+{
+	gtk_widget_set_name(t->sbe.statusbar, css_name);
+	gtk_widget_set_name(t->sbe.buffercmd, css_name);
+	gtk_widget_set_name(t->sbe.zoom, css_name);
+	gtk_widget_set_name(t->sbe.position, css_name);
+	gtk_widget_set_name(t->sbe.tabs, css_name);
+	gtk_widget_set_name(t->sbe.proxy, css_name);
+}
+#else
 void
 statusbar_modify_attr(struct tab *t, const char *text, const char *base)
 {
@@ -1814,6 +1833,7 @@ statusbar_modify_attr(struct tab *t, const char *text, const char *base)
 	gtk_widget_modify_base(t->sbe.tabs, GTK_STATE_NORMAL, &c_base);
 	gtk_widget_modify_base(t->sbe.proxy, GTK_STATE_NORMAL, &c_base);
 }
+#endif
 
 void
 save_certs(struct tab *t, gnutls_x509_crt_t *certs,
@@ -1976,7 +1996,9 @@ cert_cmd(struct tab *t, struct karg *args)
 	gnutls_session_t	gsession;
 	gnutls_x509_crt_t	*certs;
 	gnutls_certificate_credentials_t xcred;
+#if !GTK_CHECK_VERSION(3, 0, 0)
 	GdkColor		color;
+#endif
 
 	if (t == NULL)
 		return (1);
@@ -2008,9 +2030,14 @@ cert_cmd(struct tab *t, struct karg *args)
 		show_certs(t, certs, cert_count, "Certificate Chain");
 	else if (args->i & XT_SAVE) {
 		save_certs(t, certs, cert_count, domain, certs_dir);
+#if GTK_CHECK_VERSION(3, 0, 0)
+		gtk_widget_set_name(t->uri_entry, XT_CSS_BLUE);
+		statusbar_modify_attr(t, XT_CSS_BLUE);
+#else
 		gdk_color_parse(XT_COLOR_BLUE, &color);
 		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
 		statusbar_modify_attr(t, XT_COLOR_BLACK, XT_COLOR_BLUE);
+#endif
 	} else if (args->i & XT_CACHE)
 		save_certs(t, certs, cert_count, domain, certs_cache_dir);
 
@@ -2772,7 +2799,6 @@ command(struct tab *t, struct karg *args)
 	int			i;
 	char			*s = NULL, *sp = NULL, *sl = NULL;
 	gchar			**sv;
-	gchar			*text, *base;
 
 	if (t == NULL || args == NULL) {
 		show_oops(NULL, "command invalid parameters");
@@ -2835,12 +2861,12 @@ command(struct tab *t, struct karg *args)
 	DNPRINTF(XT_D_CMD, "%s: tab %d type %s\n", __func__, t->tab_id, s);
 
 	gtk_entry_set_text(GTK_ENTRY(t->cmd), s);
-	text = gdk_color_to_string(&t->default_style->text[GTK_STATE_NORMAL]);
-	base = gdk_color_to_string(&t->default_style->base[GTK_STATE_NORMAL]);
+#if GTK_CHECK_VERSION(3, 0, 0)
+	gtk_widget_set_name(t->cmd, XT_CSS_NORMAL);
+#else
 	gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL,
 	    &t->default_style->base[GTK_STATE_NORMAL]);
-	g_free(text);
-	g_free(base);
+#endif
 	show_cmd(t);
 	gtk_widget_grab_focus(GTK_WIDGET(t->cmd));
 	gtk_editable_set_position(GTK_EDITABLE(t->cmd), -1);
@@ -3601,13 +3627,39 @@ check_and_set_pl(const gchar *uri, struct tab *t)
 	webkit_web_view_set_settings(t->wv, t->settings);
 }
 
+#if GTK_CHECK_VERSION(3, 0, 0)
+/* A lot of this can be removed when gtk2 is dropped on the floor */
+char *
+get_css_name(const char *col_str)
+{
+	char			*name = NULL;
+
+	if (!strcmp(col_str, XT_COLOR_WHITE))
+		name = g_strdup(XT_CSS_NORMAL);
+	else if (!strcmp(col_str, XT_COLOR_RED))
+		name = g_strdup(XT_CSS_RED);
+	else if (!strcmp(col_str, XT_COLOR_YELLOW))
+		name = g_strdup(XT_CSS_YELLOW);
+	else if (!strcmp(col_str, XT_COLOR_GREEN))
+		name = g_strdup(XT_CSS_GREEN);
+	else if (!strcmp(col_str, XT_COLOR_BLUE))
+		name = g_strdup(XT_CSS_BLUE);
+	return (name);
+}
+#endif
+
 void
 color_address_bar(gpointer p)
 {
-	GdkColor		color;
 	struct tab		*tt, *t = p;
-	gchar			*col_str = XT_COLOR_WHITE, *text, *base;
+	gchar			*col_str = XT_COLOR_WHITE;
 	const gchar		*uri, *u = NULL, *error_str = NULL;
+#if GTK_CHECK_VERSION(3, 0, 0)
+	char			*name;
+#else
+	GdkColor		color;
+	gchar			*text, *base;
+#endif
 
 #ifdef USE_THREADS
 	gdk_threads_enter();
@@ -3677,6 +3729,10 @@ color_address_bar(gpointer p)
 white:
 
 	if (!strcmp(col_str, XT_COLOR_WHITE)) {
+#if GTK_CHECK_VERSION(3, 0, 0)
+		gtk_widget_set_name(t->uri_entry, XT_CSS_NORMAL);
+		statusbar_modify_attr(t, XT_CSS_NORMAL);
+#else
 		text = gdk_color_to_string(
 		    &t->default_style->text[GTK_STATE_NORMAL]);
 		base = gdk_color_to_string(
@@ -3686,10 +3742,19 @@ white:
 		statusbar_modify_attr(t, text, base);
 		g_free(text);
 		g_free(base);
+#endif
 	} else {
+#if GTK_CHECK_VERSION(3, 0, 0)
+		/* XXX need to select the right XT_CSS_* */
+		name = get_css_name(col_str);
+		gtk_widget_set_name(t->uri_entry, name);
+		statusbar_modify_attr(t, name);
+		g_free(name);
+#else
 		gdk_color_parse(col_str, &color);
 		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
 		statusbar_modify_attr(t, XT_COLOR_BLACK, col_str);
+#endif
 	}
 
 	if (error_str && error_str[0] != '\0')
@@ -3717,8 +3782,13 @@ check_certs(gpointer p)
 void
 show_ca_status(struct tab *t, const char *uri)
 {
+	gchar			*col_str = XT_COLOR_WHITE;
+#if GTK_CHECK_VERSION(3, 0, 0)
+	char			*name;
+#else
 	GdkColor		color;
-	gchar			*col_str = XT_COLOR_WHITE, *text, *base;
+	gchar			*text, *base;
+#endif
 
 	DNPRINTF(XT_D_URL, "show_ca_status: %d %s %s\n",
 	    ssl_strict_certs, ssl_ca_file, uri);
@@ -3746,8 +3816,11 @@ show_ca_status(struct tab *t, const char *uri)
 
 done:
 	if (col_str) {
-
 		if (!strcmp(col_str, XT_COLOR_WHITE)) {
+#if GTK_CHECK_VERSION(3, 0, 0)
+			gtk_widget_set_name(t->uri_entry, XT_CSS_NORMAL);
+			statusbar_modify_attr(t, XT_CSS_NORMAL);
+#else
 			text = gdk_color_to_string(
 			    &t->default_style->text[GTK_STATE_NORMAL]);
 			base = gdk_color_to_string(
@@ -3757,10 +3830,18 @@ done:
 			statusbar_modify_attr(t, text, base);
 			g_free(text);
 			g_free(base);
+#endif
 		} else {
+#if GTK_CHECK_VERSION(3, 0, 0)
+			name = get_css_name(col_str);
+			gtk_widget_set_name(t->uri_entry, name);
+			statusbar_modify_attr(t, name);
+			g_free(name);
+#else
 			gdk_color_parse(col_str, &color);
 			gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
 			statusbar_modify_attr(t, XT_COLOR_BLACK, col_str);
+#endif
 		}
 	}
 }
@@ -4086,7 +4167,9 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	const gchar		*uri = NULL;
 	struct history		*h, find;
 	struct karg		a;
+#if !GTK_CHECK_VERSION(3, 0, 0)
 	gchar			*text, *base;
+#endif
 
 	DNPRINTF(XT_D_URL, "notify_load_status_cb: %d  %s\n",
 	    webkit_web_view_get_load_status(wview),
@@ -4110,15 +4193,20 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), TRUE);
 
 		/* assume we are a new address */
-		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL,
-		    &t->default_style->base[GTK_STATE_NORMAL]);
+#if GTK_CHECK_VERSION(3, 0, 0)
+		gtk_widget_set_name(t->uri_entry, XT_CSS_NORMAL);
+		statusbar_modify_attr(t, XT_CSS_NORMAL);
+#else
 		text = gdk_color_to_string(
 		    &t->default_style->text[GTK_STATE_NORMAL]);
 		base = gdk_color_to_string(
 		    &t->default_style->base[GTK_STATE_NORMAL]);
+		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL,
+		    &t->default_style->base[GTK_STATE_NORMAL]);
 		statusbar_modify_attr(t, text, base);
 		g_free(text);
 		g_free(base);
+#endif
 
 		/* DOM is changing, unreference the previous focused element */
 		t->active = NULL;
@@ -5897,7 +5985,9 @@ gboolean
 search_cb(struct tab *t)
 {
 	const gchar		*c = gtk_entry_get_text(GTK_ENTRY(t->cmd));
+#if !GTK_CHECK_VERSION(3, 0, 0)
 	GdkColor		color;
+#endif
 
 	if (search_continue(t) == FALSE)
 		goto done;
@@ -5906,8 +5996,12 @@ search_cb(struct tab *t)
 	if (webkit_web_view_search_text(t->wv, &c[1], FALSE, t->search_forward,
 	    TRUE) == FALSE) {
 		/* not found, mark red */
+#if GTK_CHECK_VERSION(3, 0, 0)
+		gtk_widget_set_name(t->cmd, XT_CSS_RED);
+#else
 		gdk_color_parse(XT_COLOR_RED, &color);
 		gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL, &color);
+#endif
 		/* unmark and remove selection */
 		webkit_web_view_unmark_text_matches(t->wv);
 		/* my kingdom for a way to unselect text in webview */
@@ -5916,8 +6010,12 @@ search_cb(struct tab *t)
 		webkit_web_view_unmark_text_matches(t->wv);
 		webkit_web_view_mark_text_matches(t->wv, &c[1], FALSE, 0);
 		webkit_web_view_set_highlight_text_matches(t->wv, TRUE);
+#if GTK_CHECK_VERSION(3, 0, 0)
+		gtk_widget_set_name(t->cmd, XT_CSS_NORMAL);
+#else
 		gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL,
 		    &t->default_style->base[GTK_STATE_NORMAL]);
+#endif
 	}
 done:
 	t->search_id = 0;
@@ -6761,7 +6859,7 @@ create_browser(struct tab *t)
 	t->adjust_v = gtk_scrolled_window_get_vadjustment(
 	    GTK_SCROLLED_WINDOW(w));
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(w),
-	    GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+	    GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC); /* XXX not needed in gtk3? */
 
 	t->wv = WEBKIT_WEB_VIEW(webkit_web_view_new());
 	gtk_container_add(GTK_CONTAINER(w), GTK_WIDGET(t->wv));
@@ -6798,7 +6896,11 @@ create_kiosk_toolbar(struct tab *t)
 {
 	GtkWidget		*toolbar = NULL, *b;
 
+#if GTK_CHECK_VERSION(3, 0, 0)
+	b = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+#else
 	b = gtk_hbox_new(FALSE, 0);
+#endif
 	toolbar = b;
 	gtk_container_set_border_width(GTK_CONTAINER(toolbar), 0);
 
@@ -6825,7 +6927,11 @@ create_kiosk_toolbar(struct tab *t)
 
 	/* create widgets but don't use them */
 	t->uri_entry = gtk_entry_new();
+#if GTK_CHECK_VERSION(3, 0, 0)
+	t->default_style = gtk_widget_get_style_context(t->uri_entry);
+#else
 	t->default_style = gtk_rc_get_style(t->uri_entry);
+#endif
 	t->stop = create_button("Stop", GTK_STOCK_STOP, 0);
 	t->js_toggle = create_button("JS-Toggle", enable_scripts ?
 	    GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE, 0);
@@ -6838,7 +6944,11 @@ create_toolbar(struct tab *t)
 {
 	GtkWidget		*toolbar = NULL, *b, *eb1;
 
+#if GTK_CHECK_VERSION(3, 0, 0)
+	b = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+#else
 	b = gtk_hbox_new(FALSE, 0);
+#endif
 	toolbar = b;
 	gtk_container_set_border_width(GTK_CONTAINER(toolbar), 0);
 
@@ -6876,12 +6986,17 @@ create_toolbar(struct tab *t)
 	}
 
 	t->uri_entry = gtk_entry_new();
+	gtk_widget_set_name(GTK_WIDGET(t->uri_entry), "url-red");
 	g_signal_connect(G_OBJECT(t->uri_entry), "activate",
 	    G_CALLBACK(activate_uri_entry_cb), t);
 	g_signal_connect(G_OBJECT(t->uri_entry), "key-press-event",
 	    G_CALLBACK(entry_key_cb), t);
 	completion_add(t);
+#if GTK_CHECK_VERSION(3, 0, 0)
+	eb1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+#else
 	eb1 = gtk_hbox_new(FALSE, 0);
+#endif
 	gtk_container_set_border_width(GTK_CONTAINER(eb1), 1);
 	gtk_box_pack_start(GTK_BOX(eb1), t->uri_entry, TRUE, TRUE, 0);
 	gtk_box_pack_start(GTK_BOX(b), eb1, TRUE, TRUE, 0);
@@ -6895,14 +7010,21 @@ create_toolbar(struct tab *t)
 		    G_CALLBACK(activate_search_entry_cb), t);
 		g_signal_connect(G_OBJECT(t->search_entry), "key-press-event",
 		    G_CALLBACK(entry_key_cb), t);
-		gtk_widget_set_size_request(t->search_entry, -1, -1);
+#if GTK_CHECK_VERSION(3, 0, 0)
+		eb2 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+#else
 		eb2 = gtk_hbox_new(FALSE, 0);
+#endif
 		gtk_container_set_border_width(GTK_CONTAINER(eb2), 1);
 		gtk_box_pack_start(GTK_BOX(eb2), t->search_entry, TRUE, TRUE,
 		    0);
 		gtk_box_pack_start(GTK_BOX(b), eb2, FALSE, FALSE, 0);
 	}
+#if GTK_CHECK_VERSION(3, 0, 0)
+	t->default_style = gtk_widget_get_style_context(t->uri_entry);
+#else
 	t->default_style = gtk_rc_get_style(t->uri_entry);
+#endif
 
 	return (toolbar);
 }
@@ -7282,7 +7404,11 @@ statusbar_create(struct tab *t)
 		return (1);
 	}
 
+#if GTK_CHECK_VERSION(3, 0, 0)
+	t->statusbar_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+#else
 	t->statusbar_box = gtk_hbox_new(FALSE, 0);
+#endif
 
 	t->sbe.statusbar = gtk_entry_new();
 	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.statusbar), NULL);
@@ -7297,7 +7423,11 @@ statusbar_create(struct tab *t)
 	t->sbe.tabs = create_sbe(40);
 	t->sbe.proxy = create_sbe(60);
 
+#if GTK_CHECK_VERSION(3, 0, 0)
+	statusbar_modify_attr(t, XT_CSS_NORMAL);
+#else
 	statusbar_modify_attr(t, XT_COLOR_WHITE, XT_COLOR_BLACK);
+#endif
 
 	gtk_box_pack_start(GTK_BOX(t->statusbar_box), t->sbe.statusbar, TRUE,
 	    TRUE, FALSE);
@@ -7309,8 +7439,11 @@ statusbar_create(struct tab *t)
 	for (p = statusbar_elems; *p != '\0'; p++) {
 		switch (*p) {
 		case '|':
+#if GTK_CHECK_VERSION(3, 0, 0)
+			sep = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
+#else
 			sep = gtk_vseparator_new();
-
+#endif
 			gdk_color_parse(XT_COLOR_SB_SEPARATOR, &color);
 			gtk_widget_modify_bg(sep, GTK_STATE_NORMAL, &color);
 			gtk_box_pack_start(GTK_BOX(t->statusbar_box), sep,
@@ -7370,10 +7503,15 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 		load = 0;
 	}
 
+#if GTK_CHECK_VERSION(3, 0, 0)
+	t->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+	b = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+#else
 	t->vbox = gtk_vbox_new(FALSE, 0);
+	b = gtk_hbox_new(FALSE, 0);
+#endif
 
 	/* label + button for tab */
-	b = gtk_hbox_new(FALSE, 0);
 	t->tab_content = b;
 
 	t->user_agent_id = 0;
@@ -7420,8 +7558,12 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_entry_set_inner_border(GTK_ENTRY(t->oops), NULL);
 	gtk_entry_set_has_frame(GTK_ENTRY(t->oops), FALSE);
 	gtk_widget_set_can_focus(GTK_WIDGET(t->oops), FALSE);
+#if GTK_CHECK_VERSION(3, 0, 0)
+	gtk_widget_set_name(t->oops, XT_CSS_RED);
+#else
 	gdk_color_parse(XT_COLOR_RED, &color);
 	gtk_widget_modify_base(t->oops, GTK_STATE_NORMAL, &color);
+#endif
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->oops, FALSE, FALSE, 0);
 	gtk_widget_modify_font(GTK_WIDGET(t->oops), oops_font);
 
@@ -7458,8 +7600,13 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_widget_modify_font(GTK_WIDGET(t->tab_elems.label), tabbar_font);
 
 	t->tab_elems.eventbox = gtk_event_box_new();
+#if GTK_CHECK_VERSION(3, 0, 0)
+	t->tab_elems.box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+	t->tab_elems.sep = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
+#else
 	t->tab_elems.box = gtk_hbox_new(FALSE, 0);
 	t->tab_elems.sep = gtk_vseparator_new();
+#endif
 
 	gdk_color_parse(XT_COLOR_CT_BACKGROUND, &color);
 	gtk_widget_modify_bg(t->tab_elems.eventbox, GTK_STATE_NORMAL, &color);
@@ -7735,10 +7882,13 @@ GtkWidget *
 create_button(char *name, char *stockid, int size)
 {
 	GtkWidget		*button, *image;
-	gchar			*rcstring;
 	int			gtk_icon_size;
+#if !GTK_CHECK_VERSION(3, 0, 0)
+	gchar			*newstyle;
+#endif
 
-	rcstring = g_strdup_printf(
+#if !GTK_CHECK_VERSION(3, 0, 0)
+	newstyle = g_strdup_printf(
 	    "style \"%s-style\"\n"
 	    "{\n"
 	    "  GtkWidget::focus-padding = 0\n"
@@ -7747,14 +7897,14 @@ create_button(char *name, char *stockid, int size)
 	    "  ythickness = 0\n"
 	    "}\n"
 	    "widget \"*.%s\" style \"%s-style\"", name, name, name);
-	gtk_rc_parse_string(rcstring);
-	g_free(rcstring);
+	gtk_rc_parse_string(newstyle);
+	g_free(newstyle);
+#endif
 	button = gtk_button_new();
 	gtk_button_set_focus_on_click(GTK_BUTTON(button), FALSE);
 	gtk_icon_size = icon_size_map(size ? size : icon_size);
 
 	image = gtk_image_new_from_stock(stockid, gtk_icon_size);
-	gtk_widget_set_size_request(GTK_WIDGET(image), -1, -1);
 	gtk_container_set_border_width(GTK_CONTAINER(button), 1);
 	gtk_container_add(GTK_CONTAINER(button), GTK_WIDGET(image));
 	gtk_widget_set_name(button, name);
@@ -7769,7 +7919,6 @@ button_set_stockid(GtkWidget *button, char *stockid)
 	GtkWidget		*image;
 
 	image = gtk_image_new_from_stock(stockid, icon_size_map(icon_size));
-	gtk_widget_set_size_request(GTK_WIDGET(image), -1, -1);
 	gtk_button_set_image(GTK_BUTTON(button), image);
 }
 
@@ -7824,13 +7973,16 @@ create_canvas(void)
 	char			file[PATH_MAX];
 	int			i;
 
+#if GTK_CHECK_VERSION(3, 0, 0)
+	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+#else
 	vbox = gtk_vbox_new(FALSE, 0);
+#endif
 	gtk_box_set_spacing(GTK_BOX(vbox), 0);
 	notebook = GTK_NOTEBOOK(gtk_notebook_new());
 #if !GTK_CHECK_VERSION(3, 0, 0)
 	/* XXX seems to be needed with gtk+2 */
-	gtk_notebook_set_tab_hborder(notebook, 0);
-	gtk_notebook_set_tab_vborder(notebook, 0);
+	g_object_set(G_OBJECT(notebook), "tab-border", 0, NULL);
 #endif
 	gtk_notebook_set_scrollable(notebook, TRUE);
 	gtk_notebook_set_show_border(notebook, FALSE);
@@ -7838,21 +7990,22 @@ create_canvas(void)
 
 	abtn = gtk_button_new();
 	arrow = gtk_arrow_new(GTK_ARROW_DOWN, GTK_SHADOW_NONE);
-	gtk_widget_set_size_request(arrow, -1, -1);
+	gtk_widget_set_name(arrow, "Arrow");
 	gtk_container_add(GTK_CONTAINER(abtn), arrow);
 	gtk_widget_set_size_request(abtn, -1, 20);
 
 #if GTK_CHECK_VERSION(2, 20, 0)
 	gtk_notebook_set_action_widget(notebook, abtn, GTK_PACK_END);
 #endif
-	gtk_widget_set_size_request(GTK_WIDGET(notebook), -1, -1);
-
 	/* compact tab bar */
+#if GTK_CHECK_VERSION(3, 0, 0)
+	tab_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+#else
 	tab_bar = gtk_hbox_new(TRUE, 0);
+#endif
 
 	gtk_box_pack_start(GTK_BOX(vbox), tab_bar, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(notebook), TRUE, TRUE, 0);
-	gtk_widget_set_size_request(vbox, -1, -1);
 
 	g_object_connect(G_OBJECT(notebook),
 	    "signal::switch-page", G_CALLBACK(notebook_switchpage_cb), NULL,
@@ -7867,6 +8020,9 @@ create_canvas(void)
 	gtk_container_add(GTK_CONTAINER(main_window), vbox);
 	g_signal_connect(G_OBJECT(main_window), "delete_event",
 	    G_CALLBACK(gtk_main_quit), NULL);
+#if GTK_CHECK_VERSION(3, 0, 0)
+	gtk_window_set_has_resize_grip(GTK_WINDOW(main_window), FALSE);
+#endif
 
 	/* icons */
 	for (i = 0; i < LENGTH(icons); i++) {
@@ -8125,6 +8281,29 @@ complain:
 		mtx_complain = 1;
 	}
 }
+
+#if GTK_CHECK_VERSION(3, 0, 0)
+void
+setup_css(void)
+{
+	GtkCssProvider		*provider;
+	GdkDisplay		*display;
+	GdkScreen		*screen;
+	GFile			*file;
+	char			path[PATH_MAX];
+
+	provider = gtk_css_provider_new();
+	display = gdk_display_get_default();
+	screen = gdk_display_get_default_screen(display);
+	gtk_style_context_add_provider_for_screen(screen,
+	    GTK_STYLE_PROVIDER(provider),
+	    GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+	snprintf(path, sizeof path, "%s" PS "%s", resource_dir, XT_CSS_FILE);
+	file = g_file_new_for_path(path);
+	gtk_css_provider_load_from_file(provider, file, NULL);
+	g_object_unref(file);
+}
+#endif
 
 void
 welcome(void)
@@ -8548,6 +8727,10 @@ main(int argc, char **argv)
 			channel = g_io_channel_unix_new(s);
 			g_io_add_watch(channel, G_IO_IN, socket_watcher, NULL);
 		}
+#endif
+
+#if GTK_CHECK_VERSION(3, 0, 0)
+	setup_css();
 #endif
 
 	gtk_main();

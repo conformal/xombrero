@@ -27,6 +27,7 @@ completion_select_cb(GtkEntryCompletion *widget, GtkTreeModel *model,
 {
 	gchar			*value;
 
+	/* XXX may require changes for GTK3 */
 	gtk_tree_model_get(model, iter, 0, &value, -1);
 	load_uri(t, value);
 	g_free(value);
@@ -40,6 +41,7 @@ completion_hover_cb(GtkEntryCompletion *widget, GtkTreeModel *model,
 {
 	gchar			*value;
 
+	/* XXX may require changes for GTK3 */
 	gtk_tree_model_get(model, iter, 0, &value, -1);
 	gtk_entry_set_text(GTK_ENTRY(t->uri_entry), value);
 	gtk_editable_set_position(GTK_EDITABLE(t->uri_entry), -1);

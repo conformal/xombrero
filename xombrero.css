@@ -1,0 +1,89 @@
+/*
+ * Copyright (c) 2012 Josh Rickmar <jrick@devio.us>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+@define-color red #cc0000;
+@define-color yellow #ffff66;
+@define-color green #99ff66;
+@define-color blue lightblue;
+
+* {
+	padding: 0;
+	margin: 0;
+}
+
+:insensitive,
+*:insensitive {
+	background-color: @bg_color;
+}
+
+.entry {
+	padding: 2px;
+}
+
+.entry#red {
+	background-color: @red;
+}
+
+.entry#yellow {
+	background-color: @yellow;
+}
+
+.entry#green {
+	background-color: @green;
+}
+
+.entry#blue {
+	background-color: @blue;
+}
+
+.entry:selected#red,
+.entry:selected#yellow,
+.entry:selected#green,
+.entry:selected#blue,
+.entry.progressbar#red,
+.entry.progressbar#yellow,
+.entry.progressbar#green,
+.entry.progressbar#blue {
+	background-color: @selected_bg_color;
+	color: @selected_fg_color;
+}
+
+.button#Back,
+.button#Forward,
+.button#Home,
+.button#Stop,
+.button#JS-Toggle,
+.button#Close,
+.button#Arrow {
+	border-width: 0;
+}
+
+GtkBox {
+	border-width: 0;
+}
+
+GtkMenuItem {
+	padding: 3px;
+}
+
+GtkNotebook tab {
+	background-color: shade(@bg_color, 0.85);
+	color: @fg_color;
+}
+
+GtkNotebook tab:active {
+	background-color: @bg_color;
+}

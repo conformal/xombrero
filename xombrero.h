@@ -66,6 +66,7 @@ uint32_t	arc4random_uniform(uint32_t);
 #include <sys/time.h>
 
 #include <gtk/gtk.h>
+#include <gdk/gdk.h>
 #include <gdk/gdkkeysyms.h>
 
 #if GTK_CHECK_VERSION(3,0,0)
@@ -201,7 +202,11 @@ struct tab {
 	GtkWidget		*label;
 	GtkWidget		*spinner;
 	GtkWidget		*uri_entry;
+#if GTK_CHECK_VERSION(3, 0, 0)
+	GtkStyleContext		*default_style;
+#else
 	GtkStyle		*default_style;
+#endif
 	GtkWidget		*search_entry;
 	GtkWidget		*toolbar;
 	GtkWidget		*browser_win;
@@ -369,6 +374,7 @@ RB_PROTOTYPE(http_accept_list, http_accept, entry, http_accept_rb_cmp);
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
 #define XT_CONF_FILE		("xombrero.conf")
+#define XT_CSS_FILE		("xombrero.css")
 #define XT_FAVS_FILE		("favorites")
 #define XT_SOD_FILE		("startofday")
 #define XT_RESERVED_CHARS	"$&+,/:;=?@ \"<>#%%{}|^~[]`"
