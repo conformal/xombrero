@@ -287,8 +287,10 @@ struct tab {
 	GtkWidget		*inspector_view;
 
 	/* focused text entry */
+#if WEBKIT_CHECK_VERSION(1, 5, 0)
 	WebKitDOMElement	*active;
 	char			*active_text;
+#endif
 };
 TAILQ_HEAD(tab_list, tab);
 
