@@ -30,13 +30,12 @@
 }
 
 .entry {
-	border-width: 1px;
 	padding: 2px;
 	color: @fg_color;
 }
 
-#cmd .entry,
-#statusbar .entry {
+#vbox > .entry,
+#statusbar * {
 	border-width: 0px;
 }
 

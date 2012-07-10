@@ -7506,6 +7506,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 #if GTK_CHECK_VERSION(3, 0, 0)
 	t->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	b = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+	gtk_widget_set_name(t->vbox, "vbox");
 #else
 	t->vbox = gtk_vbox_new(FALSE, 0);
 	b = gtk_hbox_new(FALSE, 0);
@@ -7575,9 +7576,6 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_entry_set_has_frame(GTK_ENTRY(t->cmd), FALSE);
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->cmd, FALSE, FALSE, 0);
 	gtk_widget_modify_font(GTK_WIDGET(t->cmd), cmd_font);
-#if GTK_CHECK_VERSION(3, 0, 0)
-	gtk_widget_set_name(GTK_WIDGET(t->cmd), "cmd");
-#endif
 
 	/* status bar */
 	statusbar_create(t);
