@@ -20,44 +20,64 @@
 @define-color blue lightblue;
 
 * {
+	border-width: 1px;
 	padding: 0;
 	margin: 0;
 }
 
-:insensitive,
-*:insensitive {
-	background-color: @bg_color;
+.button :insensitive {
+	background-color: rgba(0,0,0,0); /* transparent */
 }
 
 .entry {
+	border-width: 1px;
 	padding: 2px;
+	color: @fg_color;
+}
+
+#cmd .entry,
+#statusbar .entry {
+	border-width: 0px;
 }
 
 .entry#red {
-	background-color: @red;
+	background-image: -gtk-gradient(linear,
+					left top, left bottom,
+					from (@red), to (@red));
 }
 
 .entry#yellow {
-	background-color: @yellow;
+	background-image: -gtk-gradient(linear,
+					left top, left bottom,
+					from (@yellow), to (@yellow));
 }
 
 .entry#green {
-	background-color: @green;
+	background-image: -gtk-gradient(linear,
+					left top, left bottom,
+					from (@green), to (@green));
 }
 
 .entry#blue {
-	background-color: @blue;
+	background-image: -gtk-gradient(linear,
+					left top, left bottom,
+					from (@blue), to (@blue));
+	color: @fg_color;
 }
 
 .entry:selected#red,
 .entry:selected#yellow,
 .entry:selected#green,
 .entry:selected#blue,
+.entry.progressbar,
 .entry.progressbar#red,
 .entry.progressbar#yellow,
 .entry.progressbar#green,
 .entry.progressbar#blue {
-	background-color: @selected_bg_color;
+	background-image: -gtk-gradient(linear,
+					left top, left bottom,
+					from (@selected_bg_color),
+					to (@selected_bg_color));
 	color: @selected_fg_color;
 }
 
@@ -71,19 +91,16 @@
 	border-width: 0;
 }
 
-GtkBox {
-	border-width: 0;
-}
-
-GtkMenuItem {
+.menuitem {
 	padding: 3px;
 }
 
-GtkNotebook tab {
+.notebook tab {
 	background-color: shade(@bg_color, 0.85);
 	color: @fg_color;
+	padding: 0px;
 }
 
-GtkNotebook tab:active {
+.notebook tab:active {
 	background-color: @bg_color;
 }

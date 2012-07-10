@@ -1,7 +1,14 @@
 JS_CF=$(shell pkg-config --silence-errors --cflags javascriptcoregtk-1.0)
 JS_LD=$(shell pkg-config --silence-errors --libs javascriptcoregtk-1.0)
 
-LIBS= glib-2.0 gtk+-2.0 webkit-1.0 libsoup-2.4 gthread-2.0 gnutls libbsd
+GTK_VERSION?= gtk3
+LIBS= glib-2.0
+ifeq ("${GTK_VERSION}", "gtk2")
+LIBS+= gtk+-2.0 webkit-1.0
+else
+LIBS+= gtk+-3.0 webkitgtk-3.0
+endif
+LIBS+= libsoup-2.4 gthread-2.0 gnutls libbsd
 
 CFLAGS+= -O2 -Wall -ggdb3 -D_GNU_SOURCE -I. -I.. $(shell pkg-config --cflags $(LIBS)) $(JS_CF)
 LDADD+= $(shell pkg-config --libs $(LIBS)) $(JS_LD) -ldl -lgcrypt -lX11

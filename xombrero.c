@@ -3745,7 +3745,6 @@ white:
 #endif
 	} else {
 #if GTK_CHECK_VERSION(3, 0, 0)
-		/* XXX need to select the right XT_CSS_* */
 		name = get_css_name(col_str);
 		gtk_widget_set_name(t->uri_entry, name);
 		statusbar_modify_attr(t, name);
@@ -4209,11 +4208,13 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 #endif
 
 		/* DOM is changing, unreference the previous focused element */
+#if WEBKIT_CHECK_VERSION(1, 5, 0)
 		t->active = NULL;
 		if (t->active_text) {
 			g_free(t->active_text);
 			t->active_text = NULL;
 		}
+#endif
 
 		/* take focus if we are visible */
 		focus_webview(t);
@@ -6898,6 +6899,7 @@ create_kiosk_toolbar(struct tab *t)
 
 #if GTK_CHECK_VERSION(3, 0, 0)
 	b = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+	gtk_widget_set_name(GTK_WIDGET(b), "toolbar");
 #else
 	b = gtk_hbox_new(FALSE, 0);
 #endif
@@ -6927,9 +6929,7 @@ create_kiosk_toolbar(struct tab *t)
 
 	/* create widgets but don't use them */
 	t->uri_entry = gtk_entry_new();
-#if GTK_CHECK_VERSION(3, 0, 0)
-	t->default_style = gtk_widget_get_style_context(t->uri_entry);
-#else
+#if !GTK_CHECK_VERSION(3, 0, 0)
 	t->default_style = gtk_rc_get_style(t->uri_entry);
 #endif
 	t->stop = create_button("Stop", GTK_STOCK_STOP, 0);
@@ -6946,6 +6946,7 @@ create_toolbar(struct tab *t)
 
 #if GTK_CHECK_VERSION(3, 0, 0)
 	b = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+	gtk_widget_set_name(GTK_WIDGET(b), "toolbar");
 #else
 	b = gtk_hbox_new(FALSE, 0);
 #endif
@@ -7020,9 +7021,7 @@ create_toolbar(struct tab *t)
 		    0);
 		gtk_box_pack_start(GTK_BOX(b), eb2, FALSE, FALSE, 0);
 	}
-#if GTK_CHECK_VERSION(3, 0, 0)
-	t->default_style = gtk_widget_get_style_context(t->uri_entry);
-#else
+#if !GTK_CHECK_VERSION(3, 0, 0)
 	t->default_style = gtk_rc_get_style(t->uri_entry);
 #endif
 
@@ -7406,6 +7405,7 @@ statusbar_create(struct tab *t)
 
 #if GTK_CHECK_VERSION(3, 0, 0)
 	t->statusbar_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+	gtk_widget_set_name(GTK_WIDGET(t->statusbar_box), "statusbar");
 #else
 	t->statusbar_box = gtk_hbox_new(FALSE, 0);
 #endif
@@ -7517,7 +7517,9 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	t->user_agent_id = 0;
 	t->http_accept_id = 0;
 
+#if WEBKIT_CHECK_VERSION(1, 5, 0)
 	t->active = NULL;
+#endif
 
 #if GTK_CHECK_VERSION(2, 20, 0)
 	t->spinner = gtk_spinner_new();
@@ -7573,6 +7575,9 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_entry_set_has_frame(GTK_ENTRY(t->cmd), FALSE);
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->cmd, FALSE, FALSE, 0);
 	gtk_widget_modify_font(GTK_WIDGET(t->cmd), cmd_font);
+#if GTK_CHECK_VERSION(3, 0, 0)
+	gtk_widget_set_name(GTK_WIDGET(t->cmd), "cmd");
+#endif
 
 	/* status bar */
 	statusbar_create(t);
@@ -8295,12 +8300,12 @@ setup_css(void)
 	provider = gtk_css_provider_new();
 	display = gdk_display_get_default();
 	screen = gdk_display_get_default_screen(display);
-	gtk_style_context_add_provider_for_screen(screen,
-	    GTK_STYLE_PROVIDER(provider),
-	    GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 	snprintf(path, sizeof path, "%s" PS "%s", resource_dir, XT_CSS_FILE);
 	file = g_file_new_for_path(path);
 	gtk_css_provider_load_from_file(provider, file, NULL);
+	gtk_style_context_add_provider_for_screen(screen,
+	    GTK_STYLE_PROVIDER(provider),
+	    GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 	g_object_unref(file);
 }
 #endif

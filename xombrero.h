@@ -202,9 +202,7 @@ struct tab {
 	GtkWidget		*label;
 	GtkWidget		*spinner;
 	GtkWidget		*uri_entry;
-#if GTK_CHECK_VERSION(3, 0, 0)
-	GtkStyleContext		*default_style;
-#else
+#if !GTK_CHECK_VERSION(3, 0, 0)
 	GtkStyle		*default_style;
 #endif
 	GtkWidget		*search_entry;

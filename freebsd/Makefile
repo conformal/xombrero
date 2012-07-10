@@ -1,4 +1,10 @@
-LIBS= gtk+-2.0 webkit-1.0 libsoup-2.4 gnutls gthread-2.0
+GTK_VERSION?= gtk3
+.if ${GTK_VERSION} == "gtk2"
+LIBS= gtk+-2.0 webkit-1.0
+.else
+LIBS= gtk+-3.0 webkitgtk-3.0
+.endif
+LIBS+= libsoup-2.4 gnutls gthread-2.0
 
 LDADD= -lutil -lgcrypt
 GTK_CFLAGS!= pkg-config --cflags $(LIBS)
