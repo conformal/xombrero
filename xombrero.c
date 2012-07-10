@@ -4927,7 +4927,7 @@ webview_rrs_cb(WebKitWebView *wv, WebKitWebFrame *wf, WebKitWebResource *res,
 	uri = soup_message_get_uri(msg);
 	if (!uri) return;
 
-	if (strcmp(soup_uri_get_scheme(uri), SOUP_URI_SCHEME_HTTP) == 0) {
+	if (strcmp(uri->scheme, SOUP_URI_SCHEME_HTTP) == 0) {
 		if (strict_transport_check(uri->host)) {
 			DNPRINTF(XT_D_NAV, "webview_rrs_cb: force https for %s\n",
 					uri->host);
