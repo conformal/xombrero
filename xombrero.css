@@ -61,7 +61,6 @@
 	background-image: -gtk-gradient(linear,
 					left top, left bottom,
 					from (@blue), to (@blue));
-	color: @fg_color;
 }
 
 .entry:selected,
