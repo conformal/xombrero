@@ -64,6 +64,7 @@
 	color: @fg_color;
 }
 
+.entry:selected,
 .entry:selected#red,
 .entry:selected#yellow,
 .entry:selected#green,
@@ -77,6 +78,7 @@
 					left top, left bottom,
 					from (@selected_bg_color),
 					to (@selected_bg_color));
+	background-color: @selected_bg_color;
 	color: @selected_fg_color;
 }
 
