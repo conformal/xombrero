@@ -2092,7 +2092,8 @@ check_cert_changes(struct tab *t, const char *uri)
 		cert_cmd(t, &args);
 		break;
 	case CERT_BAD:
-		if ((soupuri = soup_uri_new(uri)) == NULL)
+		if ((soupuri = soup_uri_new(uri)) == NULL ||
+		    soupuri->host == NULL)
 			break;
 		find.domain = soupuri->host;
 		if (RB_FIND(sv_ignore_list, &svil, &find))
