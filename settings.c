@@ -64,6 +64,7 @@ int		show_tabs = XT_DS_SHOW_TABS;	/* show tabs on notebook */
 int		tab_style = XT_DS_TAB_STYLE; /* tab bar style */
 int		statusbar_style = XT_DS_STATUSBAR_STYLE; /* status bar style */
 int		show_url = XT_DS_SHOW_URL;	/* show url toolbar on notebook */
+int		show_scrollbars = XT_DS_SHOW_SCROLLBARS;
 int		show_statusbar = XT_DS_SHOW_STATUSBAR; /* vimperator style status bar */
 int		ctrl_click_focus = XT_DS_CTRL_CLICK_FOCUS; /* ctrl click gets focus */
 int		cookies_enabled = XT_DS_COOKIES_ENABLED; /* enable cookies */
@@ -186,6 +187,7 @@ int		set_refresh_interval(char *);
 int		set_search_string(char *s);
 int		set_session_autosave(char *);
 int		set_session_timeout(char *);
+int		set_show_scrollbars(char *);
 int		set_show_statusbar(char *);
 int		set_show_tabs(char *);
 int		set_show_url(char *);
@@ -446,6 +448,7 @@ struct settings		rs[] = {
 	{ "search_string",		XT_S_STR, 0, NULL,	&search_string, NULL, NULL, set_search_string },
 	{ "session_autosave",		XT_S_INT, 0,		&session_autosave, NULL, NULL, NULL, set_session_autosave },
 	{ "session_timeout",		XT_S_INT, 0,		&session_timeout, NULL, NULL, NULL, set_session_timeout },
+	{ "show_scrollbars",		XT_S_INT, 0,		&show_scrollbars, NULL, NULL, NULL, set_show_scrollbars },
 	{ "show_statusbar",		XT_S_INT, 0,		&show_statusbar, NULL, NULL, NULL, set_show_statusbar },
 	{ "show_tabs",			XT_S_INT, 0,		&show_tabs, NULL, NULL, NULL, set_show_tabs },
 	{ "show_url",			XT_S_INT, 0,		&show_url, NULL, NULL, NULL, set_show_url },
@@ -803,12 +806,14 @@ set_gui_mode(struct settings *s, char *val)
 		tab_style = XT_TABS_NORMAL;
 		show_url = 1;
 		show_statusbar = 0;
+		show_scrollbars = 1;
 	} else if (!strcmp(val, "minimal")) {
 		fancy_bar = 0;
 		show_tabs = 1;
 		tab_style = XT_TABS_COMPACT;
 		show_url = 0;
 		show_statusbar = 1;
+		show_scrollbars = 0;
 	} else
 		return (1);
 
@@ -2025,6 +2030,27 @@ set_session_timeout(char *value)
 			return (-1);
 		session_timeout = tmp;
 	}
+	return (0);
+}
+
+int
+set_show_scrollbars(char *value)
+{
+	struct tab		*t;
+	int			tmp;
+	const char		*errstr;
+
+	if (value == NULL || strlen(value) == 0)
+		tmp = XT_DS_SHOW_SCROLLBARS;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+	}
+	show_scrollbars = tmp;
+	TAILQ_FOREACH(t, &tabs, entry)
+		if (set_scrollbar_visibility(t, show_scrollbars))
+			return (-1);
 	return (0);
 }
 

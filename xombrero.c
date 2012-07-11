@@ -124,6 +124,7 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_CSS_YELLOW		"yellow"
 #define XT_CSS_GREEN		"green"
 #define XT_CSS_BLUE		"blue"
+#define XT_CSS_HIDDEN		"hidden"
 
 #define XT_PROTO_DELIM		"://"
 
@@ -580,6 +581,31 @@ buffers(struct tab *t, struct karg *args)
 	show_buffers(t);
 
 	return (0);
+}
+
+int
+set_scrollbar_visibility(struct tab *t, int visible)
+{
+#if GTK_CHECK_VERSION(3, 0, 0)
+	GtkWidget		*h_scrollbar, *v_scrollbar;
+
+	h_scrollbar = gtk_scrolled_window_get_hscrollbar(
+	    GTK_SCROLLED_WINDOW(t->browser_win));
+	v_scrollbar = gtk_scrolled_window_get_vscrollbar(
+	    GTK_SCROLLED_WINDOW(t->browser_win));
+
+	if (visible == 0) {
+		gtk_widget_set_name(h_scrollbar, XT_CSS_HIDDEN);
+		gtk_widget_set_name(v_scrollbar, XT_CSS_HIDDEN);
+	} else {
+		gtk_widget_set_name(h_scrollbar, "");
+		gtk_widget_set_name(v_scrollbar, "");
+	}
+
+	return (0);
+#else
+	return (visible == 0);
+#endif
 }
 
 void
@@ -6851,8 +6877,12 @@ create_browser(struct tab *t)
 	    GTK_SCROLLED_WINDOW(w));
 	t->adjust_v = gtk_scrolled_window_get_vadjustment(
 	    GTK_SCROLLED_WINDOW(w));
+#if GTK_CHECK_VERSION(3, 0, 0)
+#else
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(w),
-	    GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC); /* XXX not needed in gtk3? */
+	    GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+#endif
+
 
 	t->wv = WEBKIT_WEB_VIEW(webkit_web_view_new());
 	gtk_container_add(GTK_CONTAINER(w), GTK_WIDGET(t->wv));
@@ -7546,6 +7576,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 
 	/* browser */
 	t->browser_win = create_browser(t);
+	set_scrollbar_visibility(t, show_scrollbars);
 	gtk_box_pack_start(GTK_BOX(t->vbox), t->browser_win, TRUE, TRUE, 0);
 
 	/* oops message for user feedback */

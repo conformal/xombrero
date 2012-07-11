@@ -607,6 +607,7 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_DS_TAB_STYLE		XT_TABS_NORMAL
 #define XT_DS_STATUSBAR_STYLE	XT_STATUSBAR_URL
 #define XT_DS_SHOW_URL		(1)
+#define XT_DS_SHOW_SCROLLBARS	(1)
 #define XT_DS_SHOW_STATUSBAR	(0)
 #define XT_DS_CTRL_CLICK_FOCUS	(0)
 #define XT_DS_COOKIES_ENABLED	(1)
@@ -742,6 +743,7 @@ int		resizetab(struct tab *, struct karg *);
 int		cert_cmd(struct tab *, struct karg *);
 void		focus_webview(struct tab *);
 int		is_g_object_setting(GObject *, char *);
+int		set_scrollbar_visibility(struct tab *, int);
 
 #define		XT_DL_START	(0)
 #define		XT_DL_RESTART	(1)
@@ -760,6 +762,7 @@ extern int	show_tabs;
 extern int	tab_style;
 extern int	statusbar_style;
 extern int	show_url;
+extern int	show_scrollbars;
 extern int	show_statusbar;
 extern int	ctrl_click_focus;
 extern int	cookies_enabled;

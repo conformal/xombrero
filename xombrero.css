@@ -104,3 +104,9 @@
 .notebook tab:active {
 	background-color: @bg_color;
 }
+
+GtkScrollbar#hidden {
+	border-width: 0px;
+	-GtkRange-slider-width: 0px;
+	-GtkRange-trough-border: 0px;
+}
