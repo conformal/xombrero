@@ -6877,8 +6877,7 @@ create_browser(struct tab *t)
 	    GTK_SCROLLED_WINDOW(w));
 	t->adjust_v = gtk_scrolled_window_get_vadjustment(
 	    GTK_SCROLLED_WINDOW(w));
-#if GTK_CHECK_VERSION(3, 0, 0)
-#else
+#if !GTK_CHECK_VERSION(3, 0, 0)
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(w),
 	    GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 #endif

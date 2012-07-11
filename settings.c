@@ -2572,7 +2572,8 @@ settings_add(char *var, char *val)
 
 		if (rs[i].s) {
 			if (rs[i].s->set(&rs[i], val))
-				errx(1, "invalid value for %s: %s", var, val);
+				startpage_add("invalid value for %s: %s", var,
+				    val);
 			rv = 1;
 			break;
 		} else
