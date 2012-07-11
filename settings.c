@@ -93,7 +93,6 @@ int		session_autosave = XT_DS_SESSION_AUTOSAVE;
 int		guess_search = XT_DS_GUESS_SEARCH;
 gint		enable_spell_checking = XT_DS_ENABLE_SPELL_CHECKING;
 char		*spell_check_languages = NULL;	/* allocated/set at startup */
-int		xterm_workaround = XT_DS_XTERM_WORKAROUND;
 char		*url_regex = NULL;		/* allocated/set at startup */
 char		*encoding = NULL;		/* allocated/set at startup */
 int		autofocus_onload = XT_DS_AUTOFOCUS_ONLOAD;
@@ -199,7 +198,6 @@ int		set_userstyle(struct settings *, char *);
 int		set_userstyle_rt(char *);
 int		set_userstyle_global(char *);
 int		set_external_editor(char *);
-int		set_xterm_workaround(char *);
 int		set_warn_cert_changes(char *);
 int		set_allow_insecure_content(char *);
 int		set_allow_insecure_scripts(char *);
@@ -468,7 +466,6 @@ struct settings		rs[] = {
 	{ "window_maximize",		XT_S_INT, 0,		&window_maximize, NULL, NULL, NULL, NULL },
 	{ "window_width",		XT_S_INT, 0,		&window_width, NULL, NULL, NULL, NULL },
 	{ "work_dir",			XT_S_STR, 0, NULL, NULL,&s_work_dir, NULL, NULL },
-	{ "xterm_workaround",		XT_S_INT, 0,		&xterm_workaround, NULL, NULL, NULL, set_xterm_workaround },
 
 	/* special settings */
 	{ "alias",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_alias, NULL, NULL },
@@ -2480,23 +2477,6 @@ int
 set_work_dir(struct settings *s, char *val)
 {
 	expand_tilde(work_dir, sizeof work_dir, val);
-	return (0);
-}
-
-int
-set_xterm_workaround(char *value)
-{
-	int			tmp;
-	const char		*errstr;
-
-	if (value == NULL || strlen(value) == 0)
-		xterm_workaround = XT_DS_XTERM_WORKAROUND;
-	else {
-		tmp = strtonum(value, 0, 1, &errstr);
-		if (errstr)
-			return (-1);
-		xterm_workaround = tmp;
-	}
 	return (0);
 }
 

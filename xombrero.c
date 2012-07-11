@@ -1457,12 +1457,14 @@ int
 yank_uri(struct tab *t, struct karg *args)
 {
 	const gchar		*uri;
-	GtkClipboard		*clipboard;
+	GtkClipboard		*clipboard, *primary;
 
 	if ((uri = get_uri(t)) == NULL)
 		return (1);
 
-	clipboard = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
+	primary = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
+	clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
+	gtk_clipboard_set_text(primary, uri, -1);
 	gtk_clipboard_set_text(clipboard, uri, -1);
 
 	return (0);
@@ -1471,35 +1473,22 @@ yank_uri(struct tab *t, struct karg *args)
 int
 paste_uri(struct tab *t, struct karg *args)
 {
-	GtkClipboard		*clipboard;
-	GdkAtom			atom = gdk_atom_intern("CUT_BUFFER0", FALSE);
-	gint			len;
-	gchar			*p = NULL, *uri;
+	GtkClipboard		*clipboard, *primary;
+	gchar			*c = NULL, *p = NULL, *uri;
 
-	/* try primary clipboard first */
-	clipboard = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
-	p = gtk_clipboard_wait_for_text(clipboard);
+	clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
+	primary = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
+	c = gtk_clipboard_wait_for_text(clipboard);
+	p = gtk_clipboard_wait_for_text(primary);
 
-	/* if it failed get whatever text is in cut_buffer0 */
-	if (p == NULL && xterm_workaround)
-		if (gdk_property_get(gdk_get_default_root_window(),
-		    atom,
-		    gdk_atom_intern("STRING", FALSE),
-		    0,
-		    1024 * 1024 /* picked out of my butt */,
-		    FALSE,
-		    NULL,
-		    NULL,
-		    &len,
-		    (guchar **)&p)) {
-			if (p == NULL)
-				goto done;
-			/* yes sir, we need to NUL the string */
-			p[len] = '\0';
-		}
-
-	if (p) {
-		uri = p;
+	if (c || p) {
+#ifdef __MINGW32__
+		/* Windows try clipboard first */
+		uri = c ? c : p;
+#else
+		/* UNIX try primary first */
+		uri = p ? p : c;
+#endif
 		while (*uri && isspace(*uri))
 			uri++;
 		if (strlen(uri) == 0) {
@@ -1519,6 +1508,8 @@ paste_uri(struct tab *t, struct karg *args)
 	}
 
 done:
+	if (c)
+		g_free(c);
 	if (p)
 		g_free(p);
 
@@ -7927,48 +7918,6 @@ button_set_stockid(GtkWidget *button, char *stockid)
 }
 
 void
-clipb_primary_cb(GtkClipboard *primary, GdkEvent *event, gpointer notused)
-{
-	gchar			*p = NULL;
-	GdkAtom			atom = gdk_atom_intern("CUT_BUFFER0", FALSE);
-	gint			len;
-
-	if (xterm_workaround == 0)
-		return;
-
-	/*
-	 * xterm doesn't play nice with clipboards because it clears the
-	 * primary when clicked.  We rely on primary being set to properly
-	 * handle middle mouse button clicks (paste).  So when someone clears
-	 * primary copy whatever is in CUT_BUFFER0 into primary to simualte
-	 * other application behavior (as in DON'T clear primary).
-	 */
-
-	p = gtk_clipboard_wait_for_text(primary);
-	if (p == NULL) {
-		if (gdk_property_get(gdk_get_default_root_window(),
-		    atom,
-		    gdk_atom_intern("STRING", FALSE),
-		    0,
-		    1024 * 1024 /* picked out of my butt */,
-		    FALSE,
-		    NULL,
-		    NULL,
-		    &len,
-		    (guchar **)&p)) {
-			if (p == NULL)
-				return;
-			/* yes sir, we need to NUL the string */
-			p[len] = '\0';
-			gtk_clipboard_set_text(primary, p, -1);
-		}
-	}
-
-	if (p)
-		g_free(p);
-}
-
-void
 create_canvas(void)
 {
 	GtkWidget		*vbox;
@@ -8035,12 +7984,6 @@ create_canvas(void)
 		l = g_list_append(l, pb);
 	}
 	gtk_window_set_default_icon_list(l);
-
-	/* clipboard work around */
-	if (xterm_workaround)
-		g_signal_connect(
-		    G_OBJECT(gtk_clipboard_get(GDK_SELECTION_PRIMARY)),
-		    "owner-change", G_CALLBACK(clipb_primary_cb), NULL);
 
 	gtk_widget_show_all(abtn);
 	gtk_widget_show_all(main_window);

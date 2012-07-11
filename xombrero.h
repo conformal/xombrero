@@ -632,7 +632,6 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_DS_GUESS_SEARCH	(0)
 #define XT_DS_ENABLE_SPELL_CHECKING	(0)
 #define XT_DS_SPELL_CHECK_LANGUAGES	("en_US")
-#define XT_DS_XTERM_WORKAROUND	(0)
 #define XT_DS_URL_REGEX		("^[[:blank:]]*[^[:blank:]]*([[:alnum:]-]+\\.)+[[:alnum:]-][^[:blank:]]*[[:blank:]]*$")
 #define XT_DS_ENCODING		("UTF-8")
 #define XT_DS_AUTOFOCUS_ONLOAD	(0)
@@ -803,7 +802,6 @@ extern gint	max_connections;
 extern gint	max_host_connections;
 extern gint	enable_spell_checking;
 extern char	*spell_check_languages;
-extern int	xterm_workaround;
 extern char	*url_regex;
 extern int	history_autosave;
 extern char	search_file[PATH_MAX];
