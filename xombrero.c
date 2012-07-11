@@ -8199,7 +8199,7 @@ mtx_lock(void)
 
 complain:
 	if (mtx_complain == 0) {
-		show_oops(NULL, "buggy mutex implementation detected(%s), "
+		DNPRINTF(XT_D_MTX, "buggy mutex implementation detected(%s), "
 		    "work around implemented", s);
 		mtx_complain = 1;
 	}
@@ -8223,7 +8223,7 @@ mtx_unlock(void)
 
 complain:
 	if (mtx_complain == 0) {
-		show_oops(NULL, "buggy mutex implementation detected(%s), "
+		DNPRINTF(XT_D_MTX, "buggy mutex implementation detected(%s), "
 		    "work around implemented", s);
 		mtx_complain = 1;
 	}
