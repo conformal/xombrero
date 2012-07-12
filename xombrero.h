@@ -198,7 +198,6 @@ struct tab {
 		GtkWidget	*favicon;
 		GtkWidget	*eventbox;
 		GtkWidget	*box;
-		GtkWidget	*sep;
 	} tab_elems;
 	GtkWidget		*label;
 	GtkWidget		*spinner;

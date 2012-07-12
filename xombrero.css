@@ -18,6 +18,10 @@
 @define-color yellow #ffff66;
 @define-color green #99ff66;
 @define-color blue lightblue;
+@define-color ct_bg #000000;
+@define-color ct_inactive #dddddd;
+@define-color ct_active #bbbb00;
+@define-color ct_separator #555555;
 
 * {
 	border-width: 1px;
@@ -109,4 +113,24 @@ GtkScrollbar#hidden {
 	border-width: 0px;
 	-GtkRange-slider-width: 0px;
 	-GtkRange-trough-border: 0px;
+}
+
+/* compact tabs */
+
+#tab_bar {
+	background-color: @ct_separator;
+}
+
+#compact_tab {
+	background-color: @ct_bg;
+}
+
+#compact_tab GtkLabel {
+	-GtkLabel-width-chars: 1;
+	color: @ct_inactive;
+	padding: 4px;
+}
+
+#compact_tab GtkLabel#active {
+	color: @ct_active;
 }

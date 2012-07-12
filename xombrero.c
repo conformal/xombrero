@@ -125,6 +125,7 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_CSS_GREEN		"green"
 #define XT_CSS_BLUE		"blue"
 #define XT_CSS_HIDDEN		"hidden"
+#define XT_CSS_ACTIVE		"active"
 
 #define XT_PROTO_DELIM		"://"
 
@@ -206,6 +207,7 @@ struct passwd		*pwd;
 GtkWidget		*main_window;
 GtkNotebook		*notebook;
 GtkWidget		*tab_bar;
+GtkWidget		*tab_bar_box;
 GtkWidget		*arrow, *abtn;
 struct tab_list		tabs;
 struct history_list	hl;
@@ -7103,22 +7105,9 @@ void
 recalc_tabs(void)
 {
 	struct tab		*t;
-	int			 maxid = 0;
 
-	TAILQ_FOREACH(t, &tabs, entry) {
+	TAILQ_FOREACH(t, &tabs, entry)
 		t->tab_id = gtk_notebook_page_num(notebook, t->vbox);
-		if (t->tab_id > maxid)
-			maxid = t->tab_id;
-
-		gtk_widget_show(t->tab_elems.sep);
-	}
-
-	TAILQ_FOREACH(t, &tabs, entry) {
-		if (t->tab_id == maxid) {
-			gtk_widget_hide(t->tab_elems.sep);
-			break;
-		}
-	}
 }
 
 void
@@ -7148,19 +7137,28 @@ recolor_compact_tabs(void)
 {
 	struct tab		*t;
 	int			curid = 0;
+#if !GTK_CHECK_VERSION(3, 0, 0)
 	GdkColor		color_active, color_inactive;
 
 	gdk_color_parse(XT_COLOR_CT_ACTIVE, &color_active);
 	gdk_color_parse(XT_COLOR_CT_INACTIVE, &color_inactive);
+#endif
 	curid = gtk_notebook_get_current_page(notebook);
+
 	TAILQ_FOREACH(t, &tabs, entry) {
-		if (t->tab_id == curid) {
+#if GTK_CHECK_VERSION(3, 0, 0)
+		if (t->tab_id == curid)
+			gtk_widget_set_name(t->tab_elems.label, XT_CSS_ACTIVE);
+		else
+			gtk_widget_set_name(t->tab_elems.label, "");
+#else
+		if (t->tab_id == curid)
 			gtk_widget_modify_fg(t->tab_elems.label,
 			    GTK_STATE_NORMAL, &color_active);
-		} else {
-			gtk_widget_modify_fg(t->tab_elems.label, GTK_STATE_NORMAL,
-			    &color_inactive);
-		}
+		else
+			gtk_widget_modify_fg(t->tab_elems.label,
+			    GTK_STATE_NORMAL, &color_inactive);
+#endif
 	}
 }
 
@@ -7414,10 +7412,12 @@ int
 statusbar_create(struct tab *t)
 {
 	char			*p;
-	GdkColor		color;
 	GtkWidget		*sep;
 	int			sbe_P = 0, sbe_B = 0, sbe_Z = 0, sbe_T = 0,
 				sbe_p = 0;
+#if !GTK_CHECK_VERSION(3, 0, 0)
+	GdkColor		color;
+#endif
 
 	if (t == NULL) {
 		DPRINTF("%s: invalid parameters", __func__);
@@ -7464,9 +7464,9 @@ statusbar_create(struct tab *t)
 			sep = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
 #else
 			sep = gtk_vseparator_new();
-#endif
 			gdk_color_parse(XT_COLOR_SB_SEPARATOR, &color);
 			gtk_widget_modify_bg(sep, GTK_STATE_NORMAL, &color);
+#endif
 			gtk_box_pack_start(GTK_BOX(t->statusbar_box), sep,
 			    FALSE, FALSE, FALSE);
 			break;
@@ -7508,7 +7508,9 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	GtkWidget			*b, *bb;
 	WebKitWebHistoryItem		*item;
 	GList				*items;
+#if !GTK_CHECK_VERSION(3, 0, 0)
 	GdkColor			color;
+#endif
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
@@ -7619,37 +7621,39 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	/* compact tab bar */
 	t->tab_elems.label = gtk_label_new(title);
 	t->tab_elems.favicon = gtk_image_new();
-	gtk_label_set_width_chars(GTK_LABEL(t->tab_elems.label), 1.0);
+
+	t->tab_elems.eventbox = gtk_event_box_new();
+	gtk_widget_set_name(t->tab_elems.eventbox, "compact_tab");
+#if GTK_CHECK_VERSION(3, 0, 0)
+	t->tab_elems.box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+
+	gtk_label_set_ellipsize(GTK_LABEL(t->tab_elems.label),
+	    PANGO_ELLIPSIZE_END);
+	gtk_widget_override_font(t->tab_elems.label, tabbar_font);
+	gtk_widget_set_halign(t->tab_elems.label, GTK_ALIGN_START);
+	gtk_widget_set_valign(t->tab_elems.label, GTK_ALIGN_START);
+#else
+	t->tab_elems.box = gtk_hbox_new(FALSE, 0);
+
+	gtk_label_set_width_chars(GTK_LABEL(t->tab_elems.label), 1);
 	gtk_misc_set_alignment(GTK_MISC(t->tab_elems.label), 0.0, 0.0);
 	gtk_misc_set_padding(GTK_MISC(t->tab_elems.label), 4.0, 4.0);
 	gtk_widget_modify_font(GTK_WIDGET(t->tab_elems.label), tabbar_font);
-
-	t->tab_elems.eventbox = gtk_event_box_new();
-#if GTK_CHECK_VERSION(3, 0, 0)
-	t->tab_elems.box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-	t->tab_elems.sep = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
-#else
-	t->tab_elems.box = gtk_hbox_new(FALSE, 0);
-	t->tab_elems.sep = gtk_vseparator_new();
-#endif
 
 	gdk_color_parse(XT_COLOR_CT_BACKGROUND, &color);
 	gtk_widget_modify_bg(t->tab_elems.eventbox, GTK_STATE_NORMAL, &color);
 	gdk_color_parse(XT_COLOR_CT_INACTIVE, &color);
 	gtk_widget_modify_fg(t->tab_elems.label, GTK_STATE_NORMAL, &color);
-	gdk_color_parse(XT_COLOR_CT_SEPARATOR, &color);
-	gtk_widget_modify_bg(t->tab_elems.sep, GTK_STATE_NORMAL, &color);
+#endif
 
 	gtk_box_pack_start(GTK_BOX(t->tab_elems.box), t->tab_elems.favicon, FALSE,
 	    FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(t->tab_elems.box), t->tab_elems.label, TRUE,
 	    TRUE, 0);
-	gtk_box_pack_start(GTK_BOX(t->tab_elems.box), t->tab_elems.sep, FALSE,
-	    FALSE, 0);
 	gtk_container_add(GTK_CONTAINER(t->tab_elems.eventbox),
 	    t->tab_elems.box);
 
-	gtk_box_pack_start(GTK_BOX(tab_bar), t->tab_elems.eventbox, TRUE,
+	gtk_box_pack_start(GTK_BOX(tab_bar_box), t->tab_elems.eventbox, TRUE,
 	    TRUE, 0);
 	gtk_widget_show_all(t->tab_elems.eventbox);
 
@@ -7663,7 +7667,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 		else {
 			TAILQ_INSERT_TAIL(&tabs, t, entry);
 			gtk_notebook_insert_page(notebook, t->vbox, b, id);
-			gtk_box_reorder_child(GTK_BOX(tab_bar),
+			gtk_box_reorder_child(GTK_BOX(tab_bar_box),
 			    t->tab_elems.eventbox, id);
 			recalc_tabs();
 		}
@@ -7834,7 +7838,7 @@ notebook_pagereordered_cb(GtkNotebook *nb, GtkWidget *nbp, guint pn,
 		return;
 	DNPRINTF(XT_D_TAB, "page_reordered_cb: tab: %d\n", t->tab_id);
 
-	gtk_box_reorder_child(GTK_BOX(tab_bar), t->tab_elems.eventbox,
+	gtk_box_reorder_child(GTK_BOX(tab_bar_box), t->tab_elems.eventbox,
 	    t->tab_id);
 
 	update_statusbar_tabs(t);
@@ -7955,6 +7959,9 @@ create_canvas(void)
 	GdkPixbuf		*pb;
 	char			file[PATH_MAX];
 	int			i;
+#if !GTK_CHECK_VERSION(3, 0, 0)
+	GdkColor		color;
+#endif
 
 #if GTK_CHECK_VERSION(3, 0, 0)
 	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -7981,11 +7988,18 @@ create_canvas(void)
 	gtk_notebook_set_action_widget(notebook, abtn, GTK_PACK_END);
 #endif
 	/* compact tab bar */
+	tab_bar = gtk_event_box_new();
 #if GTK_CHECK_VERSION(3, 0, 0)
-	tab_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+	gtk_widget_set_name(tab_bar, "tab_bar");
+	tab_bar_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 #else
-	tab_bar = gtk_hbox_new(TRUE, 0);
+	gdk_color_parse(XT_COLOR_CT_SEPARATOR, &color);
+	gtk_widget_modify_bg(tab_bar, GTK_STATE_NORMAL, &color);
+	tab_bar_box = gtk_hbox_new(TRUE, 0);
 #endif
+	gtk_container_add(GTK_CONTAINER(tab_bar), tab_bar_box);
+	gtk_box_set_homogeneous(GTK_BOX(tab_bar_box), TRUE);
+	gtk_box_set_spacing(GTK_BOX(tab_bar_box), 2);
 
 	gtk_box_pack_start(GTK_BOX(vbox), tab_bar, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(notebook), TRUE, TRUE, 0);
