@@ -653,12 +653,19 @@ set_home(char *value)
 int
 set_search_string(char *value)
 {
+	struct tab		*t;
+
 	if (search_string)
 		g_free(search_string);
-	if (value == NULL || strlen(value) == 0)
-		search_string = g_strdup(XT_DS_SEARCH_STRING);
-	else
+	if (value == NULL || strlen(value) == 0) {
+		search_string = NULL;
+		TAILQ_FOREACH(t, &tabs, entry)
+			gtk_widget_hide(t->search_entry);
+	} else {
 		search_string = g_strdup(value);
+		TAILQ_FOREACH(t, &tabs, entry)
+			gtk_widget_show(t->search_entry);
+	}
 	return (0);
 }
 
@@ -2199,7 +2206,8 @@ set_fancy_bar(char *value)
 			gtk_widget_show(t->forward);
 			gtk_widget_show(t->stop);
 			gtk_widget_show(t->js_toggle);
-			gtk_widget_show(t->search_entry);
+			if (search_string && strlen(search_string))
+				gtk_widget_show(t->search_entry);
 		} else {
 			gtk_widget_hide(t->backward);
 			gtk_widget_hide(t->forward);
