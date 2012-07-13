@@ -8183,7 +8183,6 @@ xxx_dir(char *dir)
 
 	if (stat(dir, &sb)) {
 #if defined __MINGW32__
-printf("making: %s\n", dir);
 		if (mkdir(dir) == -1)
 #else
 		if (mkdir(dir, S_IRWXU) == -1)
@@ -8245,6 +8244,7 @@ complain:
 	if (mtx_complain == 0) {
 		DNPRINTF(XT_D_MTX, "buggy mutex implementation detected(%s), "
 		    "work around implemented", s);
+		s = s; /* *sigh* gcc */
 		mtx_complain = 1;
 	}
 }
@@ -8269,6 +8269,7 @@ complain:
 	if (mtx_complain == 0) {
 		DNPRINTF(XT_D_MTX, "buggy mutex implementation detected(%s), "
 		    "work around implemented", s);
+		s = s; /* *sigh* gcc */
 		mtx_complain = 1;
 	}
 }
@@ -8431,11 +8432,13 @@ main(int argc, char **argv)
 
 	xtp_generate_keys();
 
-	/* set download dir */
 	pwd = getpwuid(getuid());
 	if (pwd == NULL)
 		errx(1, "invalid user %d", getuid());
-	strlcpy(download_dir, pwd->pw_dir, sizeof download_dir);
+
+	/* set download dir */
+	if (strlen(download_dir) == 0)
+		strlcpy(download_dir, pwd->pw_dir, sizeof download_dir);
 
 	/* compile buffer command regexes */
 	buffercmd_init();
