@@ -1227,7 +1227,7 @@ xtp_page_ab(struct tab *t, struct karg *args)
 #ifdef WEBKITGTK_API_VERSION
 	    "<br><b>WebKit API: %.1f</b>"
 #endif
-	    "<br><b>Configuration: %s" PS "<a href='%s%d/%s/%d'>%s</a>"
+	    "<br><b>Configuration: %s" PS "<a href='%s%d/%s/%d'>.%s</a>"
 	    " (remember to reload after any changes)</b>"
 	    "<p>"
 	    "Authors:"
