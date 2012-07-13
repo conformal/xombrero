@@ -8225,14 +8225,21 @@ int			mtx_complain;
 void
 mtx_lock(void)
 {
+#ifdef DEBUG
 	char		*s = NULL;
+#endif
+
 	g_static_rec_mutex_lock(&my_gdk_mtx);
 	if (my_gdk_mtx.depth <= 0) {
+#ifdef DEBUG
 		s = "lock <= 0";
+#endif
 		g_static_rec_mutex_lock(&my_gdk_mtx);
 		goto complain;
 	} else if (my_gdk_mtx.depth != 1) {
+#ifdef DEBUG
 		s = "lock != 1";
+#endif
 		do {
 			g_static_rec_mutex_unlock(&my_gdk_mtx);
 		} while (my_gdk_mtx.depth > 1);
@@ -8244,7 +8251,6 @@ complain:
 	if (mtx_complain == 0) {
 		DNPRINTF(XT_D_MTX, "buggy mutex implementation detected(%s), "
 		    "work around implemented", s);
-		s = s; /* *sigh* gcc */
 		mtx_complain = 1;
 	}
 }
