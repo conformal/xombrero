@@ -587,7 +587,7 @@ set_statusbar_font(char *value)
 	statusbar_font = pango_font_description_from_string(
 	    statusbar_font_name);
 	TAILQ_FOREACH(t, &tabs, entry) {
-		gtk_widget_modify_font(GTK_WIDGET(t->sbe.statusbar),
+		gtk_widget_modify_font(GTK_WIDGET(t->sbe.uri),
 		    statusbar_font);
 		gtk_widget_modify_font(GTK_WIDGET(t->sbe.buffercmd),
 		    statusbar_font);
@@ -2228,7 +2228,7 @@ setup_proxy(char *uri)
 		soup_uri_free(proxy_uri);
 		proxy_uri = NULL;
 		TAILQ_FOREACH(t, &tabs, entry)
-			gtk_entry_set_text(GTK_ENTRY(t->sbe.proxy), "");
+			gtk_label_set_text(GTK_LABEL(t->sbe.proxy), "");
 	}
 	if (http_proxy) {
 		if (http_proxy != uri) {
@@ -2245,7 +2245,7 @@ setup_proxy(char *uri)
 			g_object_set(session, "proxy-uri", proxy_uri,
 			    (char *)NULL);
 			TAILQ_FOREACH(t, &tabs, entry)
-				gtk_entry_set_text(GTK_ENTRY(t->sbe.proxy),
+				gtk_label_set_text(GTK_LABEL(t->sbe.proxy),
 				    "proxy");
 		}
 	}

@@ -44,28 +44,34 @@
 	border-width: 0px;
 }
 
-.entry#red {
-	background-image: -gtk-gradient(linear,
-					left top, left bottom,
-					from (@red), to (@red));
+#statusbar > GtkEventBox {
+	background-image: none;
+	background-color: white;
 }
 
-.entry#yellow {
-	background-image: -gtk-gradient(linear,
-					left top, left bottom,
-					from (@yellow), to (@yellow));
+#statusbar > GtkEventBox .entry {
+	background-image: none;
+	background-color: rgba(0, 0, 0, 0);
 }
 
-.entry#green {
-	background-image: -gtk-gradient(linear,
-					left top, left bottom,
-					from (@green), to (@green));
+#red {
+	background-image: none;
+	background-color: @red;
 }
 
-.entry#blue {
-	background-image: -gtk-gradient(linear,
-					left top, left bottom,
-					from (@blue), to (@blue));
+#yellow {
+	background-image: none;
+	background-color: @yellow;
+}
+
+#green {
+	background-image: none;
+	background-color: @green;
+}
+
+#blue {
+	background-image: none;
+	background-color: @blue;
 }
 
 .entry:selected,
@@ -77,11 +83,18 @@
 .entry.progressbar#red,
 .entry.progressbar#yellow,
 .entry.progressbar#green,
-.entry.progressbar#blue {
-	background-image: -gtk-gradient(linear,
-					left top, left bottom,
-					from (@selected_bg_color),
-					to (@selected_bg_color));
+.entry.progressbar#blue,
+#statusbar .entry:selected,
+#statusbar .entry:selected#red,
+#statusbar .entry:selected#yellow,
+#statusbar .entry:selected#green,
+#statusbar .entry:selected#blue,
+#statusbar .entry.progressbar,
+#statusbar .entry.progressbar#red,
+#statusbar .entry.progressbar#yellow,
+#statusbar .entry.progressbar#green,
+#statusbar .entry.progressbar#blue {
+	background-image: none;
 	background-color: @selected_bg_color;
 	color: @selected_fg_color;
 }

@@ -202,9 +202,10 @@ struct tab {
 	GtkWidget		*search_entry;
 	GtkWidget		*toolbar;
 	GtkWidget		*browser_win;
-	GtkWidget		*statusbar_box;
+	GtkWidget		*statusbar;
 	struct {
-		GtkWidget	*statusbar;
+		GtkWidget	*ebox;	/* non window-less widget for colors */
+		GtkWidget	*uri;
 		GtkWidget	*buffercmd;
 		GtkWidget	*zoom;
 		GtkWidget	*position;

@@ -453,7 +453,7 @@ set_status(struct tab *t, gchar *fmt, ...)
 
 	status = g_strdup_vprintf(fmt, ap);
 
-	gtk_entry_set_text(GTK_ENTRY(t->sbe.statusbar), status);
+	gtk_entry_set_text(GTK_ENTRY(t->sbe.uri), status);
 
 	if (!t->status)
 		t->status = status;
@@ -1822,12 +1822,7 @@ free_connection_certs(gnutls_x509_crt_t *certs, size_t cert_count)
 void
 statusbar_modify_attr(struct tab *t, const char *css_name)
 {
-	gtk_widget_set_name(t->sbe.statusbar, css_name);
-	gtk_widget_set_name(t->sbe.buffercmd, css_name);
-	gtk_widget_set_name(t->sbe.zoom, css_name);
-	gtk_widget_set_name(t->sbe.position, css_name);
-	gtk_widget_set_name(t->sbe.tabs, css_name);
-	gtk_widget_set_name(t->sbe.proxy, css_name);
+	gtk_widget_set_name(t->sbe.ebox, css_name);
 }
 #else
 void
@@ -1838,19 +1833,9 @@ statusbar_modify_attr(struct tab *t, const char *text, const char *base)
 	gdk_color_parse(text, &c_text);
 	gdk_color_parse(base, &c_base);
 
-	gtk_widget_modify_text(t->sbe.statusbar, GTK_STATE_NORMAL, &c_text);
-	gtk_widget_modify_text(t->sbe.buffercmd, GTK_STATE_NORMAL, &c_text);
-	gtk_widget_modify_text(t->sbe.zoom, GTK_STATE_NORMAL, &c_text);
-	gtk_widget_modify_text(t->sbe.position, GTK_STATE_NORMAL, &c_text);
-	gtk_widget_modify_text(t->sbe.tabs, GTK_STATE_NORMAL, &c_text);
-	gtk_widget_modify_text(t->sbe.proxy, GTK_STATE_NORMAL, &c_text);
-
-	gtk_widget_modify_base(t->sbe.statusbar, GTK_STATE_NORMAL, &c_base);
-	gtk_widget_modify_base(t->sbe.buffercmd, GTK_STATE_NORMAL, &c_base);
-	gtk_widget_modify_base(t->sbe.zoom, GTK_STATE_NORMAL, &c_base);
-	gtk_widget_modify_base(t->sbe.position, GTK_STATE_NORMAL, &c_base);
-	gtk_widget_modify_base(t->sbe.tabs, GTK_STATE_NORMAL, &c_base);
-	gtk_widget_modify_base(t->sbe.proxy, GTK_STATE_NORMAL, &c_base);
+	gtk_widget_modify_bg(t->sbe.ebox, GTK_STATE_NORMAL, &c_base);
+	gtk_widget_modify_base(t->sbe.uri, GTK_STATE_NORMAL, &c_base);
+	gtk_widget_modify_text(t->sbe.uri, GTK_STATE_NORMAL, &c_text);
 }
 #endif
 
@@ -2506,9 +2491,9 @@ statusbar_set_visibility(void)
 
 	TAILQ_FOREACH(t, &tabs, entry){
 		if (show_statusbar == 0)
-			gtk_widget_hide(t->statusbar_box);
+			gtk_widget_hide(t->statusbar);
 		else
-			gtk_widget_show(t->statusbar_box);
+			gtk_widget_show(t->statusbar);
 
 		focus_webview(t);
 	}
@@ -2523,17 +2508,17 @@ url_set(struct tab *t, int enable_url_entry)
 	show_url = enable_url_entry;
 
 	if (enable_url_entry) {
-		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->sbe.statusbar),
+		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->sbe.uri),
 		    GTK_ENTRY_ICON_PRIMARY, NULL);
-		gtk_entry_set_progress_fraction(GTK_ENTRY(t->sbe.statusbar), 0);
+		gtk_entry_set_progress_fraction(GTK_ENTRY(t->sbe.uri), 0);
 	} else {
 		pixbuf = gtk_entry_get_icon_pixbuf(GTK_ENTRY(t->uri_entry),
 		    GTK_ENTRY_ICON_PRIMARY);
 		progress =
 		    gtk_entry_get_progress_fraction(GTK_ENTRY(t->uri_entry));
-		gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->sbe.statusbar),
+		gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->sbe.uri),
 		    GTK_ENTRY_ICON_PRIMARY, pixbuf);
-		gtk_entry_set_progress_fraction(GTK_ENTRY(t->sbe.statusbar),
+		gtk_entry_set_progress_fraction(GTK_ENTRY(t->sbe.uri),
 		    progress);
 	}
 }
@@ -3889,10 +3874,10 @@ xt_icon_from_name(struct tab *t, gchar *name)
 	gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->uri_entry),
 	    GTK_ENTRY_ICON_PRIMARY, "text-html");
 	if (show_url == 0)
-		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->sbe.statusbar),
+		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->sbe.uri),
 		    GTK_ENTRY_ICON_PRIMARY, "text-html");
 	else
-		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->sbe.statusbar),
+		gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->sbe.uri),
 		    GTK_ENTRY_ICON_PRIMARY, NULL);
 }
 
@@ -3915,10 +3900,10 @@ xt_icon_from_pixbuf(struct tab *t, GdkPixbuf *pb)
 
 		/* Minimal tabs. */
 		if (show_url == 0) {
-			gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->sbe.statusbar),
+			gtk_entry_set_icon_from_pixbuf(GTK_ENTRY(t->sbe.uri),
 			    GTK_ENTRY_ICON_PRIMARY, pb_scaled);
 		} else
-			gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->sbe.statusbar),
+			gtk_entry_set_icon_from_icon_name(GTK_ENTRY(t->sbe.uri),
 			    GTK_ENTRY_ICON_PRIMARY, NULL);
 	}
 
@@ -4516,7 +4501,7 @@ webview_load_finished_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 void
 webview_progress_changed_cb(WebKitWebView *wv, int progress, struct tab *t)
 {
-	gtk_entry_set_progress_fraction(GTK_ENTRY(t->sbe.statusbar),
+	gtk_entry_set_progress_fraction(GTK_ENTRY(t->sbe.uri),
 	    progress == 100 ? 0 : (double)progress / 100);
 	gtk_entry_set_progress_fraction(GTK_ENTRY(t->uri_entry),
 	    progress == 100 ? 0 : (double)progress / 100);
@@ -5723,7 +5708,7 @@ buffercmd_abort(struct tab *t)
 		bcmd[i] = '\0';
 
 	cmd_prefix = 0; /* clear prefix for non-buffer commands */
-	gtk_entry_set_text(GTK_ENTRY(t->sbe.buffercmd), bcmd);
+	gtk_label_set_text(GTK_LABEL(t->sbe.buffercmd), bcmd);
 }
 
 void
@@ -5788,7 +5773,7 @@ buffercmd_addkey(struct tab *t, guint keyval)
 		return (XT_CB_HANDLED);
 	}
 
-	gtk_entry_set_text(GTK_ENTRY(t->sbe.buffercmd), bcmd);
+	gtk_label_set_text(GTK_LABEL(t->sbe.buffercmd), bcmd);
 
 	/* find exact match */
 	for (i = 0; i < LENGTH(buffercmds); i++)
@@ -6840,7 +6825,7 @@ update_statusbar_position(GtkAdjustment* adjustment, gpointer data)
 	else
 		position = g_strdup_printf("%d%%", (int) ((value / max) * 100));
 
-	gtk_entry_set_text(GTK_ENTRY(t->sbe.position), position);
+	gtk_label_set_text(GTK_LABEL(t->sbe.position), position);
 	g_free(position);
 
 	return (TRUE);
@@ -7108,7 +7093,7 @@ update_statusbar_tabs(struct tab *t)
 		t = get_current_tab();
 
 	if (t != NULL)
-		gtk_entry_set_text(GTK_ENTRY(t->sbe.tabs), s);
+		gtk_label_set_text(GTK_LABEL(t->sbe.tabs), s);
 }
 
 /* after active tab change */
@@ -7289,7 +7274,7 @@ update_statusbar_zoom(struct tab *t)
 	g_object_get(G_OBJECT(t->wv), "zoom-level", &zoom, (char *)NULL);
 	if ((zoom <= 0.99 || zoom >= 1.01))
 		snprintf(s, sizeof s, "%d%%", (int)(zoom * 100));
-	gtk_entry_set_text(GTK_ENTRY(t->sbe.zoom), s);
+	gtk_label_set_text(GTK_LABEL(t->sbe.zoom), s);
 }
 
 void
@@ -7352,25 +7337,20 @@ append_tab(struct tab *t)
 }
 
 GtkWidget *
-create_sbe(int width)
+create_sbe(void)
 {
 	GtkWidget		*sbe;
 
-	sbe = gtk_entry_new();
-	gtk_entry_set_inner_border(GTK_ENTRY(sbe), NULL);
-	gtk_entry_set_has_frame(GTK_ENTRY(sbe), FALSE);
+	sbe = gtk_label_new(NULL);
 	gtk_widget_set_can_focus(GTK_WIDGET(sbe), FALSE);
 	gtk_widget_modify_font(GTK_WIDGET(sbe), statusbar_font);
-	gtk_entry_set_alignment(GTK_ENTRY(sbe), 1.0);
-	gtk_widget_set_size_request(sbe, width, -1);
-
 	return (sbe);
 }
 
 int
-add_sbe(struct tab *t, char flag, int *used, GtkWidget *sbe)
+add_sbe(GtkWidget *box, char flag, int *used, GtkWidget *sbe)
 {
-	if (t == NULL || used == NULL || sbe == NULL) {
+	if (box == NULL || used == NULL || sbe == NULL) {
 		DPRINTF("%s: invalid parameters", __func__);
 		return (1);
 	}
@@ -7381,8 +7361,7 @@ add_sbe(struct tab *t, char flag, int *used, GtkWidget *sbe)
 		return (1);
 	}
 
-	gtk_box_pack_start(GTK_BOX(t->statusbar_box),
-	    sbe, FALSE, FALSE, FALSE);
+	gtk_box_pack_start(GTK_BOX(box), sbe, FALSE, FALSE, 0);
 	*used = 1;
 
 	return (0);
@@ -7391,8 +7370,9 @@ add_sbe(struct tab *t, char flag, int *used, GtkWidget *sbe)
 int
 statusbar_create(struct tab *t)
 {
-	char			*p;
+	GtkWidget		*box;	/* container for statusbar elems */
 	GtkWidget		*sep;
+	char			*p;
 	int			sbe_P = 0, sbe_B = 0, sbe_Z = 0, sbe_T = 0,
 				sbe_p = 0;
 #if !GTK_CHECK_VERSION(3, 0, 0)
@@ -7405,24 +7385,36 @@ statusbar_create(struct tab *t)
 	}
 
 #if GTK_CHECK_VERSION(3, 0, 0)
-	t->statusbar_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-	gtk_widget_set_name(GTK_WIDGET(t->statusbar_box), "statusbar");
+	t->statusbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+	box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+	gtk_widget_set_name(GTK_WIDGET(t->statusbar), "statusbar");
 #else
-	t->statusbar_box = gtk_hbox_new(FALSE, 0);
+	t->statusbar = gtk_hbox_new(FALSE, 0);
+	box = gtk_hbox_new(FALSE, 0);
 #endif
+	t->sbe.ebox = gtk_event_box_new();
 
-	t->sbe.statusbar = gtk_entry_new();
-	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.statusbar), NULL);
-	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.statusbar), FALSE);
-	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.statusbar), FALSE);
-	gtk_widget_modify_font(GTK_WIDGET(t->sbe.statusbar), statusbar_font);
+	gtk_widget_set_can_focus(GTK_WIDGET(t->statusbar), FALSE);
+	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.ebox), FALSE);
+	gtk_widget_set_can_focus(GTK_WIDGET(box), FALSE);
+
+	gtk_box_set_spacing(GTK_BOX(box), 10);
+	gtk_box_pack_start(GTK_BOX(t->statusbar), t->sbe.ebox, TRUE, TRUE, 0);
+	gtk_container_add(GTK_CONTAINER(t->sbe.ebox), box);
 
 	/* create these widgets only if specified in statusbar_elems */
-	t->sbe.position = create_sbe(40);
-	t->sbe.zoom = create_sbe(40);
-	t->sbe.buffercmd = create_sbe(60);
-	t->sbe.tabs = create_sbe(40);
-	t->sbe.proxy = create_sbe(60);
+	t->sbe.uri = gtk_entry_new();
+	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.uri), FALSE);
+	gtk_widget_modify_font(GTK_WIDGET(t->sbe.uri), statusbar_font);
+#if !GTK_CHECK_VERSION(3, 0, 0)
+	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.uri), NULL);
+	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.uri), FALSE);
+#endif	
+	t->sbe.position = create_sbe();
+	t->sbe.zoom = create_sbe();
+	t->sbe.buffercmd = create_sbe();
+	t->sbe.tabs = create_sbe();
+	t->sbe.proxy = create_sbe();
 
 #if GTK_CHECK_VERSION(3, 0, 0)
 	statusbar_modify_attr(t, XT_CSS_NORMAL);
@@ -7430,8 +7422,7 @@ statusbar_create(struct tab *t)
 	statusbar_modify_attr(t, XT_COLOR_WHITE, XT_COLOR_BLACK);
 #endif
 
-	gtk_box_pack_start(GTK_BOX(t->statusbar_box), t->sbe.statusbar, TRUE,
-	    TRUE, FALSE);
+	gtk_box_pack_start(GTK_BOX(box), t->sbe.uri, TRUE, TRUE, 0);
 
 	/*
 	 * gtk widgets cannot be added to a box twice. The sbe_* variables
@@ -7447,27 +7438,25 @@ statusbar_create(struct tab *t)
 			gdk_color_parse(XT_COLOR_SB_SEPARATOR, &color);
 			gtk_widget_modify_bg(sep, GTK_STATE_NORMAL, &color);
 #endif
-			gtk_box_pack_start(GTK_BOX(t->statusbar_box), sep,
-			    FALSE, FALSE, FALSE);
+			gtk_box_pack_start(GTK_BOX(box), sep, FALSE, FALSE, 0);
 			break;
 		case 'P':
-			add_sbe(t, *p, &sbe_P, t->sbe.position);
+			add_sbe(box, *p, &sbe_P, t->sbe.position);
 			break;
 		case 'B':
-			add_sbe(t, *p, &sbe_B, t->sbe.buffercmd);
+			add_sbe(box, *p, &sbe_B, t->sbe.buffercmd);
 			break;
 		case 'Z':
-			add_sbe(t, *p, &sbe_Z, t->sbe.zoom);
+			add_sbe(box, *p, &sbe_Z, t->sbe.zoom);
 			break;
 		case 'T':
-			add_sbe(t, *p, &sbe_T, t->sbe.tabs);
+			add_sbe(box, *p, &sbe_T, t->sbe.tabs);
 			break;
 		case 'p':
-			if (add_sbe(t, *p, &sbe_p, t->sbe.proxy) == 0) {
+			if (add_sbe(box, *p, &sbe_p, t->sbe.proxy) == 0)
 				if (proxy_uri)
 					gtk_entry_set_text(
 					    GTK_ENTRY(t->sbe.proxy), "proxy");
-			}
 			break;
 		default:
 			warnx("illegal flag \"%c\" in statusbar_elems\n", *p);
@@ -7475,7 +7464,7 @@ statusbar_create(struct tab *t)
 		}
 	}
 
-	gtk_box_pack_end(GTK_BOX(t->vbox), t->statusbar_box, FALSE, FALSE, 0);
+	gtk_box_pack_end(GTK_BOX(t->vbox), t->statusbar, FALSE, FALSE, 0);
 
 	return (0);
 }
