@@ -7519,15 +7519,26 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 #endif
 	t->label = gtk_label_new(title);
 	bb = create_button("Close", GTK_STOCK_CLOSE, 1);
-	gtk_widget_set_size_request(t->label, 100, 0);
 	gtk_label_set_max_width_chars(GTK_LABEL(t->label), 20);
 	gtk_label_set_ellipsize(GTK_LABEL(t->label), PANGO_ELLIPSIZE_END);
+	gtk_label_set_line_wrap(GTK_LABEL(t->label), FALSE);
 	gtk_widget_set_size_request(b, 130, 0);
+
+	/*
+	 * this is a total hack and most likely breaks with other styles but
+	 * is necessary so the text doesn't bounce around when the spinner is
+	 * shown/hidden
+	 */
+#if GTK_CHECK_VERSION(3, 0, 0)
+	gtk_widget_set_size_request(t->label, 95, 0);
+#else
+	gtk_widget_set_size_request(t->label, 100, 0);
+#endif
 
 	gtk_box_pack_start(GTK_BOX(b), bb, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(b), t->label, FALSE, FALSE, 0);
 #if GTK_CHECK_VERSION(2, 20, 0)
-	gtk_box_pack_start(GTK_BOX(b), t->spinner, FALSE, FALSE, 0);
+	gtk_box_pack_end(GTK_BOX(b), t->spinner, FALSE, FALSE, 0);
 #endif
 
 	/* toolbar */
@@ -7958,7 +7969,7 @@ create_canvas(void)
 
 	abtn = gtk_button_new();
 	arrow = gtk_arrow_new(GTK_ARROW_DOWN, GTK_SHADOW_NONE);
-	gtk_widget_set_name(arrow, "Arrow");
+	gtk_widget_set_name(abtn, "Arrow");
 	gtk_container_add(GTK_CONTAINER(abtn), arrow);
 	gtk_widget_set_size_request(abtn, -1, 20);
 

@@ -104,8 +104,7 @@
 .button#Home,
 .button#Stop,
 .button#JS-Toggle,
-.button#Close,
-.button#Arrow {
+.button#Close {
 	border-width: 0;
 }
 
