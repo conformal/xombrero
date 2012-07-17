@@ -36,7 +36,7 @@
 
 .entry {
 	padding: 2px;
-	color: @fg_color;
+	color: @text_color;
 }
 
 #vbox > .entry,

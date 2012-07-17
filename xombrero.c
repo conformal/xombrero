@@ -8283,6 +8283,9 @@ setup_css(void)
 	GdkScreen		*screen;
 	GFile			*file;
 	char			path[PATH_MAX];
+#if defined __MINGW32__
+	GtkCssProvider		*windows_hacks;
+#endif
 
 	provider = gtk_css_provider_new();
 	display = gdk_display_get_default();
@@ -8293,6 +8296,16 @@ setup_css(void)
 	gtk_style_context_add_provider_for_screen(screen,
 	    GTK_STYLE_PROVIDER(provider),
 	    GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+#if defined __MINGW32__
+	windows_hacks = gtk_css_provider_new();
+	gtk_css_provider_load_from_data(windows_hacks,
+	    ".notebook tab {\n"
+	    "	border-width: 0px;\n"
+	    "}", -1, NULL);
+	gtk_style_context_add_provider_for_screen(screen,
+	    GTK_STYLE_PROVIDER(windows_hacks),
+	    GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+#endif
 	g_object_unref(file);
 }
 #endif
