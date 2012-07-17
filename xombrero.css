@@ -54,22 +54,26 @@
 	background-color: rgba(0, 0, 0, 0);
 }
 
-#red {
+GtkEventBox#red,
+.entry#red {
 	background-image: none;
 	background-color: @red;
 }
 
-#yellow {
+GtkEventBox#yellow,
+.entry#yellow {
 	background-image: none;
 	background-color: @yellow;
 }
 
-#green {
+GtkEventBox#green,
+.entry#green {
 	background-image: none;
 	background-color: @green;
 }
 
-#blue {
+GtkEventBox#blue,
+.entry#blue {
 	background-image: none;
 	background-color: @blue;
 }
