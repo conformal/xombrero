@@ -17,7 +17,7 @@
 
 #include <xombrero.h>
 
-#if !defined(XT_SIGNALS_DISABLE) && (WEBKIT_CHECK_VERSION(1, 5, 0))
+#if WEBKIT_CHECK_VERSION(1, 5, 0)
 	/* we got the DOM API we need */
 
 struct edit_src_cb_args {
@@ -25,7 +25,7 @@ struct edit_src_cb_args {
 		WebKitWebDataSource	*data_src;
 };
 
-struct open_external_editor_cb_args {
+struct external_editor_args {
 		GPid		child_pid;
 		char		*path;
 		time_t		mtime;
@@ -35,43 +35,18 @@ struct open_external_editor_cb_args {
 };
 
 int
-open_external_editor_cb(gpointer data)
+update_contents(struct external_editor_args *args)
 {
-	struct open_external_editor_cb_args	*args;
-	struct stat				st;
-	struct tab				*t;
-
-	int					fd = -1;
-	int					rv, nb;
-	int					status;
-	int					found_tab = 0;
-	GString					*contents = NULL;
-	char					buf[XT_EE_BUFSZ];
-
-	args = (struct open_external_editor_cb_args*)data;
-
-	/* Check if tab is still open */
-	TAILQ_FOREACH(t, &tabs, entry)
-		if (t == args->tab) {
-			found_tab = 1;
-			break;
-		}
-
-	/* Tab was deleted */
-	if (!found_tab){
-		g_free(args->path);
-		g_free(args->cb_data);
-		g_free(args);
-		return (0);
-	}
+	struct stat		st;
+	int			fd = -1;
+	int			rv, nb;
+	GString			*contents = NULL;
+	char			buf[XT_EE_BUFSZ];
 
 	rv = stat(args->path, &st);
-	if (rv == -1 && errno != ENOENT) {
-		DPRINTF("open_external_editor_cb: stat error, file %s, "
-		    "error: %s\n", args->path, strerror(errno));
-		show_oops(args->tab, "stat error : %s", strerror(errno));
-		goto done;
-	} else if ( rv == 0 && st.st_mtime > args->mtime) {
+	if (rv == -1 && errno == ENOENT)
+		return (1);
+	else if (rv == 0 && st.st_mtime > args->mtime) {
 		DPRINTF("File %s has been modified\n", args->path);
 		args->mtime = st.st_mtime;
 
@@ -105,54 +80,100 @@ open_external_editor_cb(gpointer data)
 			args->callback(contents->str, args->cb_data);
 
 		g_string_free(contents, TRUE);
+
+		return (0);
 	}
 
-	/* Check if child has terminated */
-	rv = waitpid(args->child_pid, &status, WNOHANG);
-	if (rv == -1 /* || WIFEXITED(status) */) {
-		/* Delete the file */
-		unlink(args->path);
+done:
+	if (fd != -1)
+		close(fd);
+	return (0);
+}
+
+void
+external_editor_closed(GPid pid, gint status, gpointer data)
+{
+	struct external_editor_args	*args;
+	struct tab			*t;
+	int				found_tab = 0;
+
+	args = (struct external_editor_args *)data;
+
+	TAILQ_FOREACH(t, &tabs, entry)
+		if (t == args->tab) {
+			found_tab = 1;
+			break;
+		}
+
+	/* Tab was deleted */
+	if (!found_tab)
 		goto done;
-	}
+
+	/*
+	 * unfortunately we can't check the exit status in glib < 2.34,
+	 * otherwise a check and warning would be nice here
+	 */
+	update_contents(args);
+
+done:
+	unlink(args->path);
+	g_spawn_close_pid(pid);	
+}
+
+int
+open_external_editor_cb(gpointer data)
+{
+	struct external_editor_args	*args;
+	struct tab			*t;
+	int				found_tab = 0;
+
+	args = (struct external_editor_args*)data;
+
+	/* Check if tab is still open */
+	TAILQ_FOREACH(t, &tabs, entry)
+		if (t == args->tab) {
+			found_tab = 1;
+			break;
+		}
+
+	/* Tab was deleted */
+	if (!found_tab) 
+		goto done;
+
+	if (update_contents(args))
+		goto done;
 
 	return (1);
 done:
-	g_spawn_close_pid(args->child_pid);
+	/* cleanup and remove from event loop */
 	g_free(args->path);
 	g_free(args->cb_data);
 	g_free(args);
-
-	if (fd != -1)
-		close(fd);
 
 	return (0);
 }
 
 int
-open_external_editor(struct tab *t, const char *contents, const char *suffix,
+open_external_editor(struct tab *t, const char *contents,
     int (*callback)(const char *, gpointer), gpointer cb_data)
 {
-	struct stat				st;
-	struct open_external_editor_cb_args	*a;
-	GPid					pid;
-	char					*cmdstr;
-	char					filename[PATH_MAX];
-	char					**sv;
-	int					fd;
-	int					nb, rv;
-	int					cnt;
+	struct stat			st;
+	struct external_editor_args	*a;
+	GPid				pid;
+	char				*cmdstr;
+	char				filename[PATH_MAX];
+	char				**sv;
+	int				fd;
+	int				nb, rv;
+	int				cnt;
 
 	if (external_editor == NULL)
 		return (0);
 
-	if (suffix == NULL)
-		suffix = "";
-
-	snprintf(filename, sizeof filename, "%s" PS "xombreroXXXXXX%s",
-	    temp_dir, suffix);
+	snprintf(filename, sizeof filename, "%s" PS "xombreroXXXXXX", temp_dir);
 
 	/* Create a temporary file */
-	fd = mkstemps(filename, strlen(suffix));
+	fd = g_mkstemp(filename);
 	if (fd == -1) {
 		show_oops(t, "Cannot create temporary file");
 		return (1);
@@ -198,11 +219,10 @@ open_external_editor(struct tab *t, const char *contents, const char *suffix,
 		return (1);
 	}
 
-	/* parent */
 	g_strfreev(sv);
 	g_free(cmdstr);
 
-	a = g_malloc(sizeof(struct open_external_editor_cb_args));
+	a = g_malloc(sizeof(struct external_editor_args));
 	a->child_pid = pid;
 	a->path = g_strdup(filename);
 	a->tab = t;
@@ -213,6 +233,10 @@ open_external_editor(struct tab *t, const char *contents, const char *suffix,
 	/* Check every 100 ms if file has changed */
 	g_timeout_add(100, (GSourceFunc)open_external_editor_cb,
 	    (gpointer)a);
+
+	/* Stop loop  child has terminated */
+	g_child_watch_add(pid, external_editor_closed, (gpointer)a);
+
 	return (0);
 }
 
@@ -258,7 +282,7 @@ edit_src(struct tab *t, struct karg *args)
 	ext_args->data_src = ds;
 
 	/* Check every 100 ms if file has changed */
-	open_external_editor(t, contents->str, ".html", &edit_src_cb, ext_args);
+	open_external_editor(t, contents->str, &edit_src_cb, ext_args);
 	return (0);
 }
 
@@ -329,7 +353,7 @@ edit_element(struct tab *t, struct karg *a)
 	args->tab = t;
 	args->active = active_element;
 
-	open_external_editor(t, contents, NULL, &edit_element_cb,  args);
+	open_external_editor(t, contents, &edit_element_cb,  args);
 
 	return (0);
 }

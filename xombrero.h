@@ -23,7 +23,6 @@
 #include <libgen.h>
 #include <pwd.h>
 #include <regex.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -94,11 +93,6 @@ uint32_t	arc4random_uniform(uint32_t);
 #define GDK_FLUSH()
 #endif /* USE_FLUSH */
 
-#endif
-
-/* set if you don't want to use signals */
-#ifndef XT_SIGNALS_DISABLE
-#include <sys/wait.h>
 #endif
 
 /* set if you don't want to use resource limits */
