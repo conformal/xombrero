@@ -280,17 +280,18 @@ input_check_mode(struct tab *t)
 int
 command_mode(struct tab *t, struct karg *args)
 {
-	char			*text = NULL;
+	WebKitDOMDocument	*doc;
+	WebKitDOMElement	*a;
 
 	if (args->i == XT_MODE_COMMAND) {
-		if (dom_is_input(t, &text))
-			if (t->active)
-				webkit_dom_element_blur(t->active);
+		doc = webkit_web_view_get_dom_document(t->wv);
+		a = webkit_dom_html_document_get_active_element(
+		    (WebKitDOMHTMLDocument *)doc);
+		if (a)
+			webkit_dom_element_blur(a);
 		t->mode = XT_MODE_COMMAND;
-	} else {
-		if (focus_input(t))
-			t->mode = XT_MODE_INSERT;
-	}
+	} else if (focus_input(t))
+		t->mode = XT_MODE_INSERT;
 
 	return (XT_CB_HANDLED);
 }
