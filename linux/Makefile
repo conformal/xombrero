@@ -1,7 +1,12 @@
+GTK_VERSION?= gtk3
+ifeq ("${GTK_VERSION}", "gtk2")
 JS_CF=$(shell pkg-config --silence-errors --cflags javascriptcoregtk-1.0)
 JS_LD=$(shell pkg-config --silence-errors --libs javascriptcoregtk-1.0)
+else
+JS_CF=$(shell pkg-config --silence-errors --cflags javascriptcoregtk-3.0)
+JS_LD=$(shell pkg-config --silence-errors --libs javascriptcoregtk-3.0)
+endif
 
-GTK_VERSION?= gtk3
 LIBS= glib-2.0
 ifeq ("${GTK_VERSION}", "gtk2")
 LIBS+= gtk+-2.0 webkit-1.0
