@@ -327,7 +327,6 @@ command_mode(struct tab *t, struct karg *args)
 			g_free(t->active_text);
 			t->active_text = NULL;
 		}
-		t->mode = XT_MODE_COMMAND;
 	}
 
 	return (XT_CB_HANDLED);
