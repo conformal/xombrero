@@ -20,6 +20,24 @@
 #if WEBKIT_CHECK_VERSION(1, 5, 0)
 	/* we got the DOM API we need */
 int
+node_is_valid_entry(WebKitDOMNode *n)
+{
+	if (n == NULL)
+		return (FALSE);
+
+	if (WEBKIT_DOM_IS_HTML_INPUT_ELEMENT(n) &&
+	    webkit_dom_html_input_element_check_validity(
+	    (WebKitDOMHTMLInputElement *)n))
+		return (TRUE);
+	if (WEBKIT_DOM_IS_HTML_TEXT_AREA_ELEMENT(n) &&
+	    webkit_dom_html_text_area_element_check_validity(
+	    (WebKitDOMHTMLTextAreaElement *)n))
+		return (TRUE);
+
+	return (FALSE);
+}
+
+int
 focus_input_document(struct tab *t, WebKitDOMDocument *doc)
 {
 	WebKitDOMNodeList	*input = NULL, *textarea = NULL;
@@ -123,21 +141,25 @@ focus_input(struct tab *t)
 	/* try current active element */
 	a = webkit_dom_html_document_get_active_element(
 	    (WebKitDOMHTMLDocument*)doc);
-	if (WEBKIT_DOM_IS_HTML_INPUT_ELEMENT((WebKitDOMNode *)a) ||
-	    WEBKIT_DOM_IS_HTML_TEXT_AREA_ELEMENT((WebKitDOMNode *)a)) {
+	if (node_is_valid_entry((WebKitDOMNode *)a)) {
 		rv = 1; /* found */
 		goto done;
 	}
 
 	/* try previous active element */
-	if (WEBKIT_DOM_IS_HTML_INPUT_ELEMENT((WebKitDOMNode *)t->active) ||
-	    WEBKIT_DOM_IS_HTML_TEXT_AREA_ELEMENT((WebKitDOMNode *)t->active)) {
+	if (node_is_valid_entry((WebKitDOMNode *)t->active)) {
 		webkit_dom_element_focus((WebKitDOMElement*)t->active);
 #if WEBKIT_CHECK_VERSION(1, 8, 0)
 		webkit_dom_html_element_click((WebKitDOMHTMLElement*)t->active);
 #endif
 		rv = 1; /* found */
 		goto done;
+	} else {
+		t->active = NULL;
+		if (t->active_text) {
+			g_free(t->active_text);
+			t->active_text = NULL;
+		}
 	}
 
 	/* get frames */
@@ -252,8 +274,14 @@ dom_is_input(struct tab *t, char **text)
 	if (a == NULL)
 		return (0);
 
-	if (WEBKIT_DOM_IS_HTML_INPUT_ELEMENT((WebKitDOMNode *)a) ||
-	    WEBKIT_DOM_IS_HTML_TEXT_AREA_ELEMENT((WebKitDOMNode *)a)) {
+	if (node_is_valid_entry((WebKitDOMNode *)a)) {
+		if (!node_is_valid_entry((WebKitDOMNode *)t->active)) {
+			t->active = NULL;
+			if (t->active_text) {
+				g_free(t->active_text);
+				t->active_text = NULL;
+			}
+		}
 		if (t->active == NULL)
 			t->active = a;
 		*text = get_element_text((WebKitDOMNode *)a);
@@ -293,12 +321,22 @@ command_mode(struct tab *t, struct karg *args)
 	} else if (focus_input(t))
 		t->mode = XT_MODE_INSERT;
 
+	if (!node_is_valid_entry((WebKitDOMNode *)t->active)) {
+		t->active = NULL;
+		if (t->active_text) {
+			g_free(t->active_text);
+			t->active_text = NULL;
+		}
+		t->mode = XT_MODE_COMMAND;
+	}
+
 	return (XT_CB_HANDLED);
 }
 
 void
 input_autofocus(struct tab *t)
 {
+	struct karg		args = {0};
 	char			*text = NULL;
 
 	if (autofocus_onload &&
@@ -309,16 +347,18 @@ input_autofocus(struct tab *t)
 			t->mode = XT_MODE_COMMAND;
 	} else {
 		if (dom_is_input(t, &text)) {
-			if (text != NULL && g_strcmp0(text, t->active_text)) {
-				g_free(text);
+			if (text != NULL && g_strcmp0(text, t->active_text))
 				t->mode = XT_MODE_INSERT;
-			} else if (t->active) {
-				webkit_dom_element_blur(t->active);
-				t->mode = XT_MODE_COMMAND;
+			else {
+				args.i = XT_MODE_COMMAND;
+				command_mode(t, &args);
 			}
 		} else
 			t->mode = XT_MODE_COMMAND;
 	}
+
+	if (text)
+		g_free(text);
 }
 #else /* WEBKIT_CHECK_VERSION */
 	/* incomplete DOM API */
