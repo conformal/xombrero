@@ -4770,6 +4770,12 @@ session_rq_cb(SoupSession *s, SoupMessage *msg, SoupSocket *socket,
 	if (s == NULL || msg == NULL)
 		return;
 
+	if (enable_strict_transport) {
+		soup_message_add_header_handler(msg, "finished",
+		    "Strict-Transport-Security",
+		    G_CALLBACK(strict_transport_security_cb), NULL);
+	}
+
 	if (referer_mode == XT_REFERER_ALWAYS)
 		return;
 
@@ -4819,12 +4825,6 @@ session_rq_cb(SoupSession *s, SoupMessage *msg, SoupSocket *socket,
 			    "Referer", referer_custom);
 			break;
 		}
-	}
-
-	if (enable_strict_transport) {
-		soup_message_add_header_handler(msg, "finished",
-		    "Strict-Transport-Security",
-		    G_CALLBACK(strict_transport_security_cb), NULL);
 	}
 }
 
