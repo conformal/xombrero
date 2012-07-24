@@ -5060,9 +5060,13 @@ run_mimehandler(struct tab *t, char *mime_type, WebKitNetworkRequest *request)
 	sv[0] = m->mt_action;
 	sv[1] = (char *)webkit_network_request_get_uri(request);
 	sv[2] = NULL;
+
+	/* ignore donothing from example config */
+	if (m->mt_action && !strcmp(m->mt_action, "donothing"))
+		return (0);
+
 	if (!g_spawn_async(NULL, sv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
 	    NULL, &gerr))
-		/* No show_oops here to handle "donothing" example in config */
 		show_oops(t, "%s: could not spawn process (%s)", __func__,
 		    gerr ? gerr->message : "N/A");
 	return (0);
