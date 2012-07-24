@@ -5063,7 +5063,7 @@ run_mimehandler(struct tab *t, char *mime_type, WebKitNetworkRequest *request)
 	if (!g_spawn_async(NULL, sv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
 	    NULL, &gerr))
 		/* No show_oops here to handle "donothing" example in config */
-		warnx("%s: could not spawn process (%s)", __func__,
+		show_oops(t, "%s: could not spawn process (%s)", __func__,
 		    gerr ? gerr->message : "N/A");
 	return (0);
 }
