@@ -8214,19 +8214,19 @@ int			mtx_complain;
 void
 mtx_lock(void)
 {
-#ifdef DEBUG
+#ifdef XT_DEBUG
 	char		*s = NULL;
 #endif
 
 	g_static_rec_mutex_lock(&my_gdk_mtx);
 	if (my_gdk_mtx.depth <= 0) {
-#ifdef DEBUG
+#ifdef XT_DEBUG
 		s = "lock <= 0";
 #endif
 		g_static_rec_mutex_lock(&my_gdk_mtx);
 		goto complain;
 	} else if (my_gdk_mtx.depth != 1) {
-#ifdef DEBUG
+#ifdef XT_DEBUG
 		s = "lock != 1";
 #endif
 		do {
@@ -8247,17 +8247,17 @@ complain:
 void
 mtx_unlock(void)
 {
-#ifdef DEBUG
+#ifdef XT_DEBUG
 	char		*s = NULL;
 #endif
 
 	if (my_gdk_mtx.depth <= 0) {
-#ifdef DEBUG
+#ifdef XT_DEBUG
 		s = "unlock <= 0";
 #endif
 		goto complain;
 	} else if (my_gdk_mtx.depth != 1) {
-#ifdef DEBUG
+#ifdef XT_DEBUG
 		s = "unlock != 1";
 #endif
 		g_static_rec_mutex_unlock_full(&my_gdk_mtx);
