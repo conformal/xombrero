@@ -748,6 +748,7 @@ set_browser_mode(struct settings *s, char *val)
 		referer_mode = XT_REFERER_SAME_DOMAIN;
 		allow_insecure_content = 0;
 		allow_insecure_scripts = 0;
+		do_not_track = 1;
 	} else if (!strcmp(val, "normal")) {
 		browser_mode = XT_BM_NORMAL;
 		allow_volatile_cookies = 0;
@@ -765,6 +766,7 @@ set_browser_mode(struct settings *s, char *val)
 		referer_mode = XT_REFERER_ALWAYS;
 		allow_insecure_content = 1;
 		allow_insecure_scripts = 1;
+		do_not_track = 0;
 	} else if (!strcmp(val, "kiosk")) {
 		browser_mode = XT_BM_KIOSK;
 		allow_volatile_cookies = 0;
@@ -782,6 +784,7 @@ set_browser_mode(struct settings *s, char *val)
 		referer_mode = XT_REFERER_ALWAYS;
 		allow_insecure_content = 1;
 		allow_insecure_scripts = 1;
+		do_not_track = 0;
 		show_tabs = 0;
 		tabless = 1;
 	} else
