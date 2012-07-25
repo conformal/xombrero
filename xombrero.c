@@ -4940,6 +4940,9 @@ webview_rrs_cb(WebKitWebView *wv, WebKitWebFrame *wf, WebKitWebResource *res,
 		}
 	}
 
+	if (do_not_track)
+		soup_message_headers_append(msg->request_headers, "DNT", "1");
+
 	/* Round-robin through HTTP Accept headers if any have been set */
 	if (!RB_EMPTY(&ha_list)) {
 		accept = soup_message_headers_get_list(msg->request_headers,

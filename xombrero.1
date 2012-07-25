@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: July 11 2012 $
+.Dd $Mdocdate: July 25 2012 $
 .Dt XOMBRERO 1
 .Os
 .Sh NAME
@@ -1106,6 +1106,14 @@ Path to the script used as the default value for the run_script
 command.
 .It Cm default_zoom_level
 Set the default browsing zoom level.
+.It Cm do_not_track
+Sets the HTTP Do Not Track header to tell sites that you wish to be
+opted-out of 3rd-party tracking for the use of behavioral advertising.
+Not all sites currently support this header, and this is only a
+suggestion of a user preference.
+Sites may still perform 3rd-party tracking even when this feature is
+enabled.
+Default is 0.
 .It Cm download_dir
 Locations where files are downloaded to.
 This directory must exist and

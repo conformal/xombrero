@@ -111,6 +111,7 @@ int		download_notifications = XT_DS_DOWNLOAD_NOTIFICATIONS;
 int		warn_cert_changes = 0;
 int		allow_insecure_content = XT_DS_ALLOW_INSECURE_CONTENT;
 int		allow_insecure_scripts = XT_DS_ALLOW_INSECURE_SCRIPTS;
+int		do_not_track = XT_DS_DO_NOT_TRACK;
 
 char		*cmd_font_name = NULL;	/* these are all set at startup */
 char		*oops_font_name = NULL;
@@ -203,6 +204,7 @@ int		set_external_editor(char *);
 int		set_warn_cert_changes(char *);
 int		set_allow_insecure_content(char *);
 int		set_allow_insecure_scripts(char *);
+int		set_do_not_track(char *);
 
 void		walk_mime_type(struct settings *, void (*)(struct settings *,
 		    char *, void *), void *);
@@ -408,6 +410,7 @@ struct settings		rs[] = {
 	{ "ctrl_click_focus",		XT_S_INT, 0,		&ctrl_click_focus, NULL, NULL, NULL, set_ctrl_click_focus },
 	{ "default_script",		XT_S_STR, 1, NULL, NULL,&s_default_script, NULL, set_default_script_rt },
 	{ "default_zoom_level",		XT_S_FLOAT, 0,		NULL, NULL, NULL, &default_zoom_level, set_default_zoom_level },
+	{ "do_not_track",		XT_S_INT, 0,		&do_not_track, NULL, NULL, NULL, set_do_not_track },
 	{ "download_dir",		XT_S_STR, 0, NULL, NULL,&s_download_dir, NULL, NULL },
 	{ "download_mode",		XT_S_STR, 0, NULL, NULL,&s_download_mode, NULL, set_download_mode_rt },
 	{ "download_notifications",	XT_S_INT, 0,		&download_notifications, NULL, NULL, NULL, set_download_notifications },
@@ -907,6 +910,23 @@ set_default_script_rt(char *value)
 	if (value == NULL || strlen(value) == 0)
 		return set_default_script(NULL, "");
 	return (set_default_script(NULL, value));
+}
+
+int
+set_do_not_track(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	if (value == NULL || strlen(value) == 0)
+		do_not_track = XT_DS_DO_NOT_TRACK;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		do_not_track = tmp;
+	}
+	return (0);
 }
 
 char *

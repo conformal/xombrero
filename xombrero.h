@@ -647,6 +647,7 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_DS_TABBAR_FONT_NAME	("monospace normal 9")
 #define XT_DS_ALLOW_INSECURE_CONTENT	(TRUE)
 #define XT_DS_ALLOW_INSECURE_SCRIPTS	(TRUE)
+#define XT_DS_DO_NOT_TRACK	(0)
 
 
 /* actions */
@@ -826,6 +827,7 @@ extern int	warn_cert_changes;
 extern regex_t	url_re;
 extern int	allow_insecure_content;
 extern int	allow_insecure_scripts;
+extern int	do_not_track;
 
 /* globals */
 extern void		(*os_init)(void);
