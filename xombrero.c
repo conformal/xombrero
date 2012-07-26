@@ -633,7 +633,7 @@ show_oops(struct tab *at, const char *fmt, ...)
 		t = at;
 
 	va_start(ap, fmt);
-	if (vasprintf(&msg, fmt, ap) == -1)
+	if ((msg = g_strdup_vprintf(fmt, ap)) == NULL)
 		errx(1, "show_oops failed");
 	va_end(ap);
 
@@ -642,7 +642,7 @@ show_oops(struct tab *at, const char *fmt, ...)
 	gtk_widget_show(t->oops);
 
 	if (msg)
-		free(msg);
+		g_free(msg);
 }
 
 char			work_dir[PATH_MAX];
