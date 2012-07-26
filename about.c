@@ -1937,7 +1937,7 @@ startpage_add(const char *fmt, ...)
 		return;
 
 	va_start(ap, fmt);
-	if (msg = g_strdup_vprintf(fmt, ap) == NULL)
+	if ((msg = g_strdup_vprintf(fmt, ap)) == NULL)
 		errx(1, "startpage_add failed");
 	va_end(ap);
 
