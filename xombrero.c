@@ -826,9 +826,8 @@ guess_url_type(char *url_in)
 				path = g_strdup_printf("%s" PS "%s", cwd,
 				    url_in);
 				url_out = g_filename_to_uri(path, NULL, NULL);
+				g_free(path);
 			}
-			if (path)
-				free(path);
 		}
 	} else
 		url_out = g_strdup_printf("http://%s", url_in); /* guess http */
@@ -4885,7 +4884,7 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 			user_agent = ua;
 		}
 
-		free(t->user_agent);
+		g_free(t->user_agent);
 		t->user_agent = g_strdup(user_agent->value);
 
 		DNPRINTF(XT_D_NAV, "user-agent: %s\n", t->user_agent);
