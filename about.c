@@ -1842,7 +1842,8 @@ xtp_page_sv(struct tab *t, struct karg *args)
 	if (t == NULL)
 		show_oops(NULL, "secviolation invalid parameters");
 
-	/* Generate a new session key for next page instance.
+	/*
+	 * Generate a new session key for next page instance.
 	 * This only happens for the top level call to xtp_page_ab()
 	 * in which case updating_sv_tabs = 0.
 	 */

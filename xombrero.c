@@ -782,10 +782,11 @@ char *
 guess_url_type(char *url_in)
 {
 	struct stat		sb;
+	char			cwd[PATH_MAX] = {0};
 	char			*url_out = NULL, *enc_search = NULL;
+	char			*path = NULL;
+	char			**sv = NULL;
 	int			i;
-	char			*cwd, *path = NULL;
-	char			**sv;
 
 
 	/* substitute aliases */
@@ -821,13 +822,11 @@ guess_url_type(char *url_in)
 		if (url_in[0] == '/')
 			url_out = g_filename_to_uri(url_in, NULL, NULL);
 		else {
-			cwd = malloc(PATH_MAX);
 			if (getcwd(cwd, PATH_MAX) != NULL) {
 				path = g_strdup_printf("%s" PS "%s", cwd,
 				    url_in);
 				url_out = g_filename_to_uri(path, NULL, NULL);
 			}
-			free(cwd);
 			if (path)
 				free(path);
 		}
@@ -2069,7 +2068,7 @@ warn_cert_cache_differs_idle(struct karg *args)
 		return (0);
 	}
 	xtp_page_sv((struct tab *)args->ptr, args);
-	free(args);
+	g_free(args);
 	return (0);
 }
 
@@ -2103,8 +2102,7 @@ check_cert_changes(struct tab *t, const char *uri)
 		if (RB_FIND(sv_ignore_list, &svil, &find))
 			break;
 		t->xtp_meaning = XT_XTP_TAB_MEANING_SV;
-		argsp = malloc(sizeof(struct karg));
-		bzero(argsp, sizeof(struct karg));
+		argsp = g_malloc0(sizeof(struct karg));
 		argsp->s = g_strdup((char *)uri);
 		argsp->ptr = (void *)t;
 		g_idle_add((GSourceFunc)warn_cert_cache_differs_idle, argsp);
