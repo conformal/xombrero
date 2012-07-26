@@ -1521,7 +1521,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	    "[ Remove All Cookies From All Domains ]</a></div>\n",
 	    XT_XTP_STR, XT_XTP_CL, cl_session_key, XT_XTP_CL_REMOVE_ALL);
 
-	last_domain = strdup("");
+	last_domain = g_strdup("");
 	for (; sc; sc = sc->next) {
 		c = sc->data;
 
