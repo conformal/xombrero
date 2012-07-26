@@ -1528,8 +1528,8 @@ xtp_page_cl(struct tab *t, struct karg *args)
 		if (strcmp(last_domain, c->domain) != 0) {
 			/* new domain */
 			domain_id ++;
-			free(last_domain);
-			last_domain = strdup(c->domain);
+			g_free(last_domain);
+			last_domain = g_strdup(c->domain);
 
 			if (body != NULL) {
 				tmp = body;
