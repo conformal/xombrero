@@ -19,6 +19,25 @@
 
 #if WEBKIT_CHECK_VERSION(1, 5, 0)
 	/* we got the DOM API we need */
+
+void
+focus_body(WebKitDOMDocument *doc)
+{
+	WebKitDOMNodeList       *body = NULL;
+	WebKitDOMNode           *n;
+	int                     i;       
+
+	body = webkit_dom_document_get_elements_by_tag_name(doc, "body");
+	for (i = 0; i < webkit_dom_node_list_get_length(body); ++i) {
+		n = webkit_dom_node_list_item(body, i);
+		webkit_dom_element_focus((WebKitDOMElement *)n);
+#if WEBKIT_CHECK_VERSION(1, 8, 0)
+		webkit_dom_html_element_click((WebKitDOMHTMLElement *)n);
+#endif
+		break;
+	}
+}
+
 int
 node_is_valid_entry(WebKitDOMNode *n)
 {
@@ -315,11 +334,15 @@ command_mode(struct tab *t, struct karg *args)
 		doc = webkit_web_view_get_dom_document(t->wv);
 		a = webkit_dom_html_document_get_active_element(
 		    (WebKitDOMHTMLDocument *)doc);
-		if (a)
+		if (a) {
 			webkit_dom_element_blur(a);
+			focus_body(doc);
+		}
 		t->mode = XT_MODE_COMMAND;
-	} else if (focus_input(t))
+	} else if (args->i == XT_MODE_INSERT && focus_input(t))
 		t->mode = XT_MODE_INSERT;
+	else if (args->i == XT_MODE_HINT || args->i == XT_MODE_PASSTHROUGH)
+		t->mode = args->i;
 
 	if (!node_is_valid_entry((WebKitDOMNode *)t->active)) {
 		t->active = NULL;
@@ -347,13 +370,12 @@ input_autofocus(struct tab *t)
 	} else {
 		if (dom_is_input(t, &text)) {
 			if (text != NULL && g_strcmp0(text, t->active_text))
-				t->mode = XT_MODE_INSERT;
-			else {
+				args.i = XT_MODE_INSERT;
+			else
 				args.i = XT_MODE_COMMAND;
-				command_mode(t, &args);
-			}
 		} else
-			t->mode = XT_MODE_COMMAND;
+			args.i = XT_MODE_COMMAND;
+		command_mode(t, &args);
 	}
 
 	if (text)
