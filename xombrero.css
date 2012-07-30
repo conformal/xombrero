@@ -28,6 +28,13 @@
 	padding: 0;
 	margin: 0;
 	-GtkScrolledWindow-scrollbar-spacing: 0;
+	-GtkWidget-line-width: 0;
+}
+
+.button,
+GtkSpinner {
+	-GtkWidget-focus-padding: 0;
+	-GtkWidget-line-width: 0;
 }
 
 .button :insensitive {
