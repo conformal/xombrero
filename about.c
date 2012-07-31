@@ -2045,7 +2045,7 @@ show_g_object_settings(GObject *o, char *str, int recurse)
 				break;
 			case G_TYPE_INT64:
 				valstr = g_strdup_printf("%" PRIo64,
-				    /* (int64_t) */ g_value_get_int64(&value));
+				    (int64_t) g_value_get_int64(&value));
 				break;
 			case G_TYPE_UINT:
 				valstr = g_strdup_printf("%d",
@@ -2053,7 +2053,7 @@ show_g_object_settings(GObject *o, char *str, int recurse)
 				break;
 			case G_TYPE_UINT64:
 				valstr = g_strdup_printf("%" PRIu64,
-				    /* (uint64_t) */ g_value_get_uint64(&value));
+				    (uint64_t) g_value_get_uint64(&value));
 				break;
 			case G_TYPE_FLAGS:
 				valstr = g_strdup_printf("0x%x",
