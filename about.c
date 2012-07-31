@@ -58,54 +58,25 @@
 				" background: green}\n"			\
 				".dlstatus{font-size: small;"		\
 				" text-align: center}\n"		\
+				"table#settings{background-color: #eee;"\
+				" border: 0px;"				\
+				" margin: 15px;}\n"			\
+				"table#settings td{border: 0px;}\n"	\
+				"table#settings th{border: 0px;}\n"	\
+				"table#settings tr{"			\
+				" background: #f6f6f6;}\n"		\
+				"table#settings tr:nth-child(even){"	\
+				" background: #eeeeee;}\n"		\
+				"table#settings tr#modified{"		\
+				" background: #FFFFBA;}\n"		\
+				"table#settings tr#modified:nth-child(even){"	\
+				" background: #ffffA0;}\n"		\
 				"</style>\n"
-
-/* XTP classes (xxxt://<class>) */
-#define XT_XTP_INVALID		(0)	/* invalid */
-#define XT_XTP_DL		(1)	/* downloads */
-#define XT_XTP_HL		(2)	/* history */
-#define XT_XTP_CL		(3)	/* cookies */
-#define XT_XTP_FL		(4)	/* favorites */
-#define XT_XTP_SL		(5)	/* search */
-#define XT_XTP_AB		(6)	/* about */
-#define XT_XTP_SV		(7)	/* security violation */
-
-/* XTP download actions */
-#define XT_XTP_DL_LIST		(1)
-#define XT_XTP_DL_CANCEL	(2)
-#define XT_XTP_DL_REMOVE	(3)
-#define XT_XTP_DL_UNLINK	(4)
-#define XT_XTP_DL_START		(5)
-
-/* XTP history actions */
-#define XT_XTP_HL_LIST		(1)
-#define XT_XTP_HL_REMOVE	(2)
-#define XT_XTP_HL_REMOVE_ALL	(3)
-
-/* XTP cookie actions */
-#define XT_XTP_CL_LIST		(1)
-#define XT_XTP_CL_REMOVE	(2)
-#define XT_XTP_CL_REMOVE_DOMAIN	(3)
-#define XT_XTP_CL_REMOVE_ALL	(4)
-
-/* XTP cookie actions */
-#define XT_XTP_FL_LIST		(1)
-#define XT_XTP_FL_REMOVE	(2)
-
-/* XPT search actions */
-#define XT_XTP_SL_SET		(1)
-
-/* XPT about actions */
-#define XT_XTP_AB_EDIT_CONF	(1)
-
-/* XTP security violation actions */
-#define XT_XTP_SV_SHOW_CERT	(1)
-#define XT_XTP_SV_ALLOW_SESSION	(2)
-#define XT_XTP_SV_CACHE		(3)
 
 int			js_show_wl(struct tab *, struct karg *);
 int			pl_show_wl(struct tab *, struct karg *);
-int			set(struct tab *, struct karg *);
+int			xtp_page_set(struct tab *, struct karg *);
+int			xtp_page_rt(struct tab *, struct karg *);
 int			marco(struct tab *, struct karg *);
 int			startpage(struct tab *, struct karg *);
 const char *		marco_message(int *);
@@ -125,13 +96,14 @@ struct about_type about_list[] = {
 	{ XT_URI_ABOUT_HELP,		help },
 	{ XT_URI_ABOUT_HISTORY,		xtp_page_hl },
 	{ XT_URI_ABOUT_JSWL,		js_show_wl },
-	{ XT_URI_ABOUT_SET,		set },
+	{ XT_URI_ABOUT_SET,		xtp_page_set },
 	{ XT_URI_ABOUT_STATS,		stats },
 	{ XT_URI_ABOUT_MARCO,		marco },
 	{ XT_URI_ABOUT_STARTPAGE,	startpage },
 	{ XT_URI_ABOUT_PLUGINWL,	pl_show_wl },
 	{ XT_URI_ABOUT_WEBKIT,		about_webkit },
 	{ XT_URI_ABOUT_SEARCH,		xtp_page_sl },
+	{ XT_URI_ABOUT_RUNTIME,		xtp_page_rt },
 	{ XT_URI_ABOUT_SECVIOLATION,	NULL },
 };
 
@@ -165,6 +137,7 @@ char			*fl_session_key;	/* favorites list */
 char			*sl_session_key;	/* search */
 char			*ab_session_key;	/* about */
 char			*sv_session_key;	/* secviolation */
+char			*rt_session_key;	/* set */
 
 int			updating_ab_tabs = 0;
 int			updating_fl_tabs = 0;
@@ -173,6 +146,7 @@ int			updating_hl_tabs = 0;
 int			updating_cl_tabs = 0;
 int			updating_sl_tabs = 0;
 int			updating_sv_tabs = 0;
+int			updating_set_tabs = 0;
 struct download_list	downloads;
 
 size_t
@@ -228,7 +202,7 @@ load_webkit_string(struct tab *t, const char *str, gchar *title)
 			}
 
 		webkit_web_view_load_string(t->wv, str, NULL, encoding,
-		    "file://");
+		    XT_XTP_STR);
 #if GTK_CHECK_VERSION(2, 20, 0)
 		gtk_spinner_stop(GTK_SPINNER(t->spinner));
 		gtk_widget_hide(t->spinner);
@@ -485,7 +459,7 @@ pl_cmd(struct tab *t, struct karg *args)
  * cancel, remove, etc. downloads
  */
 void
-xtp_handle_dl(struct tab *t, uint8_t cmd, int id)
+xtp_handle_dl(struct tab *t, uint8_t cmd, int id, const char *query)
 {
 	struct download		find, *d = NULL;
 #ifndef	__MINGW32__
@@ -548,7 +522,7 @@ xtp_handle_dl(struct tab *t, uint8_t cmd, int id)
 }
 
 void
-xtp_handle_hl(struct tab *t, uint8_t cmd, int id)
+xtp_handle_hl(struct tab *t, uint8_t cmd, int id, const char *query)
 {
 	struct history		*h, *next, *ht;
 	int			i = 1;
@@ -737,7 +711,7 @@ search_engine_add(char *body, const char *name, const char *url, int select)
 }
 
 void
-xtp_handle_ab(struct tab *t, uint8_t cmd, int arg)
+xtp_handle_ab(struct tab *t, uint8_t cmd, int arg, const char *query)
 {
 	char			config[PATH_MAX];
 	char			*cmdstr;
@@ -771,7 +745,7 @@ xtp_handle_ab(struct tab *t, uint8_t cmd, int arg)
 	xtp_page_ab(t, NULL);
 }
 void
-xtp_handle_fl(struct tab *t, uint8_t cmd, int arg)
+xtp_handle_fl(struct tab *t, uint8_t cmd, int arg, const char *query)
 {
 	switch (cmd) {
 	case XT_XTP_FL_LIST:
@@ -789,7 +763,7 @@ xtp_handle_fl(struct tab *t, uint8_t cmd, int arg)
 }
 
 void
-xtp_handle_cl(struct tab *t, uint8_t cmd, int arg)
+xtp_handle_cl(struct tab *t, uint8_t cmd, int arg, const char *query)
 {
 	switch (cmd) {
 	case XT_XTP_CL_LIST:
@@ -813,66 +787,17 @@ xtp_handle_cl(struct tab *t, uint8_t cmd, int arg)
 }
 
 void
-xtp_handle_sl(struct tab *t, uint8_t cmd, int arg)
+xtp_handle_sl(struct tab *t, uint8_t cmd, int arg, const char *query)
 {
-	struct stat		sb;
-	FILE			*f;
-	size_t			linelen;
-	int			found = 0;
 	const char		*search;
-	char			file[PATH_MAX];
-	char			delim[3] = { '\0', '\0', '\0' };
-	char			*line, *lt, *enc_search, *uri;
-	char			*contents, *tmp;
+	char			*enc_search, *uri;
 	char			**sv;
 
 	switch (cmd) {
 	case XT_XTP_SL_SET:
 		set_search_string((char *)search_list[arg].url);
-		if (runtime_settings == NULL || strlen(runtime_settings) == 0) {
-			show_oops(t, "could not set search_string in "
-			    "runtime");
-			break;
-		}
-		snprintf(file, sizeof file, "%s" PS "%s", work_dir,
-		    runtime_settings);
-		if (stat(file, &sb) || (f = fopen(file, "r+")) == NULL) {
+		if (save_runtime_setting("search_string", search_list[arg].url))
 			show_oops(t, "could not set search_string in runtime");
-			break;
-		}
-		lt = g_strdup_printf("search_string=%s",
-		    (char *)search_list[arg].url);
-		contents = g_strdup("");
-		while (!feof(f)) {
-			line = fparseln(f, &linelen, NULL, delim, 0);
-			if (line == NULL || linelen == 0)
-				continue;
-			tmp = contents;
-			if (strstr(line, "search_string=") == NULL)
-				contents = g_strdup_printf("%s%s\n", contents,
-				    line);
-			else {
-				found = 1;
-				contents = g_strdup_printf("%s%s\n", contents,
-				    lt);
-			}
-			g_free(tmp);
-			free(line);
-			line = NULL;
-		}
-		if (found == 0) {
-			tmp = contents;
-			contents = g_strdup_printf("%s%s\n", contents, lt);
-			g_free(tmp);
-		}
-		if ((f = freopen(file, "w", f)) == NULL)
-			show_oops(t, "could not set search_string in runtime");
-		else {
-			fputs(contents, f);
-			fclose(f);
-		}
-		g_free(lt);
-		g_free(contents);
 		break;
 	default:
 		show_oops(t, "%s: unknown search xtp command", __func__);
@@ -890,7 +815,7 @@ xtp_handle_sl(struct tab *t, uint8_t cmd, int arg)
 }
 
 void
-xtp_handle_sv(struct tab *t, uint8_t cmd, int id)
+xtp_handle_sv(struct tab *t, uint8_t cmd, int id, const char *query)
 {
 	SoupURI			*soupuri = NULL;
 	struct karg		args = {0};
@@ -934,11 +859,81 @@ xtp_handle_sv(struct tab *t, uint8_t cmd, int id)
 	RB_REMOVE(secviolation_list, &svl, sv);
 }
 
+void
+xtp_handle_rt(struct tab *t, uint8_t cmd, int id, const char *query)
+{
+	struct set_reject	*sr;
+	GHashTable		*new_settings = NULL;
+	int			modify;
+	char			*val, *curval, *s;
+	int			i = 0;
+
+	switch (cmd) {
+	case XT_XTP_RT_SAVE:
+		if (query == NULL)
+			break;
+		new_settings = soup_form_decode(query);
+		for (i = 0; i < get_settings_size(); ++i) {
+			if (!rs[i].activate)
+				continue;
+			sr = g_malloc(sizeof *sr);
+			val = (char *)g_hash_table_lookup(new_settings,
+			    rs[i].name);
+			modify = 0;
+			switch (rs[i].type) {
+			case XT_S_INT: /* FALLTHROUGH */
+			case XT_S_BOOL:
+				if (atoi(val) != *rs[i].ival)
+					modify = 1;
+				break;
+			case XT_S_FLOAT:
+				if (atof(val) != *rs[i].fval)
+					modify = 1;
+				break;
+			case XT_S_STR:
+				s = (rs[i].sval == NULL || *rs[i].sval == NULL)
+				    ? "" : *rs[i].sval;
+				if (rs[i].sval && g_strcmp0(val, s))
+					modify = 1;
+				else if (rs[i].s && rs[i].s->get) {
+					curval = rs[i].s->get(NULL);
+					if (g_strcmp0(val, curval))
+						modify = 1;
+					g_free(curval);
+				}
+				break;
+			case XT_S_INVALID: /* FALLTHROUGH */
+			default:
+				break;
+			}
+			if (rs[i].activate(val)) {
+				sr->name = g_strdup(rs[i].name);
+				sr->value = g_strdup(val);
+				TAILQ_INSERT_TAIL(&srl, sr, entry);
+				continue;
+			}
+			if (modify)
+				if (save_runtime_setting(rs[i].name, val))
+					show_oops(t, "error");
+		}
+		break;
+	default:
+		show_oops(t, "%s: invalid set command", __func__);
+		break;
+	}
+
+	if (new_settings)
+		g_hash_table_destroy(new_settings);
+
+	xtp_page_rt(t, NULL);
+}
+
 /* link an XTP class to it's session key and handler function */
 struct xtp_despatch {
 	uint8_t			xtp_class;
 	char			**session_key;
-	void			(*handle_func)(struct tab *, uint8_t, int);
+	void			(*handle_func)(struct tab *, uint8_t, int,
+				    const char *query);
 };
 
 struct xtp_despatch		xtp_despatches[] = {
@@ -949,6 +944,7 @@ struct xtp_despatch		xtp_despatches[] = {
 	{ XT_XTP_SL, &sl_session_key, xtp_handle_sl },
 	{ XT_XTP_AB, &ab_session_key, xtp_handle_ab },
 	{ XT_XTP_SV, &sv_session_key, xtp_handle_sv },
+	{ XT_XTP_RT, &rt_session_key, xtp_handle_rt },
 	{ XT_XTP_INVALID, NULL, NULL }
 };
 
@@ -1008,45 +1004,41 @@ validate_xtp_session_key(struct tab *t, char *trusted, char *untrusted)
  * if so, parse and despatch correct bahvior
  */
 int
-parse_xtp_url(struct tab *t, const char *url)
+parse_xtp_url(struct tab *t, const char *uri_str)
 {
-	char			*dup = NULL, *p, *last = NULL;
-	uint8_t			n_tokens = 0;
-	char			*tokens[4] = {NULL, NULL, NULL, ""};
+	SoupURI			*uri = NULL;
 	struct xtp_despatch	*dsp, *dsp_match = NULL;
-	uint8_t			req_class;
 	int			ret = FALSE;
+	int			class = 0;
+	char			**sv = NULL;
 
 	/*
-	 * tokens array meaning:
-	 *   tokens[0] = class
-	 *   tokens[1] = session key
-	 *   tokens[2] = action
-	 *   tokens[3] = optional argument
+	 *   uri->host	= class
+	 *   sv[0]	= session key
+	 *   sv[1]	= command
+	 *   sv[2]	= optional argument
 	 */
 
 	DNPRINTF(XT_D_URL, "%s: url %s\n", __func__, url);
 
-	if (strncmp(url, XT_XTP_STR, strlen(XT_XTP_STR)))
+	if ((uri = soup_uri_new(uri_str)) == NULL)
+		goto clean;
+	if (strncmp(uri->scheme, XT_XTP_SCHEME, strlen(XT_XTP_SCHEME)))
+		goto clean;
+	if (uri->host == NULL || strlen(uri->host) == 0)
+		goto clean;
+	else
+		class = atoi(uri->host);
+	if ((sv = g_strsplit(uri->path + 1, "/", 3)) == NULL)
 		goto clean;
 
-	dup = g_strdup(url + strlen(XT_XTP_STR));
-
-	/* split out the url */
-	for ((p = strtok_r(dup, "/", &last)); p;
-	    (p = strtok_r(NULL, "/", &last))) {
-		if (n_tokens < 4)
-			tokens[n_tokens++] = p;
-	}
-
-	/* should be atleast three fields 'class/seskey/command/arg' */
-	if (n_tokens < 3)
+	if (sv[0] == NULL || sv[1] == NULL)
 		goto clean;
 
 	dsp = xtp_despatches;
-	req_class = atoi(tokens[0]);
+	class = atoi(uri->host);
 	while (dsp->xtp_class) {
-		if (dsp->xtp_class == req_class) {
+		if (dsp->xtp_class == class) {
 			dsp_match = dsp;
 			break;
 		}
@@ -1060,14 +1052,20 @@ parse_xtp_url(struct tab *t, const char *url)
 	}
 
 	/* check session key and call despatch function */
-	if (validate_xtp_session_key(t, *(dsp_match->session_key), tokens[1])) {
+	if (validate_xtp_session_key(t, *(dsp_match->session_key), sv[0])) {
 		ret = TRUE; /* all is well, this was a valid xtp request */
-		dsp_match->handle_func(t, atoi(tokens[2]), atoi(tokens[3]));
+		if (sv[2])
+			dsp_match->handle_func(t, atoi(sv[1]), atoi(sv[2]),
+			    uri->query);
+		else
+			dsp_match->handle_func(t, atoi(sv[1]), 0, uri->query);
 	}
 
 clean:
-	if (dup)
-		g_free(dup);
+	if (uri)
+		soup_uri_free(uri);
+	if (sv)
+		g_strfreev(sv);
 
 	return (ret);
 }

@@ -82,7 +82,6 @@ struct command_entry {
 TAILQ_HEAD(command_list, command_entry);
 
 /* defines */
-#define XT_DIR			(".xombrero")
 #define XT_CACHE_DIR		("cache")
 #define XT_CERT_DIR		("certs")
 #define XT_CERT_CACHE_DIR	("certs_cache")
@@ -231,6 +230,7 @@ struct command_entry	*history_at;
 struct command_entry	*search_at;
 struct secviolation_list	svl;
 struct sv_ignore_list	svil;
+struct set_reject_list	srl;
 int			undo_count;
 int			cmd_history_count = 0;
 int			search_history_count = 0;
@@ -968,11 +968,11 @@ html_escape(const char *val)
 		return NULL;
 
 	sv = g_strsplit(val, "&", -1);
-	s = g_strjoinv("&amp", sv);
+	s = g_strjoinv("&amp;", sv);
 	g_strfreev(sv);
 	sp = s;
 	sv = g_strsplit(val, "<", -1);
-	s = g_strjoinv("&lt", sv);
+	s = g_strjoinv("&lt;", sv);
 	g_strfreev(sv);
 	g_free(sp);
 	return (s);
@@ -3382,6 +3382,7 @@ struct cmd {
 
 	/* settings */
 	{ "set",		0,	set,			0,			XT_SETARG },
+	{ "runtime",		0,	xtp_page_rt,		0,			0 },
 
 	{ "fullscreen",		0,	fullscreen,		0,			0 },
 	{ "f",			0,	fullscreen,		0,			0 },
@@ -3512,10 +3513,6 @@ activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 	}
 
 	uri += strspn(uri, "\t ");
-
-	/* if xxxt:// treat specially */
-	if (parse_xtp_url(t, uri))
-		return;
 
 	if (parse_custom_uri(t, uri))
 		return;
@@ -6405,6 +6402,60 @@ done:
 }
 
 int
+save_runtime_setting(const char *name, const char *val)
+{
+	struct stat		sb;
+	FILE			*f;
+	size_t			linelen;
+	int			found = 0;
+	char			file[PATH_MAX];
+	char			delim[3] = { '\0', '\0', '\0' };
+	char			*line, *lt, *start;
+	char			*contents, *tmp;
+
+	if (runtime_settings == NULL || strlen(runtime_settings) == 0)
+		return (-1);
+
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, runtime_settings);
+	if (stat(file, &sb) || (f = fopen(file, "r+")) == NULL)
+		return (-1);
+	lt = g_strdup_printf("%s=%s", name, val);
+	contents = g_strdup("");
+	while (!feof(f)) {
+		line = fparseln(f, &linelen, NULL, delim, 0);
+		if (line == NULL || linelen == 0)
+			continue;
+		tmp = contents;
+		start = g_strdup_printf("%s=", name);
+		if (strstr(line, start) == NULL)
+			contents = g_strdup_printf("%s%s\n", contents, line);
+		else {
+			found = 1;
+			contents = g_strdup_printf("%s%s\n", contents, lt);
+		}
+		g_free(tmp);
+		g_free(start);
+		free(line);
+		line = NULL;
+	}
+	if (found == 0) {
+		tmp = contents;
+		contents = g_strdup_printf("%s%s\n", contents, lt);
+		g_free(tmp);
+	}
+	if ((f = freopen(file, "w", f)) == NULL)
+		return (-1);
+	else {
+		fputs(contents, f);
+		fclose(f);
+	}
+	g_free(lt);
+	g_free(contents);
+
+	return (0);
+}
+
+int
 entry_key_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 {
 	if (t == NULL) {
@@ -7989,7 +8040,6 @@ create_canvas(void)
 	gtk_box_set_spacing(GTK_BOX(vbox), 0);
 	gtk_widget_set_can_focus(vbox, FALSE);
 	notebook = GTK_NOTEBOOK(gtk_notebook_new());
-	gtk_widget_set_name(notebook, "notebook");
 #if !GTK_CHECK_VERSION(3, 0, 0)
 	/* XXX seems to be needed with gtk+2 */
 	g_object_set(G_OBJECT(notebook), "tab-border", 0, NULL);
@@ -8410,6 +8460,7 @@ main(int argc, char **argv)
 	TAILQ_INIT(&chl);
 	TAILQ_INIT(&shl);
 	TAILQ_INIT(&cul);
+	TAILQ_INIT(&srl);
 
 #ifndef XT_RESOURCE_LIMITS_DISABLE
 	struct rlimit		rlp;

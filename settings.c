@@ -21,6 +21,7 @@
  */
 
 #include <xombrero.h>
+#include "tooltip.h"
 
 /* globals */
 SoupURI			*proxy_uri = NULL;
@@ -206,7 +207,84 @@ int		set_external_editor(char *);
 int		set_warn_cert_changes(char *);
 int		set_allow_insecure_content(char *);
 int		set_allow_insecure_scripts(char *);
+int		set_http_proxy(char *);
 int		set_do_not_track(char *);
+
+int		check_allow_insecure_content(char **);
+int		check_allow_insecure_scripts(char **);
+int		check_allow_volatile_cookies(char **);
+int		check_append_next(char **);
+int		check_auto_load_images(char **);
+int		check_autofocus_onload(char **);
+int		check_browser_mode(char **);
+int		check_cmd_font(char **);
+int		check_color_visited_uris(char **);
+int		check_cookie_policy(char **);
+int		check_cookies_enabled(char **);
+int		check_ctrl_click_focus(char **);
+int		check_default_script(char **);
+int		check_default_zoom_level(char **);
+int		check_download_dir(char **);
+int		check_download_mode(char **);
+int		check_download_notifications(char **);
+int		check_edit_mode(char **);
+int		check_enable_autoscroll(char **);
+int		check_enable_cookie_whitelist(char **);
+int		check_enable_favicon_entry(char **);
+int		check_enable_favicon_tabs(char **);
+int		check_enable_js_autorun(char **);
+int		check_enable_js_whitelist(char **);
+int		check_enable_localstorage(char **);
+int		check_enable_plugin_whitelist(char **);
+int		check_enable_plugins(char **);
+int		check_enable_scripts(char **);
+int		check_enable_socket(char **);
+int		check_enable_spell_checking(char **);
+int		check_enable_strict_transport(char **);
+int		check_encoding(char **);
+int		check_external_editor(char **);
+int		check_fancy_bar(char **);
+int		check_guess_search(char **);
+int		check_gui_mode(char **);
+int		check_history_autosave(char **);
+int		check_home(char **);
+int		check_http_proxy(char **);
+int		check_http_proxy_starts_enabled(char **);
+int		check_icon_size(char **);
+int		check_max_connections(char **);
+int		check_max_host_connections(char **);
+int		check_oops_font(char **);
+int		check_read_only_cookies(char **);
+int		check_referer(char **);
+int		check_refresh_interval(char **);
+int		check_resource_dir(char **);
+int		check_save_global_history(char **);
+int		check_save_rejected_cookies(char **);
+int		check_search_string(char **);
+int		check_session_autosave(char **);
+int		check_session_timeout(char **);
+int		check_show_scrollbars(char **);
+int		check_show_statusbar(char **);
+int		check_show_tabs(char **);
+int		check_show_url(char **);
+int		check_single_instance(char **);
+int		check_spell_check_languages(char **);
+int		check_ssl_ca_file(char **);
+int		check_ssl_strict_certs(char **);
+int		check_statusbar_elems(char **);
+int		check_statusbar_font(char **);
+int		check_statusbar_style(char **);
+int		check_tab_style(char **);
+int		check_tabbar_font(char **);
+int		check_url_regex(char **);
+int		check_userstyle(char **);
+int		check_userstyle_global(char **);
+int		check_warn_cert_changes(char **);
+int		check_window_height(char **);
+int		check_window_maximize(char **);
+int		check_window_width(char **);
+int		check_work_dir(char **);
+int		check_do_not_track(char **);
 
 void		walk_mime_type(struct settings *, void (*)(struct settings *,
 		    char *, void *), void *);
@@ -231,6 +309,266 @@ void		walk_custom_uri(struct settings *, void (*)(struct settings *,
 void		walk_force_https(struct settings *, void (*)(struct settings *,
 		    char *, void *), void *);
 
+struct special		s_browser_mode = {
+	set_browser_mode,
+	get_browser_mode,
+	NULL,
+	{ "kiosk", "normal", "whitelist", NULL }
+};
+
+struct special		s_gui_mode = {
+	set_gui_mode,
+	get_gui_mode,
+	NULL,
+	{ "classic", "minimal", NULL }
+};
+
+struct special		s_cookie = {
+	set_cookie_policy,
+	get_cookie_policy,
+	NULL,
+	{ "accept", "no3rdparty", "reject", NULL }
+};
+
+struct special		s_alias = {
+	add_alias,
+	NULL,
+	walk_alias,
+	{ NULL }
+};
+
+struct special		s_cmd_alias = {
+	add_cmd_alias,
+	NULL,
+	walk_cmd_alias,
+	{ NULL }
+};
+
+struct special		s_mime = {
+	add_mime_type,
+	NULL,
+	walk_mime_type,
+	{ NULL }
+};
+
+struct special		s_js = {
+	add_js_wl,
+	NULL,
+	walk_js_wl,
+	{ NULL }
+};
+
+struct special		s_pl = {
+	add_pl_wl,
+	NULL,
+	walk_pl_wl,
+	{ NULL }
+};
+
+struct special		s_kb = {
+	add_kb,
+	NULL,
+	walk_kb,
+	{ NULL }
+};
+
+struct special		s_cookie_wl = {
+	add_cookie_wl,
+	NULL,
+	walk_cookie_wl,
+	{ NULL }
+};
+
+struct special		s_uri = {
+	add_custom_uri,
+	NULL,
+	walk_custom_uri,
+	{ NULL }
+};
+
+struct special		s_default_script = {
+	set_default_script,
+	get_default_script,
+	NULL,
+	{ NULL }
+};
+
+struct special		s_ssl_ca_file = {
+	set_ssl_ca_file,
+	get_ssl_ca_file,
+	NULL,
+	{ NULL }
+};
+
+struct special		s_download_dir = {
+	set_download_dir,
+	get_download_dir,
+	NULL,
+	{ NULL }
+};
+
+struct special		s_work_dir = {
+	set_work_dir,
+	get_work_dir,
+	NULL,
+	{ NULL }
+};
+
+struct special		s_tab_style = {
+	set_tab_style,
+	get_tab_style,
+	NULL,
+	{ "compact", "normal", NULL }
+};
+
+struct special		s_statusbar_style = {
+	set_statusbar_style,
+	get_statusbar_style,
+	NULL,
+	{ "title", "url", NULL }
+};
+
+struct special		s_edit_mode = {
+	set_edit_mode,
+	get_edit_mode,
+	NULL,
+	{ "hybrid", "vi", NULL }
+};
+
+struct special		s_download_mode = {
+	set_download_mode,
+	get_download_mode,
+	NULL,
+	{ "add", "ask", "start", NULL }
+};
+
+struct special		s_ua = {
+	add_ua,
+	NULL,
+	walk_ua,
+	{ NULL }
+};
+
+struct special		s_http_accept = {
+	add_http_accept,
+	NULL,
+	walk_http_accept,
+	{ NULL }
+};
+
+struct special		s_referer = {
+	set_referer,
+	get_referer,
+	NULL,
+	{ "always", "never", "same-domain", "same-fqdn", NULL }
+};
+
+struct special		s_userstyle = {
+	set_userstyle,
+	get_userstyle,
+	NULL,
+	{ NULL }
+};
+
+struct special		s_force_https = {
+	add_force_https,
+	NULL,
+	walk_force_https
+};
+
+struct settings		rs[] = {
+	{ "allow_insecure_content",	XT_S_BOOL, 0,		&allow_insecure_content, NULL, NULL, NULL, set_allow_insecure_content, check_allow_insecure_content, TT_ALLOW_INSECURE_CONTENT },
+	{ "allow_insecure_scripts",	XT_S_BOOL, 0,		&allow_insecure_scripts, NULL, NULL, NULL, set_allow_insecure_scripts, check_allow_insecure_scripts, TT_ALLOW_INSECURE_SCRIPTS},
+	{ "allow_volatile_cookies",	XT_S_BOOL, 0,		&allow_volatile_cookies, NULL, NULL, NULL, NULL, check_allow_volatile_cookies, TT_ALLOW_VOLATILE_COOKIES},
+	{ "append_next",		XT_S_BOOL, 0,		&append_next, NULL, NULL, NULL, set_append_next, check_append_next, TT_APPEND_NEXT},
+	{ "auto_load_images",		XT_S_BOOL, 0,		&auto_load_images, NULL, NULL, NULL, set_auto_load_images, check_auto_load_images, TT_AUTO_LOAD_IMAGES },
+	{ "autofocus_onload",		XT_S_BOOL, 0,		&autofocus_onload, NULL, NULL, NULL, set_autofocus_onload, check_autofocus_onload, TT_AUTOFOCUS_ONLOAD },
+	{ "browser_mode",		XT_S_STR, 0, NULL, NULL,&s_browser_mode, NULL, NULL, check_browser_mode, TT_BROWSER_MODE },
+	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL, NULL, set_cmd_font, check_cmd_font, TT_CMD_FONT},
+	{ "color_visited_uris",		XT_S_BOOL, 0,		&color_visited_uris , NULL, NULL, NULL, set_color_visited_uris, check_color_visited_uris, TT_COLOR_VISITED_URIS },
+	{ "cookie_policy",		XT_S_STR, 0, NULL, NULL,&s_cookie, NULL, set_cookie_policy_rt, check_cookie_policy, TT_COOKIE_POLICY},
+	{ "cookies_enabled",		XT_S_BOOL, 0,		&cookies_enabled, NULL, NULL, NULL, set_cookies_enabled, check_cookies_enabled, TT_COOKIES_ENABLED },
+	{ "ctrl_click_focus",		XT_S_BOOL, 0,		&ctrl_click_focus, NULL, NULL, NULL, set_ctrl_click_focus, check_ctrl_click_focus, TT_CTRL_CLICK_FOCUS },
+	{ "default_script",		XT_S_STR, 1, NULL, NULL,&s_default_script, NULL, set_default_script_rt, check_default_script, TT_DEFAULT_SCRIPT },
+	{ "default_zoom_level",		XT_S_FLOAT, 0,		NULL, NULL, NULL, &default_zoom_level, set_default_zoom_level, check_default_zoom_level, TT_DEFAULT_ZOOM_LEVEL },
+	{ "do_not_track",		XT_S_BOOL, 0,		&do_not_track, NULL, NULL, NULL, set_do_not_track, check_do_not_track, TT_DO_NOT_TRACK },
+	{ "download_dir",		XT_S_STR, 0, NULL, NULL,&s_download_dir, NULL, NULL, check_download_dir, TT_DOWNLOAD_DIR },
+	{ "download_mode",		XT_S_STR, 0, NULL, NULL,&s_download_mode, NULL, set_download_mode_rt, check_download_mode, TT_DOWNLOAD_MODE },
+	{ "download_notifications",	XT_S_BOOL, 0,		&download_notifications, NULL, NULL, NULL, set_download_notifications, check_download_notifications, TT_DOWNLOAD_NOTIFICATIONS },
+	{ "edit_mode",			XT_S_STR, 0, NULL, NULL,&s_edit_mode, NULL, NULL, check_edit_mode, NULL },
+	{ "enable_autoscroll",		XT_S_BOOL, 0,		&enable_autoscroll, NULL, NULL, NULL, set_enable_autoscroll, check_enable_autoscroll, TT_ENABLE_AUTOSCROLL },
+	{ "enable_cookie_whitelist",	XT_S_BOOL, 0,		&enable_cookie_whitelist, NULL, NULL, NULL, set_enable_cookie_whitelist, check_enable_cookie_whitelist, TT_ENABLE_COOKIE_WHITELIST },
+	{ "enable_favicon_entry",	XT_S_BOOL, 0,		&enable_favicon_entry, NULL, NULL, NULL, set_enable_favicon_entry, check_enable_favicon_entry, TT_ENABLE_FAVICON_ENTRY },
+	{ "enable_favicon_tabs",	XT_S_BOOL, 0,		&enable_favicon_tabs, NULL, NULL, NULL, set_enable_favicon_tabs, check_enable_favicon_tabs, TT_ENABLE_FAVICON_TABS },
+	{ "enable_js_autorun",		XT_S_BOOL, 0,		&enable_js_autorun, NULL, NULL, NULL, set_enable_js_autorun, check_enable_js_autorun, TT_ENABLE_JS_AUTORUN },
+	{ "enable_js_whitelist",	XT_S_BOOL, 0,		&enable_js_whitelist, NULL, NULL, NULL, set_enable_js_whitelist, check_enable_js_whitelist, TT_ENABLE_JS_WHITELIST },
+	{ "enable_localstorage",	XT_S_BOOL, 0,		&enable_localstorage, NULL, NULL, NULL, set_enable_localstorage, check_enable_localstorage, TT_ENABLE_LOCALSTORAGE },
+	{ "enable_plugin_whitelist",	XT_S_BOOL, 0,		&enable_plugin_whitelist, NULL, NULL, NULL, set_enable_plugin_whitelist, check_enable_plugin_whitelist, TT_ENABLE_PLUGIN_WHITELIST },
+	{ "enable_plugins",		XT_S_BOOL, 0,		&enable_plugins, NULL, NULL, NULL, set_enable_plugins, check_enable_plugins, TT_ENABLE_PLUGINS },
+	{ "enable_scripts",		XT_S_BOOL, 0,		&enable_scripts, NULL, NULL, NULL, set_enable_scripts, check_enable_scripts, TT_ENABLE_SCRIPTS },
+	{ "enable_socket",		XT_S_BOOL,XT_SF_RESTART,&enable_socket, NULL, NULL, NULL, NULL, check_enable_socket, TT_ENABLE_SOCKET },
+	{ "enable_spell_checking",	XT_S_BOOL, 0,		&enable_spell_checking, NULL, NULL, NULL, set_enable_spell_checking, check_enable_spell_checking, TT_ENABLE_SPELL_CHECKING },
+	{ "enable_strict_transport",	XT_S_BOOL, 0,		&enable_strict_transport, NULL, NULL, NULL, set_enable_strict_transport, check_enable_strict_transport, TT_ENABLE_STRICT_TRANSPORT },
+	{ "encoding",			XT_S_STR, 0, NULL,	&encoding, NULL, NULL, NULL, check_encoding, TT_ENCODING },
+	{ "external_editor",		XT_S_STR,0, NULL,	&external_editor, NULL, NULL, set_external_editor, check_external_editor, TT_EXTERNAL_EDITOR },
+	{ "fancy_bar",			XT_S_BOOL,XT_SF_RESTART,&fancy_bar, NULL, NULL, NULL, set_fancy_bar, check_fancy_bar, TT_FANCY_BAR },
+	{ "guess_search",		XT_S_BOOL, 0,		&guess_search, NULL, NULL, NULL, set_guess_search, check_guess_search, TT_GUESS_SEARCH },
+	{ "gui_mode",			XT_S_STR, 0, NULL, NULL,&s_gui_mode, NULL, NULL, check_gui_mode, TT_GUI_MODE },
+	{ "history_autosave",		XT_S_BOOL, 0,		&history_autosave, NULL, NULL, NULL, NULL, check_history_autosave, TT_HISTORY_AUTOSAVE },
+	{ "home",			XT_S_STR, 0, NULL,	&home, NULL, NULL, set_home, check_home, TT_HOME },
+	{ "http_proxy",			XT_S_STR, 0, NULL,	&http_proxy, NULL, NULL, set_http_proxy, check_http_proxy, TT_HTTP_PROXY },
+	{ "http_proxy_starts_enabled",	XT_S_BOOL, 0,		&http_proxy_starts_enabled, NULL, NULL, NULL, NULL, check_http_proxy_starts_enabled, TT_HTTP_PROXY_STARTS_ENABLED },
+	{ "icon_size",			XT_S_INT, 0,		&icon_size, NULL, NULL, NULL, NULL, check_icon_size, TT_ICON_SIZE },
+	{ "include_config",		XT_S_STR, XT_SF_INVISIBLE, NULL, &include_config, NULL, NULL, NULL, NULL },
+	{ "max_connections",		XT_S_INT, XT_SF_RESTART,&max_connections, NULL, NULL, NULL, NULL, check_max_connections, TT_MAX_CONNECTIONS },
+	{ "max_host_connections",	XT_S_INT, XT_SF_RESTART,&max_host_connections, NULL, NULL, NULL, NULL, check_max_host_connections, TT_MAX_HOST_CONNECTIONS },
+	{ "oops_font",			XT_S_STR, 0, NULL, &oops_font_name, NULL, NULL, set_oops_font, check_oops_font, TT_OOPS_FONT },
+	{ "preload_strict_transport",	XT_S_BOOL, 0,		&preload_strict_transport, NULL, NULL, NULL, NULL, NULL, TT_PRELOAD_STRICT_TRANSPORT },
+	{ "read_only_cookies",		XT_S_BOOL, 0,		&read_only_cookies, NULL, NULL, NULL, NULL, check_read_only_cookies, TT_READ_ONLY_COOKIES },
+	{ "referer",			XT_S_STR, 0, NULL, NULL,&s_referer, NULL, set_referer_rt, check_referer, TT_REFERER },
+	{ "refresh_interval",		XT_S_INT, 0,		&refresh_interval, NULL, NULL, NULL, set_refresh_interval, check_refresh_interval, TT_REFRESH_INTERVAL },
+	{ "resource_dir",		XT_S_STR, 0, NULL,	&resource_dir, NULL, NULL, NULL, check_resource_dir, TT_RESOURCE_DIR },
+	{ "save_global_history",	XT_S_BOOL,XT_SF_RESTART,&save_global_history, NULL, NULL, NULL, NULL, check_save_global_history, TT_SAVE_GLOBAL_HISTORY },
+	{ "save_rejected_cookies",	XT_S_BOOL,XT_SF_RESTART,&save_rejected_cookies, NULL, NULL, NULL, NULL, check_save_rejected_cookies, TT_SAVE_REJECTED_COOKIES },
+	{ "search_string",		XT_S_STR, 0, NULL,	&search_string, NULL, NULL, set_search_string, check_search_string, TT_SEARCH_STRING },
+	{ "session_autosave",		XT_S_BOOL, 0,		&session_autosave, NULL, NULL, NULL, set_session_autosave, check_session_autosave, TT_SESSION_AUTOSAVE },
+	{ "session_timeout",		XT_S_INT, 0,		&session_timeout, NULL, NULL, NULL, set_session_timeout, check_session_timeout, TT_SESSION_TIMEOUT },
+	{ "show_scrollbars",		XT_S_BOOL, 0,		&show_scrollbars, NULL, NULL, NULL, set_show_scrollbars, check_show_scrollbars, TT_SHOW_SCROLLBARS },
+	{ "show_statusbar",		XT_S_BOOL, 0,		&show_statusbar, NULL, NULL, NULL, set_show_statusbar, check_show_statusbar, TT_SHOW_STATUSBAR },
+	{ "show_tabs",			XT_S_BOOL, 0,		&show_tabs, NULL, NULL, NULL, set_show_tabs, check_show_tabs, TT_SHOW_TABS },
+	{ "show_url",			XT_S_BOOL, 0,		&show_url, NULL, NULL, NULL, set_show_url, check_show_url, TT_SHOW_URL },
+	{ "single_instance",		XT_S_BOOL,XT_SF_RESTART,&single_instance, NULL, NULL, NULL, NULL, check_single_instance, TT_SINGLE_INSTANCE },
+	{ "spell_check_languages",	XT_S_STR, 0, NULL,	&spell_check_languages, NULL, NULL, set_spell_check_languages, check_spell_check_languages, TT_SPELL_CHECK_LANGUAGES },
+	{ "ssl_ca_file",		XT_S_STR, 0, NULL, NULL,&s_ssl_ca_file, NULL, set_ssl_ca_file_rt, check_ssl_ca_file, TT_SSL_CA_FILE },
+	{ "ssl_strict_certs",		XT_S_BOOL, 0,		&ssl_strict_certs, NULL, NULL, NULL, set_ssl_strict_certs, check_ssl_strict_certs, TT_SSL_STRICT_CERTS },
+	{ "statusbar_elems",		XT_S_STR, 0, NULL,	&statusbar_elems, NULL, NULL, NULL, check_statusbar_elems, TT_STATUSBAR_ELEMS },
+	{ "statusbar_font",		XT_S_STR, 0, NULL, &statusbar_font_name, NULL, NULL, set_statusbar_font, check_statusbar_font, TT_STATUSBAR_FONT },
+	{ "statusbar_style",		XT_S_STR, 0, NULL, NULL,&s_statusbar_style, NULL, set_statusbar_style_rt, check_statusbar_style, TT_STATUSBAR_STYLE },
+	{ "tab_style",			XT_S_STR, 0, NULL, NULL,&s_tab_style, NULL, set_tab_style_rt, check_tab_style, TT_TAB_STYLE },
+	{ "tabbar_font",		XT_S_STR, 0, NULL, &tabbar_font_name, NULL, NULL, set_tabbar_font, check_tabbar_font, TT_TABBAR_FONT },
+	{ "url_regex",			XT_S_STR, 0, NULL,	&url_regex, NULL, NULL, set_url_regex, check_url_regex, TT_URL_REGEX },
+	{ "userstyle",			XT_S_STR, 0, NULL, NULL,&s_userstyle, NULL, set_userstyle_rt, check_userstyle, TT_USERSTYLE },
+	{ "userstyle_global",		XT_S_BOOL, 0,		&userstyle_global, NULL, NULL, NULL, set_userstyle_global, check_userstyle_global, TT_USERSTYLE_GLOBAL },
+	{ "warn_cert_changes",		XT_S_BOOL, 0,		&warn_cert_changes, NULL, NULL, NULL, set_warn_cert_changes, check_warn_cert_changes, TT_WARN_CERT_CHANGES },
+	{ "window_height",		XT_S_INT, 0,		&window_height, NULL, NULL, NULL, NULL, check_window_height, TT_WINDOW_HEIGHT },
+	{ "window_maximize",		XT_S_BOOL, 0,		&window_maximize, NULL, NULL, NULL, NULL, check_window_maximize, TT_WINDOW_MAXIMIZE },
+	{ "window_width",		XT_S_INT, 0,		&window_width, NULL, NULL, NULL, NULL, check_window_width, TT_WINDOW_WIDTH },
+	{ "work_dir",			XT_S_STR, 0, NULL, NULL,&s_work_dir, NULL, NULL, check_work_dir, TT_WORK_DIR },
+
+	/* special settings */
+	{ "alias",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_alias, NULL, NULL },
+	{ "cmd_alias",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_cmd_alias, NULL, NULL },
+	{ "cookie_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_cookie_wl, NULL, NULL },
+	{ "custom_uri",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_uri, NULL, NULL },
+	{ "force_https",		XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_force_https, NULL, NULL },
+	{ "http_accept",		XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_http_accept, NULL, NULL },
+	{ "js_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_js, NULL, NULL },
+	{ "keybinding",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_kb, NULL, NULL },
+	{ "mime_type",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_mime, NULL, NULL },
+	{ "pl_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_pl, NULL, NULL },
+	{ "user_agent",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_ua, NULL, NULL },
+};
+
 int
 set_http_proxy(char *proxy)
 {
@@ -253,250 +591,40 @@ set_http_proxy(char *proxy)
 	return (0);
 }
 
-struct special {
-	int		(*set)(struct settings *, char *);
-	char		*(*get)(struct settings *);
-	void		(*walk)(struct settings *,
-			    void (*cb)(struct settings *, char *, void *),
-			    void *);
-};
+int
+check_http_proxy(char **tt)
+{
+	*tt = g_strdup("Default: (empty)");
+	return (g_strcmp0(http_proxy, NULL));
+}
 
-struct special		s_browser_mode = {
-	set_browser_mode,
-	get_browser_mode,
-	NULL
-};
+int
+check_http_proxy_starts_enabled(char **tt)
+{
+	*tt = g_strdup("Default: Enabled");
+	return (http_proxy_starts_enabled != 1);
+}
 
-struct special		s_gui_mode = {
-	set_gui_mode,
-	get_gui_mode,
-	NULL
-};
+int
+check_icon_size(char **tt)
+{
+	*tt = g_strdup_printf("Default: %d", 2);
+	return (icon_size != 2);
+}
 
-struct special		s_cookie = {
-	set_cookie_policy,
-	get_cookie_policy,
-	NULL
-};
+int
+check_max_connections(char **tt)
+{
+	*tt = g_strdup_printf("Default: %d", 25);
+	return (max_connections != 25);
+}
 
-struct special		s_alias = {
-	add_alias,
-	NULL,
-	walk_alias
-};
-
-struct special		s_cmd_alias = {
-	add_cmd_alias,
-	NULL,
-	walk_cmd_alias
-};
-
-struct special		s_mime = {
-	add_mime_type,
-	NULL,
-	walk_mime_type
-};
-
-struct special		s_js = {
-	add_js_wl,
-	NULL,
-	walk_js_wl
-};
-
-struct special		s_pl = {
-	add_pl_wl,
-	NULL,
-	walk_pl_wl
-};
-
-struct special		s_kb = {
-	add_kb,
-	NULL,
-	walk_kb
-};
-
-struct special		s_cookie_wl = {
-	add_cookie_wl,
-	NULL,
-	walk_cookie_wl
-};
-
-struct special		s_uri = {
-	add_custom_uri,
-	NULL,
-	walk_custom_uri,
-};
-
-struct special		s_default_script = {
-	set_default_script,
-	get_default_script,
-	NULL
-};
-
-struct special		s_ssl_ca_file = {
-	set_ssl_ca_file,
-	get_ssl_ca_file,
-	NULL
-};
-
-struct special		s_download_dir = {
-	set_download_dir,
-	get_download_dir,
-	NULL
-};
-
-struct special		s_work_dir = {
-	set_work_dir,
-	get_work_dir,
-	NULL
-};
-
-struct special		s_tab_style = {
-	set_tab_style,
-	get_tab_style,
-	NULL
-};
-
-struct special		s_statusbar_style = {
-	set_statusbar_style,
-	get_statusbar_style,
-	NULL
-};
-
-struct special		s_edit_mode = {
-	set_edit_mode,
-	get_edit_mode,
-	NULL
-};
-
-struct special		s_download_mode = {
-	set_download_mode,
-	get_download_mode,
-	NULL
-};
-
-struct special		s_ua = {
-	add_ua,
-	NULL,
-	walk_ua
-};
-
-struct special		s_http_accept = {
-	add_http_accept,
-	NULL,
-	walk_http_accept
-};
-
-struct special		s_referer = {
-	set_referer,
-	get_referer,
-	NULL
-};
-
-struct special		s_userstyle = {
-	set_userstyle,
-	get_userstyle,
-	NULL
-};
-
-struct special		s_force_https = {
-	add_force_https,
-	NULL,
-	walk_force_https
-};
-
-struct settings		rs[] = {
-	{ "allow_insecure_content",	XT_S_INT, 0,		&allow_insecure_content, NULL, NULL, NULL, set_allow_insecure_content },
-	{ "allow_insecure_scripts",	XT_S_INT, 0,		&allow_insecure_scripts, NULL, NULL, NULL, set_allow_insecure_scripts },
-	{ "allow_volatile_cookies",	XT_S_INT, 0,		&allow_volatile_cookies, NULL, NULL, NULL, NULL},
-	{ "append_next",		XT_S_INT, 0,		&append_next, NULL, NULL, NULL, set_append_next },
-	{ "auto_load_images",		XT_S_INT, 0,		&auto_load_images, NULL, NULL, NULL, set_auto_load_images },
-	{ "autofocus_onload",		XT_S_INT, 0,		&autofocus_onload, NULL, NULL, NULL, set_autofocus_onload },
-	{ "browser_mode",		XT_S_INT, 0, NULL, NULL,&s_browser_mode, NULL, NULL },
-	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL, NULL, set_cmd_font },
-	{ "color_visited_uris",		XT_S_INT, 0,		&color_visited_uris , NULL, NULL, NULL, set_color_visited_uris },
-	{ "cookie_policy",		XT_S_INT, 0, NULL, NULL,&s_cookie, NULL, set_cookie_policy_rt },
-	{ "cookies_enabled",		XT_S_INT, 0,		&cookies_enabled, NULL, NULL, NULL, set_cookies_enabled },
-	{ "ctrl_click_focus",		XT_S_INT, 0,		&ctrl_click_focus, NULL, NULL, NULL, set_ctrl_click_focus },
-	{ "default_script",		XT_S_STR, 1, NULL, NULL,&s_default_script, NULL, set_default_script_rt },
-	{ "default_zoom_level",		XT_S_FLOAT, 0,		NULL, NULL, NULL, &default_zoom_level, set_default_zoom_level },
-	{ "do_not_track",		XT_S_INT, 0,		&do_not_track, NULL, NULL, NULL, set_do_not_track },
-	{ "download_dir",		XT_S_STR, 0, NULL, NULL,&s_download_dir, NULL, NULL },
-	{ "download_mode",		XT_S_STR, 0, NULL, NULL,&s_download_mode, NULL, set_download_mode_rt },
-	{ "download_notifications",	XT_S_INT, 0,		&download_notifications, NULL, NULL, NULL, set_download_notifications },
-	{ "edit_mode",			XT_S_STR, 0, NULL, NULL,&s_edit_mode, NULL, NULL},
-	{ "enable_autoscroll",		XT_S_INT, 0,		&enable_autoscroll, NULL, NULL, NULL, set_enable_autoscroll },
-	{ "enable_cookie_whitelist",	XT_S_INT, 0,		&enable_cookie_whitelist, NULL, NULL, NULL, set_enable_cookie_whitelist },
-	{ "enable_favicon_entry",	XT_S_INT, 0,		&enable_favicon_entry, NULL, NULL, NULL, set_enable_favicon_entry },
-	{ "enable_favicon_tabs",	XT_S_INT, 0,		&enable_favicon_tabs, NULL, NULL, NULL, set_enable_favicon_tabs },
-	{ "enable_js_autorun",		XT_S_INT, 0,		&enable_js_autorun, NULL, NULL, NULL, set_enable_js_autorun },
-	{ "enable_js_whitelist",	XT_S_INT, 0,		&enable_js_whitelist, NULL, NULL, NULL, set_enable_js_whitelist },
-	{ "enable_localstorage",	XT_S_INT, 0,		&enable_localstorage, NULL, NULL, NULL, set_enable_localstorage },
-	{ "enable_plugin_whitelist",	XT_S_INT, 0,		&enable_plugin_whitelist, NULL, NULL, NULL, set_enable_plugin_whitelist },
-	{ "enable_plugins",		XT_S_INT, 0,		&enable_plugins, NULL, NULL, NULL, set_enable_plugins },
-	{ "enable_scripts",		XT_S_INT, 0,		&enable_scripts, NULL, NULL, NULL, set_enable_scripts },
-	{ "enable_socket",		XT_S_INT, XT_SF_RESTART,&enable_socket, NULL, NULL, NULL, NULL },
-	{ "enable_spell_checking",	XT_S_INT, 0,		&enable_spell_checking, NULL, NULL, NULL, set_enable_spell_checking },
-	{ "enable_strict_transport",	XT_S_INT, 0,		&enable_strict_transport, NULL, NULL, NULL, set_enable_strict_transport },
-	{ "encoding",			XT_S_STR, 0, NULL,	&encoding, NULL, NULL, NULL },
-	{ "external_editor",		XT_S_STR,0, NULL,	&external_editor, NULL, NULL, set_external_editor },
-	{ "fancy_bar",			XT_S_INT, XT_SF_RESTART,&fancy_bar, NULL, NULL, NULL, set_fancy_bar },
-	{ "guess_search",		XT_S_INT, 0,		&guess_search, NULL, NULL, NULL, set_guess_search },
-	{ "gui_mode",			XT_S_INT, 0, NULL, NULL,&s_gui_mode, NULL, NULL },
-	{ "history_autosave",		XT_S_INT, 0,		&history_autosave, NULL, NULL, NULL, NULL },
-	{ "home",			XT_S_STR, 0, NULL,	&home, NULL, NULL, set_home },
-	{ "http_proxy",			XT_S_STR, 0, NULL,	&http_proxy, NULL, NULL, set_http_proxy },
-	{ "http_proxy_starts_enabled",	XT_S_INT, 0,		&http_proxy_starts_enabled, NULL, NULL, NULL, NULL },
-	{ "icon_size",			XT_S_INT, 0,		&icon_size, NULL, NULL, NULL, NULL },
-	{ "include_config",		XT_S_STR, 0, NULL,	&include_config, NULL, NULL, NULL },
-	{ "max_connections",		XT_S_INT, XT_SF_RESTART,&max_connections, NULL, NULL, NULL, NULL },
-	{ "max_host_connections",	XT_S_INT, XT_SF_RESTART,&max_host_connections, NULL, NULL, NULL, NULL },
-	{ "oops_font",			XT_S_STR, 0, NULL, &oops_font_name, NULL, NULL, set_oops_font },
-	{ "preload_strict_transport",	XT_S_INT, 0,		&preload_strict_transport, NULL, NULL, NULL, NULL },
-	{ "read_only_cookies",		XT_S_INT, 0,		&read_only_cookies, NULL, NULL, NULL, set_read_only_cookies },
-	{ "referer",			XT_S_STR, 0, NULL, NULL,&s_referer, NULL, set_referer_rt },
-	{ "refresh_interval",		XT_S_INT, 0,		&refresh_interval, NULL, NULL, NULL, set_refresh_interval },
-	{ "resource_dir",		XT_S_STR, 0, NULL,	&resource_dir, NULL, NULL, NULL },
-	{ "save_global_history",	XT_S_INT, XT_SF_RESTART,&save_global_history, NULL, NULL, NULL, NULL },
-	{ "save_rejected_cookies",	XT_S_INT, XT_SF_RESTART,&save_rejected_cookies, NULL, NULL, NULL, NULL },
-	{ "search_string",		XT_S_STR, 0, NULL,	&search_string, NULL, NULL, set_search_string },
-	{ "session_autosave",		XT_S_INT, 0,		&session_autosave, NULL, NULL, NULL, set_session_autosave },
-	{ "session_timeout",		XT_S_INT, 0,		&session_timeout, NULL, NULL, NULL, set_session_timeout },
-	{ "show_scrollbars",		XT_S_INT, 0,		&show_scrollbars, NULL, NULL, NULL, set_show_scrollbars },
-	{ "show_statusbar",		XT_S_INT, 0,		&show_statusbar, NULL, NULL, NULL, set_show_statusbar },
-	{ "show_tabs",			XT_S_INT, 0,		&show_tabs, NULL, NULL, NULL, set_show_tabs },
-	{ "show_url",			XT_S_INT, 0,		&show_url, NULL, NULL, NULL, set_show_url },
-	{ "single_instance",		XT_S_INT, XT_SF_RESTART,&single_instance, NULL, NULL, NULL, NULL },
-	{ "spell_check_languages",	XT_S_STR, 0, NULL,	&spell_check_languages, NULL, NULL, set_spell_check_languages },
-	{ "ssl_ca_file",		XT_S_STR, 0, NULL, NULL,&s_ssl_ca_file, NULL, set_ssl_ca_file_rt },
-	{ "ssl_strict_certs",		XT_S_INT, 0,		&ssl_strict_certs, NULL, NULL, NULL, set_ssl_strict_certs },
-	{ "statusbar_elems",		XT_S_STR, 0, NULL,	&statusbar_elems, NULL, NULL, NULL },
-	{ "statusbar_font",		XT_S_STR, 0, NULL, &statusbar_font_name, NULL, NULL, set_statusbar_font },
-	{ "statusbar_style",		XT_S_STR, 0, NULL, NULL,&s_statusbar_style, NULL, set_statusbar_style_rt },
-	{ "tab_style",			XT_S_STR, 0, NULL, NULL,&s_tab_style, NULL, set_tab_style_rt },
-	{ "tabbar_font",		XT_S_STR, 0, NULL, &tabbar_font_name, NULL, NULL, set_tabbar_font },
-	{ "url_regex",			XT_S_STR, 0, NULL,	&url_regex, NULL, NULL, set_url_regex },
-	{ "userstyle",			XT_S_STR, 0, NULL, NULL,&s_userstyle, NULL, set_userstyle_rt },
-	{ "userstyle_global",		XT_S_INT, 0,		&userstyle_global, NULL, NULL, NULL, set_userstyle_global },
-	{ "warn_cert_changes",		XT_S_INT, 0,		&warn_cert_changes, NULL, NULL, NULL, set_warn_cert_changes },
-	{ "window_height",		XT_S_INT, 0,		&window_height, NULL, NULL, NULL, NULL },
-	{ "window_maximize",		XT_S_INT, 0,		&window_maximize, NULL, NULL, NULL, NULL },
-	{ "window_width",		XT_S_INT, 0,		&window_width, NULL, NULL, NULL, NULL },
-	{ "work_dir",			XT_S_STR, 0, NULL, NULL,&s_work_dir, NULL, NULL },
-
-	/* special settings */
-	{ "alias",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_alias, NULL, NULL },
-	{ "cmd_alias",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_cmd_alias, NULL, NULL },
-	{ "cookie_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_cookie_wl, NULL, NULL },
-	{ "custom_uri",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_uri, NULL, NULL },
-	{ "force_https",		XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_force_https, NULL, NULL },
-	{ "http_accept",		XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_http_accept, NULL, NULL },
-	{ "js_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_js, NULL, NULL },
-	{ "keybinding",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_kb, NULL, NULL },
-	{ "mime_type",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_mime, NULL, NULL },
-	{ "pl_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_pl, NULL, NULL },
-	{ "user_agent",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_ua, NULL, NULL },
-};
+int
+check_max_host_connections(char **tt)
+{
+	*tt = g_strdup_printf("Default: %d", 5);
+	return (max_host_connections != 5);
+}
 
 int
 set_default_zoom_level(char *value)
@@ -512,6 +640,13 @@ set_default_zoom_level(char *value)
 	TAILQ_FOREACH(t, &tabs, entry)
 		resizetab(t, &args);
 	return (0);
+}
+
+int
+check_default_zoom_level(char **tt)
+{
+	*tt = g_strdup_printf("Default: %f", XT_DS_DEFAULT_ZOOM_LEVEL);
+	return (default_zoom_level != XT_DS_DEFAULT_ZOOM_LEVEL);
 }
 
 int
@@ -532,6 +667,14 @@ set_cookies_enabled(char *value)
 }
 
 int
+check_cookies_enabled(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_COOKIES_ENABLED ? "Enabled" : "Disabled");
+	return (cookies_enabled != XT_DS_COOKIES_ENABLED);
+}
+
+int
 set_append_next(char *value)
 {
 	int			tmp;
@@ -546,6 +689,14 @@ set_append_next(char *value)
 		append_next = tmp;
 	}
 	return (0);
+}
+
+int
+check_append_next(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_APPEND_NEXT ? "Enabled" : "Disabled");
+	return (append_next != XT_DS_APPEND_NEXT);
 }
 
 int
@@ -568,6 +719,13 @@ set_cmd_font(char *value)
 }
 
 int
+check_cmd_font(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s", XT_DS_CMD_FONT_NAME);
+	return (g_strcmp0(cmd_font_name, XT_DS_CMD_FONT_NAME));
+}
+
+int
 set_oops_font(char *value)
 {
 	struct tab		*t;
@@ -584,6 +742,21 @@ set_oops_font(char *value)
 	TAILQ_FOREACH(t, &tabs, entry)
 		gtk_widget_modify_font(GTK_WIDGET(t->oops), oops_font);
 	return (0);
+}
+
+int
+check_oops_font(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s", XT_DS_OOPS_FONT_NAME);
+	return (g_strcmp0(oops_font_name, XT_DS_OOPS_FONT_NAME));
+}
+
+int
+check_read_only_cookies(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_READ_ONLY_COOKIES ? "Enabled" : "Disabled");
+	return (read_only_cookies != XT_DS_READ_ONLY_COOKIES);
 }
 
 int
@@ -617,6 +790,13 @@ set_statusbar_font(char *value)
 }
 
 int
+check_statusbar_font(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s", XT_DS_STATUSBAR_FONT_NAME);
+	return (g_strcmp0(statusbar_font_name, XT_DS_STATUSBAR_FONT_NAME));
+}
+
+int
 set_tabbar_font(char *value)
 {
 	struct tab		*t;
@@ -637,6 +817,13 @@ set_tabbar_font(char *value)
 }
 
 int
+check_tabbar_font(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s", XT_DS_TABBAR_FONT_NAME);
+	return (g_strcmp0(tabbar_font_name, XT_DS_TABBAR_FONT_NAME));
+}
+
+int
 set_color_visited_uris(char *value)
 {
 	int			tmp;
@@ -654,6 +841,14 @@ set_color_visited_uris(char *value)
 }
 
 int
+check_color_visited_uris(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_COLOR_VISITED_URIS ? "Enabled" : "Disabled");
+	return (color_visited_uris != XT_DS_COLOR_VISITED_URIS);
+}
+
+int
 set_home(char *value)
 {
 	if (home)
@@ -663,6 +858,13 @@ set_home(char *value)
 	else
 		home = g_strdup(value);
 	return (0);
+}
+
+int
+check_home(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s", XT_DS_HOME);
+	return (g_strcmp0(home, XT_DS_HOME));
 }
 
 int
@@ -682,6 +884,13 @@ set_search_string(char *value)
 			gtk_widget_show(t->search_entry);
 	}
 	return (0);
+}
+
+int
+check_search_string(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s", XT_DS_SEARCH_STRING);
+	return (g_strcmp0(search_string, XT_DS_SEARCH_STRING));
 }
 
 size_t
@@ -706,17 +915,16 @@ get_as_string(struct settings *s)
 	if (s == NULL)
 		return (NULL);
 
-	if (s->s) {
-		if (s->s->get)
-			r = s->s->get(s);
-		else
-			warnx("get_as_string skip %s\n", s->name);
-	} else if (s->type == XT_S_INT)
+	if (s->s && s->s->get)
+		r = s->s->get(s);
+	else if (s->type == XT_S_INT)
 		r = g_strdup_printf("%d", *s->ival);
 	else if (s->type == XT_S_STR)
 		r = g_strdup(*s->sval);
 	else if (s->type == XT_S_FLOAT)
 		r = g_strdup_printf("%f", *s->fval);
+	else if (s->type == XT_S_BOOL)
+		r = g_strdup_printf("%d", *s->ival);
 	else
 		r = g_strdup_printf("INVALID TYPE");
 
@@ -738,6 +946,13 @@ settings_walk(void (*cb)(struct settings *, char *, void *), void *cb_args)
 			g_free(s);
 		}
 	}
+}
+
+int
+check_allow_volatile_cookies(char **tt)
+{
+	*tt = g_strdup("Default: Disabled");
+	return (allow_volatile_cookies != 0);
 }
 
 int
@@ -823,6 +1038,13 @@ get_browser_mode(struct settings *s)
 }
 
 int
+check_browser_mode(char **tt)
+{
+	*tt = g_strdup("Default: normal");
+	return (browser_mode != XT_BM_NORMAL);
+}
+
+int
 set_gui_mode(struct settings *s, char *val)
 {
 	if (!strcmp(val, "classic")) {
@@ -861,6 +1083,20 @@ get_gui_mode(struct settings *s)
 }
 
 int
+check_gui_mode(char **tt)
+{
+	*tt = g_strdup("Default: classic");
+	return (gui_mode != XT_GM_CLASSIC);
+}
+
+int
+check_history_autosave(char **tt)
+{
+	*tt = g_strdup("Default: Disabled");
+	return (history_autosave != 0);
+}
+
+int
 set_cookie_policy(struct settings *s, char *val)
 {
 	if (!strcmp(val, "no3rdparty"))
@@ -884,6 +1120,25 @@ set_cookie_policy_rt(char *value)
 		return (-1);
 	g_object_set(G_OBJECT(s_cookiejar), SOUP_COOKIE_JAR_ACCEPT_POLICY,
 	    cookie_policy, (void *)NULL);
+	return (0);
+}
+
+int
+check_cookie_policy(char **tt)
+{
+	*tt = g_strdup("Default (depends on browser_mode):\n"
+	    "\tnormal:\talways\n"
+	    "\twhitelist:\tno3rdparty\n"
+	    "\tkiosk:\talways");
+	if (browser_mode == XT_BM_WHITELIST &&
+	    cookie_policy != SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY)
+		return (1);
+	if (browser_mode == XT_BM_NORMAL &&
+	    cookie_policy != SOUP_COOKIE_JAR_ACCEPT_ALWAYS)
+		return (1);
+	if (browser_mode == XT_BM_KIOSK &&
+	    cookie_policy != SOUP_COOKIE_JAR_ACCEPT_ALWAYS)
+		return (1);
 	return (0);
 }
 
@@ -920,6 +1175,13 @@ set_default_script(struct settings *s, char *val)
 }
 
 int
+check_default_script(char **tt)
+{
+	*tt = g_strdup("Default: (empty)");
+	return (g_strcmp0(default_script, XT_DS_DEFAULT_SCRIPT));
+}
+
+int
 set_default_script_rt(char *value)
 {
 	if (value == NULL || strlen(value) == 0)
@@ -944,6 +1206,22 @@ set_do_not_track(char *value)
 	return (0);
 }
 
+int
+check_do_not_track(char **tt)
+{
+	*tt = g_strdup("Default (depends on browser_mode):\n"
+	    "\tnormal:\tDisabled\n"
+	    "\twhitelist:\tEnabled\n"
+	    "\tkiosk:\tDisabled");
+	if (browser_mode == XT_BM_WHITELIST && do_not_track != 1)
+		return (1);
+	if (browser_mode == XT_BM_NORMAL && do_not_track != 0)
+		return (1);
+	if (browser_mode == XT_BM_KIOSK && do_not_track != 0)
+		return (1);
+	return (0);
+}
+
 char *
 get_download_dir(struct settings *s)
 {
@@ -957,6 +1235,20 @@ set_download_dir(struct settings *s, char *val)
 {
 	expand_tilde(download_dir, sizeof download_dir, val);
 	return (0);
+}
+
+int
+check_download_dir(char **tt)
+{
+	struct passwd		*pwd;
+	char			buf[PATH_MAX] = {0};
+
+	/* XXX this might need some additonal magic on windows */
+	if ((pwd = getpwuid(getuid())) == NULL)
+		return (-1);
+	snprintf(buf, sizeof buf, "%s" PS "downloads", pwd->pw_dir);
+	*tt = g_strdup_printf("Default: %s", buf);
+	return (g_strcmp0(download_dir, buf));
 }
 
 int
@@ -1586,6 +1878,22 @@ set_allow_insecure_content(char *value)
 }
 
 int
+check_allow_insecure_content(char **tt)
+{
+	*tt = g_strdup("Default (depends on browser_mode):\n"
+	    "\tnormal:\tEnabled\n"
+	    "\twhitelist:\tDisabled\n"
+	    "\tkiosk:\tEnabled");
+	if (browser_mode == XT_BM_NORMAL && allow_insecure_content != 1)
+		return (1);
+	if (browser_mode == XT_BM_WHITELIST && allow_insecure_content != 0)
+		return (1);
+	if (browser_mode == XT_BM_KIOSK && allow_insecure_content != 1)
+		return (1);
+	return (0);
+}
+
+int
 set_allow_insecure_scripts(char *value)
 {
 	struct tab		*t;
@@ -1608,6 +1916,22 @@ set_allow_insecure_scripts(char *value)
 			    allow_insecure_scripts, (char *)NULL);
 			webkit_web_view_set_settings(t->wv, t->settings);
 		}
+	return (0);
+}
+
+int
+check_allow_insecure_scripts(char **tt)
+{
+	*tt = g_strdup("Default (depends on browser_mode):\n"
+	    "\tnormal:\tEnabled\n"
+	    "\twhitelist:\tDisabled\n"
+	    "\tkiosk:\tEnabled");
+	if (browser_mode == XT_BM_NORMAL && allow_insecure_scripts != 1)
+		return (1);
+	if (browser_mode == XT_BM_WHITELIST && allow_insecure_scripts != 0)
+		return (1);
+	if (browser_mode == XT_BM_KIOSK && allow_insecure_scripts != 1)
+		return (1);
 	return (0);
 }
 
@@ -1635,6 +1959,14 @@ set_auto_load_images(char *value)
 }
 
 int
+check_auto_load_images(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_AUTO_LOAD_IMAGES ? "Enabled" : "Disabled");
+	return (auto_load_images != XT_DS_AUTO_LOAD_IMAGES);
+}
+
+int
 set_autofocus_onload(char *value)
 {
 	int			tmp;
@@ -1649,6 +1981,14 @@ set_autofocus_onload(char *value)
 		autofocus_onload = tmp;
 	}
 	return (0);
+}
+
+int
+check_autofocus_onload(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_AUTOFOCUS_ONLOAD ? "Enabled" : "Disabled");
+	return (autofocus_onload != XT_DS_AUTOFOCUS_ONLOAD);
 }
 
 int
@@ -1669,6 +2009,14 @@ set_ctrl_click_focus(char *value)
 }
 
 int
+check_ctrl_click_focus(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_CTRL_CLICK_FOCUS ? "Enabled" : "Disabled");
+	return (ctrl_click_focus != XT_DS_CTRL_CLICK_FOCUS);
+}
+
+int
 set_download_notifications(char *value)
 {
 	int			tmp;
@@ -1683,6 +2031,14 @@ set_download_notifications(char *value)
 		download_notifications = tmp;
 	}
 	return (0);
+}
+
+int
+check_download_notifications(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_DOWNLOAD_NOTIFICATIONS ? "Enabled" : "Disabled");
+	return (download_notifications != XT_DS_DOWNLOAD_NOTIFICATIONS);
 }
 
 int
@@ -1703,6 +2059,14 @@ set_enable_autoscroll(char *value)
 }
 
 int
+check_enable_autoscroll(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_ENABLE_AUTOSCROLL ? "Enabled" : "Disabled");
+	return (enable_autoscroll != XT_DS_ENABLE_AUTOSCROLL);
+}
+
+int
 set_enable_cookie_whitelist(char *value)
 {
 	int			tmp;
@@ -1716,6 +2080,22 @@ set_enable_cookie_whitelist(char *value)
 			return (-1);
 		enable_cookie_whitelist = tmp;
 	}
+	return (0);
+}
+
+int
+check_enable_cookie_whitelist(char **tt)
+{
+	*tt = g_strdup("Default (depends on browser_mode):\n"
+	    "\tnormal:\tDisabled\n"
+	    "\twhitelist:\tEnabled\n"
+	    "\tkiosk:\tDisabled");
+	if (browser_mode == XT_BM_WHITELIST && enable_cookie_whitelist != 1)
+		return (1);
+	if (browser_mode == XT_BM_NORMAL && enable_cookie_whitelist != 0)
+		return (1);
+	if (browser_mode == XT_BM_KIOSK && enable_cookie_whitelist != 0)
+		return (1);
 	return (0);
 }
 
@@ -1737,6 +2117,14 @@ set_enable_js_autorun(char *value)
 }
 
 int
+check_enable_js_autorun(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_ENABLE_JS_AUTORUN ? "Enabled" : "Disabled");
+	return (enable_js_autorun != XT_DS_ENABLE_JS_AUTORUN);
+}
+
+int
 set_enable_js_whitelist(char *value)
 {
 	int			tmp;
@@ -1750,6 +2138,22 @@ set_enable_js_whitelist(char *value)
 			return (-1);
 		enable_js_whitelist = tmp;
 	}
+	return (0);
+}
+
+int
+check_enable_js_whitelist(char **tt)
+{
+	*tt = g_strdup("Default (depends on browser_mode):\n"
+	    "\tnormal:\tDisabled\n"
+	    "\twhitelist:\tEnabled\n"
+	    "\tkiosk:\tDisabled");
+	if (browser_mode == XT_BM_WHITELIST && enable_js_whitelist != 1)
+		return (1);
+	if (browser_mode == XT_BM_NORMAL && enable_js_whitelist != 0)
+		return (1);
+	if (browser_mode == XT_BM_KIOSK && enable_js_whitelist != 0)
+		return (1);
 	return (0);
 }
 
@@ -1771,6 +2175,14 @@ set_enable_favicon_entry(char *value)
 }
 
 int
+check_enable_favicon_entry(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_ENABLE_FAVICON_ENTRY ? "Enabled" : "Disabled");
+	return (enable_favicon_entry != XT_DS_ENABLE_FAVICON_ENTRY);
+}
+
+int
 set_enable_favicon_tabs(char *value)
 {
 	int			tmp;
@@ -1785,6 +2197,14 @@ set_enable_favicon_tabs(char *value)
 		enable_favicon_tabs = tmp;
 	}
 	return (0);
+}
+
+int
+check_enable_favicon_tabs(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_ENABLE_FAVICON_TABS ? "Enabled" : "Disabled");
+	return (enable_favicon_tabs != XT_DS_ENABLE_FAVICON_TABS);
 }
 
 int
@@ -1810,6 +2230,22 @@ set_enable_localstorage(char *value)
 }
 
 int
+check_enable_localstorage(char **tt)
+{
+	*tt = g_strdup("Default (depends on browser_mode):\n"
+	    "\tnormal:\tEnabled\n"
+	    "\twhitelist:\tDisabled\n"
+	    "\tkiosk:\tEnabled");
+	if (browser_mode == XT_BM_WHITELIST && enable_localstorage != 0)
+		return (1);
+	if (browser_mode == XT_BM_NORMAL && enable_localstorage != 1)
+		return (1);
+	if (browser_mode == XT_BM_KIOSK && enable_localstorage != 1)
+		return (1);
+	return (0);
+}
+
+int
 set_enable_plugins(char *value)
 {
 	struct tab		*t;
@@ -1831,6 +2267,22 @@ set_enable_plugins(char *value)
 }
 
 int
+check_enable_plugins(char **tt)
+{
+	*tt = g_strdup("Default (depends on browser_mode):\n"
+	    "\tnormal:\tEnabled\n"
+	    "\twhitelist:\tDisabled\n"
+	    "\tkiosk:\tEnabled");
+	if (browser_mode == XT_BM_WHITELIST && enable_plugins != 0)
+		return (1);
+	if (browser_mode == XT_BM_NORMAL && enable_plugins != 1)
+		return (1);
+	if (browser_mode == XT_BM_KIOSK && enable_plugins != 1)
+		return (1);
+	return (0);
+}
+
+int
 set_enable_plugin_whitelist(char *value)
 {
 	int			tmp;
@@ -1844,6 +2296,22 @@ set_enable_plugin_whitelist(char *value)
 			return (-1);
 		enable_plugin_whitelist = tmp;
 	}
+	return (0);
+}
+
+int
+check_enable_plugin_whitelist(char **tt)
+{
+	*tt = g_strdup("Default (depends on browser_mode):\n"
+	    "\tnormal:\tDisabled\n"
+	    "\twhitelist:\tEnabled\n"
+	    "\tkiosk:\tDisabled");
+	if (browser_mode == XT_BM_WHITELIST && enable_plugin_whitelist != 1)
+		return (1);
+	if (browser_mode == XT_BM_NORMAL && enable_plugin_whitelist != 0)
+		return (1);
+	if (browser_mode == XT_BM_KIOSK && enable_plugin_whitelist != 0)
+		return (1);
 	return (0);
 }
 
@@ -1869,6 +2337,29 @@ set_enable_scripts(char *value)
 }
 
 int
+check_enable_scripts(char **tt)
+{
+	*tt = g_strdup("Default (depends on browser_mode):\n"
+	    "\tnormal:\tEnabled\n"
+	    "\twhitelist:\tDisabled\n"
+	    "\tkiosk:\tEnabled");
+	if (browser_mode == XT_BM_WHITELIST && enable_scripts != 0)
+		return (1);
+	if (browser_mode == XT_BM_NORMAL && enable_scripts != 1)
+		return (1);
+	if (browser_mode == XT_BM_KIOSK && enable_scripts != 1)
+		return (1);
+	return (0);
+}
+
+int
+check_enable_socket(char **tt)
+{
+	*tt = g_strdup("Default: Disabled");
+	return (enable_socket != 0);
+}
+
+int
 set_enable_spell_checking(char *value)
 {
 	struct tab		*t;
@@ -1890,6 +2381,14 @@ set_enable_spell_checking(char *value)
 }
 
 int
+check_enable_spell_checking(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_ENABLE_SPELL_CHECKING ? "Enabled" : "Disabled");
+	return (enable_spell_checking != XT_DS_ENABLE_SPELL_CHECKING);
+}
+
+int
 set_enable_strict_transport(char *value)
 {
 	int			tmp;
@@ -1904,6 +2403,14 @@ set_enable_strict_transport(char *value)
 		enable_strict_transport = tmp;
 	}
 	return (0);
+}
+
+int
+check_enable_strict_transport(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_ENABLE_STRICT_TRANSPORT ? "Enabled" : "Disabled");
+	return (enable_strict_transport != XT_DS_ENABLE_STRICT_TRANSPORT);
 }
 
 #if 0
@@ -1931,6 +2438,13 @@ set_encoding_rt(char *value)
 #endif
 
 int
+check_encoding(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s", XT_DS_ENCODING);
+	return (g_strcmp0(encoding, XT_DS_ENCODING));
+}
+
+int
 set_guess_search(char *value)
 {
 	int			tmp;
@@ -1948,22 +2462,11 @@ set_guess_search(char *value)
 }
 
 int
-set_read_only_cookies(char *value)
+check_guess_search(char **tt)
 {
-	int			tmp;
-	const char		*errstr;
-
-	if (value == NULL || strlen(value) == 0)
-		read_only_cookies = XT_DS_READ_ONLY_COOKIES;
-	else {
-		tmp = strtonum(value, 0, 1, &errstr);
-		if (errstr)
-			return (-1);
-		read_only_cookies = tmp;
-	}
-	g_object_set(G_OBJECT(p_cookiejar), SOUP_COOKIE_JAR_READ_ONLY,
-	    read_only_cookies, (void *)NULL);
-	return (0);
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_GUESS_SEARCH ? "Enabled" : "Disabled");
+	return (guess_search != XT_DS_GUESS_SEARCH);
 }
 
 char *
@@ -2024,6 +2527,23 @@ set_referer_rt(char *value)
 	return (set_referer(NULL, value));
 }
 
+int
+check_referer(char **tt)
+{
+	*tt = g_strdup("Default (depends on browser_mode):\n"
+	    "\tnormal:\talways\n"
+	    "\twhitelist:\tsame-domain\n"
+	    "\tkiosk:\talways");
+	if (browser_mode == XT_BM_WHITELIST &&
+	    referer_mode != XT_REFERER_SAME_DOMAIN)
+		return (1);
+	if (browser_mode == XT_BM_NORMAL && referer_mode != XT_REFERER_ALWAYS)
+		return (1);
+	if (browser_mode == XT_BM_KIOSK && referer_mode != XT_REFERER_ALWAYS)
+		return (1);
+	return (0);
+}
+
 char *
 get_ssl_ca_file(struct settings *s)
 {
@@ -2050,6 +2570,34 @@ set_refresh_interval(char *value)
 }
 
 int
+check_resource_dir(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s", XT_DS_RESOURCE_DIR);
+	return (g_strcmp0(resource_dir, XT_DS_RESOURCE_DIR));
+}
+
+int
+check_save_global_history(char **tt)
+{
+	*tt = g_strdup("Default: Disabled");
+	return (save_global_history != 0);
+}
+
+int
+check_save_rejected_cookies(char **tt)
+{
+	*tt = g_strdup("Default: Disabled");
+	return (save_rejected_cookies != 0);
+}
+
+int
+check_refresh_interval(char **tt)
+{
+	*tt = g_strdup_printf("Default: %d", XT_DS_REFRESH_INTERVAL);
+	return (refresh_interval != XT_DS_REFRESH_INTERVAL);
+}
+
+int
 set_session_autosave(char *value)
 {
 	int			tmp;
@@ -2067,6 +2615,14 @@ set_session_autosave(char *value)
 }
 
 int
+check_session_autosave(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_SESSION_AUTOSAVE ? "Enabled" : "Disabled");
+	return (session_autosave != XT_DS_SESSION_AUTOSAVE);
+}
+
+int
 set_session_timeout(char *value)
 {
 	int			tmp;
@@ -2081,6 +2637,13 @@ set_session_timeout(char *value)
 		session_timeout = tmp;
 	}
 	return (0);
+}
+
+int
+check_session_timeout(char **tt)
+{
+	*tt = g_strdup_printf("Default: %d", XT_DS_SESSION_TIMEOUT);
+	return (session_timeout != XT_DS_SESSION_TIMEOUT);
 }
 
 int
@@ -2105,6 +2668,19 @@ set_show_scrollbars(char *value)
 }
 
 int
+check_show_scrollbars(char **tt)
+{
+	*tt = g_strdup("Default (depends on gui_mode):\n"
+	    "\tclassic:\tEnabled\n"
+	    "\tminimal:\tDisabled");
+	if (gui_mode == XT_GM_CLASSIC && show_scrollbars != 1)
+		return (1);
+	if (gui_mode == XT_GM_MINIMAL && show_scrollbars != 0)
+		return (1);
+	return (0);
+}
+
+int
 set_show_statusbar(char *value)
 {
 	int			tmp;
@@ -2119,6 +2695,19 @@ set_show_statusbar(char *value)
 	}
 	show_statusbar = tmp;
 	statusbar_set_visibility();
+	return (0);
+}
+
+int
+check_show_statusbar(char **tt)
+{
+	*tt = g_strdup("Default (depends on gui_mode):\n"
+	    "\tclassic:\tDisabled\n"
+	    "\tminimal:\tEnabled");
+	if (gui_mode == XT_GM_CLASSIC && show_statusbar != 0)
+		return (1);
+	if (gui_mode == XT_GM_MINIMAL && show_statusbar != 1)
+		return (1);
 	return (0);
 }
 
@@ -2142,6 +2731,19 @@ set_show_tabs(char *value)
 }
 
 int
+check_show_tabs(char **tt)
+{
+	*tt = g_strdup("Default (depends on gui_mode):\n"
+	    "\tclassic:\tEnabled\n"
+	    "\tminimal:\tDisabled");
+	if (gui_mode == XT_GM_CLASSIC && show_tabs != 1)
+		return (1);
+	if (gui_mode == XT_GM_MINIMAL && show_tabs != 0)
+		return (1);
+	return (0);
+}
+
+int
 set_show_url(char *value)
 {
 	struct karg		args = {0};
@@ -2161,6 +2763,26 @@ set_show_url(char *value)
 }
 
 int
+check_show_url(char **tt)
+{
+	*tt = g_strdup("Default (depends on gui_mode):\n"
+	    "\tclassic:\tEnabled\n"
+	    "\tminimal:\tDisabled");
+	if (gui_mode == XT_GM_CLASSIC && show_url != 1)
+		return (1);
+	if (gui_mode == XT_GM_MINIMAL && show_url != 0)
+		return (1);
+	return (0);
+}
+
+int
+check_single_instance(char **tt)
+{
+	*tt = g_strdup("Default: Disabled");
+	return (single_instance != 0);
+}
+
+int
 set_spell_check_languages(char *value)
 {
 	struct tab		*t;
@@ -2175,6 +2797,13 @@ set_spell_check_languages(char *value)
 		g_object_set(G_OBJECT(t->settings), "spell_checking_languages",
 		    spell_check_languages, (char *)NULL);
 	return (0);
+}
+
+int
+check_spell_check_languages(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s", XT_DS_SPELL_CHECK_LANGUAGES);
+	return (g_strcmp0(spell_check_languages, XT_DS_SPELL_CHECK_LANGUAGES));
 }
 
 int
@@ -2199,6 +2828,13 @@ set_ssl_ca_file_rt(char *value)
 }
 
 int
+check_ssl_ca_file(char **tt)
+{
+	*tt = g_strdup("Default: (empty)");
+	return (g_strcmp0(ssl_ca_file, XT_DS_SSL_CA_FILE));
+}
+
+int
 set_ssl_strict_certs(char *value)
 {
 	int			tmp;
@@ -2217,6 +2853,21 @@ set_ssl_strict_certs(char *value)
 }
 
 int
+check_ssl_strict_certs(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_SSL_STRICT_CERTS ? "Enabled" : "Disabled");
+	return (ssl_strict_certs != XT_DS_SSL_STRICT_CERTS);
+}
+
+int
+check_statusbar_elems(char **tt)
+{
+	*tt = g_strdup("Default: BP");
+	return (g_strcmp0(statusbar_elems, "BP"));
+}
+
+int
 set_external_editor(char *editor)
 {
 	if (external_editor)
@@ -2226,6 +2877,13 @@ set_external_editor(char *editor)
 	else
 		external_editor = g_strdup(editor);
 	return (0);
+}
+
+int
+check_external_editor(char **tt)
+{
+	*tt = g_strdup("Default: (empty)");
+	return (g_strcmp0(external_editor, NULL));
 }
 
 int
@@ -2258,6 +2916,19 @@ set_fancy_bar(char *value)
 			gtk_widget_hide(t->js_toggle);
 			gtk_widget_hide(t->search_entry);
 		}
+	return (0);
+}
+
+int
+check_fancy_bar(char **tt)
+{
+	*tt = g_strdup("Default (depends on gui_mode):\n"
+	    "\tclassic:\tEnabled\n"
+	    "\tminimal:\tDisabled");
+	if (gui_mode == XT_GM_CLASSIC && fancy_bar != 1)
+		return (1);
+	if (gui_mode == XT_GM_MINIMAL && fancy_bar != 0)
+		return (1);
 	return (0);
 }
 
@@ -2313,6 +2984,19 @@ set_tab_style(struct settings *s, char *val)
 	else
 		return (1);
 
+	return (0);
+}
+
+int
+check_tab_style(char **tt)
+{
+	*tt = g_strdup("Default (depends on gui_mode):\n"
+	    "\tclassic:\tnormal\n"
+	    "\tminimal:\tcompact");
+	if (gui_mode == XT_GM_CLASSIC && tab_style != XT_TABS_NORMAL)
+		return (1);
+	if (gui_mode == XT_GM_MINIMAL && tab_style != XT_TABS_COMPACT)
+		return (1);
 	return (0);
 }
 
@@ -2391,6 +3075,13 @@ set_statusbar_style_rt(char *value)
 }
 
 int
+check_statusbar_style(char **tt)
+{
+	*tt = g_strdup("Default: url");
+	return (statusbar_style != XT_DS_STATUSBAR_STYLE);
+}
+
+int
 set_url_regex(char *value)
 {
 	if (value == NULL || strlen(value) == 0) {
@@ -2408,37 +3099,74 @@ set_url_regex(char *value)
 }
 
 int
+check_url_regex(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s", XT_DS_URL_REGEX);
+	return (g_strcmp0(url_regex, XT_DS_URL_REGEX));
+}
+
+int
 set_userstyle(struct settings *s, char *value)
 {
+	int		rv = 0;
 	char		script[PATH_MAX] = {'\0'};
-	char		*path;
+	char		*tmp;
 
-	if (userstyle)
-		g_free(userstyle);
 	if (value == NULL || strlen(value) == 0) {
-		path = g_strdup_printf("%s" PS "style.css", resource_dir);
-		userstyle = g_filename_to_uri(path, NULL, NULL);
-		g_free(path);
+		snprintf(script, sizeof script, "%s" PS "style.css", resource_dir);
+		tmp = g_filename_to_uri(script, NULL, NULL);
+		if (tmp == NULL)
+			rv = -1;
+		else {
+			if (userstyle)
+				g_free(userstyle);
+			userstyle = tmp;
+		}
 	} else {
 		expand_tilde(script, sizeof script, value);
-		userstyle = g_filename_to_uri(script, NULL, NULL);
+		tmp = g_filename_to_uri(script, NULL, NULL);
+		if (tmp == NULL)
+			rv = -1;
+		else {
+			if (userstyle)
+				g_free(userstyle);
+			userstyle = tmp;
+		}
 	}
 	if (stylesheet)
 		g_free(stylesheet);
 	stylesheet = g_strdup(userstyle);
-	return (0);
+	return (rv);
 }
 
 char *
 get_userstyle(struct settings *s)
 {
-	return (g_filename_from_uri(userstyle, NULL, NULL));
+	if (userstyle)
+		return (g_filename_from_uri(userstyle, NULL, NULL));
+	return (NULL);
 }
 
 int
 set_userstyle_rt(char *value)
 {
 	return (set_userstyle(NULL, value));
+}
+
+int
+check_userstyle(char **tt)
+{
+	int			rv = 0;
+	char			buf[PATH_MAX];
+	char			*file = NULL;
+
+	snprintf(buf, sizeof buf, "%s" PS "%s", resource_dir, "style.css");
+	*tt = g_strdup_printf("Default: %s", buf);
+	file = g_filename_from_uri(userstyle, NULL, NULL);
+	rv = g_strcmp0(file, buf);
+	if (file)
+		g_free(file);
+	return (rv);
 }
 
 int
@@ -2468,16 +3196,70 @@ set_userstyle_global(char *value)
 }
 
 int
+check_userstyle_global(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_USERSTYLE_GLOBAL ? "Enabled" : "Disabled");
+	return (userstyle_global != XT_DS_USERSTYLE_GLOBAL);
+}
+
+int
 set_warn_cert_changes(char *value)
 {
 	int			tmp;
 	const char		*errstr;
 
-	tmp = strtonum(value, 0, 1, &errstr);
-	if (errstr)
-		return (-1);
-	warn_cert_changes = tmp;
+	if (value == NULL || strlen(value) == 0)
+		warn_cert_changes = XT_DS_WARN_CERT_CHANGES;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		warn_cert_changes = tmp;
+	}
 	return (0);
+}
+
+int
+check_warn_cert_changes(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_WARN_CERT_CHANGES ? "Enabled" : "Disabled");
+	return (warn_cert_changes != XT_DS_WARN_CERT_CHANGES);
+}
+
+int
+check_window_height(char **tt)
+{
+	*tt = g_strdup_printf("Default: %d", 768);
+	return (window_height != 768);
+}
+
+int
+check_window_maximize(char **tt)
+{
+	*tt = g_strdup("Default: Disabled");
+	return (window_maximize != 0);
+}
+
+int
+check_window_width(char **tt)
+{
+	*tt = g_strdup_printf("Default: %d", 768);
+	return (window_width != 1024);
+}
+
+int
+check_work_dir(char **tt)
+{
+	struct passwd		*pwd;
+	char			buf[PATH_MAX];
+
+	if ((pwd = getpwuid(getuid())) == NULL)
+		return (-1);
+	snprintf(buf, sizeof buf, "%s" PS ".xombrero", pwd->pw_dir);
+	*tt = g_strdup_printf("Default: %s", buf);
+	return (g_strcmp0(work_dir, buf));
 }
 
 char *
@@ -2502,6 +3284,13 @@ set_edit_mode(struct settings *s, char *val)
 	return (0);
 }
 
+int
+check_edit_mode(char **tt)
+{
+	*tt = g_strdup("Default: hybrid");
+	return (edit_mode != XT_EM_HYBRID);
+}
+
 char *
 get_download_mode(struct settings *s)
 {
@@ -2522,7 +3311,7 @@ get_download_mode(struct settings *s)
 int
 set_download_mode(struct settings *s, char *val)
 {
-	if (!strcmp(val, "start"))
+	if (val == NULL || strlen(val) == 0 || !strcmp(val, "start"))
 		download_mode = XT_DM_START;
 	else if (!strcmp(val, "ask"))
 		download_mode = XT_DM_ASK;
@@ -2537,9 +3326,14 @@ set_download_mode(struct settings *s, char *val)
 int
 set_download_mode_rt(char *val)
 {
-	if (val == NULL || strlen(val) == 0)
-		return (-1);
 	return (set_download_mode(NULL, val));
+}
+
+int
+check_download_mode(char **tt)
+{
+	*tt = g_strdup("Default: start");
+	return (download_mode != XT_DM_START);
 }
 
 char *
@@ -2644,7 +3438,8 @@ settings_add(char *var, char *val)
 			break;
 		} else
 			switch (rs[i].type) {
-			case XT_S_INT:
+			case XT_S_INT:	/* FALLTHROUGH */
+			case XT_S_BOOL:
 				p = rs[i].ival;
 				*p = atoi(val);
 				rv = 1;
@@ -2755,7 +3550,7 @@ print_setting(struct settings *s, char *val, void *cb_args)
 	char			*enc_val, *tmp, *color;
 	struct settings_args	*sa = cb_args;
 
-	if (sa == NULL)
+	if (sa == NULL || s->flags & XT_SF_INVISIBLE)
 		return;
 
 	if (s->flags & XT_SF_RUNTIME)
@@ -2781,8 +3576,120 @@ print_setting(struct settings *s, char *val, void *cb_args)
 	sa->i++;
 }
 
+void
+print_runtime_setting(struct settings *s, char *val, void *cb_args)
+{
+	char			*tmp, *tt = NULL;
+	struct settings_args	*sa = cb_args;
+	int			i;
+
+	if (sa == NULL)
+		return;
+
+	if (s == NULL || s->flags & XT_SF_INVISIBLE || s->activate == NULL)
+		return;
+
+	tmp = *sa->body;
+	*sa->body = g_strdup_printf(
+	    "%s\n<tr %s>"
+	    "<td title=\"%s\" style='width: 240px;'><div style='width: 100%%;'>%s</div></td>"
+	    "<td title=\"%s\"><div style='width: 100%%; word-break:break-all'>",
+	    *sa->body,
+	    (s->ismodified && s->ismodified(&tt)) ? "id='modified'" : "",
+	    s->tt ? s->tt : "",
+	    s->name,
+	    tt);
+	g_free(tmp);
+	g_free(tt);
+
+	tmp = *sa->body;
+	if (s->type == XT_S_STR && s->s && s->s->valid_options[0]) {
+		*sa->body = g_strdup_printf("%s<select name='%s'>",
+		    *sa->body,
+		    s->name);
+		for (i = 0; s->s->valid_options[i]; ++i) {
+			g_free(tmp);
+			tmp = *sa->body;
+			*sa->body = g_strdup_printf("%s"
+			    "<option value='%s' %s>%s</option>",
+			    *sa->body,
+			    s->s->valid_options[i],
+			    !strcmp(s->s->valid_options[i], val) ? "selected" : "",
+			    s->s->valid_options[i]);
+		}
+	} else if (s->type == XT_S_STR)
+		*sa->body = g_strdup_printf(
+		    "%s<input style='width: 98%%' type='text' name='%s' value='%s'>"
+		    "</div></td></tr>",
+		    *sa->body,
+		    s->name,
+		    val ? val : "");
+	else if (s->type == XT_S_INT)
+		*sa->body = g_strdup_printf(
+		    "%s<input type='number' name='%s' value='%s'>"
+		    "</div></td></tr>",
+		    *sa->body,
+		    s->name,
+		    val);
+	else if (s->type == XT_S_FLOAT)
+		*sa->body = g_strdup_printf(
+		    "%s<input type='number' step='0.000001' name='%s' value='%s'>"
+		    "</div></td></tr>",
+		    *sa->body,
+		    s->name,
+		    val);
+	else if (s->type == XT_S_BOOL)
+		*sa->body = g_strdup_printf(
+		    "%s<input type='hidden' name='%s' value='0'>"
+		    "<input type='checkbox' name='%s' value='1''%s>"
+		    "</div></td></tr>",
+		    *sa->body,
+		    s->name,
+		    s->name,
+		    atoi(val) ? " checked='checked'" : "");
+	else {
+		*sa->body = g_strdup(*sa->body);
+		warnx("Did not print setting %s", s->name);
+	}
+	g_free(tmp);
+	sa->i++;
+}
+
+char *
+print_set_rejects(void)
+{
+	struct set_reject	*sr, *st;
+	char			*body = NULL, *tmp;
+
+	if (TAILQ_EMPTY(&srl))
+		return (NULL);
+
+	body = g_strdup_printf("The following settings were invalid and could "
+	    "not be set:<br><div align='center'><table id='settings'>"
+	    "<th align='left'>Setting</th>"
+	    "<th align='left'>Value</th>");
+	TAILQ_FOREACH_SAFE(sr, &srl, entry, st) {
+		tmp = body;
+		body = g_strdup_printf("%s\n<tr>"
+		    "<td style='width:240px'><div>%s</div></td>"
+		    "<td><div style='word-break:break-all'>%s</div></td></tr>",
+		    body,
+		    sr->name,
+		    sr->value);
+		g_free(tmp);
+		TAILQ_REMOVE(&srl, sr, entry);
+		g_free(sr->name);
+		g_free(sr->value);
+		g_free(sr);
+	}
+	tmp = body;
+	body = g_strdup_printf("%s</table></div><br>", body);
+	g_free(tmp);
+	return (body);
+}
+
 int
-set_show(struct tab *t, struct karg *args)
+xtp_page_set(struct tab *t, struct karg *args)
 {
 	char			*body, *page, *tmp;
 	int			i = 1;
@@ -2823,19 +3730,79 @@ set_show(struct tab *t, struct karg *args)
 }
 
 int
+xtp_page_rt(struct tab *t, struct karg *args)
+{
+	char			*body = NULL, *page, *tmp;
+	int			i = 1;
+	struct settings_args	sa;
+
+	/*
+	 * We intentionally do *not* update other about:set tabs here as
+	 * there may be modifications and we don't want to lose those.
+	 */
+	generate_xtp_session_key(&rt_session_key);
+
+	bzero(&sa, sizeof sa);
+	sa.body = &body;
+
+	/* body */
+	body = print_set_rejects();	
+
+	tmp = body;
+	body = g_strdup_printf("%s<div align='center'>"
+	    "<form method='GET' action='%s%d/%s/%d'>"
+	    "<input type='submit' value='Save Settings'>"
+	    "<table id='settings'>"
+	    "<th align='left'>Setting</th>"
+	    "<th align='left'>Value</th>\n",
+	    body ? body : "",
+	    XT_XTP_STR,
+	    XT_XTP_RT,
+	    rt_session_key,
+	    XT_XTP_RT_SAVE);
+	g_free(tmp);
+
+	settings_walk(print_runtime_setting, &sa);
+	i = sa.i;
+
+	/* small message if there are none */
+	if (i == 1) {
+		tmp = body;
+		body = g_strdup_printf("%s\n<tr><td style='text-align:center'"
+		    "colspan='2'>No settings</td></tr>\n", body);
+		g_free(tmp);
+	}
+
+	tmp = body;
+	body = g_strdup_printf("%s</table>"
+	    "<input type='submit' value='Save Settings'></form></div>", body);
+	g_free(tmp);
+
+	page = get_html_page("Runtime Settings", body, "", 1);
+
+	g_free(body);
+
+	load_webkit_string(t, page, XT_URI_ABOUT_RUNTIME);
+
+	g_free(page);
+
+	return (XT_CB_PASSTHROUGH);
+}
+
+int
 set(struct tab *t, struct karg *args)
 {
 	char			*p, *val;
 	int			i;
 
 	if (args == NULL || args->s == NULL)
-		return (set_show(t, args));
+		return (xtp_page_set(t, args));
 
 	/* strip spaces */
 	p = g_strstrip(args->s);
 
 	if (strlen(p) == 0)
-		return (set_show(t, args));
+		return (xtp_page_set(t, args));
 
 	/* we got some sort of string */
 	val = g_strstr_len(p, strlen(p), "=");
@@ -2870,7 +3837,8 @@ set(struct tab *t, struct karg *args)
 
 			/* XXX this could use some cleanup */
 			switch (rs[i].type) {
-			case XT_S_INT:
+			case XT_S_INT:	/* FALLTHROUGH */
+			case XT_S_BOOL:
 				if (rs[i].ival)
 					show_oops(t, "%s = %d",
 					    rs[i].name, *rs[i].ival);

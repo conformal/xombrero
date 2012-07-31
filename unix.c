@@ -19,7 +19,7 @@
 void
 init_unix(void)
 {
-	resource_dir = g_strdup("/usr/local/share/xombrero");
+	resource_dir = g_strdup(XT_DS_RESOURCE_DIR);
 }
 
 void	(*os_init)(void) = init_unix;

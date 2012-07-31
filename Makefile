@@ -35,7 +35,7 @@ CPPFLAGS+= -DXOMBRERO_BUILDSTR=\"$(BUILDVERSION)\"
 
 MANDIR= ${PREFIX}/man/man
 
-CLEANFILES += ${.CURDIR}/javascript.h javascript.h xombrero.cat1 xombrero.core
+CLEANFILES += ${.CURDIR}/javascript.h javascript.h tooltip.h xombrero.cat1 xombrero.core
 
 JSFILES += hinting.js
 JSFILES += input-focus.js
@@ -48,6 +48,11 @@ JSCURDIR += ${.CURDIR}/${_js}
 javascript.h: ${JSFILES} js-merge-helper.pl
 	perl ${.CURDIR}/js-merge-helper.pl \
 		${JSCURDIR} > javascript.h
+
+tooltip.h: ${MAN} ascii2txt.pl txt2tooltip.pl
+	mandoc -Tascii ${.CURDIR}/${MAN} | \
+		perl ${.CURDIR}/ascii2txt.pl | \
+		perl ${.CURDIR}/txt2tooltip.pl > tooltip.h
 
 beforeinstall:
 	install -m 755 -d ${PREFIX}/bin
@@ -64,7 +69,7 @@ beforeinstall:
 	install -m 644 ${.CURDIR}/style.css ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/hsts-preload ${PREFIX}/share/xombrero
 
-${PROG} ${OBJS} beforedepend: javascript.h
+${PROG} ${OBJS} beforedepend: javascript.h tooltip.h
 
 # clang targets
 .if ${.TARGETS:M*analyze*}

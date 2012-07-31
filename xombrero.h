@@ -364,6 +364,7 @@ RB_PROTOTYPE(http_accept_list, http_accept, entry, http_accept_rb_cmp);
 
 /* utility */
 #define XT_NAME			("xombrero")
+#define XT_DIR			(".xombrero")
 #define XT_CB_HANDLED		(TRUE)
 #define XT_CB_PASSTHROUGH	(FALSE)
 #define XT_CONF_FILE		("xombrero.conf")
@@ -433,6 +434,7 @@ char			*tld_get_suffix(const char *);
 
 /* about */
 #define XT_XTP_STR		"xxxt://"
+#define XT_XTP_SCHEME		"xxxt"
 #define XT_URI_ABOUT		("about:")
 #define XT_URI_ABOUT_LEN	(strlen(XT_URI_ABOUT))
 #define XT_URI_ABOUT_ABOUT	("about")
@@ -454,6 +456,7 @@ char			*tld_get_suffix(const char *);
 #define XT_URI_ABOUT_WEBKIT	("webkit")
 #define XT_URI_ABOUT_SEARCH	("search")
 #define XT_URI_ABOUT_SECVIOLATION ("secviolation")
+#define XT_URI_ABOUT_RUNTIME	("runtime")
 
 struct about_type {
 	char		*name;
@@ -641,7 +644,7 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_DS_ENABLE_AUTOSCROLL	(0)
 #define XT_DS_ENABLE_FAVICON_ENTRY	(1)
 #define XT_DS_ENABLE_FAVICON_TABS	(0)
-#define XT_DS_EXTERNAL_EDITOR	("")
+#define XT_DS_EXTERNAL_EDITOR	(NULL)
 #define XT_DS_REFERER_MODE	XT_REFERER_ALWAYS
 #define XT_DS_REFERER_CUSTOM	("always")
 #define XT_DS_DOWNLOAD_NOTIFICATIONS	(0)
@@ -651,6 +654,8 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_DS_TABBAR_FONT_NAME	("monospace normal 9")
 #define XT_DS_ALLOW_INSECURE_CONTENT	(TRUE)
 #define XT_DS_ALLOW_INSECURE_SCRIPTS	(TRUE)
+#define XT_DS_WARN_CERT_CHANGES	(0)
+#define XT_DS_RESOURCE_DIR	("/usr/local/share/xombrero")
 #define XT_DS_DO_NOT_TRACK	(0)
 #define XT_DS_PRELOAD_STRICT_TRANSPORT	(1)
 
@@ -678,6 +683,57 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_URL_SHOW		(1)
 #define XT_URL_HIDE		(2)
 
+/* XTP classes (xxxt://<class>) */
+#define XT_XTP_INVALID		(0)	/* invalid */
+#define XT_XTP_DL		(1)	/* downloads */
+#define XT_XTP_HL		(2)	/* history */
+#define XT_XTP_CL		(3)	/* cookies */
+#define XT_XTP_FL		(4)	/* favorites */
+#define XT_XTP_SL		(5)	/* search */
+#define XT_XTP_AB		(6)	/* about */
+#define XT_XTP_SV		(7)	/* security violation */
+#define XT_XTP_RT		(8)	/* set */
+
+/* XTP download actions */
+#define XT_XTP_DL_LIST		(1)
+#define XT_XTP_DL_CANCEL	(2)
+#define XT_XTP_DL_REMOVE	(3)
+#define XT_XTP_DL_UNLINK	(4)
+#define XT_XTP_DL_START		(5)
+
+/* XTP history actions */
+#define XT_XTP_HL_LIST		(1)
+#define XT_XTP_HL_REMOVE	(2)
+#define XT_XTP_HL_REMOVE_ALL	(3)
+
+/* XTP cookie actions */
+#define XT_XTP_CL_LIST		(1)
+#define XT_XTP_CL_REMOVE	(2)
+#define XT_XTP_CL_REMOVE_DOMAIN	(3)
+#define XT_XTP_CL_REMOVE_ALL	(4)
+
+/* XTP cookie actions */
+#define XT_XTP_FL_LIST		(1)
+#define XT_XTP_FL_REMOVE	(2)
+
+/* XPT search actions */
+#define XT_XTP_SL_SET		(1)
+
+/* XPT about actions */
+#define XT_XTP_AB_EDIT_CONF	(1)
+
+/* XTP security violation actions */
+#define XT_XTP_SV_SHOW_CERT	(1)
+#define XT_XTP_SV_ALLOW_SESSION	(2)
+#define XT_XTP_SV_CACHE		(3)
+
+/* XTP set actions */
+#define XT_XTP_RT_SAVE		(1)
+
+/* needed for xtp_page_rt in settings.c */
+void			generate_xtp_session_key(char **);
+extern char		*rt_session_key;
+
 struct key_binding {
 	char				*cmd;
 	guint				mask;
@@ -701,6 +757,13 @@ struct cmd_alias {
 };
 TAILQ_HEAD(cmd_alias_list, cmd_alias);
 
+struct set_reject {
+	char			*name;
+	char			*value;
+	TAILQ_ENTRY(set_reject)	entry;
+};
+TAILQ_HEAD(set_reject_list, set_reject);
+
 struct settings {
 	char		*name;
 	int		type;
@@ -708,17 +771,31 @@ struct settings {
 #define XT_S_INT	(1)
 #define XT_S_STR	(2)
 #define XT_S_FLOAT	(3)
+#define XT_S_BOOL	(4)
 	uint32_t	flags;
 #define XT_SF_RESTART	(1<<0)
 #define XT_SF_RUNTIME	(1<<1)
+#define XT_SF_INVISIBLE	(1<<2)
 	int		*ival;
 	char		**sval;
 	struct special	*s;
 	gfloat		*fval;
 	int		(*activate)(char *);
+	int		(*ismodified)(char **);
+	char		*tt;
+};
+
+struct special {
+	int		(*set)(struct settings *, char *);
+	char		*(*get)(struct settings *);
+	void		(*walk)(struct settings *,
+			    void (*cb)(struct settings *, char *, void *),
+			    void *);
+	char		*valid_options[];
 };
 
 int		set(struct tab *, struct karg *);
+int		xtp_page_rt(struct tab *, struct karg *);
 size_t		get_settings_size(void);
 int		settings_add(char *, char *);
 void		setup_proxy(char *);
@@ -744,8 +821,8 @@ int		cert_cmd(struct tab *, struct karg *);
 void		focus_webview(struct tab *);
 int		is_g_object_setting(GObject *, char *);
 int		set_scrollbar_visibility(struct tab *, int);
+int		save_runtime_setting(const char *, const char *);
 void		wl_add(const char *, struct domain_list *, int);
-void		preload_hsts(void);
 
 #define		XT_DL_START	(0)
 #define		XT_DL_RESTART	(1)
@@ -874,6 +951,8 @@ extern struct cmd_alias_list	cal;
 extern struct custom_uri_list	cul;
 extern struct secviolation_list	svl;
 extern struct sv_ignore_list	svil;
+extern struct set_reject_list	srl;
+extern struct settings		rs[];
 
 extern PangoFontDescription	*cmd_font;
 extern PangoFontDescription	*oops_font;

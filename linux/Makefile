@@ -31,11 +31,16 @@ ifneq ("${BUILDVERSION}", "")
 CFLAGS+= -DXOMBRERO_BUILDSTR=\"$(BUILDVERSION)\"
 endif
 
-all: javascript.h xombrero
+all: javascript.h tooltip.h xombrero
 
 javascript.h: ../js-merge-helper.pl ../hinting.js ../autoscroll.js
 	perl ../js-merge-helper.pl ../hinting.js ../input-focus.js \
 	../autoscroll.js > javascript.h
+
+tooltip.h: ../ascii2txt.pl ../txt2tooltip.pl ../xombrero.1
+	nroff -c -Tascii -mandoc ../xombrero.1 | \
+	perl ../ascii2txt.pl | \
+	perl ../txt2tooltip.pl > tooltip.h
 
 xombrero: $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $+ $(LDADD)
@@ -79,6 +84,7 @@ uninstall:
 clean:
 	rm -f xombrero $(OBJS) $(DEPS)
 	rm -f javascript.h
+	rm -f tooltip.h
 
 
 -include $(DEPS)

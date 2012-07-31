@@ -19,11 +19,16 @@ MANDIR?= $(PREFIX)/man
 
 CC?= cc
 
-all: ../javascript.h xombrero
+all: ../javascript.h ../tooltip.h xombrero
 
 ../javascript.h: ../js-merge-helper.pl ../hinting.js ../autoscroll.js
 	perl ../js-merge-helper.pl ../hinting.js ../input-focus.js \
 	../autoscroll.js > ../javascript.h
+
+../tooltip.h: ../ascii2txt.pl ../txt2tooltip.pl ../xombrero.1
+	nroff -c -Tascii -mandoc ../xombrero.1 | \
+	perl ../ascii2txt.pl | \
+	perl ../txt2tooltip.pl > ../tooltip.h
 
 xombrero.o: ../xombrero.o
 
@@ -51,7 +56,7 @@ externaleditor.o: ../externaleditor.o
 
 tldlist.o: ../tldlist.o
 
-../xombrero.o: ../javascript.h
+../xombrero.o: ../javascript.h ../tooltip.h
 
 xombrero: xombrero.o freebsd.o marco.o about.o inspector.o whitelist.o settings.o \
 	cookie.o history.o completion.o inputfocus.o tldlist.o externaleditor.o \
@@ -77,5 +82,6 @@ install: all
 clean:
 	rm -f xombrero *.o
 	rm -f javascript.h
+	rm -f tooltip.h
 
 .PHONY: all install clean
