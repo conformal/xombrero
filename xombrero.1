@@ -1232,6 +1232,14 @@ Enables a backward, forward, and stop button to the toolbar.
 Additionally if
 .Cm search_string
 is set it'll enable an entry box for searches.
+.It Cm force_https
+This setting is used to define the domains of sites that should be
+only accessed over the HTTPS scheme.
+Any requests to these domains over HTTP will be rewritten to use HTTPS
+instead.
+See
+.Cm cookie_wl
+for semantics.
 .It Cm guess_search
 When enabled
 .Nm
@@ -1365,6 +1373,18 @@ This is a plugin whitelist item.
 See
 .Cm cookie_wl
 for semantics and more details.
+.It Cm preload_strict_transport
+If enabled, a preloaded list of sites which set the HTTP Strict
+Transport Security header will be used to automatically set the
+.Cm force_https
+setting for these sites.
+This is used to prevent SSL stripping attacks when first visiting
+these sites, before they have been added to the strict-transport file.
+This list is comprised of domains chosen by the
+.Nm
+authors, as well as domains included in Chromium's preloaded HSTS
+list.
+Default is 1.
 .It Cm read_only_cookies
 Mark cookies file read-only and discard all cookies once the session is
 terminated.

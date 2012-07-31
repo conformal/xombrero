@@ -216,6 +216,7 @@ struct session_list	sessions;
 struct domain_list	c_wl;
 struct domain_list	js_wl;
 struct domain_list	pl_wl;
+struct domain_list	force_https;
 struct strict_transport_tree	st_tree;
 struct undo_tailq	undos;
 struct keybinding_list	kbl;
@@ -4722,6 +4723,20 @@ corrupt_file:
 	return (1);
 }
 
+int
+force_https_check(const char *uri)
+{
+	struct domain		*d = NULL;
+
+	if (uri == NULL)
+		return (0);
+
+	if ((d = wl_find_uri(uri, &force_https)) == NULL)
+		return (0);
+	else
+		return (1);
+}
+
 void
 strict_transport_security_cb(SoupMessage *msg, gpointer data)
 {
@@ -4918,19 +4933,23 @@ webview_rrs_cb(WebKitWebView *wv, WebKitWebFrame *wf, WebKitWebResource *res,
     WebKitNetworkRequest *request, WebKitNetworkResponse *response,
     struct tab *t)
 {
-	SoupMessage		*msg;
-	SoupURI			*uri;
-	struct http_accept	ha_find, *ha;
-	const char		*accept;
+	SoupMessage		*msg = NULL;
+	SoupURI			*uri = NULL;
+	struct http_accept	ha_find, *ha = NULL;
+	const char		*accept = NULL;
+	char			*uri_s = NULL;
 
 	msg = webkit_network_request_get_message(request);
 	if (!msg) return;
 
 	uri = soup_message_get_uri(msg);
-	if (!uri) return;
+	if (!uri)
+		return;
+	uri_s = soup_uri_to_string(uri, FALSE);
 
 	if (strcmp(uri->scheme, SOUP_URI_SCHEME_HTTP) == 0) {
-		if (strict_transport_check(uri->host)) {
+		if (strict_transport_check(uri->host) ||
+		    force_https_check(uri_s)) {
 			DNPRINTF(XT_D_NAV, "webview_rrs_cb: force https for %s\n",
 					uri->host);
 			soup_uri_set_scheme(uri, SOUP_URI_SCHEME_HTTPS);
@@ -4946,7 +4965,7 @@ webview_rrs_cb(WebKitWebView *wv, WebKitWebFrame *wf, WebKitWebResource *res,
 		    "Accept");
 		if (accept == NULL ||
 		    strncmp(accept, "text/html", strlen("text/html")))
-			return;
+			goto done;
 
 		ha_find.id = t->http_accept_id;
 		ha = RB_FIND(http_accept_list, &ha_list, &ha_find);
@@ -4963,6 +4982,9 @@ webview_rrs_cb(WebKitWebView *wv, WebKitWebFrame *wf, WebKitWebResource *res,
 		soup_message_headers_replace(msg->request_headers, "Accept",
 		    http_accept->value);
 	}
+done:
+	if (uri_s)
+		g_free(uri_s);
 }
 
 WebKitWebView *
@@ -8365,6 +8387,7 @@ main(int argc, char **argv)
 	RB_INIT(&hl);
 	RB_INIT(&js_wl);
 	RB_INIT(&pl_wl);
+	RB_INIT(&force_https);
 	RB_INIT(&downloads);
 	RB_INIT(&st_tree);
 	RB_INIT(&svl);
@@ -8493,6 +8516,13 @@ main(int argc, char **argv)
 		snprintf(conf, sizeof conf, "%s" PS ".%s",
 		    pwd->pw_dir, XT_CONF_FILE);
 	config_parse(conf, 0);
+
+	/* read preloaded HSTS list */
+	if (preload_strict_transport) {
+		snprintf(conf, sizeof conf, "%s" PS "%s",
+		    resource_dir, XT_HSTS_PRELOAD_FILE);
+		config_parse(conf, 0);
+	}
 
 	/* init fonts */
 	cmd_font = pango_font_description_from_string(cmd_font_name);

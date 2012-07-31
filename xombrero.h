@@ -370,6 +370,7 @@ RB_PROTOTYPE(http_accept_list, http_accept, entry, http_accept_rb_cmp);
 #define XT_CSS_FILE		("xombrero.css")
 #define XT_FAVS_FILE		("favorites")
 #define XT_SOD_FILE		("startofday")
+#define XT_HSTS_PRELOAD_FILE	("hsts-preload")
 #define XT_RESERVED_CHARS	"$&+,/:;=?@ \"<>#%%{}|^~[]`"
 
 int			run_script(struct tab *, char *);
@@ -525,6 +526,9 @@ void			startpage_add(const char *, ...);
 #define XT_WL_COOKIE		(2)
 #define XT_WL_PLUGIN		(3)
 
+#define XT_WL_FLAG_HANDY	(1<<0)
+#define XT_WL_FLAG_EXCLUDE_SUBDOMAINS	(1<<1)
+
 struct domain {
 	RB_ENTRY(domain)	entry;
 	gchar			*d;
@@ -648,6 +652,7 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_DS_ALLOW_INSECURE_CONTENT	(TRUE)
 #define XT_DS_ALLOW_INSECURE_SCRIPTS	(TRUE)
 #define XT_DS_DO_NOT_TRACK	(0)
+#define XT_DS_PRELOAD_STRICT_TRANSPORT	(1)
 
 
 /* actions */
@@ -739,6 +744,8 @@ int		cert_cmd(struct tab *, struct karg *);
 void		focus_webview(struct tab *);
 int		is_g_object_setting(GObject *, char *);
 int		set_scrollbar_visibility(struct tab *, int);
+void		wl_add(const char *, struct domain_list *, int);
+void		preload_hsts(void);
 
 #define		XT_DL_START	(0)
 #define		XT_DL_RESTART	(1)
@@ -828,6 +835,7 @@ extern regex_t	url_re;
 extern int	allow_insecure_content;
 extern int	allow_insecure_scripts;
 extern int	do_not_track;
+extern int	preload_strict_transport;
 
 /* globals */
 extern void		(*os_init)(void);
@@ -854,6 +862,7 @@ extern struct about_type	about_list[];
 extern struct domain_list	c_wl;
 extern struct domain_list	js_wl;
 extern struct domain_list	pl_wl;
+extern struct domain_list	force_https;
 extern struct strict_transport_tree	st_tree;
 extern struct alias_list	aliases;
 extern struct mime_type_list	mtl;

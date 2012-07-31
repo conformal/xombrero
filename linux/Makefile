@@ -61,6 +61,7 @@ install: all
 	install -m 644 ../xombreroicon128.png $(DESTDIR)$(RESDIR)
 	install -m 644 ../tld-rules $(DESTDIR)$(RESDIR)
 	install -m 644 ../style.css $(DESTDIR)$(RESDIR)
+	install -m 644 ../hsts-preload $(DESTDIR)$(RESDIR)
 
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/xombrero
@@ -71,7 +72,9 @@ uninstall:
 	rm -f $(DESTDIR)$(RESDIR)/xombreroicon48.png
 	rm -f $(DESTDIR)$(RESDIR)/xombreroicon64.png
 	rm -f $(DESTDIR)$(RESDIR)/xombreroicon128.png
+	rm -f $(DESTDIR)$(RESDIR)/tld-rules
 	rm -f $(DESTDIR)$(RESDIR)/style.css
+	rm -f $(DESTDIR)$(RESDIR)/hsts-preload
 	if [ -d $(DESTDIR)$(RESDIR) ]; then rmdir $(DESTDIR)$(RESDIR); fi
 clean:
 	rm -f xombrero $(OBJS) $(DEPS)

@@ -112,6 +112,7 @@ int		warn_cert_changes = 0;
 int		allow_insecure_content = XT_DS_ALLOW_INSECURE_CONTENT;
 int		allow_insecure_scripts = XT_DS_ALLOW_INSECURE_SCRIPTS;
 int		do_not_track = XT_DS_DO_NOT_TRACK;
+int		preload_strict_transport = XT_DS_PRELOAD_STRICT_TRANSPORT;
 
 char		*cmd_font_name = NULL;	/* these are all set at startup */
 char		*oops_font_name = NULL;
@@ -140,6 +141,7 @@ int		add_ua(struct settings *, char *);
 int		add_http_accept(struct settings *, char *);
 int		add_cmd_alias(struct settings *, char *);
 int		add_custom_uri(struct settings *, char *);
+int		add_force_https(struct settings *, char *);
 
 int		set_append_next(char *);
 int		set_autofocus_onload(char *);
@@ -225,6 +227,8 @@ void		walk_http_accept(struct settings *, void (*)(struct settings *,
 void		walk_cmd_alias(struct settings *, void (*)(struct settings *,
 		    char *, void *), void *);
 void		walk_custom_uri(struct settings *, void (*)(struct settings *,
+		    char *, void *), void *);
+void		walk_force_https(struct settings *, void (*)(struct settings *,
 		    char *, void *), void *);
 
 int
@@ -395,6 +399,12 @@ struct special		s_userstyle = {
 	NULL
 };
 
+struct special		s_force_https = {
+	add_force_https,
+	NULL,
+	walk_force_https
+};
+
 struct settings		rs[] = {
 	{ "allow_insecure_content",	XT_S_INT, 0,		&allow_insecure_content, NULL, NULL, NULL, set_allow_insecure_content },
 	{ "allow_insecure_scripts",	XT_S_INT, 0,		&allow_insecure_scripts, NULL, NULL, NULL, set_allow_insecure_scripts },
@@ -442,6 +452,7 @@ struct settings		rs[] = {
 	{ "max_connections",		XT_S_INT, XT_SF_RESTART,&max_connections, NULL, NULL, NULL, NULL },
 	{ "max_host_connections",	XT_S_INT, XT_SF_RESTART,&max_host_connections, NULL, NULL, NULL, NULL },
 	{ "oops_font",			XT_S_STR, 0, NULL, &oops_font_name, NULL, NULL, set_oops_font },
+	{ "preload_strict_transport",	XT_S_INT, 0,		&preload_strict_transport, NULL, NULL, NULL, NULL },
 	{ "read_only_cookies",		XT_S_INT, 0,		&read_only_cookies, NULL, NULL, NULL, set_read_only_cookies },
 	{ "referer",			XT_S_STR, 0, NULL, NULL,&s_referer, NULL, set_referer_rt },
 	{ "refresh_interval",		XT_S_INT, 0,		&refresh_interval, NULL, NULL, NULL, set_refresh_interval },
@@ -478,6 +489,7 @@ struct settings		rs[] = {
 	{ "cmd_alias",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_cmd_alias, NULL, NULL },
 	{ "cookie_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_cookie_wl, NULL, NULL },
 	{ "custom_uri",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_uri, NULL, NULL },
+	{ "force_https",		XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_force_https, NULL, NULL },
 	{ "http_accept",		XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_http_accept, NULL, NULL },
 	{ "js_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_js, NULL, NULL },
 	{ "keybinding",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_kb, NULL, NULL },
@@ -1473,6 +1485,14 @@ walk_ua(struct settings *s,
 
 	RB_FOREACH(ua, user_agent_list, &ua_list)
 		cb(s, ua->value, cb_args);
+}
+
+int
+add_force_https(struct settings *s, char *value)
+{
+	wl_add(value, &force_https,
+	    XT_WL_FLAG_HANDY | XT_WL_FLAG_EXCLUDE_SUBDOMAINS);
+	return (0);
 }
 
 int
@@ -2579,6 +2599,21 @@ walk_pl_wl(struct settings *s,
 	}
 
 	RB_FOREACH_REVERSE(d, domain_list, &pl_wl)
+		cb(s, d->d, cb_args);
+}
+
+void
+walk_force_https(struct settings *s,
+    void (*cb)(struct settings *, char *, void *), void *cb_args)
+{
+	struct domain		*d;
+
+	if (s == NULL || cb == NULL) {
+		show_oops(NULL, "walk_force_https invalid parameters");
+		return;
+	}
+
+	RB_FOREACH_REVERSE(d, domain_list, &force_https)
 		cb(s, d->d, cb_args);
 }
 

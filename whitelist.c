@@ -266,7 +266,7 @@ wl_show(struct tab *t, struct karg *args, char *title, struct domain_list *wl)
 }
 
 void
-wl_add(char *str, struct domain_list *wl, int handy)
+wl_add(const char *str, struct domain_list *wl, int flags)
 {
 	struct domain		*d;
 	int			add_dot = 0;
@@ -282,7 +282,7 @@ wl_add(char *str, struct domain_list *wl, int handy)
 		str = &str[1];
 	else if (str[0] == '.')
 		str = &str[0];
-	else
+	else if (!(flags & XT_WL_FLAG_EXCLUDE_SUBDOMAINS))
 		add_dot = 1;
 
 	/* slice off port number */
@@ -295,7 +295,7 @@ wl_add(char *str, struct domain_list *wl, int handy)
 		d->d = g_strdup_printf(".%s", str);
 	else
 		d->d = g_strdup(str);
-	d->handy = handy;
+	d->handy = flags & XT_WL_FLAG_HANDY;
 
 	if (RB_INSERT(domain_list, wl, d))
 		goto unwind;
