@@ -523,9 +523,6 @@ void			startpage_add(const char *, ...);
 #define XT_WL_COOKIE		(2)
 #define XT_WL_PLUGIN		(3)
 
-#define XT_WL_FLAG_HANDY	(1<<0)
-#define XT_WL_FLAG_EXCLUDE_SUBDOMAINS	(1<<1)
-
 struct domain {
 	RB_ENTRY(domain)	entry;
 	gchar			*d;

@@ -1782,8 +1782,7 @@ walk_ua(struct settings *s,
 int
 add_force_https(struct settings *s, char *value)
 {
-	wl_add(value, &force_https,
-	    XT_WL_FLAG_HANDY | XT_WL_FLAG_EXCLUDE_SUBDOMAINS);
+	wl_add(value, &force_https, XT_WL_PERSISTENT);
 	return (0);
 }
 

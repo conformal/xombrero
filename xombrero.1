@@ -463,7 +463,7 @@ Remove all cookies from the cookie jar.
 Save the current fully qualified domain name (FQDN)
 to the persistent whitelist.
 For example,
-the www.peereboom.us domain would result in saving .www.peereboom.us.
+the www.peereboom.us domain would result in saving www.peereboom.us.
 .It Cm cookie save domain
 Save the top level domain name to the persistent whitelist.
 For example,
@@ -1078,7 +1078,10 @@ reject, reject all cookies.
 This is a cookie whitelist item.
 Use multiple times to add multiple entries.
 Valid entries are for example *.moo.com and the equivalent .moo.com.
-A fully qualified host is also valid and is for example www.moo.com.
+A fully qualified host is also valid and is for example www.moo.com or
+moo.com.
+Fully qualified hosts do not modify whitelist settings for any
+subdomains.
 .It Cm cookies_enabled
 Enable cookies.
 .It Cm ctrl_click_focus

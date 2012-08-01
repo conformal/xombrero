@@ -5,6 +5,7 @@
  * Copyright (c) 2011 Todd T. Fries <todd@fries.net>
  * Copyright (c) 2011 Raphael Graf <r@undefined.ch>
  * Copyright (c) 2011 Michal Mazurek <akfaew@jasminek.net>
+ * Copyright (c) 2012 Josh Rickmar <jrick@devio.us>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -22,7 +23,7 @@
 #include <xombrero.h>
 
 gchar *
-find_domain(const gchar *s, int toplevel)
+find_domain(const gchar *s, int flags)
 {
 	SoupURI			*uri;
 	gchar			*ret, *p;
@@ -32,16 +33,19 @@ find_domain(const gchar *s, int toplevel)
 
 	uri = soup_uri_new(s);
 
-	if (uri == NULL || !SOUP_URI_VALID_FOR_HTTP(uri)) {
+	if (uri == NULL || !SOUP_URI_VALID_FOR_HTTP(uri))
 		return (NULL);
-	}
 
-	if (toplevel && !isdigit(uri->host[strlen(uri->host) - 1])) {
+	if (flags & XT_WL_TOPLEVEL &&
+	    !isdigit(uri->host[strlen(uri->host) - 1]))
 		p = tld_get_suffix(uri->host);
-	} else
+	else
 		p = uri->host;
 
-	ret = g_strdup_printf(".%s", p);
+	if (flags & XT_WL_TOPLEVEL)
+		ret = g_strdup_printf(".%s", p);
+	else	/* assume FQDN */
+		ret = g_strdup(p);
 
 	soup_uri_free(uri);
 
@@ -49,35 +53,32 @@ find_domain(const gchar *s, int toplevel)
 }
 
 struct domain *
-wl_find(const gchar *search, struct domain_list *wl)
+wl_find(const gchar *s, struct domain_list *wl)
 {
-	int			i;
 	struct domain		*d = NULL, dfind;
-	gchar			*s = NULL;
+	char			*match_fqdn;
+	int			i;
 
-	if (search == NULL || wl == NULL)
+	if (s == NULL || wl == NULL)
 		return (NULL);
-	if (strlen(search) < 2)
+	if (strlen(s) < 2)
 		return (NULL);
-
-	if (search[0] != '.')
-		s = g_strdup_printf(".%s", search);
-	else
-		s = g_strdup(search);
 
 	for (i = strlen(s) - 1; i >= 0; i--) {
-		if (s[i] == '.') {
-			dfind.d = &s[i];
+		if (i == 0 || (i == 1 && s[0] == '.') || s[i] == '.') {
+			dfind.d = (gchar *)&s[i];
 			d = RB_FIND(domain_list, wl, &dfind);
+			if (d)
+				goto done;
+			dfind.d = g_strdup_printf(".%s", s);
+			d = RB_FIND(domain_list, wl, &dfind);
+			g_free(dfind.d);
 			if (d)
 				goto done;
 		}
 	}
 
 done:
-	if (s)
-		g_free(s);
-
 	return (d);
 }
 
@@ -116,7 +117,7 @@ wl_save(struct tab *t, struct karg *args, int list)
 	}
 
 	uri = get_uri(t);
-	dom = find_domain(uri, args->i & XT_WL_TOPLEVEL);
+	dom = find_domain(uri, args->i);
 	if (uri == NULL || dom == NULL ||
 	    webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED) {
 		show_oops(t, "Can't add domain to %s white list", lst_str);
@@ -280,9 +281,7 @@ wl_add(const char *str, struct domain_list *wl, int flags)
 	/* treat *.moo.com the same as .moo.com */
 	if (str[0] == '*' && str[1] == '.')
 		str = &str[1];
-	else if (str[0] == '.')
-		str = &str[0];
-	else if (!(flags & XT_WL_FLAG_EXCLUDE_SUBDOMAINS))
+	else if (str[0] != '.' && (flags & XT_WL_TOPLEVEL))
 		add_dot = 1;
 
 	/* slice off port number */
@@ -295,7 +294,7 @@ wl_add(const char *str, struct domain_list *wl, int flags)
 		d->d = g_strdup_printf(".%s", str);
 	else
 		d->d = g_strdup(str);
-	d->handy = flags & XT_WL_FLAG_HANDY;
+	d->handy = (flags & XT_WL_PERSISTENT) ? 1 : 0;
 
 	if (RB_INSERT(domain_list, wl, d))
 		goto unwind;
@@ -313,21 +312,21 @@ unwind:
 int
 add_cookie_wl(struct settings *s, char *entry)
 {
-	wl_add(entry, &c_wl, 1);
+	wl_add(entry, &c_wl, XT_WL_PERSISTENT);
 	return (0);
 }
 
 int
 add_js_wl(struct settings *s, char *entry)
 {
-	wl_add(entry, &js_wl, 1 /* persistent */);
+	wl_add(entry, &js_wl, XT_WL_PERSISTENT);
 	return (0);
 }
 
 int
 add_pl_wl(struct settings *s, char *entry)
 {
-	wl_add(entry, &pl_wl, 1 /* persistent */);
+	wl_add(entry, &pl_wl, XT_WL_PERSISTENT);
 	return (0);
 }
 
@@ -343,7 +342,7 @@ toggle_cwl(struct tab *t, struct karg *args)
 		return (1);
 
 	uri = get_uri(t);
-	dom = find_domain(uri, args->i & XT_WL_TOPLEVEL);
+	dom = find_domain(uri, args->i);
 
 	if (uri == NULL || dom == NULL ||
 	    webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED) {
@@ -364,10 +363,11 @@ toggle_cwl(struct tab *t, struct karg *args)
 	else if ((args->i & XT_WL_DISABLE) && es != 0)
 		es = 0;
 
-	if (es)
+	if (es) {
 		/* enable cookies for domain */
-		wl_add(dom, &c_wl, 0);
-	else {
+		args->i |= !XT_WL_PERSISTENT;
+		wl_add(dom, &c_wl, args->i);
+	} else {
 		/* disable cookies for domain */
 		if (d)
 			RB_REMOVE(domain_list, &c_wl, d);
@@ -404,7 +404,7 @@ toggle_js(struct tab *t, struct karg *args)
 		return (1);
 
 	uri = get_uri(t);
-	dom = find_domain(uri, args->i & XT_WL_TOPLEVEL);
+	dom = find_domain(uri, args->i);
 
 	if (uri == NULL || dom == NULL ||
 	    webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED) {
@@ -414,7 +414,8 @@ toggle_js(struct tab *t, struct karg *args)
 
 	if (es) {
 		button_set_stockid(t->js_toggle, GTK_STOCK_MEDIA_PLAY);
-		wl_add(dom, &js_wl, 0 /* session */);
+		args->i |= !XT_WL_PERSISTENT;
+		wl_add(dom, &js_wl, args->i);
 	} else {
 		d = wl_find(dom, &js_wl);
 		if (d)
@@ -458,7 +459,7 @@ toggle_pl(struct tab *t, struct karg *args)
 		return (1);
 
 	uri = get_uri(t);
-	dom = find_domain(uri, args->i & XT_WL_TOPLEVEL);
+	dom = find_domain(uri, args->i);
 
 	if (uri == NULL || dom == NULL ||
 	    webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED) {
@@ -466,9 +467,10 @@ toggle_pl(struct tab *t, struct karg *args)
 		goto done;
 	}
 
-	if (es)
-		wl_add(dom, &pl_wl, 0 /* session */);
-	else {
+	if (es) {
+		args->i |= !XT_WL_PERSISTENT;
+		wl_add(dom, &pl_wl, args->i);
+	} else {
 		d = wl_find(dom, &pl_wl);
 		if (d)
 			RB_REMOVE(domain_list, &pl_wl, d);
