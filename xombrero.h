@@ -443,6 +443,7 @@ char			*tld_get_suffix(const char *);
 #define XT_URI_ABOUT_HISTORY	("history")
 #define XT_URI_ABOUT_JSWL	("jswl")
 #define XT_URI_ABOUT_PLUGINWL	("plwl")
+#define XT_URI_ABOUT_HTTPS	("https")
 #define XT_URI_ABOUT_SET	("set")
 #define XT_URI_ABOUT_STATS	("stats")
 #define XT_URI_ABOUT_MARCO	("marco")
@@ -487,6 +488,7 @@ size_t			about_list_size(void);
 int			cookie_cmd(struct tab *, struct karg *);
 int			js_cmd(struct tab *, struct karg *);
 int			pl_cmd(struct tab *, struct karg *);
+int			https_cmd(struct tab *, struct karg *);
 void			startpage_add(const char *, ...);
 
 /*
@@ -522,6 +524,7 @@ void			startpage_add(const char *, ...);
 #define XT_WL_JAVASCRIPT	(1)
 #define XT_WL_COOKIE		(2)
 #define XT_WL_PLUGIN		(3)
+#define XT_WL_HTTPS		(4)
 
 struct domain {
 	RB_ENTRY(domain)	entry;
@@ -557,6 +560,7 @@ int		wl_save(struct tab *, struct karg *, int);
 int		toggle_cwl(struct tab *, struct karg *);
 int		toggle_js(struct tab *, struct karg *);
 int		toggle_pl(struct tab *, struct karg *);
+int		toggle_force_https(struct tab *, struct karg *);
 
 /* input autofocus */
 void		input_autofocus(struct tab *);

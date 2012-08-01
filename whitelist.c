@@ -56,7 +56,6 @@ struct domain *
 wl_find(const gchar *s, struct domain_list *wl)
 {
 	struct domain		*d = NULL, dfind;
-	char			*match_fqdn;
 	int			i;
 
 	if (s == NULL || wl == NULL)
@@ -64,17 +63,19 @@ wl_find(const gchar *s, struct domain_list *wl)
 	if (strlen(s) < 2)
 		return (NULL);
 
-	for (i = strlen(s) - 1; i >= 0; i--) {
-		if (i == 0 || (i == 1 && s[0] == '.') || s[i] == '.') {
+	for (i = strlen(s) - 1; i >= 0; --i) {
+		if (i == 0 || (s[i] == '.')) {
 			dfind.d = (gchar *)&s[i];
 			d = RB_FIND(domain_list, wl, &dfind);
 			if (d)
 				goto done;
-			dfind.d = g_strdup_printf(".%s", s);
-			d = RB_FIND(domain_list, wl, &dfind);
-			g_free(dfind.d);
-			if (d)
-				goto done;
+			if (i == 0 && s[i] != '.') {
+				dfind.d = g_strdup_printf(".%s", s);
+				d = RB_FIND(domain_list, wl, &dfind);
+				g_free(dfind.d);
+				if (d)
+					goto done;
+			}
 		}
 	}
 
@@ -111,6 +112,9 @@ wl_save(struct tab *t, struct karg *args, int list)
 	case XT_WL_PLUGIN:
 		lst_str = "Plugin";
 		break;
+	case XT_WL_HTTPS:
+		lst_str = "HTTPS";
+		break;
 	default:
 		show_oops(t, "Invalid list id: %d", list);
 		return (1);
@@ -133,6 +137,9 @@ wl_save(struct tab *t, struct karg *args, int list)
 		break;
 	case XT_WL_PLUGIN:
 		lt = g_strdup_printf("pl_wl=%s", dom);
+		break;
+	case XT_WL_HTTPS:
+		lt = g_strdup_printf("force_https=%s", dom);
 		break;
 	default:
 		/* can't happen */
@@ -199,6 +206,14 @@ wl_save(struct tab *t, struct karg *args, int list)
 		}
 		toggle_pl(t, &a);
 		break;
+	case XT_WL_HTTPS:
+		d = wl_find(dom, &force_https);
+		if (!d) {
+			settings_add("force_https", dom);
+			d = wl_find(dom, &force_https);
+		}
+		toggle_force_https(t, &a);
+		break;
 	default:
 		abort(); /* can't happen */
 	}
@@ -260,8 +275,10 @@ wl_show(struct tab *t, struct karg *args, char *title, struct domain_list *wl)
 		load_webkit_string(t, tmp, XT_URI_ABOUT_JSWL);
 	else if (wl == &c_wl)
 		load_webkit_string(t, tmp, XT_URI_ABOUT_COOKIEWL);
-	else
+	else if (wl == &pl_wl)
 		load_webkit_string(t, tmp, XT_URI_ABOUT_PLUGINWL);
+	else if (wl == &force_https)
+		load_webkit_string(t, tmp, XT_URI_ABOUT_HTTPS);
 	g_free(tmp);
 	return (0);
 }
@@ -487,3 +504,55 @@ done:
 	return (0);
 }
 
+int
+toggle_force_https(struct tab *t, struct karg *args)
+{
+	int			es;
+	const gchar		*uri;
+	struct domain		*d;
+	char			*dom = NULL;
+
+	if (args == NULL)
+		return (1);
+
+	uri = get_uri(t);
+	dom = find_domain(uri, args->i);
+
+	if (uri == NULL || dom == NULL ||
+	    webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED) {
+		show_oops(t, "Can't toggle domain in https force list");
+		goto done;
+	}
+	d = wl_find(dom, &force_https);
+
+	if (d == NULL)
+		es = 0;
+	else
+		es = 1;
+
+	if (args->i & XT_WL_TOGGLE)
+		es = !es;
+	else if ((args->i & XT_WL_ENABLE) && es != 1)
+		es = 1;
+	else if ((args->i & XT_WL_DISABLE) && es != 0)
+		es = 0;
+
+	uri = get_uri(t);
+	dom = find_domain(uri, args->i);
+
+	if (es) {
+		args->i |= !XT_WL_PERSISTENT;
+		wl_add(dom, &force_https, args->i);
+	} else {
+		d = wl_find(dom, &force_https);
+		if (d)
+			RB_REMOVE(domain_list, &force_https, d);
+	}
+
+	if (args->i & XT_WL_RELOAD)
+		webkit_web_view_reload(t->wv);
+done:
+	if (dom)
+		g_free(dom);
+	return (0);
+}

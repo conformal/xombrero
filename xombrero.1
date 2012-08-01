@@ -518,6 +518,30 @@ Show global history.
 Show help page.
 .It Cm home
 Go to home URL.
+.It Cm https
+The
+.Cm https
+command is used to manitulate the items in the HTTPS force list.
+Used by itself it expands to
+.Cm https show all .
+.It Cm https save, save fqdn
+Saves the FQDN to the persistant force HTTPS list.
+For example,
+the www.peereboom.us domain would result in saving www.peereboom.us.
+.It Cm https save domain
+Saves the top level domain name to the persistent whitelist.
+For example,
+the www.peereboom.us domain would result in saving .peereboom.us.
+.It Cm https show all
+Show all persistent ans session entries in the HTTPS force list.
+.It Cm https show persistent
+Shows all persistent entries in the HTTPS force list.
+.It Cm https show session
+Shows all session entries in the HTTPS force list.
+.It Cm https toggle, https toggle fqdn
+Toggle this FQDN in the HTTPS force list.
+.It Cm https toggle domain
+Toggle the top level domain in the HTTPS force list.
 .It Cm js
 The
 .Cm js
@@ -527,7 +551,7 @@ Used by itself it expands to
 .It Cm js save, save fqdn
 Saves the FQDN to the persistent whitelist.
 For example,
-the www.peereboom.us domain would result in saving .www.peereboom.us.
+the www.peereboom.us domain would result in saving www.peereboom.us.
 .It Cm js save domain
 Saves the top level domain name to the persistent whitelist.
 For example,
@@ -557,7 +581,7 @@ Used by itself it expands to
 .It Cm plugin save, save fqdn
 Saves the FQDN to the persistent whitelist.
 For example,
-the www.peereboom.us domain would result in saving .www.peereboom.us.
+the www.peereboom.us domain would result in saving www.peereboom.us.
 .It Cm plugin save domain
 Saves the top level domain name to the persistent whitelist.
 For example,

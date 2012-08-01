@@ -75,6 +75,7 @@
 
 int			js_show_wl(struct tab *, struct karg *);
 int			pl_show_wl(struct tab *, struct karg *);
+int			https_show_wl(struct tab *, struct karg *);
 int			xtp_page_set(struct tab *, struct karg *);
 int			xtp_page_rt(struct tab *, struct karg *);
 int			marco(struct tab *, struct karg *);
@@ -101,6 +102,7 @@ struct about_type about_list[] = {
 	{ XT_URI_ABOUT_MARCO,		marco },
 	{ XT_URI_ABOUT_STARTPAGE,	startpage },
 	{ XT_URI_ABOUT_PLUGINWL,	pl_show_wl },
+	{ XT_URI_ABOUT_HTTPS,		https_show_wl },
 	{ XT_URI_ABOUT_WEBKIT,		about_webkit },
 	{ XT_URI_ABOUT_SEARCH,		xtp_page_sl },
 	{ XT_URI_ABOUT_RUNTIME,		xtp_page_rt },
@@ -451,6 +453,32 @@ pl_cmd(struct tab *t, struct karg *args)
 		toggle_pl(t, args);
 	} else if (args->i & XT_DELETE)
 		show_oops(t, "'plugin delete' currently unimplemented");
+
+	return (0);
+}
+
+int
+https_show_wl(struct tab *t, struct karg *args)
+{
+	args->i = XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION;
+	wl_show(t, args, "HTTPS Force List", &force_https);
+
+	return (0);
+}
+
+int
+https_cmd(struct tab *t, struct karg *args)
+{
+	if (args->i & XT_SHOW)
+		wl_show(t, args, "HTTPS Force List", &force_https);
+	else if (args->i & XT_SAVE) {
+		args->i |= XT_WL_RELOAD;
+		wl_save(t, args, XT_WL_HTTPS);
+	} else if (args->i & XT_WL_TOGGLE) {
+		args->i |= XT_WL_RELOAD;
+		toggle_force_https(t, args);
+	} else if (args->i & XT_DELETE)
+		show_oops(t, "https delete' currently unimplemented");
 
 	return (0);
 }

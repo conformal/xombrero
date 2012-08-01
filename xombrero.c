@@ -3326,6 +3326,19 @@ struct cmd {
 	{ "domain",		2,	pl_cmd,			XT_WL_TOGGLE | XT_WL_TOPLEVEL,			0 },
 	{ "fqdn",		2,	pl_cmd,			XT_WL_TOGGLE | XT_WL_FQDN,			0 },
 
+	/* https command */
+	{ "https",		0,	https_cmd,		XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION,	0 },
+	{ "save",		1,	https_cmd,		XT_SAVE | XT_WL_FQDN,				0 },
+	{ "domain",		2,	https_cmd,		XT_SAVE | XT_WL_TOPLEVEL,			0 },
+	{ "fqdn",		2,	https_cmd,		XT_SAVE | XT_WL_FQDN,				0 },
+	{ "show",		1,	https_cmd,		XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION,	0 },
+	{ "all",		2,	https_cmd,		XT_SHOW | XT_WL_PERSISTENT | XT_WL_SESSION,	0 },
+	{ "persistent",		2,	https_cmd,		XT_SHOW | XT_WL_PERSISTENT,			0 },
+	{ "session",		2,	https_cmd,		XT_SHOW | XT_WL_SESSION,			0 },
+	{ "toggle",		1,	https_cmd,		XT_WL_TOGGLE | XT_WL_FQDN,			0 },
+	{ "domain",		2,	https_cmd,		XT_WL_TOGGLE | XT_WL_TOPLEVEL,			0 },
+	{ "fqdn",		2,	https_cmd,		XT_WL_TOGGLE | XT_WL_FQDN,			0 },
+
 	/* toplevel (domain) command */
 	{ "toplevel",		0,	toplevel_cmd,		XT_WL_TOGGLE | XT_WL_TOPLEVEL | XT_WL_RELOAD,	0 },
 	{ "toggle",		1,	toplevel_cmd,		XT_WL_TOGGLE | XT_WL_TOPLEVEL | XT_WL_RELOAD,	0 },
