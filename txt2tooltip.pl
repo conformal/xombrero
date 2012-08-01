@@ -65,7 +65,7 @@ sub showtip {
 	my $text;
 	my $count = 1;
 
-	if (length($tip) < 1) {
+	if (!defined($tip) || length($tip) < 1) {
 		return;
 	}
 
