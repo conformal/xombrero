@@ -17,6 +17,22 @@ force_https = twitter.com
 
 # sites from chromium's preloaded HSTS list
 # http://src.chromium.org/viewvc/chrome/trunk/src/net/base/transport_security_state_static.json?view=markup
+force_https = .health.google.com
+force_https = .checkout.google.com
+force_https = .chrome.google.com
+force_https = .docs.google.com
+force_https = .sites.google.com
+force_https = .spreadsheets.google.com
+force_https = .appengine.google.com
+force_https = .encrypted.google.com
+force_https = .accounts.google.com
+force_https = .profiles.google.com
+force_https = .mail.google.com
+force_https = .talkgadget.google.com
+force_https = .talk.google.com
+force_https = .hostedtalkgadget.google.com
+force_https = .plus.google.com
+force_https = .script.google.com
 force_https = .market.android.com
 force_https = .ssl.google-analytics.com
 force_https = .googleplex.com
