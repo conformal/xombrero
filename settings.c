@@ -3581,6 +3581,7 @@ print_runtime_setting(struct settings *s, char *val, void *cb_args)
 {
 	char			*tmp, *tt = NULL;
 	struct settings_args	*sa = cb_args;
+	int			modified = 0;
 	int			i;
 
 	if (sa == NULL)
@@ -3590,12 +3591,14 @@ print_runtime_setting(struct settings *s, char *val, void *cb_args)
 		return;
 
 	tmp = *sa->body;
+	if (s->ismodified)
+		modified = s->ismodified(&tt);
 	*sa->body = g_strdup_printf(
 	    "%s\n<tr %s>"
 	    "<td title=\"%s\" style='width: 240px;'><div style='width: 100%%;'>%s</div></td>"
 	    "<td title=\"%s\"><div style='width: 100%%; word-break:break-all'>",
 	    *sa->body,
-	    (s->ismodified && s->ismodified(&tt)) ? "id='modified'" : "",
+	    modified ? "id='modified'" : "",
 	    s->tt ? s->tt : "",
 	    s->name,
 	    tt);
