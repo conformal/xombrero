@@ -663,6 +663,7 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_DS_RESOURCE_DIR	("/usr/local/share/xombrero")
 #define XT_DS_DO_NOT_TRACK	(0)
 #define XT_DS_PRELOAD_STRICT_TRANSPORT	(1)
+#define XT_DS_GNUTLS_PRIORITY_STRING	(NULL)
 
 
 /* actions */
@@ -918,6 +919,7 @@ extern int	allow_insecure_content;
 extern int	allow_insecure_scripts;
 extern int	do_not_track;
 extern int	preload_strict_transport;
+extern char	*gnutls_priority_string;
 
 /* globals */
 extern void		(*os_init)(void);

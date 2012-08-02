@@ -114,6 +114,7 @@ int		allow_insecure_content = XT_DS_ALLOW_INSECURE_CONTENT;
 int		allow_insecure_scripts = XT_DS_ALLOW_INSECURE_SCRIPTS;
 int		do_not_track = XT_DS_DO_NOT_TRACK;
 int		preload_strict_transport = XT_DS_PRELOAD_STRICT_TRANSPORT;
+char		*gnutls_priority_string = XT_DS_GNUTLS_PRIORITY_STRING;
 
 char		*cmd_font_name = NULL;	/* these are all set at startup */
 char		*oops_font_name = NULL;
@@ -131,6 +132,7 @@ char		*get_work_dir(struct settings *);
 char		*get_referer(struct settings *);
 char		*get_ssl_ca_file(struct settings *);
 char		*get_userstyle(struct settings *);
+char		*get_gnutls_priority_string(struct settings *);
 
 int		add_cookie_wl(struct settings *, char *);
 int		add_js_wl(struct settings *, char *);
@@ -209,6 +211,7 @@ int		set_allow_insecure_content(char *);
 int		set_allow_insecure_scripts(char *);
 int		set_http_proxy(char *);
 int		set_do_not_track(char *);
+int		set_gnutls_priority_string(struct settings *, char *);
 
 int		check_allow_insecure_content(char **);
 int		check_allow_insecure_scripts(char **);
@@ -244,6 +247,7 @@ int		check_enable_strict_transport(char **);
 int		check_encoding(char **);
 int		check_external_editor(char **);
 int		check_fancy_bar(char **);
+int		check_gnutls_search_string(char **);
 int		check_guess_search(char **);
 int		check_gui_mode(char **);
 int		check_history_autosave(char **);
@@ -473,7 +477,15 @@ struct special		s_userstyle = {
 struct special		s_force_https = {
 	add_force_https,
 	NULL,
-	walk_force_https
+	walk_force_https,
+	{ NULL }
+};
+
+struct special		s_gnutls_priority_string = {
+	set_gnutls_priority_string,
+	get_gnutls_priority_string,
+	NULL,
+	{ NULL }
 };
 
 struct settings		rs[] = {
@@ -512,6 +524,7 @@ struct settings		rs[] = {
 	{ "encoding",			XT_S_STR, 0, NULL,	&encoding, NULL, NULL, NULL, check_encoding, TT_ENCODING },
 	{ "external_editor",		XT_S_STR,0, NULL,	&external_editor, NULL, NULL, set_external_editor, check_external_editor, TT_EXTERNAL_EDITOR },
 	{ "fancy_bar",			XT_S_BOOL,XT_SF_RESTART,&fancy_bar, NULL, NULL, NULL, set_fancy_bar, check_fancy_bar, TT_FANCY_BAR },
+	{ "gnutls_priority_string",	XT_S_STR, 0, NULL, NULL,&s_gnutls_priority_string, NULL, NULL, check_gnutls_search_string, TT_GNUTLS_PRIORITY_STRING },
 	{ "guess_search",		XT_S_BOOL, 0,		&guess_search, NULL, NULL, NULL, set_guess_search, check_guess_search, TT_GUESS_SEARCH },
 	{ "gui_mode",			XT_S_STR, 0, NULL, NULL,&s_gui_mode, NULL, NULL, check_gui_mode, TT_GUI_MODE },
 	{ "history_autosave",		XT_S_BOOL, 0,		&history_autosave, NULL, NULL, NULL, NULL, check_history_autosave, TT_HISTORY_AUTOSAVE },
@@ -2441,6 +2454,26 @@ check_encoding(char **tt)
 {
 	*tt = g_strdup_printf("Default: %s", XT_DS_ENCODING);
 	return (g_strcmp0(encoding, XT_DS_ENCODING));
+}
+
+int
+check_gnutls_search_string(char **tt)
+{
+	*tt = g_strdup("Default: (empty)");
+	return (g_strcmp0(gnutls_priority_string,
+	    XT_DS_GNUTLS_PRIORITY_STRING));
+}
+
+int
+set_gnutls_priority_string(struct settings *s, char *value)
+{
+	return (!g_setenv("G_TLS_GNUTLS_PRIORITY", value, FALSE));
+}
+
+char *
+get_gnutls_priority_string(struct settings *s)
+{
+	return (g_strdup(g_getenv("G_TLS_GNUTLS_PRIORITY")));
 }
 
 int

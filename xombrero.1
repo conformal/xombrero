@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 15 2012 $
+.Dd $Mdocdate: August 21 2012 $
 .Dt XOMBRERO 1
 .Os
 .Sh NAME
@@ -1266,6 +1266,21 @@ instead.
 See
 .Cm cookie_wl
 for semantics.
+.It Cm gnutls_priority_string
+If set, this string sets the G_TLS_GNUTLS_PRIORITY environmental
+variable to define the GnuTLS priority string that is used when
+initializing the GnuTLS session.
+This may be used to change the supported TLS/SSL versions and the
+ciphers that are used when making HTTPS connections.
+.Pp
+Full details on how to modify this setting may be found in the
+.Lk http://www.gnu.org/software/gnutls/manual/html_node/Priority-Strings.html "GnuTLS documentation" .
+For example, to disable the 128-bit RC4 cipher, change this setting to
+.Pa NORMAL:!ARCFOUR-128 .
+.Pp
+If your glib-networking package is older than version 2.33.10, or if
+the G_TLS_GNUTLS_PRIORITY environmental variable is already set, this
+setting has no effect.
 .It Cm guess_search
 When enabled
 .Nm
