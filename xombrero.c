@@ -1502,6 +1502,7 @@ paste_uri(struct tab *t, struct karg *args)
 {
 	GtkClipboard		*clipboard, *primary;
 	gchar			*c = NULL, *p = NULL, *uri;
+	int			i;
 
 	clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
 	primary = gtk_clipboard_get(GDK_SELECTION_PRIMARY);
@@ -1516,6 +1517,11 @@ paste_uri(struct tab *t, struct karg *args)
 		/* UNIX try primary first */
 		uri = p ? p : c;
 #endif
+		/* replace all newlines with spaces */
+		for (i = 0; uri[i] != '\0'; ++i)
+			if (uri[i] == '\n')
+				uri[i] = ' ';
+
 		while (*uri && isspace(*uri))
 			uri++;
 		if (strlen(uri) == 0) {
