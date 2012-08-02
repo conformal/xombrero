@@ -475,7 +475,6 @@ hide_cmd(struct tab *t)
 
 	history_at = NULL; /* just in case */
 	search_at = NULL; /* just in case */
-	gtk_widget_set_can_focus(t->cmd, FALSE);
 	gtk_widget_hide(t->cmd);
 }
 
@@ -487,7 +486,6 @@ show_cmd(struct tab *t)
 	history_at = NULL;
 	search_at = NULL;
 	gtk_widget_hide(t->oops);
-	gtk_widget_set_can_focus(t->cmd, TRUE);
 	gtk_widget_show(t->cmd);
 }
 
@@ -495,7 +493,6 @@ void
 hide_buffers(struct tab *t)
 {
 	gtk_widget_hide(t->buffers);
-	gtk_widget_set_can_focus(t->buffers, FALSE);
 	gtk_list_store_clear(buffers_store);
 }
 
@@ -569,7 +566,6 @@ show_buffers(struct tab *t)
 	gtk_tree_path_free(path);
 
 	gtk_widget_show(t->buffers);
-	gtk_widget_set_can_focus(t->buffers, TRUE);
 	gtk_widget_grab_focus(GTK_WIDGET(t->buffers));
 }
 
@@ -2802,7 +2798,7 @@ struct prompt_sub {
 int
 command(struct tab *t, struct karg *args)
 {
-	struct karg		a = {0};
+	struct karg		a;
 	int			i;
 	char			*s = NULL, *sp = NULL, *sl = NULL;
 	gchar			**sv;
@@ -2848,12 +2844,14 @@ command(struct tab *t, struct karg *args)
 		break;
 	case '.':
 		t->mode = XT_MODE_HINT;
+		bzero(&a, sizeof a);
 		a.i = 0;
 		hint(t, &a);
 		s = ".";
 		break;
 	case ',':
 		t->mode = XT_MODE_HINT;
+		bzero(&a, sizeof a);
 		a.i = XT_HINT_NEWTAB;
 		hint(t, &a);
 		s = ",";
@@ -4207,15 +4205,6 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		statusbar_modify_attr(t, text, base);
 		g_free(text);
 		g_free(base);
-#endif
-
-		/* DOM is changing, unreference the previous focused element */
-#if WEBKIT_CHECK_VERSION(1, 5, 0)
-		t->active = NULL;
-		if (t->active_text) {
-			g_free(t->active_text);
-			t->active_text = NULL;
-		}
 #endif
 
 		/* take focus if we are visible */
@@ -6939,7 +6928,6 @@ create_browser(struct tab *t)
 	}
 
 	w = gtk_scrolled_window_new(NULL, NULL);
-	gtk_widget_set_can_focus(w, FALSE);
 	t->adjust_h = gtk_scrolled_window_get_hadjustment(
 	    GTK_SCROLLED_WINDOW(w));
 	t->adjust_v = gtk_scrolled_window_get_vadjustment(
@@ -7053,13 +7041,16 @@ create_toolbar(struct tab *t)
 	gtk_widget_set_sensitive(t->forward, FALSE);
 	g_signal_connect(G_OBJECT(t->forward), "clicked",
 	    G_CALLBACK(forward_cb), t);
-	gtk_box_pack_start(GTK_BOX(b), t->forward, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(b), t->forward, FALSE,
+	    FALSE, 0);
 
 	/* stop button */
 	t->stop = create_button("Stop", GTK_STOCK_STOP, 0);
 	gtk_widget_set_sensitive(t->stop, FALSE);
-	g_signal_connect(G_OBJECT(t->stop), "clicked", G_CALLBACK(stop_cb), t);
-	gtk_box_pack_start(GTK_BOX(b), t->stop, FALSE, FALSE, 0);
+	g_signal_connect(G_OBJECT(t->stop), "clicked",
+	    G_CALLBACK(stop_cb), t);
+	gtk_box_pack_start(GTK_BOX(b), t->stop, FALSE,
+	    FALSE, 0);
 
 	/* JS button */
 	t->js_toggle = create_button("JS-Toggle", enable_scripts ?
@@ -7580,18 +7571,12 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	t->vbox = gtk_vbox_new(FALSE, 0);
 	b = gtk_hbox_new(FALSE, 0);
 #endif
-	gtk_widget_set_can_focus(t->vbox, FALSE);
 
 	/* label + button for tab */
 	t->tab_content = b;
-	gtk_widget_set_can_focus(t->tab_content, FALSE);
 
 	t->user_agent_id = 0;
 	t->http_accept_id = 0;
-
-#if WEBKIT_CHECK_VERSION(1, 5, 0)
-	t->active = NULL;
-#endif
 
 #if GTK_CHECK_VERSION(2, 20, 0)
 	t->spinner = gtk_spinner_new();
@@ -7998,7 +7983,6 @@ create_button(char *name, char *stockid, int size)
 	g_free(newstyle);
 #endif
 	button = gtk_button_new();
-	gtk_widget_set_can_focus(button, FALSE);
 	gtk_button_set_focus_on_click(GTK_BUTTON(button), FALSE);
 	gtk_icon_size = icon_size_map(size ? size : icon_size);
 
@@ -8038,7 +8022,6 @@ create_canvas(void)
 	vbox = gtk_vbox_new(FALSE, 0);
 #endif
 	gtk_box_set_spacing(GTK_BOX(vbox), 0);
-	gtk_widget_set_can_focus(vbox, FALSE);
 	notebook = GTK_NOTEBOOK(gtk_notebook_new());
 #if !GTK_CHECK_VERSION(3, 0, 0)
 	/* XXX seems to be needed with gtk+2 */
@@ -8049,7 +8032,6 @@ create_canvas(void)
 	gtk_widget_set_can_focus(GTK_WIDGET(notebook), FALSE);
 
 	abtn = gtk_button_new();
-	gtk_widget_set_can_focus(abtn, FALSE);
 	arrow = gtk_arrow_new(GTK_ARROW_DOWN, GTK_SHADOW_NONE);
 	gtk_widget_set_name(abtn, "Arrow");
 	gtk_container_add(GTK_CONTAINER(abtn), arrow);

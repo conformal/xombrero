@@ -283,12 +283,6 @@ struct tab {
 	WebKitWebInspector	*inspector;
 	GtkWidget		*inspector_window;
 	GtkWidget		*inspector_view;
-
-	/* focused text entry */
-#if WEBKIT_CHECK_VERSION(1, 5, 0)
-	WebKitDOMElement	*active;
-	char			*active_text;
-#endif
 };
 TAILQ_HEAD(tab_list, tab);
 
@@ -569,6 +563,7 @@ int		toggle_pl(struct tab *, struct karg *);
 
 /* input autofocus */
 void		input_autofocus(struct tab *);
+void		input_focus_blur(struct tab *, void *);
 void		*input_check_mode(struct tab *);
 int		command_mode(struct tab *, struct karg *);
 
