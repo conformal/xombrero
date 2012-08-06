@@ -6610,7 +6610,6 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		/* FALLTHROUGH */
 	case GDK_Escape:
 		hide_cmd(t);
-		focus_webview(t);
 
 		/* cancel search */
 		if (c != NULL && (c[0] == '/' || c[0] == '?'))
@@ -6701,12 +6700,21 @@ cmd_focusout_cb(GtkWidget *w, GdkEventFocus *e, struct tab *t)
 	hide_oops(t);
 	disable_hints(t);
 
+	return (XT_CB_PASSTHROUGH);
+}
+
+void
+cmd_hide_cb(GtkWidget *w, struct tab *t)
+{
+	if (t == NULL) {
+		show_oops(NULL, "%s: invalid parameters", __func__);
+		return;
+	}
+
 	if (show_url == 0 || t->focus_wv)
 		focus_webview(t);
 	else
 		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
-
-	return (XT_CB_PASSTHROUGH);
 }
 
 void
@@ -7765,6 +7773,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	    "signal::focus-out-event", G_CALLBACK(cmd_focusout_cb), t,
 	    "signal::activate", G_CALLBACK(cmd_activate_cb), t,
 	    "signal::populate-popup", G_CALLBACK(cmd_popup_cb), t,
+	    "signal::hide", G_CALLBACK(cmd_hide_cb), t,
 	    (char *)NULL);
 
 	/* reuse wv_button_cb to hide oops */
@@ -7883,10 +7892,6 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkWidget *nbp, guint pn,
 			hide_cmd(t);
 			hide_oops(t);
 
-			if (t->focus_wv) {
-				/* can't use focus_webview here */
-				gtk_widget_grab_focus(GTK_WIDGET(t->wv));
-			}
 			update_statusbar_tabs(t);
 			break;
 		}
