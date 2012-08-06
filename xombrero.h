@@ -342,13 +342,6 @@ struct secviolation {
 RB_HEAD(secviolation_list, secviolation);
 RB_PROTOTYPE(secviolation_list, secviolation, entry, secviolation_rb_cmp);
 
-struct sv_ignore {
-	RB_ENTRY(sv_ignore)	entry;
-	char			*domain;
-};
-RB_HEAD(sv_ignore_list, sv_ignore);
-RB_PROTOTYPE(sv_ignore_list, sv_ignore, entry, sv_ignore_rb_cmp);
-
 struct user_agent {
 	RB_ENTRY(user_agent)	entry;
 	int			id;
@@ -948,6 +941,7 @@ extern struct domain_list	c_wl;
 extern struct domain_list	js_wl;
 extern struct domain_list	pl_wl;
 extern struct domain_list	force_https;
+extern struct domain_list	svil;
 extern struct strict_transport_tree	st_tree;
 extern struct alias_list	aliases;
 extern struct mime_type_list	mtl;
@@ -958,7 +952,6 @@ extern struct http_accept_list	ha_list;
 extern struct cmd_alias_list	cal;
 extern struct custom_uri_list	cul;
 extern struct secviolation_list	svl;
-extern struct sv_ignore_list	svil;
 extern struct set_reject_list	srl;
 extern struct settings		rs[];
 

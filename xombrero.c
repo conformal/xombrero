@@ -217,6 +217,7 @@ struct domain_list	c_wl;
 struct domain_list	js_wl;
 struct domain_list	pl_wl;
 struct domain_list	force_https;
+struct domain_list	svil;
 struct strict_transport_tree	st_tree;
 struct undo_tailq	undos;
 struct keybinding_list	kbl;
@@ -230,7 +231,6 @@ struct command_list	shl;
 struct command_entry	*history_at;
 struct command_entry	*search_at;
 struct secviolation_list	svl;
-struct sv_ignore_list	svil;
 struct set_reject_list	srl;
 int			undo_count;
 int			cmd_history_count = 0;
@@ -705,13 +705,6 @@ secviolation_rb_cmp(struct secviolation *s1, struct secviolation *s2)
 	return (s1->xtp_arg < s2->xtp_arg ? -1 : s1->xtp_arg > s2->xtp_arg);
 }
 RB_GENERATE(secviolation_list, secviolation, entry, secviolation_rb_cmp);
-
-int
-sv_ignore_rb_cmp(struct sv_ignore *s1, struct sv_ignore *s2)
-{
-	return (strcmp(s1->domain, s2->domain));
-}
-RB_GENERATE(sv_ignore_list, sv_ignore, entry, sv_ignore_rb_cmp);
 
 int
 user_agent_rb_cmp(struct user_agent *ua1, struct user_agent *ua2)
@@ -2166,7 +2159,7 @@ check_cert_changes(struct tab *t, const char *uri)
 {
 	SoupURI			*soupuri = NULL;
 	struct karg		args = {0};
-	struct sv_ignore	find;
+	struct domain		*d = NULL;
 	const char		*errstr = NULL;
 	struct karg		*argsp;
 
@@ -2187,8 +2180,7 @@ check_cert_changes(struct tab *t, const char *uri)
 		if ((soupuri = soup_uri_new(uri)) == NULL ||
 		    soupuri->host == NULL)
 			break;
-		find.domain = soupuri->host;
-		if (RB_FIND(sv_ignore_list, &svil, &find))
+		if ((d = wl_find(soupuri->host, &svil)) != NULL)
 			break;
 		t->xtp_meaning = XT_XTP_TAB_MEANING_SV;
 		argsp = g_malloc0(sizeof(struct karg));

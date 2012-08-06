@@ -849,7 +849,6 @@ xtp_handle_sv(struct tab *t, uint8_t cmd, int id, const char *query)
 	SoupURI			*soupuri = NULL;
 	struct karg		args = {0};
 	struct secviolation	find, *sv;
-	struct sv_ignore	*svi = NULL;
 
 	find.xtp_arg = id;
 	if ((sv = RB_FIND(secviolation_list, &svl, &find)) == NULL)
@@ -875,9 +874,7 @@ xtp_handle_sv(struct tab *t, uint8_t cmd, int id, const char *query)
 		break;
 	case XT_XTP_SV_ALLOW_SESSION:
 		soupuri = soup_uri_new(sv->uri);
-		svi = malloc(sizeof(struct sv_ignore));
-		svi->domain = g_strdup(soupuri->host);
-		RB_INSERT(sv_ignore_list, &svil, svi);
+		wl_add(soupuri->host, &svil, 0);
 		load_uri(t, sv->uri);
 		focus_webview(t);
 		break;
