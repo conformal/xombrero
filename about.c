@@ -1287,9 +1287,13 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	}
 
 	/* body */
-	body = g_strdup_printf("<table style='table-layout:fixed'><tr>"
-	    "<th style='width: 40px'>&#35;</th><th>Link</th>"
-	    "<th style='width: 40px'>Rm</th></tr>\n");
+	if (args->i & XT_DELETE)
+		body = g_strdup_printf("<table style='table-layout:fixed'><tr>"
+		    "<th style='width: 40px'>&#35;</th><th>Link</th>"
+		    "<th style='width: 40px'>Rm</th></tr>\n");
+	else
+		body = g_strdup_printf("<table style='table-layout:fixed'><tr>"
+		    "<th style='width: 40px'>&#35;</th><th>Link</th></tr>\n");
 
 	for (i = 1;;) {
 		if ((title = fparseln(f, &len, &lineno, delim, 0)) == NULL)
@@ -1308,15 +1312,22 @@ xtp_page_fl(struct tab *t, struct karg *args)
 			}
 
 		tmp = body;
-		body = g_strdup_printf("%s<tr>"
-		    "<td>%d</td>"
-		    "<td><a href='%s'>%s</a></td>"
-		    "<td style='text-align: center'>"
-		    "<a href='%s%d/%s/%d/%d'>X</a></td>"
-		    "</tr>\n",
-		    body, i, uri, title,
-		    XT_XTP_STR, XT_XTP_FL, t->session_key, XT_XTP_FL_REMOVE, i);
-
+		if (args->i & XT_DELETE)
+			body = g_strdup_printf("%s<tr>"
+			    "<td>%d</td>"
+			    "<td><a href='%s'>%s</a></td>"
+			    "<td style='text-align: center'>"
+			    "<a href='%s%d/%s/%d/%d'>X</a></td>"
+			    "</tr>\n",
+			    body, i, uri, title,
+			    XT_XTP_STR, XT_XTP_FL, t->session_key,
+			    XT_XTP_FL_REMOVE, i);
+		else
+			body = g_strdup_printf("%s<tr>"
+			    "<td>%d</td>"
+			    "<td><a href='%s'>%s</a></td>"
+			    "</tr>\n",
+			    body, i, uri, title);
 		g_free(tmp);
 
 		free(uri);

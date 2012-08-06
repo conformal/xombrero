@@ -3359,8 +3359,9 @@ struct cmd {
 	{ "scrollfarright",	0,	move,			XT_MOVE_FARRIGHT,	0 },
 	{ "scrollfarleft",	0,	move,			XT_MOVE_FARLEFT,	0 },
 
-	{ "favorites",		0,	xtp_page_fl,		0,			0 },
-	{ "fav",		0,	xtp_page_fl,		0,			0 },
+	{ "favorites",		0,	xtp_page_fl,		XT_SHOW,		0 },
+	{ "fav",		0,	xtp_page_fl,		XT_SHOW,		0 },
+	{ "favedit",		0,	xtp_page_fl,		XT_SHOW|XT_DELETE,	0 },
 	{ "favadd",		0,	add_favorite,		0,			0 },
 
 	{ "qall",		0,	quit,			0,			0 },
