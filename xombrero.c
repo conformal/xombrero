@@ -7837,10 +7837,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	} else
 		webkit_web_back_forward_list_clear(t->bfl);
 
-	/* hide stuff */
-	hide_cmd(t);
-	hide_oops(t);
-	hide_buffers(t);
+	/* check and show url and statusbar */
 	url_set_visibility();
 	statusbar_set_visibility();
 
@@ -7891,7 +7888,12 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkWidget *nbp, guint pn,
 
 			hide_cmd(t);
 			hide_oops(t);
+			hide_buffers(t);
 
+			if (t->focus_wv) {
+				/* can't use focus_webview here */
+				gtk_widget_grab_focus(GTK_WIDGET(t->wv));
+			}
 			update_statusbar_tabs(t);
 			break;
 		}
