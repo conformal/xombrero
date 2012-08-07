@@ -7929,6 +7929,13 @@ menuitem_response(struct tab *t)
 	gtk_notebook_set_current_page(notebook, t->tab_id);
 }
 
+int
+destroy_menu(GtkWidget *w, GdkEventFocus *e, void *notused)
+{
+	gtk_widget_destroy(w);
+	return (XT_CB_PASSTHROUGH);
+}
+
 gboolean
 arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 {
@@ -7963,12 +7970,9 @@ arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 		gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
 		    bevent->button, bevent->time);
 
-		/* unref object so it'll free itself when popped down */
-#if !GTK_CHECK_VERSION(3, 0, 0)
-		/* XXX does not need unref with gtk+3? */
-		g_object_ref_sink(menu);
-		g_object_unref(menu);
-#endif
+		g_object_connect(G_OBJECT(menu),
+		    "signal::hide", G_CALLBACK(destroy_menu), NULL,
+		    (char *)NULL);
 
 		return (TRUE /* eat event */);
 	}
