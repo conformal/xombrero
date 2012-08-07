@@ -7332,6 +7332,8 @@ delete_tab(struct tab *t)
 		gtk_widget_destroy(t->js_toggle);
 	}
 
+	g_object_unref(t->completion);
+
 	gtk_widget_destroy(t->tab_elems.eventbox);
 	gtk_widget_destroy(t->vbox);
 
