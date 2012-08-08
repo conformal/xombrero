@@ -2084,7 +2084,6 @@ show_g_object_settings(GObject *o, char *str, int recurse)
 	const gchar	*tname;
 	GValue		value;
 	GParamSpec	**proplist;
-	char		*tmpsettings;
 	const gchar	*name;
 
 	if (!G_IS_OBJECT(o)) {
