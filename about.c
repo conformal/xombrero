@@ -2084,6 +2084,8 @@ show_g_object_settings(GObject *o, char *str, int recurse)
 	const gchar	*tname;
 	GValue		value;
 	GParamSpec	**proplist;
+	char		*tmpsettings;
+	const gchar	*name;
 
 	if (!G_IS_OBJECT(o)) {
 		fprintf(stderr, "%s is not a g_object\n", str);
@@ -2091,12 +2093,18 @@ show_g_object_settings(GObject *o, char *str, int recurse)
 	}
 	proplist = g_object_class_list_properties(
 	    G_OBJECT_GET_CLASS(o), &n_props);
+
+	if (GTK_IS_WIDGET(o)) {
+		name = gtk_widget_get_name(GTK_WIDGET(o));
+	} else {
+		name = "settings";
+	}
 	if (n_props == 0) {
-		body = g_strdup("settings[0] = { }");
+		body = g_strdup_printf("%s[0] = { }", name);
 		goto end_show_g_objects;
 	}
 
-	body = g_strdup_printf("settings[%d] = {\n", n_props);
+	body = g_strdup_printf("%s[%d] = {\n", name, n_props);
 	for (i=0; i < n_props; i++) {
 		pspec = proplist[i];
 		tname = G_OBJECT_TYPE_NAME(pspec);
@@ -2186,7 +2194,6 @@ int
 allthethings(struct tab *t, struct karg *arg)
 {
 	char			*page, *body, *b;
-	extern GtkWidget	*main_window;
 	GList			*list, *liter;
 	int			toplevelcount = 0;
 
@@ -2198,7 +2205,7 @@ allthethings(struct tab *t, struct karg *arg)
 	    "session", 1);
 #endif
 	list = gtk_window_list_toplevels();
-	for(liter = list; liter = liter->next; liter != NULL) {
+	for(liter = list; liter != NULL; liter = liter->next) {
 		b = g_strdup_printf("toplevel#%x", toplevelcount++);
 		
 		body = xt_append_settings(body, G_OBJECT(liter->data), b, 1);
