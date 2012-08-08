@@ -1974,20 +1974,116 @@ startpage_add(const char *fmt, ...)
 
 	TAILQ_INSERT_TAIL(&spl, s, entry);
 }
+gchar *show_g_object_settings(GObject *, char *, int);
+
+char *
+xt_g_object_serialize(GValue *value, const gchar *tname, char *str, int recurse)
+{
+	int		typeno = 0;
+	char		*valstr, *tmpstr, *tmpsettings;
+	GObject		*object;
+
+	typeno = G_TYPE_FUNDAMENTAL( G_VALUE_TYPE(value) );
+	switch ( typeno ) {
+	case G_TYPE_ENUM:
+		valstr = g_strdup_printf("%d",
+		    g_value_get_enum(value));
+		break;
+	case G_TYPE_CHAR:
+		valstr = g_strdup_printf("%c",
+		    g_value_get_schar(value));
+		break;
+	case G_TYPE_UCHAR:
+		valstr = g_strdup_printf("%c",
+		    g_value_get_uchar(value));
+		break;
+	case G_TYPE_LONG:
+		valstr = g_strdup_printf("%ld",
+		    g_value_get_long(value));
+		break;
+	case G_TYPE_ULONG:
+		valstr = g_strdup_printf("%ld",
+		    g_value_get_ulong(value));
+		break;
+	case G_TYPE_INT:
+		valstr = g_strdup_printf("%d",
+		    g_value_get_int(value));
+		break;
+	case G_TYPE_INT64:
+		valstr = g_strdup_printf("%" PRIo64,
+		    (int64_t) g_value_get_int64(value));
+		break;
+	case G_TYPE_UINT:
+		valstr = g_strdup_printf("%d",
+		    g_value_get_uint(value));
+		break;
+	case G_TYPE_UINT64:
+		valstr = g_strdup_printf("%" PRIu64,
+		    (uint64_t) g_value_get_uint64(value));
+		break;
+	case G_TYPE_FLAGS:
+		valstr = g_strdup_printf("0x%x",
+		    g_value_get_flags(value));
+		break;
+	case G_TYPE_BOOLEAN:
+		valstr = g_strdup_printf("%s",
+		    g_value_get_boolean(value) ? "TRUE" : "FALSE");
+		break;
+	case G_TYPE_FLOAT:
+		valstr = g_strdup_printf("%f",
+		    g_value_get_float(value));
+		break;
+	case G_TYPE_DOUBLE:
+		valstr = g_strdup_printf("%f",
+		    g_value_get_double(value));
+		break;
+	case G_TYPE_STRING:
+		valstr = g_strdup_printf("\"%s\"",
+		    g_value_get_string(value));
+		break;
+	case G_TYPE_POINTER:
+		valstr = g_strdup_printf("%p",
+		    g_value_get_pointer(value));
+		break;
+	case G_TYPE_OBJECT:
+		object = g_value_get_object(value);
+		if (object != NULL) {
+			if (recurse) {
+				tmpstr = g_strdup_printf("%s     ", str);
+				tmpsettings = show_g_object_settings( object,
+				    tmpstr, recurse);
+				g_free(tmpstr);
+
+				if (strrchr(tmpsettings, '\n') != NULL) {
+					valstr = g_strdup_printf("%s%s      }",
+					    tmpsettings, str);
+					g_free(tmpsettings);
+				} else {
+					valstr = tmpsettings;
+				}
+			} else {
+				valstr = g_strdup_printf("<...>");
+			}
+		} else {
+			valstr = g_strdup_printf("settings[] = NULL");
+		}
+		break;
+	default:
+		valstr = g_strdup_printf("type %s unhandled", tname);
+	}
+	return valstr;
+}
 
 gchar *
 show_g_object_settings(GObject *o, char *str, int recurse)
 {
 	char		*b, *p, *body, *valstr, *tmpstr;
 	guint		n_props = 0;
-	int		i;
+	int		i, typeno = 0;
 	GParamSpec	*pspec;
 	const gchar	*tname;
 	GValue		value;
-	int		typeno = 0;
-	GObject		*object;
 	GParamSpec	**proplist;
-	char		*tmpsettings;
 
 	if (!G_IS_OBJECT(o)) {
 		fprintf(stderr, "%s is not a g_object\n", str);
@@ -2013,101 +2109,13 @@ show_g_object_settings(GObject *o, char *str, int recurse)
 			g_value_init(&value, G_PARAM_SPEC_VALUE_TYPE(pspec));
 			g_object_get_property(G_OBJECT(o), pspec->name,
 			    &value);
+			typeno = G_TYPE_FUNDAMENTAL( G_VALUE_TYPE(&value) );
 		}
 
 		/* based on the type, recurse and display values */
 		if (valstr == NULL) {
-			typeno = G_TYPE_FUNDAMENTAL( G_VALUE_TYPE(&value) );
-			switch ( typeno ) {
-			case G_TYPE_ENUM:
-				valstr = g_strdup_printf("%d",
-				    g_value_get_enum(&value));
-				break;
-			case G_TYPE_CHAR:
-				valstr = g_strdup_printf("%c",
-				    g_value_get_schar(&value));
-				break;
-			case G_TYPE_UCHAR:
-				valstr = g_strdup_printf("%c",
-				    g_value_get_uchar(&value));
-				break;
-			case G_TYPE_LONG:
-				valstr = g_strdup_printf("%ld",
-				    g_value_get_long(&value));
-				break;
-			case G_TYPE_ULONG:
-				valstr = g_strdup_printf("%ld",
-				    g_value_get_ulong(&value));
-				break;
-			case G_TYPE_INT:
-				valstr = g_strdup_printf("%d",
-				    g_value_get_int(&value));
-				break;
-			case G_TYPE_INT64:
-				valstr = g_strdup_printf("%" PRIo64,
-				    (int64_t) g_value_get_int64(&value));
-				break;
-			case G_TYPE_UINT:
-				valstr = g_strdup_printf("%d",
-				    g_value_get_uint(&value));
-				break;
-			case G_TYPE_UINT64:
-				valstr = g_strdup_printf("%" PRIu64,
-				    (uint64_t) g_value_get_uint64(&value));
-				break;
-			case G_TYPE_FLAGS:
-				valstr = g_strdup_printf("0x%x",
-				    g_value_get_flags(&value));
-				break;
-			case G_TYPE_BOOLEAN:
-				valstr = g_strdup_printf("%s",
-				    g_value_get_boolean(&value) ? "TRUE" : "FALSE");
-				break;
-			case G_TYPE_FLOAT:
-				valstr = g_strdup_printf("%f",
-				    g_value_get_float(&value));
-				break;
-			case G_TYPE_DOUBLE:
-				valstr = g_strdup_printf("%f",
-				    g_value_get_double(&value));
-				break;
-			case G_TYPE_STRING:
-				valstr = g_strdup_printf("\"%s\"",
-				    g_value_get_string(&value));
-				break;
-			case G_TYPE_POINTER:
-				valstr = g_strdup_printf("%p",
-				    g_value_get_pointer(&value));
-				break;
-			case G_TYPE_OBJECT:
-				object = g_value_get_object(&value);
-				if (object != NULL) {
-					if (recurse) {
-					tmpstr = g_strdup_printf("%s     ",
-					    str);
-					tmpsettings = show_g_object_settings(
-					    object, tmpstr, recurse);
-					g_free(tmpstr);
-					if (strrchr(tmpsettings, '\n') != NULL) {
-					valstr = g_strdup_printf(
-					    "%s%s      }",
-					    tmpsettings, str);
-					g_free(tmpsettings);
-					} else {
-					valstr = tmpsettings;
-					}
-					} else {
-					valstr = g_strdup_printf("<...>");
-					}
-				} else {
-					valstr = g_strdup_printf("settings[] = NULL");
-				}
-				break;
-			default:
-				valstr = g_strdup_printf(
-				    "type %s unhandled",
-				    tname);
-			}
+			valstr = xt_g_object_serialize(&value, tname, str,
+			    recurse);
 		}
 
 		tmpstr = g_strdup_printf("%-13s %s%s%s,", tname, pspec->name,
@@ -2187,8 +2195,6 @@ allthethings(struct tab *t, struct karg *arg)
 	body = xt_append_settings(body, G_OBJECT(session),
 	    "session", 1);
 #endif
-	body = xt_append_settings(body, G_OBJECT(main_window),
-	    "main_window", 1);
 
 	b = body;
 	body = g_strdup_printf("<pre>%scan paste clipboard = %d\n</pre>", body,
