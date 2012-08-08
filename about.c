@@ -2187,6 +2187,8 @@ allthethings(struct tab *t, struct karg *arg)
 {
 	char			*page, *body, *b;
 	extern GtkWidget	*main_window;
+	GList			*list, *liter;
+	int			toplevelcount = 0;
 
 	body = xt_append_settings(NULL, G_OBJECT(t->wv), "t->wv", 1);
 	body = xt_append_settings(body, G_OBJECT(t->inspector),
@@ -2195,7 +2197,15 @@ allthethings(struct tab *t, struct karg *arg)
 	body = xt_append_settings(body, G_OBJECT(session),
 	    "session", 1);
 #endif
+	list = gtk_window_list_toplevels();
+	for(liter = list; liter = liter->next; liter != NULL) {
+		b = g_strdup_printf("toplevel#%x", toplevelcount++);
+		
+		body = xt_append_settings(body, G_OBJECT(liter->data), b, 1);
 
+		g_free(b);
+	}
+		
 	b = body;
 	body = g_strdup_printf("<pre>%scan paste clipboard = %d\n</pre>", body,
 	    webkit_web_view_can_paste_clipboard(t->wv));
