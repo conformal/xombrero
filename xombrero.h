@@ -924,6 +924,8 @@ extern SoupSession	*session;
 extern GtkNotebook	*notebook;
 extern GtkListStore	*completion_model;
 extern uint64_t		blocked_cookies;
+extern GtkWidget	*main_window;
+extern SoupSession	*session;
 
 extern void	(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 
