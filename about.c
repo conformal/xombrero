@@ -2161,9 +2161,9 @@ xt_append_settings(char *str, GObject *object, char *name, int recurse)
 	char *newstr, *settings;
 
 	settings = show_g_object_settings(object, name, recurse);
-	if (str == NULL) {
+	if (str == NULL)
 		str = g_strdup("");
-	}
+
 	newstr = g_strdup_printf("%s%s %s%s };\n", str, name, settings, name);
 	g_free(str);
 
@@ -2189,12 +2189,23 @@ about_webkit(struct tab *t, struct karg *arg)
 	return (0);
 }
 
+static int		toplevelcount = 0;
+
+void
+xt_append_toplevel(GtkWindow *w, char **body)
+{
+	char			*n;
+
+	n = g_strdup_printf("toplevel#%d", toplevelcount++);
+	*body = xt_append_settings(*body, G_OBJECT(w), n, 0);
+	g_free(n);
+}
+
 int
 allthethings(struct tab *t, struct karg *arg)
 {
+	GList			*list;
 	char			*page, *body, *b;
-	GList			*list, *liter;
-	int			toplevelcount = 0;
 
 	body = xt_append_settings(NULL, G_OBJECT(t->wv), "t->wv", 1);
 	body = xt_append_settings(body, G_OBJECT(t->inspector),
@@ -2203,14 +2214,12 @@ allthethings(struct tab *t, struct karg *arg)
 	body = xt_append_settings(body, G_OBJECT(session),
 	    "session", 1);
 #endif
+	toplevelcount = 0;
 	list = gtk_window_list_toplevels();
-	for(liter = list; liter != NULL; liter = liter->next) {
-		b = g_strdup_printf("toplevel#%x", toplevelcount++);
-		
-		body = xt_append_settings(body, G_OBJECT(liter->data), b, 1);
-
-		g_free(b);
-	}
+	g_list_foreach(list, (GFunc)g_object_ref, NULL);
+	g_list_foreach(list, (GFunc)xt_append_toplevel, &body);
+	g_list_foreach(list, (GFunc)g_object_unref, NULL);
+	g_list_free(list);
 		
 	b = body;
 	body = g_strdup_printf("<pre>%scan paste clipboard = %d\n</pre>", body,
