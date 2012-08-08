@@ -2183,8 +2183,10 @@ allthethings(struct tab *t, struct karg *arg)
 	body = xt_append_settings(NULL, G_OBJECT(t->wv), "t->wv", 1);
 	body = xt_append_settings(body, G_OBJECT(t->inspector),
 	    "t->inspector", 1);
+#if 0 /* not until warnings are gone */
 	body = xt_append_settings(body, G_OBJECT(session),
 	    "session", 1);
+#endif
 	body = xt_append_settings(body, G_OBJECT(main_window),
 	    "main_window", 1);
 
