@@ -208,6 +208,7 @@ GtkNotebook		*notebook;
 GtkWidget		*tab_bar;
 GtkWidget		*tab_bar_box;
 GtkWidget		*arrow, *abtn;
+GdkEvent		*fevent = NULL;
 struct tab_list		tabs;
 struct history_list	hl;
 int			hl_purge_count = 0;
@@ -5854,11 +5855,40 @@ done:
 	return (XT_CB_HANDLED);
 }
 
+/*
+ * XXX we were seeing a bunch of focus issues with the toplevel
+ * main_window losing its is-active and has-toplevel-focus properties.
+ * This is the most correct and portable solution we could come up with
+ * without relying on calling internal GTK functions (which we
+ * couldn't link to in Linux). 
+ */
+void
+fake_focus_in(GtkWidget *w)
+{
+	if (fevent == NULL) {
+		fevent = gdk_event_new(GDK_FOCUS_CHANGE);
+		fevent->focus_change.window =
+		    gtk_widget_get_window(main_window);
+		fevent->focus_change.type = GDK_FOCUS_CHANGE;
+		fevent->focus_change.in = TRUE;
+	}
+	gtk_widget_send_focus_change(main_window, fevent);
+}
+
 gboolean
 handle_keypress(struct tab *t, GdkEventKey *e, int entry)
 {
 	struct karg		args;
 	struct key_binding	*k;
+
+	/*
+	 * This sometimes gets randomly unset for whatever reason in GTK3.
+	 * If we're handling a keypress, the main window's is-active propery
+	 * *must* be true, or else many things will break. 
+	 */
+#if GTK_CHECK_VERSION(3, 0, 0)
+	fake_focus_in(main_window);
+#endif
 
 	/* handle keybindings if buffercmd is empty.
 	   if not empty, allow commands like C-n */
@@ -6464,6 +6494,21 @@ save_runtime_setting(const char *name, const char *val)
 }
 
 int
+entry_focus_cb(GtkWidget *w, GdkEvent e, struct tab *t)
+{
+	/*
+	 * This sometimes gets randomly unset for whatever reason in GTK3,
+	 * causing a GtkEntry's text cursor becomes invisible.  When we focus
+	 * a GtkEntry, be sure to manually reset the main window's is-active
+	 * property so the cursor is shown correctly. 
+	 */
+#if GTK_CHECK_VERSION(3, 0, 0)
+	fake_focus_in(main_window);
+#endif
+	return (XT_CB_PASSTHROUGH);
+}
+
+int
 entry_key_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 {
 	if (t == NULL) {
@@ -6610,7 +6655,6 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		/* FALLTHROUGH */
 	case GDK_Escape:
 		hide_cmd(t);
-		focus_webview(t);
 
 		/* cancel search */
 		if (c != NULL && (c[0] == '/' || c[0] == '?'))
@@ -6701,12 +6745,21 @@ cmd_focusout_cb(GtkWidget *w, GdkEventFocus *e, struct tab *t)
 	hide_oops(t);
 	disable_hints(t);
 
+	return (XT_CB_PASSTHROUGH);
+}
+
+void
+cmd_hide_cb(GtkWidget *w, struct tab *t)
+{
+	if (t == NULL) {
+		show_oops(NULL, "%s: invalid parameters", __func__);
+		return;
+	}
+
 	if (show_url == 0 || t->focus_wv)
 		focus_webview(t);
 	else
 		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
-
-	return (XT_CB_PASSTHROUGH);
 }
 
 void
@@ -7024,6 +7077,8 @@ create_kiosk_toolbar(struct tab *t)
 
 	/* create widgets but don't use them */
 	t->uri_entry = gtk_entry_new();
+	g_signal_connect(G_OBJECT(t->uri_entry), "focus-in-event",
+	    G_CALLBACK(entry_focus_cb), t);
 #if !GTK_CHECK_VERSION(3, 0, 0)
 	t->default_style = gtk_rc_get_style(t->uri_entry);
 #endif
@@ -7084,6 +7139,8 @@ create_toolbar(struct tab *t)
 	    G_CALLBACK(activate_uri_entry_cb), t);
 	g_signal_connect(G_OBJECT(t->uri_entry), "key-press-event",
 	    G_CALLBACK(entry_key_cb), t);
+	g_signal_connect(G_OBJECT(t->uri_entry), "focus-in-event",
+	    G_CALLBACK(entry_focus_cb), t);
 	completion_add(t);
 	gtk_box_pack_start(GTK_BOX(b), t->uri_entry, TRUE, TRUE, 0);
 
@@ -7094,6 +7151,8 @@ create_toolbar(struct tab *t)
 	    G_CALLBACK(activate_search_entry_cb), t);
 	g_signal_connect(G_OBJECT(t->search_entry), "key-press-event",
 	    G_CALLBACK(entry_key_cb), t);
+	g_signal_connect(G_OBJECT(t->search_entry), "focus-in-event",
+	    G_CALLBACK(entry_focus_cb), t);
 	gtk_box_pack_start(GTK_BOX(b), t->search_entry, FALSE, FALSE, 0);
 
 #if !GTK_CHECK_VERSION(3, 0, 0)
@@ -7323,6 +7382,8 @@ delete_tab(struct tab *t)
 		gtk_widget_destroy(t->stop);
 		gtk_widget_destroy(t->js_toggle);
 	}
+
+	g_object_unref(t->completion);
 
 	gtk_widget_destroy(t->tab_elems.eventbox);
 	gtk_widget_destroy(t->vbox);
@@ -7659,6 +7720,8 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 
 	/* command entry */
 	t->cmd = gtk_entry_new();
+	g_signal_connect(G_OBJECT(t->cmd), "focus-in-event",
+	    G_CALLBACK(entry_focus_cb), t);
 	gtk_entry_set_inner_border(GTK_ENTRY(t->cmd), NULL);
 	gtk_entry_set_has_frame(GTK_ENTRY(t->cmd), FALSE);
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->cmd, FALSE, FALSE, 0);
@@ -7765,6 +7828,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	    "signal::focus-out-event", G_CALLBACK(cmd_focusout_cb), t,
 	    "signal::activate", G_CALLBACK(cmd_activate_cb), t,
 	    "signal::populate-popup", G_CALLBACK(cmd_popup_cb), t,
+	    "signal::hide", G_CALLBACK(cmd_hide_cb), t,
 	    (char *)NULL);
 
 	/* reuse wv_button_cb to hide oops */
@@ -7828,10 +7892,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	} else
 		webkit_web_back_forward_list_clear(t->bfl);
 
-	/* hide stuff */
-	hide_cmd(t);
-	hide_oops(t);
-	hide_buffers(t);
+	/* check and show url and statusbar */
 	url_set_visibility();
 	statusbar_set_visibility();
 
@@ -7882,6 +7943,7 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkWidget *nbp, guint pn,
 
 			hide_cmd(t);
 			hide_oops(t);
+			hide_buffers(t);
 
 			if (t->focus_wv) {
 				/* can't use focus_webview here */
@@ -7922,6 +7984,13 @@ menuitem_response(struct tab *t)
 	gtk_notebook_set_current_page(notebook, t->tab_id);
 }
 
+int
+destroy_menu(GtkWidget *w, GdkEventFocus *e, void *notused)
+{
+	gtk_widget_destroy(w);
+	return (XT_CB_PASSTHROUGH);
+}
+
 gboolean
 arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 {
@@ -7956,12 +8025,9 @@ arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 		gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
 		    bevent->button, bevent->time);
 
-		/* unref object so it'll free itself when popped down */
-#if !GTK_CHECK_VERSION(3, 0, 0)
-		/* XXX does not need unref with gtk+3? */
-		g_object_ref_sink(menu);
-		g_object_unref(menu);
-#endif
+		g_object_connect(G_OBJECT(menu),
+		    "signal::hide", G_CALLBACK(destroy_menu), NULL,
+		    (char *)NULL);
 
 		return (TRUE /* eat event */);
 	}
