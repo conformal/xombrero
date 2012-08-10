@@ -6610,6 +6610,7 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		/* FALLTHROUGH */
 	case GDK_Escape:
 		hide_cmd(t);
+		focus_webview(t);
 
 		/* cancel search */
 		if (c != NULL && (c[0] == '/' || c[0] == '?'))
@@ -6700,21 +6701,12 @@ cmd_focusout_cb(GtkWidget *w, GdkEventFocus *e, struct tab *t)
 	hide_oops(t);
 	disable_hints(t);
 
-	return (XT_CB_PASSTHROUGH);
-}
-
-void
-cmd_hide_cb(GtkWidget *w, struct tab *t)
-{
-	if (t == NULL) {
-		show_oops(NULL, "%s: invalid parameters", __func__);
-		return;
-	}
-
 	if (show_url == 0 || t->focus_wv)
 		focus_webview(t);
 	else
 		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
+
+	return (XT_CB_PASSTHROUGH);
 }
 
 void
@@ -7332,8 +7324,6 @@ delete_tab(struct tab *t)
 		gtk_widget_destroy(t->js_toggle);
 	}
 
-	g_object_unref(t->completion);
-
 	gtk_widget_destroy(t->tab_elems.eventbox);
 	gtk_widget_destroy(t->vbox);
 
@@ -7775,7 +7765,6 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	    "signal::focus-out-event", G_CALLBACK(cmd_focusout_cb), t,
 	    "signal::activate", G_CALLBACK(cmd_activate_cb), t,
 	    "signal::populate-popup", G_CALLBACK(cmd_popup_cb), t,
-	    "signal::hide", G_CALLBACK(cmd_hide_cb), t,
 	    (char *)NULL);
 
 	/* reuse wv_button_cb to hide oops */
@@ -7839,7 +7828,10 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	} else
 		webkit_web_back_forward_list_clear(t->bfl);
 
-	/* check and show url and statusbar */
+	/* hide stuff */
+	hide_cmd(t);
+	hide_oops(t);
+	hide_buffers(t);
 	url_set_visibility();
 	statusbar_set_visibility();
 
@@ -7890,7 +7882,6 @@ notebook_switchpage_cb(GtkNotebook *nb, GtkWidget *nbp, guint pn,
 
 			hide_cmd(t);
 			hide_oops(t);
-			hide_buffers(t);
 
 			if (t->focus_wv) {
 				/* can't use focus_webview here */
@@ -7931,13 +7922,6 @@ menuitem_response(struct tab *t)
 	gtk_notebook_set_current_page(notebook, t->tab_id);
 }
 
-int
-destroy_menu(GtkWidget *w, GdkEventFocus *e, void *notused)
-{
-	gtk_widget_destroy(w);
-	return (XT_CB_PASSTHROUGH);
-}
-
 gboolean
 arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 {
@@ -7972,9 +7956,12 @@ arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 		gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
 		    bevent->button, bevent->time);
 
-		g_object_connect(G_OBJECT(menu),
-		    "signal::hide", G_CALLBACK(destroy_menu), NULL,
-		    (char *)NULL);
+		/* unref object so it'll free itself when popped down */
+#if !GTK_CHECK_VERSION(3, 0, 0)
+		/* XXX does not need unref with gtk+3? */
+		g_object_ref_sink(menu);
+		g_object_unref(menu);
+#endif
 
 		return (TRUE /* eat event */);
 	}
