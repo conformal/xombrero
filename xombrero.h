@@ -48,6 +48,8 @@ u_int32_t	arc4random_uniform(u_int32_t);
 #include <sys/tree.h>
 #include <X11/Xlib.h>
 #include <sys/un.h>
+#include <sys/param.h>
+#define LOGIN_NAME_MAX MAXLOGNAME
 #elif defined(__OpenBSD__)
 #include <util.h>
 #include <sys/tree.h>
