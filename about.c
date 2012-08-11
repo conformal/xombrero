@@ -1047,7 +1047,7 @@ parse_xtp_url(struct tab *t, const char *uri_str)
 	 *   sv[2]	= optional argument
 	 */
 
-	DNPRINTF(XT_D_URL, "%s: url %s\n", __func__, url);
+	DNPRINTF(XT_D_URL, "%s: url %s\n", __func__, uri_str);
 
 	if ((uri = soup_uri_new(uri_str)) == NULL)
 		goto clean;
