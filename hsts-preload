@@ -123,6 +123,7 @@ force_https = .login.persona.org
 force_https = neonisi.com
 force_https = www.neonisi.com
 force_https = shops.neonisi.com
+force_https = .piratenlogin.de
 force_https = gmail.com
 force_https = googlemail.com
 force_https = www.gmail.com
