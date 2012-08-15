@@ -1,5 +1,6 @@
 force_https = bitbucket.org
 force_https = bitrig.org
+force_https = www.bitrig.org
 force_https = .conformal.com
 force_https = .conformalsys.org
 force_https = .cyphertite.com
