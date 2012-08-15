@@ -858,9 +858,19 @@ xtp_handle_sv(struct tab *t, uint8_t cmd, int id, const char *query)
 	args.s = sv->uri;
 
 	switch (cmd) {
-	case XT_XTP_SV_SHOW_CERT:
+	case XT_XTP_SV_SHOW_NEW_CERT:
 		args.i = XT_SHOW;
-		cert_cmd(t, &args);
+		if (cert_cmd(t, &args)) {
+			xtp_page_sv(t, &args);
+			return;
+		}
+		break;
+	case XT_XTP_SV_SHOW_CACHED_CERT:
+		args.i = XT_CACHE | XT_SHOW;
+		if (cert_cmd(t, &args)) {
+			xtp_page_sv(t, &args);
+			return;
+		}
 		break;
 	case XT_XTP_SV_ALLOW_SESSION:
 		soupuri = soup_uri_new(sv->uri);
@@ -872,7 +882,10 @@ xtp_handle_sv(struct tab *t, uint8_t cmd, int id, const char *query)
 		break;
 	case XT_XTP_SV_CACHE:
 		args.i = XT_CACHE;
-		cert_cmd(t, &args);
+		if (cert_cmd(t, &args)) {
+			xtp_page_sv(t, &args);
+			return;
+		}
 		load_uri(t, sv->uri);
 		focus_webview(t);
 		break;
@@ -1894,22 +1907,29 @@ xtp_page_sv(struct tab *t, struct karg *args)
 		return (-1);
 
 	body = g_strdup_printf(
-	    "The domain of the page you have tried to access, %s, has a "
-	    "different remote certificate then the local cached version from a "
-	    "previous visit.  As a security precaution to help prevent against "
-	    "man-in-the-middle attacks, please choose one of the following "
-	    "actions to continue, or disable the <tt>warn_cert_changes</tt> "
-	    "setting in your xombrero configuration."
+	    "<p><b>You tried to access %s</b>."
+	    "<p><b>The site's security certificate has been modified.</b>"
+	    "<p>The domain of the page you have tried to access, <b>%s</b>, "
+	    "has a different remote certificate then the local cached version "
+	    "from a previous visit.  As a security precaution to help prevent "
+	    "against man-in-the-middle attacks, please choose one of the "
+	    "following actions to continue, or disable the "
+	    "<tt>warn_cert_changes</tt> setting in your xombrero "
+	    "configuration."
 	    "<p><b>Choose an action:"
-	    "<br><a href='%s%d/%s/%d/%d'>Show Certificate</a>"
-	    "<br><a href='%s%d/%s/%d/%d'>Allow for this Session</a>"
-	    "<br><a href='%s%d/%s/%d/%d'>Cache new certificate</a>",
+	    "<br><a href='%s%d/%s/%d/%d'>Allow for this session</a>"
+	    "<br><a href='%s%d/%s/%d/%d'>Cache new certificate</a>"
+	    "<br><a href='%s%d/%s/%d/%d'>Show cached certificate</a>"
+	    "<br><a href='%s%d/%s/%d/%d'>Show new certificate</a>",
+	    sv->uri,
 	    soupuri->host,
-	    XT_XTP_STR, XT_XTP_SV, sv_session_key, XT_XTP_SV_SHOW_CERT,
-		sv->xtp_arg,
 	    XT_XTP_STR, XT_XTP_SV, sv_session_key, XT_XTP_SV_ALLOW_SESSION,
 		sv->xtp_arg,
 	    XT_XTP_STR, XT_XTP_SV, sv_session_key, XT_XTP_SV_CACHE,
+		sv->xtp_arg,
+	    XT_XTP_STR, XT_XTP_SV, sv_session_key, XT_XTP_SV_SHOW_CACHED_CERT,
+		sv->xtp_arg,
+	    XT_XTP_STR, XT_XTP_SV, sv_session_key, XT_XTP_SV_SHOW_NEW_CERT,
 		sv->xtp_arg);
 
 	page = get_html_page("Security Violation", body, "", 0);

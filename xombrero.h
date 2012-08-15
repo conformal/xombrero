@@ -726,9 +726,10 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_XTP_AB_EDIT_CONF	(1)
 
 /* XTP security violation actions */
-#define XT_XTP_SV_SHOW_CERT	(1)
+#define XT_XTP_SV_SHOW_NEW_CERT	(1)
 #define XT_XTP_SV_ALLOW_SESSION	(2)
 #define XT_XTP_SV_CACHE		(3)
+#define XT_XTP_SV_SHOW_CACHED_CERT	(4)
 
 /* XTP set actions */
 #define XT_XTP_RT_SAVE		(1)

@@ -2000,6 +2000,51 @@ done:
 	return (rv);
 }
 
+gnutls_x509_crt_t *
+get_local_cert_chain(const char *uri, size_t *ncerts, const char **error_str,
+    const char *dir)
+{
+	SoupURI			*su;
+	unsigned char		cert_buf[64 * 1024] = {0};
+	gnutls_datum_t		data;
+	unsigned int		len = UINT_MAX;
+	int			bytes_read;
+	char			file[PATH_MAX];
+	FILE			*f;
+	gnutls_x509_crt_t	*certs;
+
+	if ((su = soup_uri_new(uri)) == NULL) {
+		*error_str = "Invalid URI";
+		return (NULL);
+	}
+
+	snprintf(file, sizeof file, "%s" PS "%s", dir, su->host);
+	if ((f = fopen(file, "r")) == NULL) {
+		*error_str = "Could not read local cert";
+		return (NULL);
+	}
+
+	bytes_read = fread(cert_buf, sizeof *cert_buf, sizeof cert_buf, f);
+	if (bytes_read == 0) {
+		*error_str = "Could not read local cert";
+		return (NULL);
+	}
+
+	data.data = cert_buf;
+	data.size = bytes_read;
+	certs = g_malloc(sizeof *certs);
+	*ncerts = INT_MAX;
+	if (gnutls_x509_crt_list_import(certs, &len, &data,
+	    GNUTLS_X509_FMT_PEM, 0) < 0) {
+		*error_str = "Error reading local cert chain";
+		return (NULL);
+	}
+
+	*ncerts = len;
+	return (certs);
+}
+
+
 int
 cert_cmd(struct tab *t, struct karg *args)
 {
@@ -2022,6 +2067,23 @@ cert_cmd(struct tab *t, struct karg *args)
 	else if ((uri = get_uri(t)) == NULL) {
 		show_oops(t, "Invalid URI");
 		return (1);
+	}
+
+	/* 
+	 * if we're only showing the local certs, don't open a socket and get
+	 * the remote certs
+	 */
+	if (args->i & XT_SHOW && args->i & XT_CACHE) {
+		certs = get_local_cert_chain(uri, &cert_count, &error_str,
+		    certs_cache_dir);
+		if (error_str == NULL) {
+			show_certs(t, certs, cert_count, "Certificate Chain");
+			free_connection_certs(certs, cert_count);
+		} else {
+			show_oops(t, "%s", error_str);
+			return (1);
+		}
+		return (0);
 	}
 
 	if ((s = connect_socket_from_uri(uri, &error_str, domain,
