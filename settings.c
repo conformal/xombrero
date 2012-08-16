@@ -3738,11 +3738,7 @@ xtp_page_rt(struct tab *t, struct karg *args)
 	int			i = 1;
 	struct settings_args	sa;
 
-	/*
-	 * We intentionally do *not* update other about:set tabs here as
-	 * there may be modifications and we don't want to lose those.
-	 */
-	generate_xtp_session_key(&rt_session_key);
+	generate_xtp_session_key(&t->session_key);
 
 	bzero(&sa, sizeof sa);
 	sa.body = &body;
@@ -3760,7 +3756,7 @@ xtp_page_rt(struct tab *t, struct karg *args)
 	    body ? body : "",
 	    XT_XTP_STR,
 	    XT_XTP_RT,
-	    rt_session_key,
+	    t->session_key,
 	    XT_XTP_RT_SAVE);
 	g_free(tmp);
 

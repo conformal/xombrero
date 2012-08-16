@@ -2069,7 +2069,7 @@ cert_cmd(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	/* 
+	/*
 	 * if we're only showing the local certs, don't open a socket and get
 	 * the remote certs
 	 */
@@ -5933,7 +5933,7 @@ done:
  * main_window losing its is-active and has-toplevel-focus properties.
  * This is the most correct and portable solution we could come up with
  * without relying on calling internal GTK functions (which we
- * couldn't link to in Linux). 
+ * couldn't link to in Linux).
  */
 void
 fake_focus_in(GtkWidget *w)
@@ -5957,7 +5957,7 @@ handle_keypress(struct tab *t, GdkEventKey *e, int entry)
 	/*
 	 * This sometimes gets randomly unset for whatever reason in GTK3.
 	 * If we're handling a keypress, the main window's is-active propery
-	 * *must* be true, or else many things will break. 
+	 * *must* be true, or else many things will break.
 	 */
 #if GTK_CHECK_VERSION(3, 0, 0)
 	fake_focus_in(main_window);
@@ -6573,7 +6573,7 @@ entry_focus_cb(GtkWidget *w, GdkEvent e, struct tab *t)
 	 * This sometimes gets randomly unset for whatever reason in GTK3,
 	 * causing a GtkEntry's text cursor becomes invisible.  When we focus
 	 * a GtkEntry, be sure to manually reset the main window's is-active
-	 * property so the cursor is shown correctly. 
+	 * property so the cursor is shown correctly.
 	 */
 #if GTK_CHECK_VERSION(3, 0, 0)
 	fake_focus_in(main_window);
@@ -6750,7 +6750,7 @@ wv_popup_activ_cb(GtkMenuItem *menu, struct tab *t)
 	const gchar		*name, *uri;
 
 	a = gtk_activatable_get_related_action(GTK_ACTIVATABLE(menu));
-	if (a == NULL) 
+	if (a == NULL)
 		return;
 	name = gtk_action_get_name(a);
 
@@ -7442,6 +7442,10 @@ delete_tab(struct tab *t)
 	/* just in case */
 	if (t->search_id)
 		g_source_remove(t->search_id);
+
+	/* session key */
+	if (t->session_key)
+		g_free(t->session_key);
 
 	/* inspector */
 	bzero(&a, sizeof a);
@@ -8673,8 +8677,6 @@ main(int argc, char **argv)
 	argv += optind;
 
 	init_keybindings();
-
-	xtp_generate_keys();
 
 	pwd = getpwuid(getuid());
 	if (pwd == NULL)

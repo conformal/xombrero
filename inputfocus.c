@@ -25,7 +25,7 @@ focus_body(WebKitDOMDocument *doc)
 {
 	WebKitDOMNodeList       *body = NULL;
 	WebKitDOMNode           *n;
-	int                     i;       
+	int                     i;
 
 	body = webkit_dom_document_get_elements_by_tag_name(doc, "body");
 	for (i = 0; i < webkit_dom_node_list_get_length(body); ++i) {

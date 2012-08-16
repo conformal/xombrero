@@ -137,7 +137,7 @@ open_external_editor_cb(gpointer data)
 		}
 
 	/* Tab was deleted */
-	if (!found_tab) 
+	if (!found_tab)
 		goto done;
 
 	if (update_contents(args))

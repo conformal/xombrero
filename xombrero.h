@@ -251,6 +251,7 @@ struct tab {
 	gchar			*status;
 	int			xtp_meaning; /* identifies dls/favorites */
 	int			xtp_arg;
+	char			*session_key;
 	gchar			*tmp_uri;
 	int			popup; /* 1 if cmd_entry has popup visible */
 	int			download_requested;
@@ -491,7 +492,6 @@ int			add_favorite(struct tab *, struct karg *);
 void			update_favorite_tabs(struct tab *);
 void			update_history_tabs(struct tab *);
 void			update_download_tabs(struct tab *);
-void			xtp_generate_keys(void);
 size_t			about_list_size(void);
 int			cookie_cmd(struct tab *, struct karg *);
 int			js_cmd(struct tab *, struct karg *);
@@ -503,15 +503,17 @@ void			startpage_add(const char *, ...);
  * xtp tab meanings
  * identifies which tabs have xtp pages in (corresponding to about_list indices)
  */
-#define XT_XTP_TAB_MEANING_NORMAL	(-1) /* normal url */
-#define XT_XTP_TAB_MEANING_BL		(1)  /* about:blank in this tab */
-#define XT_XTP_TAB_MEANING_CL		(4)  /* cookie manager in this tab */
-#define XT_XTP_TAB_MEANING_DL		(5)  /* download manager in this tab */
-#define XT_XTP_TAB_MEANING_FL		(6)  /* favorite manager in this tab */
-#define XT_XTP_TAB_MEANING_HL		(8)  /* history manager in this tab */
-#define XT_XTP_TAB_MEANING_SL		(9)  /* search engine chooser */
-#define XT_XTP_TAB_MEANING_AB		(10) /* about:about in this tab */
-#define XT_XTP_TAB_MEANING_SV		(18) /* about:secviolation in tab */
+#define XT_XTP_TAB_MEANING_NORMAL	(-1)	/* normal url */
+#define XT_XTP_TAB_MEANING_AB		(0)	/* any other about page */
+#define XT_XTP_TAB_MEANING_BL		(2) 	/* about:blank in this tab */
+#define XT_XTP_TAB_MEANING_CL		(5) 	/* cookie manager in this tab */
+#define XT_XTP_TAB_MEANING_DL		(6) 	/* download manager in this tab */
+#define XT_XTP_TAB_MEANING_FL		(7) 	/* favorite manager in this tab */
+#define XT_XTP_TAB_MEANING_HL		(9) 	/* history manager in this tab */
+#define XT_XTP_TAB_MEANING_SET		(11)	/* settings manager/viewer */
+#define XT_XTP_TAB_MEANING_SL		(18) 	/* search engine chooser */
+#define XT_XTP_TAB_MEANING_RT		(19)	/* about:runtime in this tab */
+#define XT_XTP_TAB_MEANING_SV		(20)	/* about:secviolation in tab */
 
 /* whitelists */
 #define XT_WL_TOGGLE		(1<<0)
@@ -736,7 +738,6 @@ int		command_mode(struct tab *, struct karg *);
 
 /* needed for xtp_page_rt in settings.c */
 void			generate_xtp_session_key(char **);
-extern char		*rt_session_key;
 
 struct key_binding {
 	char				*cmd;

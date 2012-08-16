@@ -85,6 +85,10 @@ void			update_cookie_tabs(struct tab *apart_from);
 int			about_webkit(struct tab *, struct karg *);
 int			allthethings(struct tab *, struct karg *);
 
+/*
+ * If you change the index of any of these, correct the
+ * XT_XTP_TAB_MEANING_* macros in xombrero.h!
+ */
 struct about_type about_list[] = {
 	{ XT_URI_ABOUT_ABOUT,		xtp_page_ab },
 	{ XT_URI_ABOUT_ALLTHETHINGS,	allthethings },
@@ -132,16 +136,6 @@ struct search_type {
 #define XT_XTP_SES_KEY_HEX_FMT  \
 	"%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8
 
-char			*dl_session_key;	/* downloads */
-char			*hl_session_key;	/* history list */
-char			*cl_session_key;	/* cookie list */
-char			*fl_session_key;	/* favorites list */
-char			*sl_session_key;	/* search */
-char			*ab_session_key;	/* about */
-char			*sv_session_key;	/* secviolation */
-char			*rt_session_key;	/* set */
-
-int			updating_ab_tabs = 0;
 int			updating_fl_tabs = 0;
 int			updating_dl_tabs = 0;
 int			updating_hl_tabs = 0;
@@ -720,7 +714,8 @@ done:
 }
 
 char *
-search_engine_add(char *body, const char *name, const char *url, int select)
+search_engine_add(char *body, const char *name, const char *url,
+    const char *key, int select)
 {
 	char			*b = body;
 
@@ -733,7 +728,7 @@ search_engine_add(char *body, const char *name, const char *url, int select)
 	    body,
 	    name,
 	    url,
-	    XT_XTP_STR, XT_XTP_SL, sl_session_key, XT_XTP_SL_SET, select);
+	    XT_XTP_STR, XT_XTP_SL, key, XT_XTP_SL_SET, select);
 	g_free(b);
 	return (body);
 }
@@ -972,21 +967,20 @@ xtp_handle_rt(struct tab *t, uint8_t cmd, int id, const char *query)
 /* link an XTP class to it's session key and handler function */
 struct xtp_despatch {
 	uint8_t			xtp_class;
-	char			**session_key;
 	void			(*handle_func)(struct tab *, uint8_t, int,
 				    const char *query);
 };
 
 struct xtp_despatch		xtp_despatches[] = {
-	{ XT_XTP_DL, &dl_session_key, xtp_handle_dl },
-	{ XT_XTP_HL, &hl_session_key, xtp_handle_hl },
-	{ XT_XTP_FL, &fl_session_key, xtp_handle_fl },
-	{ XT_XTP_CL, &cl_session_key, xtp_handle_cl },
-	{ XT_XTP_SL, &sl_session_key, xtp_handle_sl },
-	{ XT_XTP_AB, &ab_session_key, xtp_handle_ab },
-	{ XT_XTP_SV, &sv_session_key, xtp_handle_sv },
-	{ XT_XTP_RT, &rt_session_key, xtp_handle_rt },
-	{ XT_XTP_INVALID, NULL, NULL }
+	{ XT_XTP_DL, xtp_handle_dl },
+	{ XT_XTP_HL, xtp_handle_hl },
+	{ XT_XTP_FL, xtp_handle_fl },
+	{ XT_XTP_CL, xtp_handle_cl },
+	{ XT_XTP_SL, xtp_handle_sl },
+	{ XT_XTP_AB, xtp_handle_ab },
+	{ XT_XTP_SV, xtp_handle_sv },
+	{ XT_XTP_RT, xtp_handle_rt },
+	{ XT_XTP_INVALID, NULL }
 };
 
 /*
@@ -1012,26 +1006,14 @@ generate_xtp_session_key(char **key)
 	DNPRINTF(XT_D_DOWNLOAD, "%s: new session key '%s'\n", __func__, *key);
 }
 
-void
-xtp_generate_keys(void)
-{
-	/* generate session keys for xtp pages */
-	generate_xtp_session_key(&dl_session_key);
-	generate_xtp_session_key(&hl_session_key);
-	generate_xtp_session_key(&cl_session_key);
-	generate_xtp_session_key(&fl_session_key);
-	generate_xtp_session_key(&ab_session_key);
-	generate_xtp_session_key(&sv_session_key);
-}
-
 /*
  * validate a xtp session key.
  * return (1) if OK
  */
 int
-validate_xtp_session_key(struct tab *t, char *trusted, char *untrusted)
+validate_xtp_session_key(struct tab *t, char *key)
 {
-	if (strcmp(trusted, untrusted) != 0) {
+	if (strcmp(t->session_key, key) != 0) {
 		show_oops(t, "%s: xtp session key mismatch possible spoof",
 		    __func__);
 		return (0);
@@ -1093,7 +1075,7 @@ parse_xtp_url(struct tab *t, const char *uri_str)
 	}
 
 	/* check session key and call despatch function */
-	if (validate_xtp_session_key(t, *(dsp_match->session_key), sv[0])) {
+	if (validate_xtp_session_key(t, sv[0])) {
 		ret = TRUE; /* all is well, this was a valid xtp request */
 		if (sv[2])
 			dsp_match->handle_func(t, atoi(sv[1]), atoi(sv[2]),
@@ -1119,6 +1101,7 @@ void
 update_favorite_tabs(struct tab *apart_from)
 {
 	struct tab			*t;
+
 	if (!updating_fl_tabs) {
 		updating_fl_tabs = 1; /* stop infinite recursion */
 		TAILQ_FOREACH(t, &tabs, entry)
@@ -1137,6 +1120,7 @@ void
 update_download_tabs(struct tab *apart_from)
 {
 	struct tab			*t;
+
 	if (!updating_dl_tabs) {
 		updating_dl_tabs = 1; /* stop infinite recursion */
 		TAILQ_FOREACH(t, &tabs, entry)
@@ -1155,6 +1139,7 @@ void
 update_cookie_tabs(struct tab *apart_from)
 {
 	struct tab			*t;
+
 	if (!updating_cl_tabs) {
 		updating_cl_tabs = 1; /* stop infinite recursion */
 		TAILQ_FOREACH(t, &tabs, entry)
@@ -1203,44 +1188,6 @@ update_search_tabs(struct tab *apart_from)
 	}
 }
 
-/*
- * update all about tabs apart from one. Pass NULL if
- * you want to update all.
- */
-void
-update_about_tabs(struct tab *apart_from)
-{
-	struct tab			*t;
-
-	if (!updating_ab_tabs) {
-		updating_ab_tabs = 1; /* stop infinite recursion */
-		TAILQ_FOREACH(t, &tabs, entry)
-			if ((t->xtp_meaning == XT_XTP_TAB_MEANING_AB)
-			    && (t != apart_from))
-				xtp_page_ab(t, NULL);
-		updating_ab_tabs = 0;
-	}
-}
-
-/*
- * update all secviolation tabs apart from one. Pass NULL if
- * you want to update all.
- */
-void
-update_secviolation_tabs(struct tab *apart_from)
-{
-	struct tab			*t;
-
-	if (!updating_sv_tabs) {
-		updating_sv_tabs = 1; /* stop infinite recursion */
-		TAILQ_FOREACH(t, &tabs, entry)
-			if ((t->xtp_meaning == XT_XTP_TAB_MEANING_SV)
-			    && (t != apart_from))
-				xtp_page_sv(t, NULL);
-		updating_sv_tabs = 0;
-	}
-}
-
 int
 xtp_page_ab(struct tab *t, struct karg *args)
 {
@@ -1249,13 +1196,7 @@ xtp_page_ab(struct tab *t, struct karg *args)
 	if (t == NULL)
 		show_oops(NULL, "about invalid parameters");
 
-	/*
-	 * Generate a new session key for next page instance.
-	 * This only happens for the top level call to xtp_page_ab()
-	 * in which case updating_sl_tabs is 0.
-	 */
-	if (!updating_ab_tabs)
-		generate_xtp_session_key(&ab_session_key);
+	generate_xtp_session_key(&t->session_key);
 
 	body = g_strdup_printf("<b>Version: %s</b>"
 #ifdef XOMBRERO_BUILDSTR
@@ -1295,7 +1236,7 @@ xtp_page_ab(struct tab *t, struct karg *args)
 	    ,pwd->pw_dir,
 	    XT_XTP_STR,
 	    XT_XTP_AB,
-	    ab_session_key,
+	    t->session_key,
 	    XT_XTP_AB_EDIT_CONF,
 	    XT_CONF_FILE
 	    );
@@ -1304,8 +1245,6 @@ xtp_page_ab(struct tab *t, struct karg *args)
 	g_free(body);
 
 	load_webkit_string(t, page, XT_URI_ABOUT_ABOUT);
-
-	update_about_tabs(t);
 
 	g_free(page);
 
@@ -1329,9 +1268,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	if (t == NULL)
 		warn("%s: bad param", __func__);
 
-	/* new session key */
-	if (!updating_fl_tabs)
-		generate_xtp_session_key(&fl_session_key);
+	generate_xtp_session_key(&t->session_key);
 
 	/* open favorites */
 	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_FAVS_FILE);
@@ -1369,7 +1306,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 		    "<a href='%s%d/%s/%d/%d'>X</a></td>"
 		    "</tr>\n",
 		    body, i, uri, title,
-		    XT_XTP_STR, XT_XTP_FL, fl_session_key, XT_XTP_FL_REMOVE, i);
+		    XT_XTP_STR, XT_XTP_FL, t->session_key, XT_XTP_FL_REMOVE, i);
 
 		g_free(tmp);
 
@@ -1437,7 +1374,7 @@ xtp_page_dl_row(struct tab *t, char *html, struct download *dl)
 	 * xxxt://class/seskey
 	 */
 	xtp_prefix = g_strdup_printf("%s%d/%s/",
-	    XT_XTP_STR, XT_XTP_DL, dl_session_key);
+	    XT_XTP_STR, XT_XTP_DL, t->session_key);
 
 	stat = webkit_download_get_status(dl->download);
 
@@ -1537,9 +1474,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	/* Generate a new session key */
-	if (!updating_cl_tabs)
-		generate_xtp_session_key(&cl_session_key);
+	generate_xtp_session_key(&t->session_key);
 
 	/* table headers */
 	table_headers = g_strdup_printf("<table><tr>"
@@ -1558,7 +1493,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 
 	body = g_strdup_printf("<div align=\"center\"><a href=\"%s%d/%s/%d\">"
 	    "[ Remove All Cookies From All Domains ]</a></div>\n",
-	    XT_XTP_STR, XT_XTP_CL, cl_session_key, XT_XTP_CL_REMOVE_ALL);
+	    XT_XTP_STR, XT_XTP_CL, t->session_key, XT_XTP_CL_REMOVE_ALL);
 
 	last_domain = g_strdup("");
 	for (; sc; sc = sc->next) {
@@ -1578,7 +1513,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 				    "[ Remove All From This Domain ]"
 				    "</a></div>%s\n",
 				    body, c->domain,
-				    XT_XTP_STR, XT_XTP_CL, cl_session_key,
+				    XT_XTP_STR, XT_XTP_CL, t->session_key,
 				    XT_XTP_CL_REMOVE_DOMAIN, domain_id,
 				    table_headers);
 				g_free(tmp);
@@ -1589,7 +1524,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 				    "<a href='%s%d/%s/%d/%d'>"
 				    "[ Remove All From This Domain ]</a></div>%s\n",
 				    c->domain, XT_XTP_STR, XT_XTP_CL,
-				    cl_session_key, XT_XTP_CL_REMOVE_DOMAIN,
+				    t->session_key, XT_XTP_CL_REMOVE_DOMAIN,
 				    domain_id, table_headers);
 			}
 		}
@@ -1627,7 +1562,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 
 		    XT_XTP_STR,
 		    XT_XTP_CL,
-		    cl_session_key,
+		    t->session_key,
 		    XT_XTP_CL_REMOVE,
 		    i
 		    );
@@ -1675,9 +1610,7 @@ xtp_page_hl(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	/* Generate a new session key */
-	if (!updating_hl_tabs)
-		generate_xtp_session_key(&hl_session_key);
+	generate_xtp_session_key(&t->session_key);
 
 	/* body */
 	body = g_strdup_printf("<div align=\"center\"><a href=\"%s%d/%s/%d\">"
@@ -1685,7 +1618,7 @@ xtp_page_hl(struct tab *t, struct karg *args)
 	    "<table style='table-layout:fixed'><tr>"
 	    "<th>URI</th><th>Title</th><th>Last visited</th>"
 	    "<th style='width: 40px'>Rm</th></tr>\n",
-	    XT_XTP_STR, XT_XTP_HL, hl_session_key, XT_XTP_HL_REMOVE_ALL);
+	    XT_XTP_STR, XT_XTP_HL, t->session_key, XT_XTP_HL_REMOVE_ALL);
 
 	RB_FOREACH_REVERSE(h, history_list, &hl) {
 		tmp = body;
@@ -1697,7 +1630,7 @@ xtp_page_hl(struct tab *t, struct karg *args)
 		    "<td style='text-align: center'>"
 		    "<a href='%s%d/%s/%d/%d'>X</a></td></tr>\n",
 		    body, h->uri, h->uri, h->title, ctime(&h->time),
-		    XT_XTP_STR, XT_XTP_HL, hl_session_key,
+		    XT_XTP_STR, XT_XTP_HL, t->session_key,
 		    XT_XTP_HL_REMOVE, i);
 
 		g_free(tmp);
@@ -1750,13 +1683,7 @@ xtp_page_dl(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	/*
-	 * Generate a new session key for next page instance.
-	 * This only happens for the top level call to xtp_page_dl()
-	 * in which case updating_dl_tabs is 0.
-	 */
-	if (!updating_dl_tabs)
-		generate_xtp_session_key(&dl_session_key);
+	generate_xtp_session_key(&t->session_key);
 
 	/* header - with refresh so as to update */
 	if (refresh_interval >= 1)
@@ -1766,7 +1693,7 @@ xtp_page_dl(struct tab *t, struct karg *args)
 		    refresh_interval,
 		    XT_XTP_STR,
 		    XT_XTP_DL,
-		    dl_session_key,
+		    t->session_key,
 		    XT_XTP_DL_LIST);
 	else
 		ref = g_strdup("");
@@ -1775,7 +1702,7 @@ xtp_page_dl(struct tab *t, struct karg *args)
 	    "<p>\n<a href='%s%d/%s/%d'>\n[ Refresh Downloads ]</a>\n"
 	    "</p><table><tr><th style='width: 60%%'>"
 	    "File</th>\n<th>Progress</th><th>Command</th></tr>\n",
-	    XT_XTP_STR, XT_XTP_DL, dl_session_key, XT_XTP_DL_LIST);
+	    XT_XTP_STR, XT_XTP_DL, t->session_key, XT_XTP_DL_LIST);
 
 	RB_FOREACH_REVERSE(dl, download_list, &downloads) {
 		body = xtp_page_dl_row(t, body, dl);
@@ -1820,13 +1747,7 @@ xtp_page_sl(struct tab *t, struct karg *args)
 
 	DNPRINTF(XT_D_SEARCH, "%s", __func__);
 
-	/*
-	 * Generate a new session key for next page instance.
-	 * This only happens for the top level call to xtp_page_sl()
-	 * in which case updating_sl_tabs is 0.
-	 */
-	if (!updating_sl_tabs)
-		generate_xtp_session_key(&sl_session_key);
+	generate_xtp_session_key(&t->session_key);
 
 	if (t == NULL) {
 		show_oops(NULL, "%s invalid parameters", __func__);
@@ -1849,7 +1770,7 @@ xtp_page_sl(struct tab *t, struct karg *args)
 
 	for (i = 0; i < (sizeof search_list / sizeof (struct search_type)); ++i)
 		body = search_engine_add(body, search_list[i].name,
-		    search_list[i].url, i);
+		    search_list[i].url, t->session_key, i);
 
 	tmp = body;
 	body = g_strdup_printf("%s</table>", body);
@@ -1881,13 +1802,7 @@ xtp_page_sv(struct tab *t, struct karg *args)
 	if (t == NULL)
 		show_oops(NULL, "secviolation invalid parameters");
 
-	/*
-	 * Generate a new session key for next page instance.
-	 * This only happens for the top level call to xtp_page_ab()
-	 * in which case updating_sv_tabs = 0.
-	 */
-	if (!updating_sv_tabs)
-		generate_xtp_session_key(&sv_session_key);
+	generate_xtp_session_key(&t->session_key);
 
 	if (args == NULL) {
 		find.xtp_arg = t->xtp_arg;
@@ -1923,19 +1838,17 @@ xtp_page_sv(struct tab *t, struct karg *args)
 	    "<br><a href='%s%d/%s/%d/%d'>Show new certificate</a>",
 	    sv->uri,
 	    soupuri->host,
-	    XT_XTP_STR, XT_XTP_SV, sv_session_key, XT_XTP_SV_ALLOW_SESSION,
+	    XT_XTP_STR, XT_XTP_SV, t->session_key, XT_XTP_SV_ALLOW_SESSION,
 		sv->xtp_arg,
-	    XT_XTP_STR, XT_XTP_SV, sv_session_key, XT_XTP_SV_CACHE,
+	    XT_XTP_STR, XT_XTP_SV, t->session_key, XT_XTP_SV_CACHE,
 		sv->xtp_arg,
-	    XT_XTP_STR, XT_XTP_SV, sv_session_key, XT_XTP_SV_SHOW_CACHED_CERT,
+	    XT_XTP_STR, XT_XTP_SV, t->session_key, XT_XTP_SV_SHOW_CACHED_CERT,
 		sv->xtp_arg,
-	    XT_XTP_STR, XT_XTP_SV, sv_session_key, XT_XTP_SV_SHOW_NEW_CERT,
+	    XT_XTP_STR, XT_XTP_SV, t->session_key, XT_XTP_SV_SHOW_NEW_CERT,
 		sv->xtp_arg);
 
 	page = get_html_page("Security Violation", body, "", 0);
 	g_free(body);
-
-	update_secviolation_tabs(t);
 
 	load_webkit_string(t, page, XT_URI_ABOUT_SECVIOLATION);
 
