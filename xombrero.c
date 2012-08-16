@@ -844,6 +844,19 @@ done:
 }
 
 void
+set_normal_tab_meaning(struct tab *t)
+{
+	if (t == NULL)
+		return;
+
+	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
+	if (t->session_key != NULL) {
+		g_free(t->session_key);
+		t->session_key = NULL;
+	}
+}
+
+void
 load_uri(struct tab *t, gchar *uri)
 {
 	struct karg	args;
@@ -862,7 +875,7 @@ load_uri(struct tab *t, gchar *uri)
 		return;
 	}
 
-	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
+	set_normal_tab_meaning(t);
 
 	if (valid_url_type(uri)) {
 		newuri = guess_url_type(uri);
@@ -2395,7 +2408,7 @@ navaction(struct tab *t, struct karg *args)
 	    t->tab_id, args->i);
 
 	hide_oops(t);
-	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
+	set_normal_tab_meaning(t);
 	if (t->item) {
 		if (args->i == XT_NAV_BACK)
 			item = webkit_web_back_forward_list_get_current_item(t->bfl);
@@ -3624,7 +3637,7 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 		return;
 	}
 
-	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
+	set_normal_tab_meaning(t);
 
 	enc_search = soup_uri_encode(search, XT_RESERVED_CHARS);
 	sv = g_strsplit(search_string, "%s", 2);
@@ -4998,7 +5011,7 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 	 */
 	reason = webkit_web_navigation_action_get_reason(na);
 	if (reason == WEBKIT_WEB_NAVIGATION_REASON_LINK_CLICKED) {
-		t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
+		set_normal_tab_meaning(t);
 		if (enable_scripts == 0 && enable_cookie_whitelist == 1)
 			if (uri && (d = wl_find_uri(uri, &js_wl)) == NULL)
 				load_uri(t, uri);
@@ -7816,7 +7829,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->buffers, FALSE, FALSE, 0);
 
 	/* xtp meaning is normal by default */
-	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
+	set_normal_tab_meaning(t);
 
 	/* set empty favicon */
 	xt_icon_from_name(t, "text-html");

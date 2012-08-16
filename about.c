@@ -206,6 +206,12 @@ load_webkit_string(struct tab *t, const char *str, gchar *title)
 		snprintf(file, sizeof file, "%s" PS "%s", resource_dir, icons[0]);
 		xt_icon_from_file(t, file);
 	}
+
+	if (t->xtp_meaning == XT_XTP_TAB_MEANING_NORMAL &&
+	    t->session_key != NULL) {
+		g_free(t->session_key);
+		t->session_key = NULL;
+	}
 }
 
 int
@@ -1013,6 +1019,9 @@ generate_xtp_session_key(char **key)
 int
 validate_xtp_session_key(struct tab *t, char *key)
 {
+	if (t == NULL || t->session_key == NULL || key == NULL)
+		return (0);
+
 	if (strcmp(t->session_key, key) != 0) {
 		show_oops(t, "%s: xtp session key mismatch possible spoof",
 		    __func__);
