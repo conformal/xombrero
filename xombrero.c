@@ -485,6 +485,9 @@ show_cmd(struct tab *t)
 {
 	DNPRINTF(XT_D_CMD, "%s: tab %d\n", __func__, t->tab_id);
 
+	/* without this you can't middle click in t->cmd to paste */
+	gtk_entry_set_text(GTK_ENTRY(t->cmd), "");
+
 	history_at = NULL;
 	search_at = NULL;
 	gtk_widget_hide(t->oops);
@@ -2947,15 +2950,15 @@ command(struct tab *t, struct karg *args)
 
 	DNPRINTF(XT_D_CMD, "%s: tab %d type %s\n", __func__, t->tab_id, s);
 
-	gtk_entry_set_text(GTK_ENTRY(t->cmd), s);
+	show_cmd(t);
+	gtk_widget_grab_focus(GTK_WIDGET(t->cmd));
 #if GTK_CHECK_VERSION(3, 0, 0)
 	gtk_widget_set_name(t->cmd, XT_CSS_NORMAL);
 #else
 	gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL,
 	    &t->default_style->base[GTK_STATE_NORMAL]);
 #endif
-	show_cmd(t);
-	gtk_widget_grab_focus(GTK_WIDGET(t->cmd));
+	gtk_entry_set_text(GTK_ENTRY(t->cmd), s);
 	gtk_editable_set_position(GTK_EDITABLE(t->cmd), -1);
 
 	if (sp)
@@ -3315,7 +3318,6 @@ struct cmd {
 
 	/* yanking and pasting */
 	{ "yankuri",		0,	yank_uri,		0,			0 },
-	/* XXX: pasteuri{cur,new} do not work from the cmd_entry? */
 	{ "pasteuricur",	0,	paste_uri,		XT_PASTE_CURRENT_TAB,	0 },
 	{ "pasteurinew",	0,	paste_uri,		XT_PASTE_NEW_TAB,	0 },
 
@@ -6695,7 +6697,7 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 				gtk_entry_set_text(w, search_at->line);
 				gtk_editable_set_position(GTK_EDITABLE(w), -1);
 			}
-		} if (c[0] == ':') {
+		} else if (c[0] == ':') {
 			if ((history_at = history_prev(&chl, history_at))) {
 				history_at->line[0] = c[0];
 				gtk_entry_set_text(w, history_at->line);
@@ -7917,6 +7919,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	    "button_press_event", G_CALLBACK(tab_clicked_cb), t);
 
 	g_object_connect(G_OBJECT(t->cmd),
+	    "signal::button-release-event", G_CALLBACK(cmd_keyrelease_cb), t,
 	    "signal::key-press-event", G_CALLBACK(cmd_keypress_cb), t,
 	    "signal::key-release-event", G_CALLBACK(cmd_keyrelease_cb), t,
 	    "signal::focus-out-event", G_CALLBACK(cmd_focusout_cb), t,
