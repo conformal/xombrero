@@ -4308,6 +4308,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 
 		/* DOM is changing, unreference the previous focused element */
 #if WEBKIT_CHECK_VERSION(1, 5, 0)
+		if (t->active)
+			g_object_unref(t->active);
 		t->active = NULL;
 		if (t->active_text) {
 			g_free(t->active_text);

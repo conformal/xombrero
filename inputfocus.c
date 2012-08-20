@@ -174,6 +174,8 @@ focus_input(struct tab *t)
 		rv = 1; /* found */
 		goto done;
 	} else {
+		if (t->active)
+			g_object_unref(t->active);
 		t->active = NULL;
 		if (t->active_text) {
 			g_free(t->active_text);
@@ -280,8 +282,10 @@ dom_is_input(struct tab *t, char **text)
 		aa = (WebKitDOMHTMLElement*)a;
 		if (WEBKIT_DOM_IS_HTML_ELEMENT(aa) &&
 		    webkit_dom_html_element_get_is_content_editable(aa)) {
-			if (t->active == NULL)
+			if (t->active == NULL) {
 				t->active = a;
+				g_object_ref(t->active);
+			}
 			*text = get_element_text((WebKitDOMNode *)a);
 			if (t->active_text == NULL)
 				t->active_text = g_strdup(*text);
@@ -295,14 +299,18 @@ dom_is_input(struct tab *t, char **text)
 
 	if (node_is_valid_entry((WebKitDOMNode *)a)) {
 		if (!node_is_valid_entry((WebKitDOMNode *)t->active)) {
+			if (t->active)
+				g_object_unref(t->active);
 			t->active = NULL;
 			if (t->active_text) {
 				g_free(t->active_text);
 				t->active_text = NULL;
 			}
 		}
-		if (t->active == NULL)
+		if (t->active == NULL) {
 			t->active = a;
+			g_object_ref(t->active);
+		}
 		*text = get_element_text((WebKitDOMNode *)a);
 		if (t->active_text == NULL)
 			t->active_text = g_strdup(*text);
@@ -345,6 +353,8 @@ command_mode(struct tab *t, struct karg *args)
 		t->mode = args->i;
 
 	if (!node_is_valid_entry((WebKitDOMNode *)t->active)) {
+		if (t->active)
+			g_object_unref(t->active);
 		t->active = NULL;
 		if (t->active_text) {
 			g_free(t->active_text);
