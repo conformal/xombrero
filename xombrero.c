@@ -2163,7 +2163,7 @@ check_cert_changes(struct tab *t, const char *uri)
 	const char		*errstr = NULL;
 	struct karg		*argsp;
 
-	if (!(warn_cert_changes && g_str_has_prefix(uri, "https://")))
+	if (!(warn_cert_changes && uri && g_str_has_prefix(uri, "https://")))
 		return (0);
 
 	switch (load_compare_cert(uri, &errstr, certs_cache_dir)) {
@@ -2290,113 +2290,8 @@ toplevel_cmd(struct tab *t, struct karg *args)
 }
 
 int
-can_go_back_for_real(struct tab *t)
-{
-	int			i;
-	WebKitWebHistoryItem	*item;
-	const gchar		*uri;
-
-	if (t == NULL)
-		return (FALSE);
-
-	/* rely on webkit to make sure we can go backward when on an about page */
-	uri = get_uri(t);
-	if (uri == NULL || g_str_has_prefix(uri, "about:"))
-		return (webkit_web_view_can_go_back(t->wv));
-
-	/* the back/forwars list is stupid so help determine if we can go back */
-	for (i = 0, item = webkit_web_back_forward_list_get_current_item(t->bfl);
-	    item != NULL;
-	    i--, item = webkit_web_back_forward_list_get_nth_item(t->bfl, i)) {
-		if (strcmp(webkit_web_history_item_get_uri(item), uri))
-			return (TRUE);
-	}
-
-	return (FALSE);
-}
-
-int
-can_go_forward_for_real(struct tab *t)
-{
-	int			i;
-	WebKitWebHistoryItem	*item;
-	const gchar		*uri;
-
-	if (t == NULL)
-		return (FALSE);
-
-	/* rely on webkit to make sure we can go forward when on an about page */
-	uri = get_uri(t);
-	if (uri == NULL || g_str_has_prefix(uri, "about:"))
-		return (webkit_web_view_can_go_forward(t->wv));
-
-	/* the back/forwars list is stupid so help selecting a different item */
-	for (i = 0, item = webkit_web_back_forward_list_get_current_item(t->bfl);
-	    item != NULL;
-	    i++, item = webkit_web_back_forward_list_get_nth_item(t->bfl, i)) {
-		if (strcmp(webkit_web_history_item_get_uri(item), uri))
-			return (TRUE);
-	}
-
-	return (FALSE);
-}
-
-void
-go_back_for_real(struct tab *t)
-{
-	int			i;
-	WebKitWebHistoryItem	*item;
-	const gchar		*uri;
-
-	if (t == NULL)
-		return;
-
-	uri = get_uri(t);
-	if (uri == NULL) {
-		webkit_web_view_go_back(t->wv);
-		return;
-	}
-	/* the back/forwars list is stupid so help selecting a different item */
-	for (i = 0, item = webkit_web_back_forward_list_get_current_item(t->bfl);
-	    item != NULL;
-	    i--, item = webkit_web_back_forward_list_get_nth_item(t->bfl, i)) {
-		if (strcmp(webkit_web_history_item_get_uri(item), uri)) {
-			webkit_web_view_go_to_back_forward_item(t->wv, item);
-			break;
-		}
-	}
-}
-
-void
-go_forward_for_real(struct tab *t)
-{
-	int			i;
-	WebKitWebHistoryItem	*item;
-	const gchar		*uri;
-
-	if (t == NULL)
-		return;
-
-	uri = get_uri(t);
-	if (uri == NULL) {
-		webkit_web_view_go_forward(t->wv);
-		return;
-	}
-	/* the back/forwars list is stupid so help selecting a different item */
-	for (i = 0, item = webkit_web_back_forward_list_get_current_item(t->bfl);
-	    item != NULL;
-	    i++, item = webkit_web_back_forward_list_get_nth_item(t->bfl, i)) {
-		if (strcmp(webkit_web_history_item_get_uri(item), uri)) {
-			webkit_web_view_go_to_back_forward_item(t->wv, item);
-			break;
-		}
-	}
-}
-
-int
 navaction(struct tab *t, struct karg *args)
 {
-	WebKitWebHistoryItem	*item;
 	WebKitWebFrame		*frame;
 
 	DNPRINTF(XT_D_NAV, "navaction: tab %d opcode %d\n",
@@ -2404,26 +2299,18 @@ navaction(struct tab *t, struct karg *args)
 
 	hide_oops(t);
 	set_normal_tab_meaning(t);
-	if (t->item) {
-		if (args->i == XT_NAV_BACK)
-			item = webkit_web_back_forward_list_get_current_item(t->bfl);
-		else
-			item = webkit_web_back_forward_list_get_forward_item(t->bfl);
-		if (item == NULL)
-			return (XT_CB_PASSTHROUGH);
-		webkit_web_view_go_to_back_forward_item(t->wv, item);
-		t->item = NULL;
-		return (XT_CB_PASSTHROUGH);
-	}
 
 	switch (args->i) {
 	case XT_NAV_BACK:
 		marks_clear(t);
-		go_back_for_real(t);
+		if (t->item)
+			webkit_web_view_go_to_back_forward_item(t->wv, t->item);
+		else
+			webkit_web_view_go_back(t->wv);
 		break;
 	case XT_NAV_FORWARD:
 		marks_clear(t);
-		go_forward_for_real(t);
+		webkit_web_view_go_forward(t->wv);
 		break;
 	case XT_NAV_RELOAD:
 		frame = webkit_web_view_get_main_frame(t->wv);
@@ -4009,7 +3896,7 @@ xt_icon_from_file(struct tab *t, char *uri)
 	GdkPixbuf		*pb;
 	char			*file;
 
-	if (g_str_has_prefix(uri, "file://"))
+	if (uri != NULL && g_str_has_prefix(uri, "file://"))
 		file = g_filename_from_uri(uri, NULL, NULL);
 	else
 		file = g_strdup(uri);
@@ -4059,7 +3946,7 @@ set_favicon_from_file(struct tab *t, char *uri)
 	if (t == NULL || uri == NULL)
 		return;
 
-	if (g_str_has_prefix(uri, "file://"))
+	if (uri != NULL && g_str_has_prefix(uri, "file://"))
 		file = g_filename_from_uri(uri, NULL, NULL);
 	else
 		file = g_strdup(uri);
@@ -4424,14 +4311,11 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		break;
 	}
 
-	if (t->item)
-		gtk_widget_set_sensitive(GTK_WIDGET(t->backward), TRUE);
-	else
-		gtk_widget_set_sensitive(GTK_WIDGET(t->backward),
-		    can_go_back_for_real(t));
+	gtk_widget_set_sensitive(GTK_WIDGET(t->backward),
+	    t->item || webkit_web_view_can_go_back(t->wv));
 
 	gtk_widget_set_sensitive(GTK_WIDGET(t->forward),
-	    can_go_forward_for_real(t));
+	    webkit_web_view_can_go_forward(t->wv));
 }
 
 void
@@ -4951,6 +4835,12 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 	    webkit_network_request_get_uri(request));
 
 	uri = (char *)webkit_network_request_get_uri(request);
+
+	/* clear t->item, except if we're switching to an about: page */
+	if (t->item && !g_str_has_prefix(uri, "xxxt://")) {
+		g_object_unref(t->item);
+		t->item = NULL;
+	}
 
 	if (!auto_load_images && t->load_images) {
 
@@ -7469,6 +7359,8 @@ delete_tab(struct tab *t)
 	}
 
 	g_object_unref(t->completion);
+	if (t->item)
+		g_object_unref(t->item);
 
 	gtk_widget_destroy(t->tab_elems.eventbox);
 	gtk_widget_destroy(t->vbox);

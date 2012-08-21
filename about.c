@@ -185,8 +185,13 @@ load_webkit_string(struct tab *t, const char *str, gchar *title)
 	int			i;
 
 	/* we set this to indicate we want to manually do navaction */
-	if (t->bfl)
+	if (t->bfl) {
+		if (t->item)
+			g_object_unref(t->item);
 		t->item = webkit_web_back_forward_list_get_current_item(t->bfl);
+		if (t->item)
+			g_object_ref(t->item);
+	}
 
 	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
 	if (title) {
