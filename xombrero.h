@@ -85,6 +85,8 @@ uint32_t	arc4random_uniform(uint32_t);
 #define USE_THREADS
 
 #ifdef USE_THREADS
+/* http://seclists.org/wireshark/2011/Jul/209 */
+#define _GCRYPT_IN_LIBGCRYPT 1
 #include <gcrypt.h>
 #include <pthread.h>
 
