@@ -4264,6 +4264,11 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		if ((uri = get_uri(t)) == NULL)
 			return;
 
+		/* autorun some js if enabled */
+		js_autorun(t);
+
+		input_autofocus(t);
+
 		if (!strncmp(uri, "http://", strlen("http://")) ||
 		    !strncmp(uri, "https://", strlen("https://")) ||
 		    !strncmp(uri, "file://", strlen("file://"))) {
@@ -4462,22 +4467,15 @@ done:
 }
 
 void
-webview_load_finished_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
+webview_progress_changed_cb(WebKitWebView *wv, GParamSpec *pspec, struct tab *t)
 {
-	/* autorun some js if enabled */
-	js_autorun(t);
+	gdouble			progress;
 
-	input_autofocus(t);
-
-}
-
-void
-webview_progress_changed_cb(WebKitWebView *wv, int progress, struct tab *t)
-{
+	progress = webkit_web_view_get_progress(wv);
 	gtk_entry_set_progress_fraction(GTK_ENTRY(t->sbe.uri),
-	    progress == 100 ? 0 : (double)progress / 100);
+	    progress == 1.0 ? 0 : progress);
 	gtk_entry_set_progress_fraction(GTK_ENTRY(t->uri_entry),
-	    progress == 100 ? 0 : (double)progress / 100);
+	    progress == 1.0 ? 0 : progress);
 
 	update_statusbar_position(NULL, NULL);
 }
@@ -7836,8 +7834,6 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	    "signal::create-web-view", G_CALLBACK(webview_cwv_cb), t,
 	    "signal::close-web-view", G_CALLBACK(webview_closewv_cb), t,
 	    "signal::event", G_CALLBACK(webview_event_cb), t,
-	    "signal::load-finished", G_CALLBACK(webview_load_finished_cb), t,
-	    "signal::load-progress-changed", G_CALLBACK(webview_progress_changed_cb), t,
 	    "signal::icon-loaded", G_CALLBACK(notify_icon_loaded_cb), t,
 	    "signal::button_press_event", G_CALLBACK(wv_button_cb), t,
 	    "signal::button_release_event", G_CALLBACK(wv_release_button_cb), t,
@@ -7847,6 +7843,8 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	    "notify::load-status", G_CALLBACK(notify_load_status_cb), t);
 	g_signal_connect(t->wv,
 	    "notify::title", G_CALLBACK(notify_title_cb), t);
+	t->progress_handle = g_signal_connect(t->wv,
+	    "notify::progress", G_CALLBACK(webview_progress_changed_cb), t);
 
 	/* hijack the unused keys as if we were the browser */
 	//g_object_connect(G_OBJECT(t->toolbar),

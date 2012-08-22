@@ -228,8 +228,8 @@ struct tab {
 	guint			tab_id;
 	WebKitWebView		*wv;
 
-	WebKitWebHistoryItem		*item;
-	WebKitWebBackForwardList	*bfl;
+	WebKitWebBackForwardList *bfl;
+	WebKitWebHistoryItem	*item;
 
 	/* favicon */
 	WebKitNetworkRequest	*icon_request;
@@ -294,6 +294,9 @@ struct tab {
 	WebKitDOMElement	*active;
 	char			*active_text;
 #endif
+
+	/* signal handles */
+	gulong			progress_handle;
 };
 TAILQ_HEAD(tab_list, tab);
 
@@ -373,6 +376,7 @@ RB_PROTOTYPE(http_accept_list, http_accept, entry, http_accept_rb_cmp);
 #define XT_RESERVED_CHARS	"$&+,/:;=?@ \"<>#%%{}|^~[]`"
 
 int			run_script(struct tab *, char *);
+void			js_autorun(struct tab *);
 void			xt_icon_from_file(struct tab *, char *);
 GtkWidget		*create_window(const gchar *);
 void			show_oops(struct tab *, const char *, ...);
@@ -388,6 +392,7 @@ void			set_status(struct tab *t, gchar *fmt, ...);
 
 void			load_webkit_string(struct tab *, const char *, gchar *);
 void			button_set_stockid(GtkWidget *, char *);
+void			webview_progress_changed_cb(WebKitWebView *, GParamSpec *, struct tab *);
 
 /* cookies */
 int			remove_cookie(int);

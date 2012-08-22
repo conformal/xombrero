@@ -184,6 +184,9 @@ load_webkit_string(struct tab *t, const char *str, gchar *title)
 	char			file[PATH_MAX];
 	int			i;
 
+	if (g_signal_handler_is_connected(t->wv, t->progress_handle))
+		g_signal_handler_disconnect(t->wv, t->progress_handle);
+
 	/* we set this to indicate we want to manually do navaction */
 	if (t->bfl) {
 		if (t->item)
@@ -217,6 +220,9 @@ load_webkit_string(struct tab *t, const char *str, gchar *title)
 		g_free(t->session_key);
 		t->session_key = NULL;
 	}
+
+	t->progress_handle = g_signal_connect(t->wv,
+	    "notify::progress", G_CALLBACK(webview_progress_changed_cb), t);
 }
 
 int
