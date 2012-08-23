@@ -4834,6 +4834,12 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 
 	uri = (char *)webkit_network_request_get_uri(request);
 
+	if (valid_url_type(uri)) {
+		show_oops(t, "Stopping attempt to load an invalid URI (possible"
+		    " bait and switch attack)");
+		return (TRUE);
+	}
+
 	/* clear t->item, except if we're switching to an about: page */
 	if (t->item && !g_str_has_prefix(uri, "xxxt://")) {
 		g_object_unref(t->item);
