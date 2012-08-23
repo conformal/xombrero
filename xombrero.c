@@ -7971,16 +7971,16 @@ menuitem_response(struct tab *t)
 }
 
 int
-destroy_menu(GtkWidget *w, GdkEventFocus *e, void *notused)
+destroy_menu(GtkMenuShell *m, void *notused)
 {
-	gtk_widget_destroy(w);
+	gtk_widget_destroy(GTK_WIDGET(m));
 	return (XT_CB_PASSTHROUGH);
 }
 
 gboolean
 arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 {
-	GtkWidget		*menu, *menu_items;
+	GtkWidget		*menu = NULL, *menu_items;
 	GdkEventButton		*bevent;
 	struct tab		**stabs = NULL;
 	int			i, num_tabs;
@@ -8002,7 +8002,7 @@ arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 			gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_items);
 			gtk_widget_show(menu_items);
 
-			g_signal_connect_swapped((menu_items),
+			g_signal_connect_swapped(menu_items,
 			    "activate", G_CALLBACK(menuitem_response),
 			    (gpointer)stabs[i]);
 		}
@@ -8012,7 +8012,7 @@ arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 		    bevent->button, bevent->time);
 
 		g_object_connect(G_OBJECT(menu),
-		    "signal::hide", G_CALLBACK(destroy_menu), NULL,
+		    "signal::selection-done", G_CALLBACK(destroy_menu), NULL,
 		    (char *)NULL);
 
 		return (TRUE /* eat event */);
