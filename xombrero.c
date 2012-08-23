@@ -4820,8 +4820,8 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 {
 	WebKitWebNavigationReason	reason;
 	struct user_agent		ua_find, *ua;
-	struct domain			*d = NULL;
 	char				*uri;
+	const char			*f;
 
 	if (t == NULL) {
 		show_oops(NULL, "webview_npd_cb invalid parameters");
@@ -4903,9 +4903,13 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 	reason = webkit_web_navigation_action_get_reason(na);
 	if (reason == WEBKIT_WEB_NAVIGATION_REASON_LINK_CLICKED) {
 		set_normal_tab_meaning(t);
-		if (enable_scripts == 0 && enable_cookie_whitelist == 1)
-			if (uri && (d = wl_find_uri(uri, &js_wl)) == NULL)
+		if (enable_scripts == 0 && enable_cookie_whitelist == 1) {
+			f = webkit_web_navigation_action_get_target_frame(na);
+			if (!g_strcmp0(f, "_blank"))
+				create_new_tab(uri, NULL, 1, -1);
+			else
 				load_uri(t, uri);
+		}
 		webkit_web_policy_decision_use(pd);
 		return (TRUE); /* we made the decision */
 	}
