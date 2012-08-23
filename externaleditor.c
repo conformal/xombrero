@@ -180,7 +180,7 @@ open_external_editor(struct tab *t, const char *contents,
 	}
 
 	nb = 0;
-	while (nb < strlen(contents)) {
+	while (contents && nb < strlen(contents)) {
 		if (strlen(contents) - nb > XT_EE_BUFSZ)
 			cnt = XT_EE_BUFSZ;
 		else
@@ -282,7 +282,8 @@ edit_src(struct tab *t, struct karg *args)
 	ext_args->data_src = ds;
 
 	/* Check every 100 ms if file has changed */
-	open_external_editor(t, contents->str, &edit_src_cb, ext_args);
+	open_external_editor(t, contents ? contents->str : "", &edit_src_cb,
+	    ext_args);
 	return (0);
 }
 
