@@ -1587,13 +1587,13 @@ keybinding_clearall(void)
 }
 
 int
-keybinding_add(char *cmd, char *key, int use_in_entry)
+keybinding_set(char *cmd, char *key, int use_in_entry)
 {
 	struct key_binding	*k;
 	guint			keyval, mask = 0;
 	int			i;
 
-	DNPRINTF(XT_D_KEYBINDING, "keybinding_add: %s %s\n", cmd, key);
+	DNPRINTF(XT_D_KEYBINDING, "keybinding_set: %s %s\n", cmd, key);
 
 	/* Keys which are to be used in entry have been prefixed with an
 	 * exclamation mark. */
@@ -1641,6 +1641,14 @@ keybinding_add(char *cmd, char *key, int use_in_entry)
 			break;
 		}
 
+	if (strcmp(cmd, "unbind") == 0) {
+		DNPRINTF(XT_D_KEYBINDING, "keybinding_set: just unbinding: %s\n",
+		    gdk_keyval_name(keyval));
+		printf("keybinding_set: just unbinding: %s\n",
+		    gdk_keyval_name(keyval));
+		return (0);
+	}
+
 	/* add keyname */
 	k = g_malloc0(sizeof *k);
 	k->cmd = g_strdup(cmd);
@@ -1648,12 +1656,12 @@ keybinding_add(char *cmd, char *key, int use_in_entry)
 	k->use_in_entry = use_in_entry;
 	k->key = keyval;
 
-	DNPRINTF(XT_D_KEYBINDING, "keybinding_add: %s 0x%x %d 0x%x\n",
+	DNPRINTF(XT_D_KEYBINDING, "keybinding_set: %s 0x%x %d 0x%x\n",
 	    k->cmd,
 	    k->mask,
 	    k->use_in_entry,
 	    k->key);
-	DNPRINTF(XT_D_KEYBINDING, "keybinding_add: adding: %s %s\n",
+	DNPRINTF(XT_D_KEYBINDING, "keybinding_set: adding: %s %s\n",
 	    k->cmd, gdk_keyval_name(keyval));
 
 	TAILQ_INSERT_HEAD(&kbl, k, entry);
@@ -1724,7 +1732,7 @@ add_kb(struct settings *s, char *entry)
 	*kb = '\0';
 	key = kb + 1;
 
-	return (keybinding_add(entry, key, key[0] == '!'));
+	return (keybinding_set(entry, key, key[0] == '!'));
 }
 
 int
