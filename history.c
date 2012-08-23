@@ -94,7 +94,7 @@ restore_global_history(void)
 {
 	char			file[PATH_MAX];
 	FILE			*f;
-	gchar			*uri, *title, *stime, *err = NULL;
+	gchar			*uri, *title = NULL, *stime = NULL, *err = NULL;
 	time_t			time;
 	struct tm		tm;
 	const char		delim[3] = {'\\', '\\', '\0'};
