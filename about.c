@@ -787,19 +787,22 @@ xtp_handle_ab(struct tab *t, uint8_t cmd, int arg, const char *query)
 void
 xtp_handle_fl(struct tab *t, uint8_t cmd, int arg, const char *query)
 {
+	struct karg		args = {0};
+
 	switch (cmd) {
 	case XT_XTP_FL_LIST:
 		/* nothing, just the below call to xtp_page_fl() */
 		break;
 	case XT_XTP_FL_REMOVE:
 		remove_favorite(t, arg);
+		args.i = XT_DELETE;
 		break;
 	default:
 		show_oops(t, "%s: invalid favorites command", __func__);
 		break;
 	};
 
-	xtp_page_fl(t, NULL);
+	xtp_page_fl(t, &args);
 }
 
 void
