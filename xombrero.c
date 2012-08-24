@@ -5837,6 +5837,7 @@ done:
  * without relying on calling internal GTK functions (which we
  * couldn't link to in Linux).
  */
+#if GTK_CHECK_VERSION(3, 0, 0)
 void
 fake_focus_in(GtkWidget *w)
 {
@@ -5849,6 +5850,7 @@ fake_focus_in(GtkWidget *w)
 	}
 	gtk_widget_send_focus_change(main_window, fevent);
 }
+#endif
 
 gboolean
 handle_keypress(struct tab *t, GdkEventKey *e, int entry)
