@@ -4836,6 +4836,7 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 	if (valid_url_type(uri)) {
 		show_oops(t, "Stopping attempt to load an invalid URI (possible"
 		    " bait and switch attack)");
+		webkit_web_policy_decision_ignore(pd);
 		return (TRUE);
 	}
 
@@ -4857,11 +4858,15 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 	}
 
 	/* If this is an xtp url, we don't load anything else. */
-	if (parse_xtp_url(t, uri))
+	if (parse_xtp_url(t, uri)) {
+		webkit_web_policy_decision_ignore(pd);
 		return (TRUE);
+	}
 
-	if (parse_custom_uri(t, uri))
+	if (parse_custom_uri(t, uri)) {
+		webkit_web_policy_decision_ignore(pd);
 		return (TRUE);
+	}
 
 	if ((t->mode == XT_MODE_HINT && t->new_tab) || t->ctrl_click) {
 		t->ctrl_click = 0;
