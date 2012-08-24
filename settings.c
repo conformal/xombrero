@@ -31,7 +31,6 @@ PangoFontDescription	*statusbar_font;
 PangoFontDescription	*tabbar_font;
 
 /* non-settings */
-int		tabless = 0;	/* allow only 1 tab */
 char		search_file[PATH_MAX];
 char		command_file[PATH_MAX];
 char		runtime_settings[PATH_MAX]; /* override of settings */
@@ -59,6 +58,7 @@ gint		max_host_connections = 5;
 int		history_autosave = 0;
 int		edit_mode = XT_EM_HYBRID;
 char		*include_config = NULL;
+int		tabless = 0;	/* allow only 1 tab */
 
 /* runtime settings */
 int		show_tabs = XT_DS_SHOW_TABS;	/* show tabs on notebook */
@@ -279,6 +279,7 @@ int		check_statusbar_elems(char **);
 int		check_statusbar_font(char **);
 int		check_statusbar_style(char **);
 int		check_tab_style(char **);
+int		check_tabless(char **);
 int		check_tabbar_font(char **);
 int		check_url_regex(char **);
 int		check_userstyle(char **);
@@ -559,6 +560,7 @@ struct settings		rs[] = {
 	{ "statusbar_style",		XT_S_STR, 0, NULL, NULL,&s_statusbar_style, NULL, set_statusbar_style_rt, check_statusbar_style, TT_STATUSBAR_STYLE },
 	{ "tab_style",			XT_S_STR, 0, NULL, NULL,&s_tab_style, NULL, set_tab_style_rt, check_tab_style, TT_TAB_STYLE },
 	{ "tabbar_font",		XT_S_STR, 0, NULL, &tabbar_font_name, NULL, NULL, set_tabbar_font, check_tabbar_font, TT_TABBAR_FONT },
+	{ "tabless",			XT_S_BOOL, 0,		&tabless, NULL, NULL, NULL, NULL, check_tabless, TT_TABLESS },
 	{ "url_regex",			XT_S_STR, 0, NULL,	&url_regex, NULL, NULL, set_url_regex, check_url_regex, TT_URL_REGEX },
 	{ "userstyle",			XT_S_STR, 0, NULL, NULL,&s_userstyle, NULL, set_userstyle_rt, check_userstyle, TT_USERSTYLE },
 	{ "userstyle_global",		XT_S_BOOL, 0,		&userstyle_global, NULL, NULL, NULL, set_userstyle_global, check_userstyle_global, TT_USERSTYLE_GLOBAL },
@@ -834,6 +836,13 @@ check_tabbar_font(char **tt)
 {
 	*tt = g_strdup_printf("Default: %s", XT_DS_TABBAR_FONT_NAME);
 	return (g_strcmp0(tabbar_font_name, XT_DS_TABBAR_FONT_NAME));
+}
+
+int
+check_tabless(char **tt)
+{
+	*tt = g_strdup_printf("Default: Disabled\n");
+	return (tabless != 0);
 }
 
 int
