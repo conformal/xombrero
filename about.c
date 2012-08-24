@@ -1295,7 +1295,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	}
 
 	/* body */
-	if (args->i & XT_DELETE)
+	if (args && args->i & XT_DELETE)
 		body = g_strdup_printf("<table style='table-layout:fixed'><tr>"
 		    "<th style='width: 40px'>&#35;</th><th>Link</th>"
 		    "<th style='width: 40px'>Rm</th></tr>\n");
@@ -1320,7 +1320,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 			}
 
 		tmp = body;
-		if (args->i & XT_DELETE)
+		if (args && args->i & XT_DELETE)
 			body = g_strdup_printf("%s<tr>"
 			    "<td>%d</td>"
 			    "<td><a href='%s'>%s</a></td>"
