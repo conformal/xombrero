@@ -3628,7 +3628,7 @@ get_css_name(const char *col_str)
 #endif
 
 void
-color_address_bar(gpointer p)
+check_certs(gpointer p)
 {
 	struct tab		*tt, *t = p;
 	gchar			*col_str = XT_COLOR_WHITE;
@@ -3737,6 +3737,9 @@ white:
 
 	if (error_str && error_str[0] != '\0')
 		show_oops(t, "%s", error_str);
+
+	check_cert_changes(t, u);
+
 #ifdef USE_THREADS
 	t->thread = NULL;
 #endif
@@ -3748,13 +3751,6 @@ done:
 	GDK_FLUSH();
 	gdk_threads_leave();
 #endif
-}
-
-void
-check_certs(gpointer p)
-{
-	color_address_bar((struct tab *)p);
-	check_cert_changes((struct tab *)p, get_uri((struct tab *)p));
 }
 
 void
