@@ -1342,6 +1342,13 @@ Because this setting rotates through Accept headers on each text/html
 request, a single page may rotate through more than one Accept header
 if multiple text/html requests are made.
 .Pp
+Please be aware that not all websites report browser headers correctly.
+Most notably, EFF's panopticlick service also reports the HTTP
+Accept-Encoding headers on the same line as the Accept headers.
+If you are trying to find the headers of another browser to model that
+browser's fingerprint, it is recommended to not use panopticlick for
+this reason.
+.Pp
 Note that this setting only rewrites the Accept header for text/html
 requests.  Other requests will use WebKit's default  Accept header.
 .It Cm http_proxy_starts_enabled
