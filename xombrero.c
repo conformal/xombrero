@@ -908,9 +908,9 @@ get_uri(struct tab *t)
 	if (webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED &&
 	    !t->download_requested)
 		return (NULL);
-	if (t->xtp_meaning == XT_XTP_TAB_MEANING_NORMAL) {
+	if (t->xtp_meaning == XT_XTP_TAB_MEANING_NORMAL)
 		uri = webkit_web_view_get_uri(t->wv);
-	} else {
+	else {
 		/* use tmp_uri to make sure it is g_freed */
 		if (t->tmp_uri)
 			g_free(t->tmp_uri);
@@ -918,7 +918,7 @@ get_uri(struct tab *t)
 		    about_list[t->xtp_meaning].name);
 		uri = t->tmp_uri;
 	}
-	return uri;
+	return (uri);
 }
 
 const gchar *
@@ -2299,12 +2299,16 @@ can_go_back_for_real(struct tab *t)
 	if (t == NULL)
 		return (FALSE);
 
+	if (t->item != NULL)
+		return (TRUE);
+
 	/* rely on webkit to make sure we can go backward when on an about page */
 	uri = get_uri(t);
-	if (uri == NULL || g_str_has_prefix(uri, "about:"))
+	if (uri == NULL || g_str_has_prefix(uri, "about:") ||
+	    g_str_has_prefix(uri, "xxxt://"))
 		return (webkit_web_view_can_go_back(t->wv));
 
-	/* the back/forwars list is stupid so help determine if we can go back */
+	/* the back/forward list is stupid so help determine if we can go back */
 	for (i = 0, item = webkit_web_back_forward_list_get_current_item(t->bfl);
 	    item != NULL;
 	    i--, item = webkit_web_back_forward_list_get_nth_item(t->bfl, i)) {
@@ -2327,7 +2331,8 @@ can_go_forward_for_real(struct tab *t)
 
 	/* rely on webkit to make sure we can go forward when on an about page */
 	uri = get_uri(t);
-	if (uri == NULL || g_str_has_prefix(uri, "about:"))
+	if (uri == NULL || g_str_has_prefix(uri, "about:") ||
+	    g_str_has_prefix(uri, "xxxt://"))
 		return (webkit_web_view_can_go_forward(t->wv));
 
 	/* the back/forwars list is stupid so help selecting a different item */
@@ -2396,7 +2401,7 @@ go_forward_for_real(struct tab *t)
 int
 navaction(struct tab *t, struct karg *args)
 {
-	WebKitWebHistoryItem	*item;
+	WebKitWebHistoryItem	*item = NULL;
 	WebKitWebFrame		*frame;
 
 	DNPRINTF(XT_D_NAV, "navaction: tab %d opcode %d\n",
@@ -2409,19 +2414,28 @@ navaction(struct tab *t, struct karg *args)
 			item = webkit_web_back_forward_list_get_current_item(t->bfl);
 		else
 			item = webkit_web_back_forward_list_get_forward_item(t->bfl);
-		if (item == NULL)
-			return (XT_CB_PASSTHROUGH);
-		webkit_web_view_go_to_back_forward_item(t->wv, item);
-		t->item = NULL;
-		return (XT_CB_PASSTHROUGH);
 	}
 
 	switch (args->i) {
 	case XT_NAV_BACK:
+		if (t->item) {
+			if (item == NULL)
+				return (XT_CB_PASSTHROUGH);
+			webkit_web_view_go_to_back_forward_item(t->wv, item);
+			t->item = NULL;
+			return (XT_CB_PASSTHROUGH);
+		}
 		marks_clear(t);
 		go_back_for_real(t);
 		break;
 	case XT_NAV_FORWARD:
+		if (t->item) {
+			if (item == NULL)
+				return (XT_CB_PASSTHROUGH);
+			webkit_web_view_go_to_back_forward_item(t->wv, item);
+			t->item = NULL;
+			return (XT_CB_PASSTHROUGH);
+		}
 		marks_clear(t);
 		go_forward_for_real(t);
 		break;
@@ -4330,6 +4344,13 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		}
 		set_status(t, "Loading: %s", (char *)uri);
 
+		/* clear t->item, except if we're switching to an about: page */
+		if (t->item && !g_str_has_prefix(uri, "xxxt://") &&
+		    !g_str_has_prefix(uri, "about:")) {
+			g_object_unref(t->item);
+			t->item = NULL;
+		}
+
 		/* check if js white listing is enabled */
 		if (enable_plugin_whitelist)
 			check_and_set_pl(uri, t);
@@ -4425,11 +4446,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		break;
 	}
 
-	if (t->item)
-		gtk_widget_set_sensitive(GTK_WIDGET(t->backward), TRUE);
-	else
-		gtk_widget_set_sensitive(GTK_WIDGET(t->backward),
-		    can_go_back_for_real(t));
+	gtk_widget_set_sensitive(GTK_WIDGET(t->backward),
+	    can_go_back_for_real(t));
 
 	gtk_widget_set_sensitive(GTK_WIDGET(t->forward),
 	    can_go_forward_for_real(t));
@@ -7474,6 +7492,8 @@ delete_tab(struct tab *t)
 	}
 
 	g_object_unref(t->completion);
+	if (t->item)
+		g_object_unref(t->item);
 
 	gtk_widget_destroy(t->tab_elems.eventbox);
 	gtk_widget_destroy(t->vbox);
