@@ -1351,9 +1351,9 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	if (i == 1) {
 		tmp = body;
 		body = g_strdup_printf("%s<tr>"
-		    "<td colspan='3' style='text-align: center'>"
+		    "<td colspan='%d' style='text-align: center'>"
 		    "No favorites - To add one use the 'favadd' command."
-		    "</td></tr>", body);
+		    "</td></tr>", body, args->i & XT_DELETE ? 3 : 2);
 		g_free(tmp);
 	}
 
