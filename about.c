@@ -179,7 +179,7 @@ get_html_page(gchar *title, gchar *body, gchar *head, bool addstyles)
  * Display a web page from a HTML string in memory, rather than from a URL
  */
 void
-load_webkit_string(struct tab *t, const char *str, gchar *title)
+load_webkit_string(struct tab *t, const char *str, gchar *title, int nohist)
 {
 	char			file[PATH_MAX];
 	int			i;
@@ -188,7 +188,7 @@ load_webkit_string(struct tab *t, const char *str, gchar *title)
 		g_signal_handler_disconnect(t->wv, t->progress_handle);
 
 	/* we set this to indicate we want to manually do navaction */
-	if (t->bfl) {
+	if (t->bfl && !nohist) {
 		t->item = webkit_web_back_forward_list_get_current_item(t->bfl);
 		if (t->item)
 			g_object_ref(t->item);
@@ -229,7 +229,7 @@ blank(struct tab *t, struct karg *args)
 	if (t == NULL)
 		show_oops(NULL, "blank invalid parameters");
 
-	load_webkit_string(t, "", XT_URI_ABOUT_BLANK);
+	load_webkit_string(t, "", XT_URI_ABOUT_BLANK, 0);
 
 	return (0);
 }
@@ -251,7 +251,7 @@ help(struct tab *t, struct karg *args)
 
 	page = get_html_page(XT_NAME, body, head, FALSE);
 
-	load_webkit_string(t, page, XT_URI_ABOUT_HELP);
+	load_webkit_string(t, page, XT_URI_ABOUT_HELP, 0);
 	g_free(page);
 
 	return (0);
@@ -296,7 +296,7 @@ stats(struct tab *t, struct karg *args)
 	page = get_html_page("Statistics", body, "", 0);
 	g_free(body);
 
-	load_webkit_string(t, page, XT_URI_ABOUT_STATS);
+	load_webkit_string(t, page, XT_URI_ABOUT_STATS, 0);
 	g_free(page);
 
 	return (0);
@@ -327,7 +327,7 @@ show_certs(struct tab *t, gnutls_x509_crt_t *certs,
 	tmp = get_html_page(title, body, "", 0);
 	g_free(body);
 
-	load_webkit_string(t, tmp, XT_URI_ABOUT_CERTS);
+	load_webkit_string(t, tmp, XT_URI_ABOUT_CERTS, 0);
 	g_free(tmp);
 }
 
@@ -1262,7 +1262,7 @@ xtp_page_ab(struct tab *t, struct karg *args)
 	page = get_html_page("About", body, "", 0);
 	g_free(body);
 
-	load_webkit_string(t, page, XT_URI_ABOUT_ABOUT);
+	load_webkit_string(t, page, XT_URI_ABOUT_ABOUT, 0);
 
 	g_free(page);
 
@@ -1369,7 +1369,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	/* render */
 	if (!failed) {
 		page = get_html_page("Favorites", body, "", 1);
-		load_webkit_string(t, page, XT_URI_ABOUT_FAVORITES);
+		load_webkit_string(t, page, XT_URI_ABOUT_FAVORITES, 0);
 		g_free(page);
 	}
 
@@ -1617,7 +1617,7 @@ xtp_page_cl(struct tab *t, struct karg *args)
 	g_free(table_headers);
 	g_free(last_domain);
 
-	load_webkit_string(t, page, XT_URI_ABOUT_COOKIEJAR);
+	load_webkit_string(t, page, XT_URI_ABOUT_COOKIEJAR, 0);
 	update_cookie_tabs(t);
 
 	g_free(page);
@@ -1688,7 +1688,7 @@ xtp_page_hl(struct tab *t, struct karg *args)
 	 */
 	update_history_tabs(t);
 
-	load_webkit_string(t, page, XT_URI_ABOUT_HISTORY);
+	load_webkit_string(t, page, XT_URI_ABOUT_HISTORY, 0);
 	g_free(page);
 
 	return (0);
@@ -1762,7 +1762,7 @@ xtp_page_dl(struct tab *t, struct karg *args)
 	 */
 	update_download_tabs(t);
 
-	load_webkit_string(t, page, XT_URI_ABOUT_DOWNLOADS);
+	load_webkit_string(t, page, XT_URI_ABOUT_DOWNLOADS, 0);
 	g_free(page);
 
 	return (0);
@@ -1814,7 +1814,7 @@ xtp_page_sl(struct tab *t, struct karg *args)
 	 */
 	update_search_tabs(t);
 
-	load_webkit_string(t, page, XT_URI_ABOUT_SEARCH);
+	load_webkit_string(t, page, XT_URI_ABOUT_SEARCH, 0);
 	g_free(page);
 
 	return (0);
@@ -1879,7 +1879,7 @@ xtp_page_sv(struct tab *t, struct karg *args)
 	page = get_html_page("Security Violation", body, "", 0);
 	g_free(body);
 
-	load_webkit_string(t, page, XT_URI_ABOUT_SECVIOLATION);
+	load_webkit_string(t, page, XT_URI_ABOUT_SECVIOLATION, 1);
 
 	g_free(page);
 	if (soupuri)
@@ -1908,7 +1908,7 @@ startpage(struct tab *t, struct karg *args)
 	page = get_html_page("Startup Exception", body, "", 0);
 	g_free(body);
 
-	load_webkit_string(t, page, XT_URI_ABOUT_STARTPAGE);
+	load_webkit_string(t, page, XT_URI_ABOUT_STARTPAGE, 0);
 	g_free(page);
 
 	return (0);
@@ -2147,7 +2147,7 @@ about_webkit(struct tab *t, struct karg *arg)
 	page = get_html_page("About Webkit", body, "", 0);
 	g_free(body);
 
-	load_webkit_string(t, page, XT_URI_ABOUT_WEBKIT);
+	load_webkit_string(t, page, XT_URI_ABOUT_WEBKIT, 0);
 	g_free(page);
 
 	return (0);
@@ -2193,7 +2193,7 @@ allthethings(struct tab *t, struct karg *arg)
 	page = get_html_page("About All The Things _o/", body, "", 0);
 	g_free(body);
 
-	load_webkit_string(t, page, XT_URI_ABOUT_ALLTHETHINGS);
+	load_webkit_string(t, page, XT_URI_ABOUT_ALLTHETHINGS, 0);
 	g_free(page);
 
 	return (0);

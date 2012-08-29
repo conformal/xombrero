@@ -2357,7 +2357,8 @@ go_back_for_real(struct tab *t)
 		return;
 
 	uri = get_uri(t);
-	if (uri == NULL) {
+	if (uri == NULL || g_str_has_prefix(uri, "about:") ||
+	    g_str_has_prefix(uri, "xxxt://")) {
 		webkit_web_view_go_back(t->wv);
 		return;
 	}
@@ -2383,7 +2384,8 @@ go_forward_for_real(struct tab *t)
 		return;
 
 	uri = get_uri(t);
-	if (uri == NULL) {
+	if (uri == NULL || g_str_has_prefix(uri, "about:") ||
+	    g_str_has_prefix(uri, "xxxt://")) {
 		webkit_web_view_go_forward(t->wv);
 		return;
 	}

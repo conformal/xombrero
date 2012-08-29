@@ -390,7 +390,7 @@ void			expand_tilde(char *, size_t, const char *);
 char			*html_escape(const char *val);
 void			set_status(struct tab *t, gchar *fmt, ...);
 
-void			load_webkit_string(struct tab *, const char *, gchar *);
+void			load_webkit_string(struct tab *, const char *, gchar *, int);
 void			button_set_stockid(GtkWidget *, char *);
 void			webview_progress_changed_cb(WebKitWebView *, GParamSpec *, struct tab *);
 

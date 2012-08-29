@@ -272,13 +272,13 @@ wl_show(struct tab *t, struct karg *args, char *title, struct domain_list *wl)
 	tmp = get_html_page(title, body, "", 0);
 	g_free(body);
 	if (wl == &js_wl)
-		load_webkit_string(t, tmp, XT_URI_ABOUT_JSWL);
+		load_webkit_string(t, tmp, XT_URI_ABOUT_JSWL, 0);
 	else if (wl == &c_wl)
-		load_webkit_string(t, tmp, XT_URI_ABOUT_COOKIEWL);
+		load_webkit_string(t, tmp, XT_URI_ABOUT_COOKIEWL, 0);
 	else if (wl == &pl_wl)
-		load_webkit_string(t, tmp, XT_URI_ABOUT_PLUGINWL);
+		load_webkit_string(t, tmp, XT_URI_ABOUT_PLUGINWL, 0);
 	else if (wl == &force_https)
-		load_webkit_string(t, tmp, XT_URI_ABOUT_HTTPS);
+		load_webkit_string(t, tmp, XT_URI_ABOUT_HTTPS, 0);
 	g_free(tmp);
 	return (0);
 }

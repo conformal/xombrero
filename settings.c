@@ -3774,7 +3774,7 @@ xtp_page_set(struct tab *t, struct karg *args)
 
 	g_free(body);
 
-	load_webkit_string(t, page, XT_URI_ABOUT_SET);
+	load_webkit_string(t, page, XT_URI_ABOUT_SET, 0);
 
 	g_free(page);
 
@@ -3830,7 +3830,7 @@ xtp_page_rt(struct tab *t, struct karg *args)
 
 	g_free(body);
 
-	load_webkit_string(t, page, XT_URI_ABOUT_RUNTIME);
+	load_webkit_string(t, page, XT_URI_ABOUT_RUNTIME, 0);
 
 	g_free(page);
 

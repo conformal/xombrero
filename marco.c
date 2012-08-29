@@ -63,7 +63,7 @@ marco(struct tab *t, struct karg *args)
 
 	page = get_html_page("Marco Sez...", line, "", 0);
 
-	load_webkit_string(t, page, XT_URI_ABOUT_MARCO);
+	load_webkit_string(t, page, XT_URI_ABOUT_MARCO, 0);
 	g_free(page);
 
 	return (0);
