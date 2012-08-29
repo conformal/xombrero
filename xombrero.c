@@ -7720,6 +7720,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	GtkWidget			*b, *bb;
 	WebKitWebHistoryItem		*item;
 	GList				*items;
+	char				*sv[3];
 #if !GTK_CHECK_VERSION(3, 0, 0)
 	GdkColor			color;
 #endif
@@ -7727,7 +7728,18 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
 	if (tabless && !TAILQ_EMPTY(&tabs)) {
-		DNPRINTF(XT_D_TAB, "create_new_tab: new tab rejected\n");
+		if (single_instance) {
+			DNPRINTF(XT_D_TAB,
+			    "create_new_tab: new tab rejected\n");
+			return (NULL);
+		}
+		sv[0] = start_argv[0];
+		sv[1] = title;
+		sv[2] = (char *)NULL;
+		if (!g_spawn_async(NULL, sv, NULL, G_SPAWN_SEARCH_PATH,
+		    NULL, NULL, NULL, NULL))
+			show_oops(NULL, "%s: could not spawn process",
+			    __func__);
 		return (NULL);
 	}
 
