@@ -766,6 +766,8 @@ match_alias(char *url_in)
 	if (a != NULL) {
 		DNPRINTF(XT_D_URL, "match_alias: matched alias %s\n",
 		    a->a_name);
+		if (arg == NULL)
+			arg = "";
 		enc_arg = soup_uri_encode(arg, XT_RESERVED_CHARS);
 		sv = g_strsplit(a->a_uri, "%s", 2);
 		if (arg != NULL)
