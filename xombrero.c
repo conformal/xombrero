@@ -4967,13 +4967,6 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 
 	uri = (char *)webkit_network_request_get_uri(request);
 
-	if (valid_url_type(uri)) {
-		show_oops(t, "Stopping attempt to load an invalid URI (possible"
-		    " bait and switch attack)");
-		webkit_web_policy_decision_ignore(pd);
-		return (TRUE);
-	}
-
 	if (!auto_load_images && t->load_images) {
 
 		/* Disable autoloading of images, now that we're done loading
@@ -4992,6 +4985,13 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 	}
 
 	if (parse_custom_uri(t, uri)) {
+		webkit_web_policy_decision_ignore(pd);
+		return (TRUE);
+	}
+
+	if (valid_url_type(uri)) {
+		show_oops(t, "Stopping attempt to load an invalid URI (possible"
+		    " bait and switch attack)");
 		webkit_web_policy_decision_ignore(pd);
 		return (TRUE);
 	}
