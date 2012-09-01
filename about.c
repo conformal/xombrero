@@ -1951,7 +1951,7 @@ xt_g_object_serialize(GValue *value, const gchar *tname, char *str, int recurse)
 		break;
 	case G_TYPE_CHAR:
 		valstr = g_strdup_printf("%c",
-#if GLIB_CHECK_VERSION(2, 30, 0)
+#if GLIB_CHECK_VERSION(2, 32, 0)
 		    g_value_get_schar(value));
 #else
 		    g_value_get_char(value));
