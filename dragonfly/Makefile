@@ -16,8 +16,7 @@ PREFIX?= /usr/local
 BINDIR?= $(PREFIX)/bin
 LIBDIR?= $(PREFIX)/lib
 MANDIR?= $(PREFIX)/man
-#SRCS= $(shell ls ../*.c)
-#SRCS+= dragonfly.c
+RESDIR?= $(PREFIX)/share/xombrero/
 
 CC= cc
 
