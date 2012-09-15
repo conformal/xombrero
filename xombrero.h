@@ -53,12 +53,18 @@ u_int32_t	arc4random_uniform(u_int32_t);
 #elif defined(__DragonFly__)
 #include <sys/param.h>
 #include <sys/un.h>
-#include <sys/param.h>
 #include <libutil.h>
 #include "dragonfly/util.h"
 #include <sys/tree.h>
 #include <X11/Xlib.h>
 #define LOGIN_NAME_MAX MAXLOGNAME
+#elif defined(__NetBSD__)
+#include <sys/param.h>
+#include <sys/un.h>
+#include "netbsd/util.h"
+#include <sys/tree.h>
+#include <X11/Xlib.h>
+#define LOGIN_NAME_MAX_MAXLOGNAME
 #elif defined(__OpenBSD__)
 #include <util.h>
 #include <sys/tree.h>
