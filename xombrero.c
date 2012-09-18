@@ -213,11 +213,11 @@ struct tab_list		tabs;
 struct history_list	hl;
 int			hl_purge_count = 0;
 struct session_list	sessions;
-struct domain_list	c_wl;
-struct domain_list	js_wl;
-struct domain_list	pl_wl;
-struct domain_list	force_https;
-struct domain_list	svil;
+struct wl_list		c_wl;
+struct wl_list		js_wl;
+struct wl_list		pl_wl;
+struct wl_list		force_https;
+struct wl_list		svil;
 struct strict_transport_tree	st_tree;
 struct undo_tailq	undos;
 struct keybinding_list	kbl;
@@ -686,13 +686,6 @@ history_rb_cmp(struct history *h1, struct history *h2)
 RB_GENERATE(history_list, history, entry, history_rb_cmp);
 
 int
-domain_rb_cmp(struct domain *d1, struct domain *d2)
-{
-	return (strcmp(d1->d, d2->d));
-}
-RB_GENERATE(domain_list, domain, entry, domain_rb_cmp);
-
-int
 download_rb_cmp(struct download *e1, struct download *e2)
 {
 	return (e1->id < e2->id ? -1 : e1->id > e2->id);
@@ -990,12 +983,12 @@ html_escape(const char *val)
 	return (s);
 }
 
-struct domain *
-wl_find_uri(const gchar *s, struct domain_list *wl)
+struct wl_entry *
+wl_find_uri(const gchar *s, struct wl_list *wl)
 {
 	int			i;
 	char			*ss;
-	struct domain		*r;
+	struct wl_entry		*w;
 
 	if (s == NULL || wl == NULL)
 		return (NULL);
@@ -1013,9 +1006,9 @@ wl_find_uri(const gchar *s, struct domain_list *wl)
 		if (s[i] == '/' || s[i] == ':' || s[i] == '\0') {
 			ss = g_strdup(s);
 			ss[i] = '\0';
-			r = wl_find(ss, wl);
+			w = wl_find(ss, wl);
 			g_free(ss);
-			return (r);
+			return (w);
 		}
 
 	return (NULL);
@@ -2161,7 +2154,7 @@ check_cert_changes(struct tab *t, const char *uri)
 {
 	SoupURI			*soupuri = NULL;
 	struct karg		args = {0};
-	struct domain		*d = NULL;
+	struct wl_entry		*w = NULL;
 	const char		*errstr = NULL;
 	struct karg		*argsp;
 
@@ -2182,7 +2175,7 @@ check_cert_changes(struct tab *t, const char *uri)
 		if ((soupuri = soup_uri_new(uri)) == NULL ||
 		    soupuri->host == NULL)
 			break;
-		if ((d = wl_find(soupuri->host, &svil)) != NULL)
+		if ((w = wl_find(soupuri->host, &svil)) != NULL)
 			break;
 		t->xtp_meaning = XT_XTP_TAB_MEANING_SV;
 		argsp = g_malloc0(sizeof(struct karg));
@@ -3669,13 +3662,13 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 void
 check_and_set_cookie(const gchar *uri, struct tab *t)
 {
-	struct domain		*d = NULL;
+	struct wl_entry		*w = NULL;
 	int			es = 0;
 
 	if (uri == NULL || t == NULL)
 		return;
 
-	if ((d = wl_find_uri(uri, &c_wl)) == NULL)
+	if ((w = wl_find_uri(uri, &c_wl)) == NULL)
 		es = 0;
 	else
 		es = 1;
@@ -3691,13 +3684,13 @@ check_and_set_cookie(const gchar *uri, struct tab *t)
 void
 check_and_set_js(const gchar *uri, struct tab *t)
 {
-	struct domain		*d = NULL;
+	struct wl_entry		*w = NULL;
 	int			es = 0;
 
 	if (uri == NULL || t == NULL)
 		return;
 
-	if ((d = wl_find_uri(uri, &js_wl)) == NULL)
+	if ((w = wl_find_uri(uri, &js_wl)) == NULL)
 		es = 0;
 	else
 		es = 1;
@@ -3718,13 +3711,13 @@ check_and_set_js(const gchar *uri, struct tab *t)
 void
 check_and_set_pl(const gchar *uri, struct tab *t)
 {
-	struct domain		*d = NULL;
+	struct wl_entry		*w = NULL;
 	int			es = 0;
 
 	if (uri == NULL || t == NULL)
 		return;
 
-	if ((d = wl_find_uri(uri, &pl_wl)) == NULL)
+	if ((w = wl_find_uri(uri, &pl_wl)) == NULL)
 		es = 0;
 	else
 		es = 1;
@@ -4833,12 +4826,12 @@ corrupt_file:
 int
 force_https_check(const char *uri)
 {
-	struct domain		*d = NULL;
+	struct wl_entry		*w = NULL;
 
 	if (uri == NULL)
 		return (0);
 
-	if ((d = wl_find_uri(uri, &force_https)) == NULL)
+	if ((w = wl_find_uri(uri, &force_https)) == NULL)
 		return (0);
 	else
 		return (1);
@@ -5107,7 +5100,7 @@ WebKitWebView *
 webview_cwv_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 {
 	struct tab		*tt;
-	struct domain		*d = NULL;
+	struct wl_entry		*w = NULL;
 	const gchar		*uri;
 	WebKitWebView		*webview = NULL;
 	int			x = 1;
@@ -5120,7 +5113,7 @@ webview_cwv_cb(WebKitWebView *wv, WebKitWebFrame *wf, struct tab *t)
 		webview = t->wv;
 	} else if (enable_scripts == 0 && enable_js_whitelist == 1) {
 		uri = webkit_web_view_get_uri(wv);
-		if (uri && (d = wl_find_uri(uri, &js_wl)) == NULL)
+		if (uri && (w = wl_find_uri(uri, &js_wl)) == NULL)
 			return (NULL);
 
 		if (t->ctrl_click) {
@@ -5145,13 +5138,13 @@ gboolean
 webview_closewv_cb(WebKitWebView *wv, struct tab *t)
 {
 	const gchar		*uri;
-	struct domain		*d = NULL;
+	struct wl_entry		*w = NULL;
 
 	DNPRINTF(XT_D_NAV, "webview_close_cb: %d\n", t->tab_id);
 
 	if (enable_scripts == 0 && enable_cookie_whitelist == 1) {
 		uri = webkit_web_view_get_uri(wv);
-		if (uri && (d = wl_find_uri(uri, &js_wl)) == NULL)
+		if (uri && (w = wl_find_uri(uri, &js_wl)) == NULL)
 			return (FALSE);
 
 		delete_tab(t);
@@ -8632,13 +8625,9 @@ main(int argc, char **argv)
 	strlcpy(named_session, XT_SAVED_TABS_FILE, sizeof named_session);
 
 	RB_INIT(&hl);
-	RB_INIT(&js_wl);
-	RB_INIT(&pl_wl);
-	RB_INIT(&force_https);
 	RB_INIT(&downloads);
 	RB_INIT(&st_tree);
 	RB_INIT(&svl);
-	RB_INIT(&svil);
 	RB_INIT(&ua_list);
 
 	TAILQ_INIT(&sessions);
@@ -8652,6 +8641,10 @@ main(int argc, char **argv)
 	TAILQ_INIT(&shl);
 	TAILQ_INIT(&cul);
 	TAILQ_INIT(&srl);
+	TAILQ_INIT(&js_wl);
+	TAILQ_INIT(&pl_wl);
+	TAILQ_INIT(&force_https);
+	TAILQ_INIT(&svil);
 
 #ifndef XT_RESOURCE_LIMITS_DISABLE
 	struct rlimit		rlp;

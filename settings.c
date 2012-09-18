@@ -1812,7 +1812,11 @@ walk_ua(struct settings *s,
 int
 add_force_https(struct settings *s, char *value)
 {
-	wl_add(value, &force_https, XT_WL_PERSISTENT);
+	if (g_str_has_prefix(value, "re:")) {
+		value = &value[3];
+		wl_add(value, &force_https, XT_WL_PERSISTENT | XT_WL_REGEX);
+	} else
+		wl_add(value, &force_https, XT_WL_PERSISTENT);
 	return (0);
 }
 
@@ -3404,60 +3408,60 @@ void
 walk_cookie_wl(struct settings *s,
     void (*cb)(struct settings *, char *, void *), void *cb_args)
 {
-	struct domain		*d;
+	struct wl_entry		*w;
 
 	if (s == NULL || cb == NULL) {
 		show_oops(NULL, "walk_cookie_wl invalid parameters");
 		return;
 	}
 
-	RB_FOREACH_REVERSE(d, domain_list, &c_wl)
-		cb(s, d->d, cb_args);
+	TAILQ_FOREACH_REVERSE(w, &c_wl, wl_list, entry)
+		cb(s, w->pat, cb_args);
 }
 
 void
 walk_js_wl(struct settings *s,
     void (*cb)(struct settings *, char *, void *), void *cb_args)
 {
-	struct domain		*d;
+	struct wl_entry		*w;
 
 	if (s == NULL || cb == NULL) {
 		show_oops(NULL, "walk_js_wl invalid parameters");
 		return;
 	}
 
-	RB_FOREACH_REVERSE(d, domain_list, &js_wl)
-		cb(s, d->d, cb_args);
+	TAILQ_FOREACH_REVERSE(w, &js_wl, wl_list, entry)
+		cb(s, w->pat, cb_args);
 }
 
 void
 walk_pl_wl(struct settings *s,
     void (*cb)(struct settings *, char *, void *), void *cb_args)
 {
-	struct domain		*d;
+	struct wl_entry		*w;
 
 	if (s == NULL || cb == NULL) {
 		show_oops(NULL, "walk_pl_wl invalid parameters");
 		return;
 	}
 
-	RB_FOREACH_REVERSE(d, domain_list, &pl_wl)
-		cb(s, d->d, cb_args);
+	TAILQ_FOREACH_REVERSE(w, &pl_wl, wl_list, entry)
+		cb(s, w->pat, cb_args);
 }
 
 void
 walk_force_https(struct settings *s,
     void (*cb)(struct settings *, char *, void *), void *cb_args)
 {
-	struct domain		*d;
+	struct wl_entry		*w;
 
 	if (s == NULL || cb == NULL) {
 		show_oops(NULL, "walk_force_https invalid parameters");
 		return;
 	}
 
-	RB_FOREACH_REVERSE(d, domain_list, &force_https)
-		cb(s, d->d, cb_args);
+	TAILQ_FOREACH_REVERSE(w, &force_https, wl_list, entry)
+		cb(s, w->pat, cb_args);
 }
 
 int

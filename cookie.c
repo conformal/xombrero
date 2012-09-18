@@ -122,7 +122,7 @@ soup_cookie_jar_delete_cookie(SoupCookieJar *jar, SoupCookie *c)
 void
 soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 {
-	struct domain		*d = NULL;
+	struct wl_entry		*w = NULL;
 	SoupCookie		*c;
 	FILE			*r_cookie_f;
 	char			*public_suffix;
@@ -152,7 +152,7 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 
 	if (public_suffix == NULL ||
 	    (enable_cookie_whitelist &&
-	    (d = wl_find(cookie->domain, &c_wl)) == NULL)) {
+	    (w = wl_find(cookie->domain, &c_wl)) == NULL)) {
 		blocked_cookies++;
 		DNPRINTF(XT_D_COOKIE,
 		    "soup_cookie_jar_add_cookie: reject %s\n",
@@ -188,7 +188,7 @@ soup_cookie_jar_add_cookie(SoupCookieJar *jar, SoupCookie *cookie)
 	}
 
 	/* see if we are white listed for persistence */
-	if ((d && d->handy) || (enable_cookie_whitelist == 0)) {
+	if ((w && w->handy) || (enable_cookie_whitelist == 0)) {
 		/* add to persistent jar */
 		c = soup_cookie_copy(cookie);
 		print_cookie("soup_cookie_jar_add_cookie p_cookiejar", c);

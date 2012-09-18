@@ -544,6 +544,7 @@ void			startpage_add(const char *, ...);
 #define XT_SAVE			(1<<10)
 #define XT_OPEN			(1<<11)
 #define XT_CACHE		(1<<12)
+#define XT_WL_REGEX		(1<<13)
 
 #define XT_WL_INVALID		(0)
 #define XT_WL_JAVASCRIPT	(1)
@@ -551,16 +552,16 @@ void			startpage_add(const char *, ...);
 #define XT_WL_PLUGIN		(3)
 #define XT_WL_HTTPS		(4)
 
-struct domain {
-	RB_ENTRY(domain)	entry;
-	gchar			*d;
+struct wl_entry {
+	regex_t			*re;
+	char			*pat;
 	int			handy; /* app use */
+	TAILQ_ENTRY(wl_entry)	entry;
 };
-RB_HEAD(domain_list, domain);
-RB_PROTOTYPE(domain_list, domain, entry, domain_rb_cmp);
+TAILQ_HEAD(wl_list, wl_entry);
 
 int			wl_show(struct tab *, struct karg *, char *,
-			    struct domain_list *);
+			    struct wl_list *);
 
 /* uri aliases */
 struct alias {
@@ -580,7 +581,7 @@ struct mime_type {
 };
 TAILQ_HEAD(mime_type_list, mime_type);
 
-struct domain *	wl_find(const gchar *, struct domain_list *);
+struct wl_entry * wl_find(const gchar *, struct wl_list *);
 int		wl_save(struct tab *, struct karg *, int);
 int		toggle_cwl(struct tab *, struct karg *);
 int		toggle_js(struct tab *, struct karg *);
@@ -843,7 +844,7 @@ void		focus_webview(struct tab *);
 int		is_g_object_setting(GObject *, char *);
 int		set_scrollbar_visibility(struct tab *, int);
 int		save_runtime_setting(const char *, const char *);
-void		wl_add(const char *, struct domain_list *, int);
+void		wl_add(const char *, struct wl_list *, int);
 
 #define		XT_DL_START	(0)
 #define		XT_DL_RESTART	(1)
@@ -959,11 +960,11 @@ extern int			hl_purge_count;
 extern struct download_list	downloads;
 extern struct tab_list		tabs;
 extern struct about_type	about_list[];
-extern struct domain_list	c_wl;
-extern struct domain_list	js_wl;
-extern struct domain_list	pl_wl;
-extern struct domain_list	force_https;
-extern struct domain_list	svil;
+extern struct wl_list		c_wl;
+extern struct wl_list		js_wl;
+extern struct wl_list		pl_wl;
+extern struct wl_list		force_https;
+extern struct wl_list		svil;
 extern struct strict_transport_tree	st_tree;
 extern struct alias_list	aliases;
 extern struct mime_type_list	mtl;

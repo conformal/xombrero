@@ -1110,10 +1110,25 @@ reject, reject all cookies.
 This is a cookie whitelist item.
 Use multiple times to add multiple entries.
 Valid entries are for example *.moo.com and the equivalent .moo.com.
+This matches both moo.com, as well as all subdomains.
 A fully qualified host is also valid and is for example www.moo.com or
 moo.com.
 Fully qualified hosts do not modify whitelist settings for any
 subdomains.
+.Pp
+Unix extended regular expressions may also be used to match any set of
+FQDNs.
+Regular expressions must begin with the prefix "re:".
+As an example, the regular expression equivalent to moo.com would be
+.Pa ^moo\.com$ ,
+and the equivalent to .moo.com would be
+.Pa ^(.*\.)*moo\.com$ .
+If using regular expressions for whitelist items, be careful to not
+accidentally match other domains;
+you will almost always want to add the ^ and $ characters to the
+beginning and end of the regex so that, for example,
+.Pa moo\.com
+would not match not-moo.com.
 .It Cm cookies_enabled
 Enable cookies.
 .It Cm ctrl_click_focus

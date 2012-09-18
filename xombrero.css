@@ -37,7 +37,8 @@ GtkSpinner {
 	-GtkWidget-line-width: 0;
 }
 
-:insensitive {
+.button :insensitive,
+GtkMenu :insensitive {
 	background-color: rgba(0,0,0,0); /* transparent */
 }
 

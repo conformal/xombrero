@@ -52,35 +52,22 @@ find_domain(const gchar *s, int flags)
 	return (ret);
 }
 
-struct domain *
-wl_find(const gchar *s, struct domain_list *wl)
+struct wl_entry *
+wl_find(const gchar *s, struct wl_list *wl)
 {
-	struct domain		*d = NULL, dfind;
-	int			i;
+	struct wl_entry		*w;
 
-	if (s == NULL || wl == NULL)
-		return (NULL);
-	if (strlen(s) < 2)
+	if (s == NULL || strlen(s) == 0 || wl == NULL)
 		return (NULL);
 
-	for (i = strlen(s) - 1; i >= 0; --i) {
-		if (i == 0 || (s[i] == '.')) {
-			dfind.d = (gchar *)&s[i];
-			d = RB_FIND(domain_list, wl, &dfind);
-			if (d)
-				goto done;
-			if (i == 0 && s[i] != '.') {
-				dfind.d = g_strdup_printf(".%s", s);
-				d = RB_FIND(domain_list, wl, &dfind);
-				g_free(dfind.d);
-				if (d)
-					goto done;
-			}
-		}
+	TAILQ_FOREACH(w, wl, entry) {
+		if (w->re == NULL)
+			continue;
+		if (!regexec(w->re, s, 0, 0, 0))
+			return (w);
 	}
 
-done:
-	return (d);
+	return (NULL);
 }
 
 int
@@ -92,7 +79,7 @@ wl_save(struct tab *t, struct karg *args, int list)
 	size_t			linelen;
 	const gchar		*uri;
 	struct karg		a;
-	struct domain		*d;
+	struct wl_entry		*w;
 	GSList			*cf;
 	SoupCookie		*ci, *c;
 
@@ -169,19 +156,19 @@ wl_save(struct tab *t, struct karg *args, int list)
 	a.i |= args->i;
 	switch (list) {
 	case XT_WL_JAVASCRIPT:
-		d = wl_find(dom, &js_wl);
-		if (!d) {
+		w = wl_find(dom, &js_wl);
+		if (w == NULL) {
 			settings_add("js_wl", dom);
-			d = wl_find(dom, &js_wl);
+			w = wl_find(dom, &js_wl);
 		}
 		toggle_js(t, &a);
 		break;
 
 	case XT_WL_COOKIE:
-		d = wl_find(dom, &c_wl);
-		if (!d) {
+		w = wl_find(dom, &c_wl);
+		if (w == NULL) {
 			settings_add("cookie_wl", dom);
-			d = wl_find(dom, &c_wl);
+			w = wl_find(dom, &c_wl);
 		}
 		toggle_cwl(t, &a);
 
@@ -199,26 +186,26 @@ wl_save(struct tab *t, struct karg *args, int list)
 		break;
 
 	case XT_WL_PLUGIN:
-		d = wl_find(dom, &pl_wl);
-		if (!d) {
+		w = wl_find(dom, &pl_wl);
+		if (w == NULL) {
 			settings_add("pl_wl", dom);
-			d = wl_find(dom, &pl_wl);
+			w = wl_find(dom, &pl_wl);
 		}
 		toggle_pl(t, &a);
 		break;
 	case XT_WL_HTTPS:
-		d = wl_find(dom, &force_https);
-		if (!d) {
+		w = wl_find(dom, &force_https);
+		if (w == NULL) {
 			settings_add("force_https", dom);
-			d = wl_find(dom, &force_https);
+			w = wl_find(dom, &force_https);
 		}
 		toggle_force_https(t, &a);
 		break;
 	default:
 		abort(); /* can't happen */
 	}
-	if (d)
-		d->handy = 1;
+	if (w != NULL)
+		w->handy = 1;
 
 done:
 	if (line)
@@ -234,9 +221,9 @@ done:
 }
 
 int
-wl_show(struct tab *t, struct karg *args, char *title, struct domain_list *wl)
+wl_show(struct tab *t, struct karg *args, char *title, struct wl_list *wl)
 {
-	struct domain		*d;
+	struct wl_entry		*w;
 	char			*tmp, *body;
 
 	body = g_strdup("");
@@ -246,11 +233,11 @@ wl_show(struct tab *t, struct karg *args, char *title, struct domain_list *wl)
 		tmp = body;
 		body = g_strdup_printf("%s<h2>Persistent</h2>", body);
 		g_free(tmp);
-		RB_FOREACH(d, domain_list, wl) {
-			if (d->handy == 0)
+		TAILQ_FOREACH(w, wl, entry) {
+			if (w->handy == 0)
 				continue;
 			tmp = body;
-			body = g_strdup_printf("%s%s<br/>", body, d->d);
+			body = g_strdup_printf("%s%s<br/>", body, w->pat);
 			g_free(tmp);
 		}
 	}
@@ -260,11 +247,11 @@ wl_show(struct tab *t, struct karg *args, char *title, struct domain_list *wl)
 		tmp = body;
 		body = g_strdup_printf("%s<h2>Session</h2>", body);
 		g_free(tmp);
-		RB_FOREACH(d, domain_list, wl) {
-			if (d->handy == 1)
+		TAILQ_FOREACH(w, wl, entry) {
+			if (w->handy == 1)
 				continue;
 			tmp = body;
-			body = g_strdup_printf("%s%s<br/>", body, d->d);
+			body = g_strdup_printf("%s%s<br/>", body, w->pat);
 			g_free(tmp);
 		}
 	}
@@ -284,73 +271,106 @@ wl_show(struct tab *t, struct karg *args, char *title, struct domain_list *wl)
 }
 
 void
-wl_add(const char *str, struct domain_list *wl, int flags)
+wl_add(const char *str, struct wl_list *wl, int flags)
 {
-	struct domain		*d;
-	int			add_dot = 0;
-	char			*p;
+	struct wl_entry		*w;
+	int			add_dot = 0, chopped = 0;
+	const char		*s = str;
+	char			*escstr, *p, *pat;
+	char			**sv;
 
 	if (str == NULL || wl == NULL || strlen(str) < 2)
 		return;
 
 	DNPRINTF(XT_D_COOKIE, "wl_add in: %s\n", str);
 
-	/* treat *.moo.com the same as .moo.com */
-	if (str[0] == '*' && str[1] == '.')
-		str = &str[1];
-	else if (str[0] != '.' && (flags & XT_WL_TOPLEVEL))
-		add_dot = 1;
-
 	/* slice off port number */
 	p = g_strrstr(str, ":");
 	if (p)
 		*p = '\0';
 
-	d = g_malloc(sizeof *d);
-	if (add_dot)
-		d->d = g_strdup_printf(".%s", str);
-	else
-		d->d = g_strdup(str);
-	d->handy = (flags & XT_WL_PERSISTENT) ? 1 : 0;
+	w = g_malloc(sizeof *w);
+	w->re = g_malloc(sizeof *w->re);
+	if (flags & XT_WL_REGEX) {
+		w->pat = g_strdup_printf("re:%s", str);
+		regcomp(w->re, str, REG_EXTENDED | REG_NOSUB);
+		DNPRINTF(XT_D_COOKIE, "wl_add: %s\n", str);
+	} else {
+		/* treat *.moo.com the same as .moo.com */
+		if (s[0] == '*' && s[1] == '.')
+			s = &s[1];
+		else if (s[0] != '.' && (flags & XT_WL_TOPLEVEL))
+			add_dot = 1;
 
-	if (RB_INSERT(domain_list, wl, d))
-		goto unwind;
+		if (s[0] == '.') {
+			s = &s[1];
+			chopped = 1;
+		}
+		sv = g_strsplit(s, ".", 0);
+		escstr = g_strjoinv("\\.", sv);
+		g_strfreev(sv);
 
-	DNPRINTF(XT_D_COOKIE, "wl_add: %s\n", d->d);
-	return;
-unwind:
-	if (d) {
-		if (d->d)
-			g_free(d->d);
-		g_free(d);
+		if (add_dot) {
+			w->pat = g_strdup_printf(".%s", str);
+			pat = g_strdup_printf("^(.*\\.)*%s$", escstr);
+			regcomp(w->re, pat, REG_EXTENDED | REG_NOSUB);
+		} else {
+			w->pat = g_strdup(str);
+			if (chopped)
+				pat = g_strdup_printf("^(.*\\.)*%s$", escstr);
+			else
+				pat = g_strdup_printf("^%s$", escstr);
+			regcomp(w->re, pat, REG_EXTENDED | REG_NOSUB);
+		}
+		DNPRINTF(XT_D_COOKIE, "wl_add: %s\n", pat);
+		g_free(escstr);
+		g_free(pat);
 	}
+
+	w->handy = (flags & XT_WL_PERSISTENT) ? 1 : 0;
+
+	TAILQ_INSERT_HEAD(wl, w, entry);
+
+	return;
 }
 
 int
 add_cookie_wl(struct settings *s, char *entry)
 {
-	wl_add(entry, &c_wl, XT_WL_PERSISTENT);
+	if (g_str_has_prefix(entry, "re:")) {
+		entry = &entry[3];
+		wl_add(entry, &c_wl, XT_WL_PERSISTENT | XT_WL_REGEX);
+	} else
+		wl_add(entry, &c_wl, XT_WL_PERSISTENT);
 	return (0);
 }
 
 int
 add_js_wl(struct settings *s, char *entry)
 {
-	wl_add(entry, &js_wl, XT_WL_PERSISTENT);
+	if (g_str_has_prefix(entry, "re:")) {
+		entry = &entry[3];
+		wl_add(entry, &js_wl, XT_WL_PERSISTENT | XT_WL_REGEX);
+	} else
+		wl_add(entry, &js_wl, XT_WL_PERSISTENT);
 	return (0);
 }
 
 int
 add_pl_wl(struct settings *s, char *entry)
 {
-	wl_add(entry, &pl_wl, XT_WL_PERSISTENT);
+	if (g_str_has_prefix(entry, "re:")) {
+		entry = &entry[3];
+		wl_add(entry, &pl_wl, XT_WL_PERSISTENT | XT_WL_REGEX);
+	} else
+		wl_add(entry, &pl_wl, XT_WL_PERSISTENT);
 	return (0);
 }
 
 int
 toggle_cwl(struct tab *t, struct karg *args)
 {
-	struct domain		*d;
+	struct wl_entry		*w;
 	const gchar		*uri;
 	char			*dom = NULL;
 	int			es;
@@ -366,9 +386,9 @@ toggle_cwl(struct tab *t, struct karg *args)
 		show_oops(t, "Can't toggle domain in cookie white list");
 		goto done;
 	}
-	d = wl_find(dom, &c_wl);
+	w = wl_find(dom, &c_wl);
 
-	if (d == NULL)
+	if (w == NULL)
 		es = 0;
 	else
 		es = 1;
@@ -386,8 +406,11 @@ toggle_cwl(struct tab *t, struct karg *args)
 		wl_add(dom, &c_wl, args->i);
 	} else {
 		/* disable cookies for domain */
-		if (d)
-			RB_REMOVE(domain_list, &c_wl, d);
+		if (w != NULL) {
+			TAILQ_REMOVE(&c_wl, w, entry);
+			g_free(w->re);
+			g_free(w->pat);
+		}
 	}
 
 	if (args->i & XT_WL_RELOAD)
@@ -403,7 +426,7 @@ toggle_js(struct tab *t, struct karg *args)
 {
 	int			es;
 	const gchar		*uri;
-	struct domain		*d;
+	struct wl_entry		*w;
 	char			*dom = NULL;
 
 	if (args == NULL)
@@ -434,9 +457,12 @@ toggle_js(struct tab *t, struct karg *args)
 		args->i |= !XT_WL_PERSISTENT;
 		wl_add(dom, &js_wl, args->i);
 	} else {
-		d = wl_find(dom, &js_wl);
-		if (d)
-			RB_REMOVE(domain_list, &js_wl, d);
+		w = wl_find(dom, &js_wl);
+		if (w != NULL) {
+			TAILQ_REMOVE(&js_wl, w, entry);
+			g_free(w->re);
+			g_free(w->pat);
+		}
 		button_set_stockid(t->js_toggle, GTK_STOCK_MEDIA_PAUSE);
 	}
 	g_object_set(G_OBJECT(t->settings),
@@ -458,7 +484,7 @@ toggle_pl(struct tab *t, struct karg *args)
 {
 	int			es;
 	const gchar		*uri;
-	struct domain		*d;
+	struct wl_entry		*w;
 	char			*dom = NULL;
 
 	if (args == NULL)
@@ -488,9 +514,12 @@ toggle_pl(struct tab *t, struct karg *args)
 		args->i |= !XT_WL_PERSISTENT;
 		wl_add(dom, &pl_wl, args->i);
 	} else {
-		d = wl_find(dom, &pl_wl);
-		if (d)
-			RB_REMOVE(domain_list, &pl_wl, d);
+		w = wl_find(dom, &pl_wl);
+		if (w != NULL) {
+			TAILQ_REMOVE(&pl_wl, w, entry);
+			g_free(w->re);
+			g_free(w->pat);
+		}
 	}
 	g_object_set(G_OBJECT(t->settings),
 	    "enable-plugins", es, (char *)NULL);
@@ -509,7 +538,7 @@ toggle_force_https(struct tab *t, struct karg *args)
 {
 	int			es;
 	const gchar		*uri;
-	struct domain		*d;
+	struct wl_entry		*w;
 	char			*dom = NULL;
 
 	if (args == NULL)
@@ -523,9 +552,9 @@ toggle_force_https(struct tab *t, struct karg *args)
 		show_oops(t, "Can't toggle domain in https force list");
 		goto done;
 	}
-	d = wl_find(dom, &force_https);
+	w = wl_find(dom, &force_https);
 
-	if (d == NULL)
+	if (w == NULL)
 		es = 0;
 	else
 		es = 1;
@@ -544,9 +573,12 @@ toggle_force_https(struct tab *t, struct karg *args)
 		args->i |= !XT_WL_PERSISTENT;
 		wl_add(dom, &force_https, args->i);
 	} else {
-		d = wl_find(dom, &force_https);
-		if (d)
-			RB_REMOVE(domain_list, &force_https, d);
+		w = wl_find(dom, &force_https);
+		if (w != NULL) {
+			TAILQ_REMOVE(&force_https, w, entry);
+			g_free(w->re);
+			g_free(w->pat);
+		}
 	}
 
 	if (args->i & XT_WL_RELOAD)
