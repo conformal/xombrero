@@ -1,0 +1,130 @@
+http_accept = */*
+http_accept = */*, dn/1683134290-eb652b95,text/vnd.wap.wml;q=0.6,ss/360x640,UC/50
+http_accept = */*, dn/2147582100-352110e0,text/vnd.wap.wml;q=0.6,ss/240x262,UC/69
+http_accept = */*, dn/2169016810-40682892,text/vnd.wap.wml;q=0.6,ss/360x306,UC/69
+http_accept = */*, dn/2169016810-40682892,text/vnd.wap.wml;q=0.6,ss/360x332,UC/69
+http_accept = -
+http_accept = application/atom+xml, application/rss+xml, application/rdf+xml, text/xml, text/plain, text/html, text/*, */*
+http_accept = application/javascript, */*;q=0.8
+http_accept = application/rdf+xml, text/rdf+n3, application/turtle, application/rdf+n3
+http_accept = application/rdf+xml; q=1.0, text/rdf+n3; q=0.9, application/rdf+turtle; q=0.5, application/x-turtle; q=0.6, application/turtle; q=0.5, text/turtle; q=0.7, application/xml; q=0.2, */*; q=0.1
+http_accept = application/rss+xml, application/xml, application/rdf+xml, text/xmltext/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+http_accept = application/vnd.wap.xhtml+xml
+http_accept = application/vnd.wap.xhtml+xml,application/xml,text/vnd.wap.wml,text/html,application/xhtml+xml,image/jpeg;q=0.5,image/png;q=0.5,image/gif;q=0.5,image/*;q=0.6,video/*,audio/*,*/*;q=0.6,plugin/1,alipay/un
+http_accept = application/vnd.youtube,*/*
+http_accept = application/x-ms-application, image/gif, application/xaml+xml, application/x-ms-xbap, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, application/vnd.ms-xpsdocument, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, application/vnd.xfdl; version=7.6.1.315, */*
+http_accept = application/x-ms-application, image/jpeg, application/xaml+xml, image/gif, image/pjpeg, application/x-ms-xbap, */*
+http_accept = application/x-ms-application, image/jpeg, application/xaml+xml, image/gif, image/pjpeg, application/x-ms-xbap, application/vnd.ms-excel, application/msword, application/vnd.ms-powerpoint, */*
+http_accept = application/x-ms-application, image/jpeg, application/xaml+xml, image/gif, image/pjpeg, application/x-ms-xbap, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, */*
+http_accept = application/x-ms-application, image/jpeg, application/xaml+xml, image/gif, image/pjpeg, application/x-ms-xbap, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, application/vnd.xfdl; version=7.6.1.315, */*
+http_accept = application/x-ms-application, image/jpeg, application/xaml+xml, image/gif, image/pjpeg, application/x-ms-xbap, application/x-esobi, */*
+http_accept = application/x-ms-application, image/jpeg, application/xaml+xml, image/gif, image/pjpeg, application/x-ms-xbap, application/x-shockwave-flash, */*
+http_accept = application/x-shockwave-flash, image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-ms-application, application/x-ms-xbap, application/vnd.ms-xpsdocument, application/xaml+xml, */*
+http_accept = application/x-shockwave-flash, image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, */*
+http_accept = application/x-shockwave-flash,text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,video/x-mng,image/png,image/jpeg,image/gif;q=0.2,text/css,*/*;q=0.1
+http_accept = application/xml,application/vnd.wap.xhtml+xml,application/xhtml+xml;profile='http://www.wapforum.org/xhtml',text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+http_accept = application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+http_accept = image/gif, image/jpeg, image/pjpeg, application/x-ms-application, application/vnd.ms-xpsdocument, application/xaml+xml, application/x-ms-xbap, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, application/x-ms-application, application/vnd.ms-xpsdocument, application/xaml+xml, application/x-ms-xbap, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, application/x-shockwave-flash, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, application/x-ms-application, application/vnd.ms-xpsdocument, application/xaml+xml, application/x-ms-xbap, application/x-shockwave-flash, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, application/x-ms-application, application/vnd.ms-xpsdocument, application/xaml+xml, application/x-ms-xbap, application/x-shockwave-flash, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, application/x-ms-application, application/x-ms-xbap, application/vnd.ms-xpsdocument, application/xaml+xml, application/x-shockwave-flash, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, application/x-shockwave-flash, application/x-ms-application, application/x-ms-xbap, application/vnd.ms-xpsdocument, application/xaml+xml, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-ms-application, application/x-ms-xbap, application/vnd.ms-xpsdocument, application/xaml+xml, application/msword, application/x-shockwave-flash, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-ms-application, application/x-ms-xbap, application/vnd.ms-xpsdocument, application/xaml+xml, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-shockwave-flash, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-shockwave-flash, application/msword, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/x-ms-application, application/x-ms-xbap, application/vnd.ms-xpsdocument, application/xaml+xml, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-shockwave-flash, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-shockwave-flash, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, application/x-ms-application, application/x-ms-xbap, application/vnd.ms-xpsdocument, application/xaml+xml, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-shockwave-flash, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, application/x-silverlight, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-shockwave-flash, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, application/xaml+xml, application/vnd.ms-xpsdocument, application/x-ms-xbap, application/x-ms-application, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-shockwave-flash, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, application/xaml+xml, application/x-ms-xbap, application/x-ms-application, application/vnd.ms-xpsdocument, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-shockwave-flash, application/x-ms-application, application/x-ms-xbap, application/vnd.ms-xpsdocument, application/xaml+xml, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-shockwave-flash, application/x-ms-application, application/x-ms-xbap, application/vnd.ms-xpsdocument, application/xaml+xml, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-shockwave-flash, application/x-ms-application, application/x-ms-xbap, application/vnd.ms-xpsdocument, application/xaml+xml, application/vnd.xfdl; version=7.6.1.123, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-shockwave-flash, application/x-ms-application, application/x-ms-xbap, application/vnd.ms-xpsdocument, application/xaml+xml, application/x-silverlight, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-shockwave-flash, application/xaml+xml, application/vnd.ms-xpsdocument, application/x-ms-xbap, application/x-ms-application, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-shockwave-flash, application/xaml+xml, application/vnd.ms-xpsdocument, application/x-ms-xbap, application/x-ms-application, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-shockwave-flash, application/xaml+xml, application/x-ms-xbap, application/x-ms-application, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, application/vnd.ms-xpsdocument, */*
+http_accept = image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/xaml+xml, application/vnd.ms-xpsdocument, application/x-ms-xbap, application/x-ms-application, application/x-shockwave-flash, */*
+http_accept = image/gif, image/x-bitmap, image/jpeg, image/pjpeg
+http_accept = image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, */*
+http_accept = image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, \x5C*/\x5C*
+http_accept = image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, application/x-shockwave-flash, application/x-ms-application, application/x-ms-xbap, application/vnd.ms-xpsdocument, application/xaml+xml, */*
+http_accept = image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/vnd.ms-excel, application/xaml+xml, application/vnd.ms-xpsdocument, application/x-ms-xbap, application/x-ms-application, application/vnd.ms-powerpoint, application/msword, */*
+http_accept = image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-ms-application, application/vnd.ms-xpsdocument, application/xaml+xml, application/x-ms-xbap, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, */*
+http_accept = image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-ms-application, application/vnd.ms-xpsdocument, application/xaml+xml, application/x-ms-xbap, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, application/x-shockwave-flash, */*
+http_accept = image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*
+http_accept = image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, application/msword, */*
+http_accept = image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, application/vnd.ms-excel, application/msword, */*
+http_accept = image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, application/vnd.xfdl; version=\x226.5.0\x22, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, application/x-ms-application, application/x-ms-xbap, application/vnd.ms-xpsdocument, application/xaml+xml, */*
+http_accept = image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, application/x-ms-application, application/x-ms-xbap, application/vnd.ms-xpsdocument, application/xaml+xml, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, */*
+http_accept = image/jpeg, application/x-ms-application, image/gif, application/xaml+xml, image/pjpeg, application/x-ms-xbap, */*
+http_accept = image/jpeg, application/x-ms-application, image/gif, application/xaml+xml, image/pjpeg, application/x-ms-xbap, application/msword, application/vnd.ms-excel, application/vnd.ms-powerpoint, */*
+http_accept = image/jpeg, application/x-ms-application, image/gif, application/xaml+xml, image/pjpeg, application/x-ms-xbap, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, */*
+http_accept = image/jpeg, application/x-ms-application, image/gif, application/xaml+xml, image/pjpeg, application/x-ms-xbap, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, application/x-shockwave-flash, */*
+http_accept = image/jpeg, application/x-ms-application, image/gif, application/xaml+xml, image/pjpeg, application/x-ms-xbap, application/x-shockwave-flash, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, */*
+http_accept = image/jpeg, image/gif, image/pjpeg, application/x-ms-application, application/xaml+xml, application/x-ms-xbap, */*
+http_accept = image/jpeg, image/gif, image/pjpeg, application/x-ms-application, application/xaml+xml, application/x-ms-xbap, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, */*
+http_accept = image/png, image/jpeg, video/x-mng, image/jp2, image/gif;q=0.5,*/*;q=0.1
+http_accept = image/png, image/svg+xml, image/*;q=0.8, */*;q=0.5
+http_accept = image/png,*/*;q=0.5
+http_accept = image/png,image/*
+http_accept = image/png,image/*;q=0.8,*/*;q=0.5
+http_accept = text/*
+http_accept = text/*, image/*
+http_accept = text/*,image/*,*/*;q=0.2
+http_accept = text/css
+http_accept = text/css,*/*;q=0.1
+http_accept = text/css,*/*;q=0.1, dn/1683134290-eb652b95,text/vnd.wap.wml;q=0.6,ss/360x640,UC/50
+http_accept = text/css,*/*;q=0.1, dn/2147582100-352110e0,text/vnd.wap.wml;q=0.6,ss/240x262,UC/69
+http_accept = text/css,*/*;q=0.1, dn/2169016810-40682892,text/vnd.wap.wml;q=0.6,ss/360x306,UC/69
+http_accept = text/css,*/*;q=0.1, dn/2169016810-40682892,text/vnd.wap.wml;q=0.6,ss/360x332,UC/69
+http_accept = text/css,application/vnd.youtube,*/*;q=0.1
+http_accept = text/css,text/html,text/xml,application/xhtml+xml,application/xml,image/svg+xml,*/*;q=0.1
+http_accept = text/html
+http_accept = text/html, */*
+http_accept = text/html, */*; q=0.01
+http_accept = text/html, application/xhtml+xml, */*
+http_accept = text/html, application/xml, image/vnd.wap.wbmp, image/png, image/jpeg, image/gif, image/bmp, application/vnd.wap.xhtml+xml, application/xhtml+xml, application/vnd.wap.multipart.mixed, multipart/mixed, application/vnd.oma.dd+xml, text/vnd.sun.j2me.app-descriptor, application/java-archive, application/vnd.youtube, */*
+http_accept = text/html, application/xml;q=0.9, application/xhtml+xml, image/png, image/jpeg, image/gif, image/x-xbitmap, */*;q=0.1
+http_accept = text/html, application/xml;q=0.9, application/xhtml+xml, image/png, image/webp, image/jpeg, image/gif, image/x-xbitmap, */*;q=0.1
+http_accept = text/html, application/xml;q=0.9, application/xhtml+xml, multipart/mixed, image/png, image/webp, image/jpeg, image/gif, image/x-xbitmap, */*;q=0.1
+http_accept = text/html, html/xml, application/rdf+xml;q=0.9, text/rdf+n3;q=0.9, application/turtle;q=0.9, application/rdf+n3;q=0.9, */*;q=0.8
+http_accept = text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2
+http_accept = text/html, image/jpeg, image/png, text/*, image/*, */*
+http_accept = text/html, image/jpeg;q=0.9, image/png;q=0.9, text/*;q=0.9, image/*;q=0.9, */*;q=0.8
+http_accept = text/html, text/*
+http_accept = text/html, text/*, application/*
+http_accept = text/html, text/*;q=0.5, image/*
+http_accept = text/html, text/*;q=0.5, image/*, application/*, video/*, audio/*, zz-application/*, message/*
+http_accept = text/html, text/*;q=0.9, image/jpeg;q=0.9, image/png;q=0.9, image/*;q=0.9, */*;q=0.8
+http_accept = text/html, text/plain, text/css, text/sgml, */*;q=0.01
+http_accept = text/html,application/msword,application/rtf,application/pdf,application/vnd.ms-powerpoint,application/vnd.ms-excel,application/octet-stream
+http_accept = text/html,application/msword,application/rtf,application/pdf,application/vnd:ms-powerpoint,application/vnd:ms-excel
+http_accept = text/html,application/xhtml+xml,application/xml,*/*;q=0.5
+http_accept = text/html,application/xhtml+xml,application/xml,application/json;q=0.9,*/*;q=0.8
+http_accept = text/html,application/xhtml+xml,application/xml;q=0.9
+http_accept = text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+http_accept = text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8, dn/1683134290-eb652b95,text/vnd.wap.wml;q=0.6,ss/360x640,UC/50
+http_accept = text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8, dn/2147582100-352110e0,text/vnd.wap.wml;q=0.6,ss/240x262,UC/69
+http_accept = text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8, dn/2169016810-40682892,text/vnd.wap.wml;q=0.6,ss/360x306,UC/69
+http_accept = text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8, dn/2169016810-40682892,text/vnd.wap.wml;q=0.6,ss/360x332,UC/69
+http_accept = text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8,application/json
+http_accept = text/html,application/xhtml+xml;q=0.9,*/*;q=0.5
+http_accept = text/html,application/xhtml+xml;q=0.9,*/*;q=0.8
+http_accept = text/html,application/xml,*/*
+http_accept = text/html,application/xml,image/vnd.wap.wbmp,image/png,image/jpeg, image/gif,image/bmp,application/vnd.wap.xhtml+xml,application/xhtml+xml,application/vnd.wap.multipart.mixed, multipart/mixed, application/vnd.oma.dd+xml,text/vnd.sun.j2me.app-descriptor,application/java-archive,application/vnd.youtube,*/*
+http_accept = text/html,application/xml;q=0.9,*/*;q=0.7
+http_accept = text/html,application/xml;q=0.9,*/*;q=0.8
+http_accept = text/html,application/xml;q=0.9,application/xhtml+xml,text/xml;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+http_accept = text/html,text/css,multipart/mixed,application/java-archive, application/java, application/x-java-archive, text/vnd.sun.j2me.app-descriptor, application/vnd.oma.drm.message, application/vnd.oma.drm.content, application/vnd.oma.dd+xml, application/vnd.oma.drm.rights+xml, application/vnd.oma.drm.rights+wbxml, application/x-nokia-widget, */*
+http_accept = text/html,text/xml,application/xml,application/rss+xml,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+http_accept = text/html,text/xml,application/xml,application/xhtml+xml;q=0.9,text/plain;q=0.8,*/*;q=0.5
+http_accept = text/html;q=0.8, */*;q=0.5
+http_accept = text/plain
+http_accept = text/plain, text/html, html/xml, */*
+http_accept = text/plain,text/html
+http_accept = text/xml, text/html, application/xhtml+xml, image/png, text/plain, */*;q=0.8
+http_accept = text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+http_accept = text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,video/x-mng,image/png,image/jpeg,image/gif;q=0.2,text/css,*/*;q=0.1
