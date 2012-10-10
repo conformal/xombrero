@@ -50,14 +50,13 @@ char		*resource_dir = NULL;
 char		download_dir[PATH_MAX];
 int		allow_volatile_cookies = 0;
 int		save_global_history = 0; /* save global history to disk */
-struct user_agent	*user_agent = NULL;
-struct http_accept	*http_accept = NULL;
 int		save_rejected_cookies = 0;
 gint		max_connections = 25;
 gint		max_host_connections = 5;
 int		history_autosave = 0;
 int		edit_mode = XT_EM_HYBRID;
 char		*include_config = NULL;
+int		anonymize_headers = 0;
 int		tabless = 0;	/* allow only 1 tab */
 
 /* runtime settings */
@@ -216,6 +215,7 @@ int		set_gnutls_priority_string(struct settings *, char *);
 int		check_allow_insecure_content(char **);
 int		check_allow_insecure_scripts(char **);
 int		check_allow_volatile_cookies(char **);
+int		check_anonymize_headers(char **);
 int		check_append_next(char **);
 int		check_auto_load_images(char **);
 int		check_autofocus_onload(char **);
@@ -492,14 +492,15 @@ struct special		s_gnutls_priority_string = {
 struct settings		rs[] = {
 	{ "allow_insecure_content",	XT_S_BOOL, 0,		&allow_insecure_content, NULL, NULL, NULL, set_allow_insecure_content, check_allow_insecure_content, TT_ALLOW_INSECURE_CONTENT },
 	{ "allow_insecure_scripts",	XT_S_BOOL, 0,		&allow_insecure_scripts, NULL, NULL, NULL, set_allow_insecure_scripts, check_allow_insecure_scripts, TT_ALLOW_INSECURE_SCRIPTS},
-	{ "allow_volatile_cookies",	XT_S_BOOL, 0,		&allow_volatile_cookies, NULL, NULL, NULL, NULL, check_allow_volatile_cookies, TT_ALLOW_VOLATILE_COOKIES},
-	{ "append_next",		XT_S_BOOL, 0,		&append_next, NULL, NULL, NULL, set_append_next, check_append_next, TT_APPEND_NEXT},
+	{ "allow_volatile_cookies",	XT_S_BOOL, 0,		&allow_volatile_cookies, NULL, NULL, NULL, NULL, check_allow_volatile_cookies, TT_ALLOW_VOLATILE_COOKIES },
+	{ "anonymize_headers",		XT_S_BOOL, 0,		&anonymize_headers, NULL, NULL, NULL, NULL, check_anonymize_headers, TT_ANONYMIZE_HEADERS },
+	{ "append_next",		XT_S_BOOL, 0,		&append_next, NULL, NULL, NULL, set_append_next, check_append_next, TT_APPEND_NEXT },
 	{ "auto_load_images",		XT_S_BOOL, 0,		&auto_load_images, NULL, NULL, NULL, set_auto_load_images, check_auto_load_images, TT_AUTO_LOAD_IMAGES },
 	{ "autofocus_onload",		XT_S_BOOL, 0,		&autofocus_onload, NULL, NULL, NULL, set_autofocus_onload, check_autofocus_onload, TT_AUTOFOCUS_ONLOAD },
 	{ "browser_mode",		XT_S_STR, 0, NULL, NULL,&s_browser_mode, NULL, NULL, check_browser_mode, TT_BROWSER_MODE },
-	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL, NULL, set_cmd_font, check_cmd_font, TT_CMD_FONT},
+	{ "cmd_font",			XT_S_STR, 0, NULL, &cmd_font_name, NULL, NULL, set_cmd_font, check_cmd_font, TT_CMD_FONT },
 	{ "color_visited_uris",		XT_S_BOOL, 0,		&color_visited_uris , NULL, NULL, NULL, set_color_visited_uris, check_color_visited_uris, TT_COLOR_VISITED_URIS },
-	{ "cookie_policy",		XT_S_STR, 0, NULL, NULL,&s_cookie, NULL, set_cookie_policy_rt, check_cookie_policy, TT_COOKIE_POLICY},
+	{ "cookie_policy",		XT_S_STR, 0, NULL, NULL,&s_cookie, NULL, set_cookie_policy_rt, check_cookie_policy, TT_COOKIE_POLICY },
 	{ "cookies_enabled",		XT_S_BOOL, 0,		&cookies_enabled, NULL, NULL, NULL, set_cookies_enabled, check_cookies_enabled, TT_COOKIES_ENABLED },
 	{ "ctrl_click_focus",		XT_S_BOOL, 0,		&ctrl_click_focus, NULL, NULL, NULL, set_ctrl_click_focus, check_ctrl_click_focus, TT_CTRL_CLICK_FOCUS },
 	{ "default_script",		XT_S_STR, 1, NULL, NULL,&s_default_script, NULL, set_default_script_rt, check_default_script, TT_DEFAULT_SCRIPT },
@@ -975,6 +976,13 @@ check_allow_volatile_cookies(char **tt)
 {
 	*tt = g_strdup("Default: Disabled");
 	return (allow_volatile_cookies != 0);
+}
+
+int
+check_anonymize_headers(char **tt)
+{
+	*tt = g_strdup("Default: Disabled");
+	return (anonymize_headers != 0);
 }
 
 int

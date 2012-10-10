@@ -224,6 +224,7 @@ struct keybinding_list	kbl;
 struct sp_list		spl;
 struct user_agent_list	ua_list;
 struct http_accept_list	ha_list;
+struct domain_id_list	di_list;
 struct cmd_alias_list	cal;
 struct custom_uri_list	cul;
 struct command_list	chl;
@@ -712,6 +713,13 @@ http_accept_rb_cmp(struct http_accept *ha1, struct http_accept *ha2)
 	return (ha1->id < ha2->id ? -1 : ha1->id > ha2->id);
 }
 RB_GENERATE(http_accept_list, http_accept, entry, http_accept_rb_cmp);
+
+int
+domain_id_rb_cmp(struct domain_id *d1, struct domain_id *d2)
+{
+	return (strcmp(d1->domain, d2->domain));
+}
+RB_GENERATE(domain_id_list, domain_id, entry, domain_id_rb_cmp);
 
 struct valid_url_types {
 	char		*type;
@@ -4946,7 +4954,6 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
     WebKitWebPolicyDecision *pd, struct tab *t)
 {
 	WebKitWebNavigationReason	reason;
-	struct user_agent		ua_find, *ua;
 	char				*uri;
 
 	if (t == NULL) {
@@ -4996,30 +5003,6 @@ webview_npd_cb(WebKitWebView *wv, WebKitWebFrame *wf,
 		return (TRUE); /* we made the decission */
 	}
 
-	/* Change user agent if more than one has been given. */
-	if (!RB_EMPTY(&ua_list)) {
-		ua_find.id = t->user_agent_id;
-
-		if ((ua = RB_FIND(user_agent_list, &ua_list, &ua_find)) == NULL) {
-			ua_find.id = 0;
-			t->user_agent_id = 1;
-			user_agent = RB_FIND(user_agent_list, &ua_list, &ua_find);
-		} else {
-			++t->user_agent_id;
-			user_agent = ua;
-		}
-
-		g_free(t->user_agent);
-		t->user_agent = g_strdup(user_agent->value);
-
-		DNPRINTF(XT_D_NAV, "user-agent: %s\n", t->user_agent);
-
-		g_object_set(G_OBJECT(t->settings),
-			"user-agent", t->user_agent, (char *)NULL);
-
-		webkit_web_view_set_settings(wv, t->settings);
-	}
-
 	/*
 	 * This is a little hairy but it comes down to this:
 	 * when we run in whitelist mode we have to assist the browser in
@@ -5045,7 +5028,8 @@ webview_rrs_cb(WebKitWebView *wv, WebKitWebFrame *wf, WebKitWebResource *res,
 	SoupMessage		*msg = NULL;
 	SoupURI			*uri = NULL;
 	struct http_accept	ha_find, *ha = NULL;
-	const char		*accept = NULL;
+	struct user_agent	ua_find, *ua = NULL;
+	struct domain_id	di_find, *di = NULL;
 	char			*uri_s = NULL;
 
 	msg = webkit_network_request_get_message(request);
@@ -5068,29 +5052,45 @@ webview_rrs_cb(WebKitWebView *wv, WebKitWebFrame *wf, WebKitWebResource *res,
 	if (do_not_track)
 		soup_message_headers_append(msg->request_headers, "DNT", "1");
 
-	/* Round-robin through HTTP Accept headers if any have been set */
-	if (!RB_EMPTY(&ha_list)) {
-		accept = soup_message_headers_get_list(msg->request_headers,
-		    "Accept");
-		if (accept == NULL ||
-		    strncmp(accept, "text/html", strlen("text/html")))
-			goto done;
+	/*
+	 * Check if resources on this domain have been loaded before.  If
+	 * not, add the current tab's http-accept and user-agent id's to a
+	 * new domain_id and insert into the RB tree.  Use these http headers
+	 * for all resources loaded from this domain for the lifetime of the
+	 * browser.
+	 */
+	if ((di_find.domain = uri->host) == NULL)
+		goto done;
+	if ((di = RB_FIND(domain_id_list, &di_list, &di_find)) == NULL) {
+		di = g_malloc(sizeof *di);
+		di->domain = g_strdup(uri->host);
+		di->ua_id = t->user_agent_id++;
+		di->ha_id = t->http_accept_id++;
+		RB_INSERT(domain_id_list, &di_list, di);
+
+		ua_find.id = t->user_agent_id;
+		ua = RB_FIND(user_agent_list, &ua_list, &ua_find);
+		if (ua == NULL)
+			t->user_agent_id = 0;
 
 		ha_find.id = t->http_accept_id;
 		ha = RB_FIND(http_accept_list, &ha_list, &ha_find);
-		if (ha == NULL) {
-			ha_find.id = 0;
-			t->http_accept_id = 1;
-			http_accept = RB_FIND(http_accept_list, &ha_list,
-			    &ha_find);
-		} else {
-			++t->http_accept_id;
-			http_accept = ha;
-		}
-
-		soup_message_headers_replace(msg->request_headers, "Accept",
-		    http_accept->value);
+		if (ha == NULL)
+			t->http_accept_id = 0;
 	}
+
+	ua_find.id = di->ua_id;
+	ua = RB_FIND(user_agent_list, &ua_list, &ua_find);
+	ha_find.id = di->ha_id;
+	ha = RB_FIND(http_accept_list, &ha_list, &ha_find);
+
+	if (ua != NULL)
+		soup_message_headers_replace(msg->request_headers,
+		    "User-Agent", ua->value);
+	if (ha != NULL)
+		soup_message_headers_replace(msg->request_headers,
+		    "Accept", ha->value);
+
 done:
 	if (uri_s)
 		g_free(uri_s);
@@ -6999,8 +6999,6 @@ setup_webkit(struct tab *t)
 	else
 		warnx("webkit does not have \"enable-dns-prefetching\" property");
 	g_object_set(G_OBJECT(t->settings),
-	    "user-agent", t->user_agent, (char *)NULL);
-	g_object_set(G_OBJECT(t->settings),
 	    "enable-scripts", enable_scripts, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
 	    "enable-plugins", enable_plugins, (char *)NULL);
@@ -7094,7 +7092,6 @@ GtkWidget *
 create_browser(struct tab *t)
 {
 	GtkWidget		*w;
-	gchar			*strval;
 	GtkAdjustment		*adjustment;
 
 	if (t == NULL) {
@@ -7121,14 +7118,6 @@ create_browser(struct tab *t)
 	t->settings = webkit_web_settings_new();
 
 	g_object_set(t->settings, "default-encoding", encoding, (char *)NULL);
-
-	if (user_agent == NULL) {
-		g_object_get(G_OBJECT(t->settings), "user-agent", &strval,
-		    (char *)NULL);
-		t->user_agent = g_strdup_printf("%s %s+", strval, version);
-		g_free(strval);
-	} else
-		t->user_agent = g_strdup(user_agent->value);
 
 	t->stylesheet = g_strdup(stylesheet);
 	t->load_images = auto_load_images;
@@ -7495,7 +7484,6 @@ delete_tab(struct tab *t)
 	gtk_widget_destroy(t->tab_elems.eventbox);
 	gtk_widget_destroy(t->vbox);
 
-	g_free(t->user_agent);
 	g_free(t->stylesheet);
 	g_free(t->tmp_uri);
 	g_free(t->status);
@@ -8629,6 +8617,8 @@ main(int argc, char **argv)
 	RB_INIT(&st_tree);
 	RB_INIT(&svl);
 	RB_INIT(&ua_list);
+	RB_INIT(&ha_list);
+	RB_INIT(&di_list);
 
 	TAILQ_INIT(&sessions);
 	TAILQ_INIT(&tabs);
@@ -8760,6 +8750,16 @@ main(int argc, char **argv)
 	if (preload_strict_transport) {
 		snprintf(conf, sizeof conf, "%s" PS "%s",
 		    resource_dir, XT_HSTS_PRELOAD_FILE);
+		config_parse(conf, 0);
+	}
+
+	/* check whether to read in a crapton of additional http headers */
+	if (anonymize_headers) {
+		snprintf(conf, sizeof conf, "%s" PS "%s",
+		    resource_dir, XT_USER_AGENT_FILE);
+		config_parse(conf, 0);
+		snprintf(conf, sizeof conf, "%s" PS "%s",
+		    resource_dir, XT_HTTP_ACCEPT_FILE);
 		config_parse(conf, 0);
 	}
 

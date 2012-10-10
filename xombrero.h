@@ -291,7 +291,6 @@ struct tab {
 
 	/* settings */
 	WebKitWebSettings	*settings;
-	gchar			*user_agent;
 	int			user_agent_id;
 	int			http_accept_id;
 	gboolean		load_images;
@@ -378,6 +377,15 @@ struct http_accept {
 RB_HEAD(http_accept_list, http_accept);
 RB_PROTOTYPE(http_accept_list, http_accept, entry, http_accept_rb_cmp);
 
+struct domain_id {
+	RB_ENTRY(domain_id)	entry;
+	int			ua_id;	/* user agent id key */
+	int			ha_id;	/* http accept header id key */
+	char			*domain;
+};
+RB_HEAD(domain_id_list, domain_id);
+RB_PROTOTYPE(domain_id_list, domain_id, entry, domain_id_rb_cmp);
+
 /* utility */
 #define XT_NAME			("xombrero")
 #define XT_DIR			(".xombrero")
@@ -388,6 +396,8 @@ RB_PROTOTYPE(http_accept_list, http_accept, entry, http_accept_rb_cmp);
 #define XT_FAVS_FILE		("favorites")
 #define XT_SOD_FILE		("startofday")
 #define XT_HSTS_PRELOAD_FILE	("hsts-preload")
+#define XT_USER_AGENT_FILE	("user-agent-headers")
+#define XT_HTTP_ACCEPT_FILE	("http-accept-headers")
 #define XT_RESERVED_CHARS	"$&+,/:;=?@ \"<>#%%{}|^~[]`"
 
 int			run_script(struct tab *, char *);
@@ -898,8 +908,6 @@ extern char	runtime_settings[PATH_MAX];
 extern int	allow_volatile_cookies;
 extern int	color_visited_uris;
 extern int	save_global_history;
-extern struct user_agent	*user_agent;
-extern struct http_accept	*http_accept;
 extern int	save_rejected_cookies;
 extern int	session_autosave;
 extern int	guess_search;
@@ -936,6 +944,7 @@ extern int	allow_insecure_scripts;
 extern int	do_not_track;
 extern int	preload_strict_transport;
 extern char	*gnutls_priority_string;
+extern int	anonymize_headers;
 
 /* globals */
 extern void		(*os_init)(void);

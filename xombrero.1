@@ -1025,6 +1025,21 @@ If set cookies are stored in the session cache but will be discarded once
 .Nm
 exits.
 Unfortunately enabling this does allow for some limited tracking on the web.
+.It Cm anonymize_headers
+If set, HTTP headers taken from the
+.Lk https://www.bitrig.org/ "Bitrig website"
+will be used to feed additional values to the
+.Nm xombrero
+HTTP header settings.
+Currently only the User-Agent and Http-Accept headers are modified,
+corresponding to the
+.Cm user_agent
+and
+.Cm http_accept
+settings, respectively.
+These headers are set after any header settings are read in from your
+.Cm ~/.xombrero.conf .
+Default is 0.
 .It Cm append_next
 When set a new tab is appended after the current tab instead of being appended
 as the last tab.
