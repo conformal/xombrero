@@ -482,7 +482,7 @@ hide_cmd(struct tab *t)
 }
 
 void
-show_cmd(struct tab *t)
+show_cmd(struct tab *t, const char *s)
 {
 	DNPRINTF(XT_D_CMD, "%s: tab %d\n", __func__, t->tab_id);
 
@@ -494,6 +494,16 @@ show_cmd(struct tab *t)
 	gtk_widget_hide(t->oops);
 	gtk_widget_set_can_focus(t->cmd, TRUE);
 	gtk_widget_show(t->cmd);
+
+	gtk_widget_grab_focus(GTK_WIDGET(t->cmd));
+#if GTK_CHECK_VERSION(3, 0, 0)
+	gtk_widget_set_name(t->cmd, XT_CSS_NORMAL);
+#else
+	gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL,
+	    &t->default_style->base[GTK_STATE_NORMAL]);
+#endif
+	gtk_entry_set_text(GTK_ENTRY(t->cmd), s);
+	gtk_editable_set_position(GTK_EDITABLE(t->cmd), -1);
 }
 
 void
@@ -2899,7 +2909,7 @@ int
 command(struct tab *t, struct karg *args)
 {
 	struct karg		a = {0};
-	int			i;
+	int			i, cmd_setup = 0;
 	char			*s = NULL, *sp = NULL, *sl = NULL;
 	gchar			**sv;
 
@@ -2945,14 +2955,24 @@ command(struct tab *t, struct karg *args)
 	case '.':
 		t->mode = XT_MODE_HINT;
 		a.i = 0;
-		hint(t, &a);
 		s = ".";
+		/*
+		 * js code will auto fire() if a single link is visible,
+		 * causing the focus-out-event cb function to be called. Setup
+		 * the cmd _before_ triggering hinting code so the cmd can get
+		 * killed by the cb in this case.
+		 */
+		show_cmd(t, s);
+		cmd_setup = 1;
+		hint(t, &a);
 		break;
 	case ',':
 		t->mode = XT_MODE_HINT;
 		a.i = XT_HINT_NEWTAB;
-		hint(t, &a);
 		s = ",";
+		show_cmd(t, s);
+		cmd_setup = 1;
+		hint(t, &a);
 		break;
 	default:
 		show_oops(t, "command: invalid opcode %d", args->i);
@@ -2961,16 +2981,8 @@ command(struct tab *t, struct karg *args)
 
 	DNPRINTF(XT_D_CMD, "%s: tab %d type %s\n", __func__, t->tab_id, s);
 
-	show_cmd(t);
-	gtk_widget_grab_focus(GTK_WIDGET(t->cmd));
-#if GTK_CHECK_VERSION(3, 0, 0)
-	gtk_widget_set_name(t->cmd, XT_CSS_NORMAL);
-#else
-	gtk_widget_modify_base(t->cmd, GTK_STATE_NORMAL,
-	    &t->default_style->base[GTK_STATE_NORMAL]);
-#endif
-	gtk_entry_set_text(GTK_ENTRY(t->cmd), s);
-	gtk_editable_set_position(GTK_EDITABLE(t->cmd), -1);
+	if (!cmd_setup)
+		show_cmd(t, s);
 
 	if (sp)
 		g_free(sp);
@@ -6055,9 +6067,6 @@ wv_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 		return (XT_CB_HANDLED);
 	}
 
-	if (t->mode == XT_MODE_HINT)
-		return (XT_CB_HANDLED);
-
 	if ((CLEAN(e->state) == 0 && e->keyval == GDK_Tab) ||
 	    (CLEAN(e->state) == SHFT && e->keyval == GDK_Tab))
 		/* something focussy is about to happen */
@@ -6066,14 +6075,11 @@ wv_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	/* check if we are some sort of text input thing in the dom */
 	input_check_mode(t);
 
-	if (t->mode == XT_MODE_HINT) {
-		/* XXX make sure cmd entry is enabled */
-		return (XT_CB_HANDLED);
-	} else if (t->mode == XT_MODE_PASSTHROUGH) {
+	if (t->mode == XT_MODE_PASSTHROUGH) {
 		if (CLEAN(e->state) == 0 && e->keyval == GDK_Escape)
 			t->mode = XT_MODE_COMMAND;
 		return (XT_CB_PASSTHROUGH);
-	} else if (t->mode == XT_MODE_COMMAND) {
+	} else if (t->mode == XT_MODE_COMMAND || t->mode == XT_MODE_HINT) {
 		/* prefix input */
 		snprintf(s, sizeof s, "%c", e->keyval);
 		if (CLEAN(e->state) == 0 && isdigit(s[0]))
