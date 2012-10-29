@@ -4285,6 +4285,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	const gchar		*uri = NULL;
 	struct history		*h, find;
 	struct karg		a;
+	gchar			*tmp_uri = NULL;
 #if !GTK_CHECK_VERSION(3, 0, 0)
 	gchar			*text, *base;
 #endif
@@ -4397,8 +4398,10 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		if (color_visited_uris) {
 			color_visited(t, color_visited_helper());
 
-			/* This colors the links you middle-click (open in new
-			 * tab) in the current tab. */
+			/*
+			 * This colors the links you middle-click (open in new
+			 * tab) in the current tab.
+			 */
 			if (t->tab_id != gtk_notebook_get_current_page(notebook) &&
 			    (uri = get_uri(t)) != NULL)
 				color_visited(get_current_tab(),
@@ -4410,26 +4413,32 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		/* 2 */
 		if ((uri = get_uri(t)) == NULL)
 			return;
+		/* 
+		 * js_autorun calls get_uri which frees t->tmp_uri if on an
+		 * "about:" page. On "about:" pages, uri points to t->tmp_uri.
+		 * I.e. we will use freed memory. Prevent that.
+		 */
+		tmp_uri = g_strdup(uri);
 
 		/* autorun some js if enabled */
 		js_autorun(t);
 
 		input_autofocus(t);
 
-		if (!strncmp(uri, "http://", strlen("http://")) ||
-		    !strncmp(uri, "https://", strlen("https://")) ||
-		    !strncmp(uri, "file://", strlen("file://"))) {
-			find.uri = (gchar *)uri;
+		if (!strncmp(tmp_uri, "http://", strlen("http://")) ||
+		    !strncmp(tmp_uri, "https://", strlen("https://")) ||
+		    !strncmp(tmp_uri, "file://", strlen("file://"))) {
+			find.uri = (gchar *)tmp_uri;
 			h = RB_FIND(history_list, &hl, &find);
 			if (!h)
-				insert_history_item(uri,
+				insert_history_item(tmp_uri,
 				    get_title(t, FALSE), time(NULL));
 			else
 				h->time = time(NULL);
 		}
 
 		if (statusbar_style == XT_STATUSBAR_URL)
-			set_status(t, "%s", (char *)uri);
+			set_status(t, "%s", (char *)tmp_uri);
 		else
 			set_status(t, "%s", (char *)get_title(t, FALSE));
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
@@ -4437,6 +4446,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		gtk_spinner_stop(GTK_SPINNER(t->spinner));
 		gtk_widget_hide(t->spinner);
 #endif
+		g_free(tmp_uri);
 		break;
 
 #if WEBKIT_CHECK_VERSION(1, 1, 18)
