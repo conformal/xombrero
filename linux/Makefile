@@ -64,6 +64,7 @@ install: all
 	install -m 755 xombrero $(DESTDIR)$(BINDIR)
 	install -m 644 ../xombrero.1 $(DESTDIR)$(MANDIR)/man1/xombrero.1
 	install -m 644 ../xombrero.css $(DESTDIR)$(RESDIR)
+	install -m 644 ../xombrero.desktop $(DESTDIR)$(PREFIX)/share/applications
 	install -m 644 ../xombreroicon16.png $(DESTDIR)$(RESDIR)
 	install -m 644 ../xombreroicon32.png $(DESTDIR)$(RESDIR)
 	install -m 644 ../xombreroicon48.png $(DESTDIR)$(RESDIR)
@@ -76,6 +77,7 @@ install: all
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/xombrero
 	rm -f $(DESTDIR)$(MANDIR)/man1/xombrero.1
+	rm -f $(DESTDIR)$(PREFIX)/share/applications/xombrero.desktop
 	rm -f $(DESTDIR)$(RESDIR)/xombreroicon.png
 	rm -f $(DESTDIR)$(RESDIR)/xombreroicon16.png
 	rm -f $(DESTDIR)$(RESDIR)/xombreroicon32.png
