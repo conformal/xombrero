@@ -8659,6 +8659,7 @@ main(int argc, char **argv)
 	TAILQ_INIT(&shl);
 	TAILQ_INIT(&cul);
 	TAILQ_INIT(&srl);
+	TAILQ_INIT(&c_wl);
 	TAILQ_INIT(&js_wl);
 	TAILQ_INIT(&pl_wl);
 	TAILQ_INIT(&force_https);
