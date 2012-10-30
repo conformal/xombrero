@@ -1299,6 +1299,10 @@ add_alias(struct settings *s, char *line)
 		show_oops(NULL, "add_alias: incomplete alias definition");
 		goto bad;
 	}
+
+	/* Remove additional leading whitespace */
+	l += (long)strspn(l, " \t");
+
 	if (strlen(alias) == 0 || strlen(l) == 0) {
 		show_oops(NULL, "add_alias: invalid alias definition");
 		goto bad;
