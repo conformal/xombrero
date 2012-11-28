@@ -3317,12 +3317,12 @@ proxy_cmd(struct tab *t, struct karg *args)
 		else
 			show_oops(t, "proxy is currently disabled");
 	} else if (args->i & XT_PRXY_TOGGLE) {
-		TAILQ_FOREACH(tt, &tabs, entry)
-			gtk_widget_show(t->proxy_toggle);
 		if (http_proxy_save == NULL && http_proxy == NULL) {
 			show_oops(t, "can't toggle proxy");
 			goto done;
 		}
+		TAILQ_FOREACH(tt, &tabs, entry)
+			gtk_widget_show(t->proxy_toggle);
 		if (http_proxy) {
 			setup_proxy(NULL);
 			button_set_file(t->proxy_toggle, "tordisabled.ico");
@@ -7911,7 +7911,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	}
 	if (!fancy_bar || (search_string == NULL || strlen(search_string) == 0))
 		gtk_widget_hide(t->search_entry);
-	if (!proxy_uri)
+	if (http_proxy == NULL && http_proxy_save == NULL)
 		gtk_widget_hide(t->proxy_toggle);
 
 	/* compact tab bar */
