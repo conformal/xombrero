@@ -3325,14 +3325,12 @@ proxy_cmd(struct tab *t, struct karg *args)
 		}
 		if (http_proxy) {
 			setup_proxy(NULL);
+			button_set_file(t->proxy_toggle, "tordisabled.ico");
 			show_oops(t, "http proxy disabled");
-			button_set_stockid(t->proxy_toggle,
-			    GTK_STOCK_DISCONNECT);
 		} else {
 			setup_proxy(http_proxy_save);
+			button_set_file(t->proxy_toggle, "torenabled.ico");
 			show_oops(t, "http_proxy = %s", http_proxy);
-			button_set_stockid(t->proxy_toggle,
-			    GTK_STOCK_CONNECT);
 		}
 	}
 done:
@@ -7262,6 +7260,11 @@ create_toolbar(struct tab *t)
 	/* toggle proxy button */
 	t->proxy_toggle = create_button("Proxy-Toggle", proxy_uri ?
 	    GTK_STOCK_CONNECT : GTK_STOCK_DISCONNECT, 0);
+	/* override icons */
+	if (proxy_uri)
+		button_set_file(t->proxy_toggle, "torenabled.ico");
+	else
+		button_set_file(t->proxy_toggle, "tordisabled.ico");
 	gtk_widget_set_sensitive(t->proxy_toggle, TRUE);
 	g_signal_connect(G_OBJECT(t->proxy_toggle), "clicked",
 	    G_CALLBACK(proxy_toggle_cb), t);
@@ -8238,6 +8241,17 @@ create_button(char *name, char *stockid, int size)
 	gtk_button_set_relief(GTK_BUTTON(button), GTK_RELIEF_NONE);
 
 	return (button);
+}
+
+void
+button_set_file(GtkWidget *button, char *filename)
+{
+	GtkWidget		*image;
+	char			file[PATH_MAX];
+
+	snprintf(file, sizeof file, "%s" PS "%s", resource_dir, filename);
+	image = gtk_image_new_from_file(file);
+	gtk_button_set_image(GTK_BUTTON(button), image);
 }
 
 void

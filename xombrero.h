@@ -418,6 +418,7 @@ void			set_status(struct tab *t, gchar *fmt, ...);
 
 void			load_webkit_string(struct tab *, const char *, gchar *, int);
 void			button_set_stockid(GtkWidget *, char *);
+void			button_set_file(GtkWidget *, char *);
 void			webview_progress_changed_cb(WebKitWebView *, GParamSpec *, struct tab *);
 
 /* cookies */

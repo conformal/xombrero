@@ -73,6 +73,8 @@ install: all
 	install -m 644 ../tld-rules $(DESTDIR)$(RESDIR)
 	install -m 644 ../style.css $(DESTDIR)$(RESDIR)
 	install -m 644 ../hsts-preload $(DESTDIR)$(RESDIR)
+	install -m 644 ../torenabled.ico $(DESTDIR)$(RESDIR)
+	install -m 644 ../tordisabled.ico $(DESTDIR)$(RESDIR)
 
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/xombrero

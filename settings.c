@@ -3027,10 +3027,13 @@ setup_proxy(char *uri)
 				gtk_label_set_text(GTK_LABEL(t->sbe.proxy),
 				    "proxy");
 				gtk_widget_show(t->proxy_toggle);
-				button_set_stockid(t->proxy_toggle,
-				    GTK_STOCK_CONNECT);
+				button_set_file(t->proxy_toggle,
+				    "torenabled.ico");
 			}
 		}
+	} else {
+		TAILQ_FOREACH(t, &tabs, entry)
+			button_set_file(t->proxy_toggle, "tordisabled.ico");
 	}
 }
 

@@ -71,6 +71,8 @@ beforeinstall:
 	install -m 644 ${.CURDIR}/hsts-preload ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/user-agent-headers ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/http-accept-headers ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/torenabled.ico ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/tordisabled.ico ${PREFIX}/share/xombrero
 
 ${PROG} ${OBJS} beforedepend: javascript.h tooltip.h
 
