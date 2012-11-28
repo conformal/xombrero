@@ -3023,9 +3023,13 @@ setup_proxy(char *uri)
 		if (proxy_uri != NULL && SOUP_URI_VALID_FOR_HTTP(proxy_uri)) {
 			g_object_set(session, "proxy-uri", proxy_uri,
 			    (char *)NULL);
-			TAILQ_FOREACH(t, &tabs, entry)
+			TAILQ_FOREACH(t, &tabs, entry) {
 				gtk_label_set_text(GTK_LABEL(t->sbe.proxy),
 				    "proxy");
+				gtk_widget_show(t->proxy_toggle);
+				button_set_stockid(t->proxy_toggle,
+				    GTK_STOCK_CONNECT);
+			}
 		}
 	}
 }

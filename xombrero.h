@@ -239,6 +239,7 @@ struct tab {
 	GtkWidget		*stop;
 	GtkWidget		*gohome;
 	GtkWidget		*js_toggle;
+	GtkWidget		*proxy_toggle;
 	GtkEntryCompletion	*completion;
 	guint			tab_id;
 	WebKitWebView		*wv;

@@ -1600,6 +1600,15 @@ js_toggle_cb(GtkWidget *w, struct tab *t)
 	toggle_js(t, &a);
 }
 
+void
+proxy_toggle_cb(GtkWidget *w, struct tab *t)
+{
+	struct karg		args = {0};
+
+	args.i = XT_PRXY_TOGGLE;
+	proxy_cmd(t, &args);
+}
+
 int
 toggle_src(struct tab *t, struct karg *args)
 {
@@ -3286,6 +3295,8 @@ char		*http_proxy_save; /* not a setting, used to toggle */
 int
 proxy_cmd(struct tab *t, struct karg *args)
 {
+	struct tab		*tt;
+
 	DNPRINTF(XT_D_CMD, "%s: tab %d\n", __func__, t->tab_id);
 
 	if (t == NULL)
@@ -3293,6 +3304,8 @@ proxy_cmd(struct tab *t, struct karg *args)
 
 	/* setup */
 	if (http_proxy) {
+		TAILQ_FOREACH(tt, &tabs, entry)
+			gtk_widget_show(t->proxy_toggle);
 		if (http_proxy_save)
 			g_free(http_proxy_save);
 		http_proxy_save = g_strdup(http_proxy);
@@ -3304,6 +3317,8 @@ proxy_cmd(struct tab *t, struct karg *args)
 		else
 			show_oops(t, "proxy is currently disabled");
 	} else if (args->i & XT_PRXY_TOGGLE) {
+		TAILQ_FOREACH(tt, &tabs, entry)
+			gtk_widget_show(t->proxy_toggle);
 		if (http_proxy_save == NULL && http_proxy == NULL) {
 			show_oops(t, "can't toggle proxy");
 			goto done;
@@ -3311,9 +3326,13 @@ proxy_cmd(struct tab *t, struct karg *args)
 		if (http_proxy) {
 			setup_proxy(NULL);
 			show_oops(t, "http proxy disabled");
+			button_set_stockid(t->proxy_toggle,
+			    GTK_STOCK_DISCONNECT);
 		} else {
 			setup_proxy(http_proxy_save);
 			show_oops(t, "http_proxy = %s", http_proxy);
+			button_set_stockid(t->proxy_toggle,
+			    GTK_STOCK_CONNECT);
 		}
 	}
 done:
@@ -7240,6 +7259,14 @@ create_toolbar(struct tab *t)
 	    G_CALLBACK(js_toggle_cb), t);
 	gtk_box_pack_start(GTK_BOX(b), t->js_toggle, FALSE, FALSE, 0);
 
+	/* toggle proxy button */
+	t->proxy_toggle = create_button("Proxy-Toggle", proxy_uri ?
+	    GTK_STOCK_CONNECT : GTK_STOCK_DISCONNECT, 0);
+	gtk_widget_set_sensitive(t->proxy_toggle, TRUE);
+	g_signal_connect(G_OBJECT(t->proxy_toggle), "clicked",
+	    G_CALLBACK(proxy_toggle_cb), t);
+	gtk_box_pack_start(GTK_BOX(b), t->proxy_toggle, FALSE, FALSE, 0);
+
 	t->uri_entry = gtk_entry_new();
 	g_signal_connect(G_OBJECT(t->uri_entry), "activate",
 	    G_CALLBACK(activate_uri_entry_cb), t);
@@ -7881,6 +7908,8 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	}
 	if (!fancy_bar || (search_string == NULL || strlen(search_string) == 0))
 		gtk_widget_hide(t->search_entry);
+	if (!proxy_uri)
+		gtk_widget_hide(t->proxy_toggle);
 
 	/* compact tab bar */
 	t->tab_elems.label = gtk_label_new(title);
