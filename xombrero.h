@@ -833,6 +833,7 @@ int		xtp_page_rt(struct tab *, struct karg *);
 size_t		get_settings_size(void);
 int		settings_add(char *, char *);
 void		setup_proxy(char *);
+int		proxy_cmd(struct tab *, struct karg *);
 int		set_browser_mode(struct settings *, char *);
 int		set_encoding(struct tab *, struct karg *);
 int		set_gui_mode(struct settings *, char *);
