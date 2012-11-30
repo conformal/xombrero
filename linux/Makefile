@@ -86,6 +86,9 @@ uninstall:
 	rm -f $(DESTDIR)$(RESDIR)/xombreroicon48.png
 	rm -f $(DESTDIR)$(RESDIR)/xombreroicon64.png
 	rm -f $(DESTDIR)$(RESDIR)/xombreroicon128.png
+	rm -f $(DESTDIR)$(RESDIR)/xombrero.css
+	rm -f $(DESTDIR)$(RESDIR)/tordisabled.ico
+	rm -f $(DESTDIR)$(RESDIR)/torenabled.ico
 	rm -f $(DESTDIR)$(RESDIR)/tld-rules
 	rm -f $(DESTDIR)$(RESDIR)/style.css
 	rm -f $(DESTDIR)$(RESDIR)/hsts-preload
