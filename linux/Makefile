@@ -21,6 +21,7 @@ LDADD+= $(shell pkg-config --libs $(LIBS)) $(JS_LD) -ldl -lgcrypt -lX11
 PREFIX?= /usr/local
 BINDIR?= $(PREFIX)/bin
 LIBDIR?= $(PREFIX)/lib
+APPDIR?= $(PREFIX)/share/applications
 MANDIR?= $(PREFIX)/share/man
 RESDIR?= $(PREFIX)/share/xombrero
 
@@ -61,10 +62,11 @@ install: all
 	install -m 755 -d $(DESTDIR)$(LIBDIR)
 	install -m 755 -d $(DESTDIR)$(MANDIR)/man1
 	install -m 755 -d $(DESTDIR)$(RESDIR)
+	install -m 755 -d $(DESTDIR)$(APPDIR)
 	install -m 755 xombrero $(DESTDIR)$(BINDIR)
 	install -m 644 ../xombrero.1 $(DESTDIR)$(MANDIR)/man1/xombrero.1
 	install -m 644 ../xombrero.css $(DESTDIR)$(RESDIR)
-	install -m 644 ../xombrero.desktop $(DESTDIR)$(PREFIX)/share/applications
+	install -m 644 ../xombrero.desktop $(DESTDIR)$(APPDIR)
 	install -m 644 ../xombreroicon16.png $(DESTDIR)$(RESDIR)
 	install -m 644 ../xombreroicon32.png $(DESTDIR)$(RESDIR)
 	install -m 644 ../xombreroicon48.png $(DESTDIR)$(RESDIR)
