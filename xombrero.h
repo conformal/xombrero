@@ -439,6 +439,11 @@ int			edit_element(struct tab *t, struct karg *a);
 #define XT_PRXY_SHOW		(1<<0)
 #define XT_PRXY_TOGGLE		(1<<1)
 
+/* url modify */
+#define XT_URL			(1<<0)
+#define XT_URL_PLUS		(1<<1)
+#define XT_URL_MIN		(1<<2)
+
 /* inspector */
 #define XT_INS_SHOW		(1<<0)
 #define XT_INS_HIDE		(1<<1)

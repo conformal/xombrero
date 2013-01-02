@@ -3084,6 +3084,91 @@ proxy_cmd(struct tab *t, struct karg *args)
 done:
 	return (XT_CB_PASSTHROUGH);
 }
+
+/*
+ * If you can read this functionthen you are a sick and twisted individual.
+ * I hope we never meet, it'll be violent.
+ */
+gboolean
+eval_cb(const GMatchInfo *info, GString *res, gpointer data)
+{
+	gchar			*match, *num;
+	gint			start = -1, end = -1, i;
+	struct karg		*args = data;
+
+	/*
+	 * match contains the string UP TO the match.
+	 *
+	 * res is what is returned, note that whatever remains in the sent in
+	 * string is appended on the way out.
+	 *
+	 * for example /123/456/789/moo came in
+	 * match contains /123/456/789/
+	 * we assign that to res and replace /789/ with the replacement text
+	 * then g_regex_replace_eval on the way out has /123/456/replacement/moo
+	 *
+	 */
+	match = g_match_info_fetch(info, 0);
+	if (match == NULL)
+		goto done;
+
+	if (g_match_info_fetch_pos(info, 1, &start, &end) == FALSE)
+		goto freeit;
+
+	g_string_assign(res, match);
+
+	i = atoi(&match[start + 1]);
+	if (args->i == XT_URL_PLUS)
+		i++;
+	else
+		i--;
+
+	/* preserve whitespace when likely */
+	num = g_strdup_printf("%0*d",  end - start - 2, i);
+	g_string_overwrite_len(res, start + 1, num, end - start - 2);
+	g_free(num);
+
+freeit:
+	g_free(match);
+done:
+	return (FALSE); /* doesn't matter */
+}
+
+int
+urlmod_cmd(struct tab *t, struct karg *args)
+{
+	const gchar		*uri;
+	GRegex			*reg;
+	gchar			*res;
+
+	if (t == NULL)
+		goto done;
+	if ((uri = gtk_entry_get_text(GTK_ENTRY(t->uri_entry))) == NULL)
+		goto done;
+	if (strlen(uri) == 0)
+		goto done;
+
+	reg = g_regex_new(".*(/[0-9]+/)", 0, 0, NULL);
+	if (reg == NULL)
+		goto done;
+	res = g_regex_replace_eval(reg, uri, -1, 0, 0, eval_cb, args, NULL);
+	if (res == NULL)
+		goto free_reg;
+
+	if (!strcmp(res, uri))
+		goto free_res;
+
+	gtk_entry_set_text(GTK_ENTRY(t->uri_entry), res);
+	activate_uri_entry_cb(t->uri_entry, t);
+
+free_res:
+	g_free(res);
+free_reg:
+	g_regex_unref(reg);
+done:
+	return (XT_CB_PASSTHROUGH);
+}
+
 struct cmd {
 	char		*cmd;
 	int		level;
@@ -3292,6 +3377,11 @@ struct cmd {
 	{ "proxy",		0,	proxy_cmd,		XT_PRXY_SHOW,		0 },
 	{ "show",		1,	proxy_cmd,		XT_PRXY_SHOW,		0 },
 	{ "toggle",		1,	proxy_cmd,		XT_PRXY_TOGGLE,		0 },
+
+	/* url mod */
+	{ "urlmod",		0,	urlmod_cmd,		XT_URL,			0 },
+	{ "plus",		1,	urlmod_cmd,		XT_URL_PLUS,		0 },
+	{ "min",		1,	urlmod_cmd,		XT_URL_MIN,		0 },
 };
 
 struct {
