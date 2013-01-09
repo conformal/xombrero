@@ -8719,7 +8719,11 @@ main(int argc, char **argv)
 		warn("getrlimit");
 	else {
 		/* just use them all */
+#ifdef __APPLE__
+		rlp.rlim_cur = OPEN_MAX;
+#else
 		rlp.rlim_cur = rlp.rlim_max;
+#endif
 		if (setrlimit(RLIMIT_NOFILE, &rlp) == -1)
 			warn("setrlimit");
 		if (getrlimit(RLIMIT_NOFILE, &rlp) == -1)

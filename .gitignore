@@ -3,7 +3,11 @@
 *.orig
 *.rej
 *.rej.orig
+*~
 javascript.h
 xombrero
 xombrero.cat1
 tags
+osx/tooltip.h
+osx/tree.h
+osx/util.h

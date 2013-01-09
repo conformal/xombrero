@@ -42,6 +42,15 @@
 void		arc4random_buf(void *, size_t);
 u_int32_t	arc4random_uniform(u_int32_t);
 # endif
+#elif defined(__APPLE__)
+#include "osx/util.h"
+#include "osx/tree.h"
+#include <stdlib.h>
+#include <X11/Xlib.h>
+#include <sys/un.h>
+#include <sys/param.h>
+#include <sys/ucred.h>
+#define LOGIN_NAME_MAX MAXLOGNAME
 #elif defined(__FreeBSD__)
 #include <libutil.h>
 #include "freebsd/util.h"
