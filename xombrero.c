@@ -8684,6 +8684,12 @@ main(int argc, char **argv)
 	/* tld list */
 	tld_tree_init();
 
+	/* cache mode */
+	if (enable_cache)
+		webkit_set_cache_model(WEBKIT_CACHE_MODEL_WEB_BROWSER);
+	else
+		webkit_set_cache_model(WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER);
+
 	if (enable_strict_transport)
 		strict_transport_init();
 

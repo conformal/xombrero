@@ -102,6 +102,7 @@ char		*userstyle = NULL;		/* allocated/set at startup */
 int		userstyle_global = XT_DS_USERSTYLE_GLOBAL;
 int		auto_load_images = XT_DS_AUTO_LOAD_IMAGES;
 int		enable_autoscroll = XT_DS_ENABLE_AUTOSCROLL;
+int		enable_cache = 0;
 int		enable_favicon_entry = XT_DS_ENABLE_FAVICON_ENTRY;
 int		enable_favicon_tabs = XT_DS_ENABLE_FAVICON_TABS;
 char		*external_editor = NULL;
@@ -179,6 +180,7 @@ int		set_edit_mode(struct settings *, char *);
 int		set_work_dir(struct settings *, char *);
 int		set_auto_load_images(char *);
 int		set_enable_autoscroll(char *);
+int		set_enable_cache(char *);
 int		set_enable_favicon_entry(char *);
 int		set_enable_favicon_tabs(char *);
 int		set_guess_search(char *);
@@ -232,6 +234,7 @@ int		check_download_mode(char **);
 int		check_download_notifications(char **);
 int		check_edit_mode(char **);
 int		check_enable_autoscroll(char **);
+int		check_enable_cache(char **);
 int		check_enable_cookie_whitelist(char **);
 int		check_enable_favicon_entry(char **);
 int		check_enable_favicon_tabs(char **);
@@ -511,6 +514,7 @@ struct settings		rs[] = {
 	{ "download_notifications",	XT_S_BOOL, 0,		&download_notifications, NULL, NULL, NULL, set_download_notifications, check_download_notifications, TT_DOWNLOAD_NOTIFICATIONS },
 	{ "edit_mode",			XT_S_STR, 0, NULL, NULL,&s_edit_mode, NULL, NULL, check_edit_mode, NULL },
 	{ "enable_autoscroll",		XT_S_BOOL, 0,		&enable_autoscroll, NULL, NULL, NULL, set_enable_autoscroll, check_enable_autoscroll, TT_ENABLE_AUTOSCROLL },
+	{ "enable_cache",		XT_S_BOOL, 0,		&enable_cache, NULL, NULL, NULL, set_enable_cache, check_enable_cache, TT_ENABLE_CACHE },
 	{ "enable_cookie_whitelist",	XT_S_BOOL, 0,		&enable_cookie_whitelist, NULL, NULL, NULL, set_enable_cookie_whitelist, check_enable_cookie_whitelist, TT_ENABLE_COOKIE_WHITELIST },
 	{ "enable_favicon_entry",	XT_S_BOOL, 0,		&enable_favicon_entry, NULL, NULL, NULL, set_enable_favicon_entry, check_enable_favicon_entry, TT_ENABLE_FAVICON_ENTRY },
 	{ "enable_favicon_tabs",	XT_S_BOOL, 0,		&enable_favicon_tabs, NULL, NULL, NULL, set_enable_favicon_tabs, check_enable_favicon_tabs, TT_ENABLE_FAVICON_TABS },
@@ -2115,6 +2119,36 @@ check_enable_autoscroll(char **tt)
 	*tt = g_strdup_printf("Default: %s",
 	    XT_DS_ENABLE_AUTOSCROLL ? "Enabled" : "Disabled");
 	return (enable_autoscroll != XT_DS_ENABLE_AUTOSCROLL);
+}
+
+int
+set_enable_cache(char *value)
+{
+	int		tmp;
+	const char	*errstr;
+
+	if (value == NULL || strlen(value) == 0)
+		enable_cache = 1;
+	else {
+		tmp = (int)strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		enable_cache = tmp;
+	}
+        if (enable_cache)
+                webkit_set_cache_model(WEBKIT_CACHE_MODEL_WEB_BROWSER);
+        else
+                webkit_set_cache_model(WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER);
+
+	return (0);
+}
+
+int
+check_enable_cache(char **tt)
+{
+	*tt = g_strdup_printf("Default: Enabled");
+
+	return (enable_cache);
 }
 
 int

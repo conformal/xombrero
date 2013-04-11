@@ -883,6 +883,7 @@ extern int	show_statusbar;
 extern int	ctrl_click_focus;
 extern int	cookies_enabled;
 extern int	read_only_cookies;
+extern int	enable_cache;
 extern int	enable_scripts;
 extern int	enable_plugins;
 extern gfloat	default_zoom_level;
