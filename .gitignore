@@ -11,3 +11,4 @@ tags
 osx/tooltip.h
 osx/tree.h
 osx/util.h
+linux/tooltip.h
