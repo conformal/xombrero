@@ -33,8 +33,12 @@ find_domain(const gchar *s, int flags)
 
 	uri = soup_uri_new(s);
 
-	if (uri == NULL || !SOUP_URI_VALID_FOR_HTTP(uri))
+	if (uri == NULL)
 		return (NULL);
+	if (!SOUP_URI_VALID_FOR_HTTP(uri)) {
+		soup_uri_free(uri);
+		return (NULL);
+	}
 
 	if (flags & XT_WL_TOPLEVEL &&
 	    !isdigit(uri->host[strlen(uri->host) - 1]))

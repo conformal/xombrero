@@ -597,8 +597,12 @@ set_http_proxy(char *proxy)
 	}
 
 	uri = soup_uri_new(proxy);
-	if (uri == NULL || !SOUP_URI_VALID_FOR_HTTP(uri))
+	if (uri == NULL)
 		return (1);
+	if (!SOUP_URI_VALID_FOR_HTTP(uri)) {
+		soup_uri_free(uri);
+		return (1);
+	}
 
 	setup_proxy(proxy);
 
