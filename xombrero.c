@@ -2050,6 +2050,7 @@ get_local_cert_chain(const char *uri, size_t *ncerts, const char **error_str,
 	}
 
 	snprintf(file, sizeof file, "%s" PS "%s", dir, su->host);
+	soup_uri_free(su);
 	if ((f = fopen(file, "r")) == NULL) {
 		*error_str = "Could not read local cert";
 		return (NULL);
