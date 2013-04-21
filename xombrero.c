@@ -2068,6 +2068,7 @@ get_local_cert_chain(const char *uri, size_t *ncerts, const char **error_str,
 	*ncerts = INT_MAX;
 	if (gnutls_x509_crt_list_import(certs, &len, &data,
 	    GNUTLS_X509_FMT_PEM, 0) < 0) {
+		g_free(certs);
 		*error_str = "Error reading local cert chain";
 		return (NULL);
 	}
