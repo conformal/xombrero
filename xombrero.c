@@ -1311,23 +1311,23 @@ open_tabs(struct tab *t, struct karg *a)
 		goto done;
 
 	for (;;) {
-		if ((uri = fparseln(f, NULL, NULL, "\0\0\0", 0)) == NULL)
+		if ((uri = fparseln(f, NULL, NULL, "\0\0\0", 0)) == NULL) {
 			if (feof(f) || ferror(f))
 				break;
+		} else {
+			/* retrieve session name */
+			if (g_str_has_prefix(uri, XT_SAVE_SESSION_ID)) {
+				strlcpy(named_session,
+				    &uri[strlen(XT_SAVE_SESSION_ID)],
+				    sizeof named_session);
+				continue;
+			}
 
-		/* retrieve session name */
-		if (uri && g_str_has_prefix(uri, XT_SAVE_SESSION_ID)) {
-			strlcpy(named_session,
-			    &uri[strlen(XT_SAVE_SESSION_ID)],
-			    sizeof named_session);
-			continue;
+			if (strlen(uri))
+				create_new_tab(uri, NULL, 1, -1);
+
+			free(uri);
 		}
-
-		if (uri && strlen(uri))
-			create_new_tab(uri, NULL, 1, -1);
-
-		free(uri);
-		uri = NULL;
 	}
 
 	/* close open tabs */
