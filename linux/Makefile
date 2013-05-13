@@ -10,8 +10,10 @@ endif
 LIBS= glib-2.0
 ifeq ("${GTK_VERSION}", "gtk2")
 LIBS+= gtk+-2.0 webkit-1.0
+CFLAGS+=-I/usr/include/gtk-2.0
 else
 LIBS+= gtk+-3.0 webkitgtk-3.0
+CFLAGS+=-I/usr/include/gtk-3.0
 endif
 LIBS+= libsoup-2.4 gthread-2.0 gnutls libbsd
 
