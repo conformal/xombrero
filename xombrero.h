@@ -106,24 +106,6 @@ uint32_t	arc4random_uniform(uint32_t);
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
 
-/* comment if you don't want to use threads */
-#define USE_THREADS
-
-#ifdef USE_THREADS
-/* http://seclists.org/wireshark/2011/Jul/209 */
-#define _GCRYPT_IN_LIBGCRYPT 1
-#include <gcrypt.h>
-#include <pthread.h>
-
-/* #define USE_FLUSH */
-#ifdef USE_FLUSH
-#define GDK_FLUSH()	do { gdk_flush(); } while (0)
-#else
-#define GDK_FLUSH()
-#endif /* USE_FLUSH */
-
-#endif
-
 /* set if you don't want to use resource limits */
 #ifndef XT_RESOURCE_LIMITS_DISABLE
 #include <sys/resource.h>
@@ -186,7 +168,6 @@ THE SOFTWARE.
 #define XT_D_CUSTOM_URI		0x80000
 #define XT_D_CMD_ALIAS		0x100000
 #define XT_D_SEARCH		0x200000
-#define XT_D_MTX		0x400000
 extern uint32_t	swm_debug;
 #else
 #define DPRINTF(x...)
@@ -283,10 +264,7 @@ struct tab {
 	gchar			*tmp_uri;
 	int			popup; /* 1 if cmd_entry has popup visible */
 	int			download_requested;
-#ifdef USE_THREADS
-	/* https thread stuff */
-	GThread			*thread;
-#endif
+
 	/* hints */
 	int			script_init;
 	int			new_tab;

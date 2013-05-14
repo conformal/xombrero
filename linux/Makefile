@@ -15,7 +15,7 @@ else
 LIBS+= gtk+-3.0 webkitgtk-3.0
 CFLAGS+=-I/usr/include/gtk-3.0
 endif
-LIBS+= libsoup-2.4 gthread-2.0 gnutls libbsd
+LIBS+= libsoup-2.4 gnutls libbsd
 
 CFLAGS+= -O2 -Wall -ggdb3 -D_GNU_SOURCE -I. -I.. $(shell pkg-config --cflags $(LIBS)) $(JS_CF)
 LDADD+= $(shell pkg-config --libs $(LIBS)) $(JS_LD) -ldl -lgcrypt -lX11

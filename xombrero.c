@@ -48,10 +48,6 @@ uint32_t		swm_debug = 0
 			    ;
 #endif
 
-#ifdef USE_THREADS
-GCRY_THREAD_OPTION_PTHREAD_IMPL;
-#endif
-
 char		*icons[] = {
 	"xombreroicon16.png",
 	"xombreroicon32.png",
@@ -1109,21 +1105,6 @@ run_script(struct tab *t, char *s)
 	return (0);
 }
 
-int
-run_script_locked(struct tab *t, char *s)
-{
-	int		rv;
-#ifdef USE_THREADS
-	gdk_threads_enter();
-#endif
-	rv = run_script(t, s);
-#ifdef USE_THREADS
-	GDK_FLUSH();
-	gdk_threads_leave();
-#endif
-	return (rv);
-}
-
 void
 enable_hints(struct tab *t)
 {
@@ -1883,23 +1864,6 @@ done:
 	return (0);
 }
 
-/*
- * args must be allocated dynamically as the thread that added this function
- * to the idle loop no longer exists
- */
-gboolean
-warn_cert_cache_differs_idle(struct karg *args)
-{
-	if (args == NULL) {
-		show_oops(NULL, "%s: invalid parameters", __func__);
-		/* return 0 to not re-add function to the idle loop */
-		return (0);
-	}
-	xtp_page_sv((struct tab *)args->ptr, args);
-	g_free(args);
-	return (0);
-}
-
 /* Checks whether the remote cert is identical to the local saved
  * cert.  Returns CERT_LOCAL if unchanged, CERT_UNTRUSTED if local
  * cert does not exist, and CERT_BAD if different. 
@@ -1965,7 +1929,6 @@ check_cert_changes(struct tab *t, GTlsCertificate *cert, const char *file, const
 	SoupURI			*soupuri = NULL;
 	struct karg		args = {0};
 	struct wl_entry		*w = NULL;
-	struct karg		*argsp;
 	char			*chain = NULL;
 	int			ret = 0;
 
@@ -1988,10 +1951,8 @@ check_cert_changes(struct tab *t, GTlsCertificate *cert, const char *file, const
 		if ((w = wl_find(soupuri->host, &svil)) != NULL)
 			break;
 		t->xtp_meaning = XT_XTP_TAB_MEANING_SV;
-		argsp = g_malloc0(sizeof(struct karg));
-		argsp->s = g_strdup((char *)uri);
-		argsp->ptr = (void *)t;
-		g_idle_add((GSourceFunc)warn_cert_cache_differs_idle, argsp);
+		args.s = g_strdup((char *)uri);
+		xtp_page_sv(t, &args);
 		break;
 	}
 
@@ -4057,10 +4018,6 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		t->focus_wv = 1;
 
 		marks_clear(t);
-#ifdef USE_THREAD
-		/* kill color thread */
-		t->thread = NULL;
-#endif
 		break;
 
 	case WEBKIT_LOAD_COMMITTED:
@@ -4322,7 +4279,7 @@ nofile:
 	}
 
 	DNPRINTF(XT_D_JS, "%s: about to run script\n", __func__);
-	run_script_locked(t, js);
+	run_script(t, js);
 
 done:
 	if (su)
@@ -7187,10 +7144,6 @@ delete_tab(struct tab *t)
 	if (t == NULL)
 		return;
 
-	/*
-	 * no need to join thread here because it won't access t on completion
-	 */
-
 	TAILQ_REMOVE(&tabs, t, entry);
 	buffercmd_abort(t);
 
@@ -8221,81 +8174,6 @@ usage(void)
 	exit(0);
 }
 
-GStaticRecMutex		my_gdk_mtx = G_STATIC_REC_MUTEX_INIT;
-volatile int		mtx_depth;
-int			mtx_complain;
-
-/*
- * The linux flash plugin violates the gdk locking mechanism.
- * Work around the issue by using a recursive mutex with some match applied
- * to see if we hit a buggy condition.
- *
- * The following code is painful so just don't read it.  It really doesn't
- * make much sense but seems to work.
- */
-void
-mtx_lock(void)
-{
-#ifdef XT_DEBUG
-	char		*s = NULL;
-#endif
-
-	g_static_rec_mutex_lock(&my_gdk_mtx);
-	if (my_gdk_mtx.depth <= 0) {
-#ifdef XT_DEBUG
-		s = "lock <= 0";
-#endif
-		g_static_rec_mutex_lock(&my_gdk_mtx);
-		goto complain;
-	} else if (my_gdk_mtx.depth != 1) {
-#ifdef XT_DEBUG
-		s = "lock != 1";
-#endif
-		do {
-			g_static_rec_mutex_unlock(&my_gdk_mtx);
-		} while (my_gdk_mtx.depth > 1);
-		goto complain;
-	}
-	return;
-
-complain:
-	if (mtx_complain == 0) {
-		DNPRINTF(XT_D_MTX, "buggy mutex implementation detected(%s), "
-		    "work around implemented", s);
-		mtx_complain = 1;
-	}
-}
-
-void
-mtx_unlock(void)
-{
-#ifdef XT_DEBUG
-	char		*s = NULL;
-#endif
-
-	if (my_gdk_mtx.depth <= 0) {
-#ifdef XT_DEBUG
-		s = "unlock <= 0";
-#endif
-		goto complain;
-	} else if (my_gdk_mtx.depth != 1) {
-#ifdef XT_DEBUG
-		s = "unlock != 1";
-#endif
-		g_static_rec_mutex_unlock_full(&my_gdk_mtx);
-		goto complain;
-	}
-	g_static_rec_mutex_unlock(&my_gdk_mtx);
-	return;
-
-complain:
-	if (mtx_complain == 0) {
-		DNPRINTF(XT_D_MTX, "buggy mutex implementation detected(%s), "
-		    "work around implemented", s);
-		mtx_complain = 1;
-	}
-}
-
 #if GTK_CHECK_VERSION(3, 0, 0)
 void
 setup_css(void)
@@ -8360,20 +8238,6 @@ main(int argc, char **argv)
 		os_init();
 
 	/* prepare gtk */
-#ifdef USE_THREADS
-#if !defined __MINGW32__
-	/* http://web.archiveorange.com/archive/v/UsPjxkX5PsaXBIoOjqxf */
-	XInitThreads();
-#endif
-	/* http://developer.gnome.org/gdk/stable/gdk-Threads.html */
-	g_thread_init(NULL);
-	gdk_threads_set_lock_functions(mtx_lock, mtx_unlock);
-	gdk_threads_init();
-	gdk_threads_enter();
-
-	/* http://www.gnupg.org/documentation/manuals/gcrypt/Multi_002dThreading.html */
-	gcry_control (GCRYCTL_SET_THREAD_CBS, &gcry_threads_pthread);
-#endif
 	gtk_init(&argc, &argv);
 
 	gnutls_global_init();
@@ -8787,12 +8651,6 @@ main(int argc, char **argv)
 #endif
 
 	gtk_main();
-
-#ifdef USE_THREADS
-	GDK_FLUSH();
-	gdk_threads_leave();
-	g_static_rec_mutex_unlock_full(&my_gdk_mtx); /* just in case */
-#endif
 
 	gnutls_global_deinit();
 

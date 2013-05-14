@@ -4,13 +4,13 @@ LIBS= gtk+-2.0 webkit-1.0
 .else
 LIBS= gtk+-3.0 webkitgtk-3.0
 .endif
-LIBS+= libsoup-2.4 gnutls gthread-2.0
+LIBS+= libsoup-2.4 gnutls
 
 LDADD= -lutil -lgcrypt -lX11
 GTK_CFLAGS!= pkg-config --cflags $(LIBS)
 GTK_LDFLAGS!= pkg-config --libs $(LIBS)
-CFLAGS+= $(GTK_CFLAGS) -O2 -Wall -pthread -I. -I..
-LDFLAGS+= $(GTK_LDFLAGS) -pthread
+CFLAGS+= $(GTK_CFLAGS) -O2 -Wall -I. -I..
+LDFLAGS+= $(GTK_LDFLAGS)
 
 PREFIX?= /usr/local
 BINDIR?= $(PREFIX)/bin
@@ -115,7 +115,6 @@ LIBS+= webkitgtk-3.0
 .endif
 LIBS+= libsoup-2.4
 LIBS+= gnutls
-LIBS+= gthread-2.0
 GTK_CFLAGS!= pkg-config --cflags $(LIBS)
 GTK_LDFLAGS!= pkg-config --libs $(LIBS)
 CFLAGS+= $(GTK_CFLAGS)

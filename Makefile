@@ -23,7 +23,6 @@ LIBS+= webkitgtk-3.0
 .endif
 LIBS+= libsoup-2.4
 LIBS+= gnutls
-LIBS+= gthread-2.0
 GTK_CFLAGS!= pkg-config --cflags $(LIBS)
 GTK_LDFLAGS!= pkg-config --libs $(LIBS)
 CFLAGS+= $(GTK_CFLAGS)

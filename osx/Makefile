@@ -1,6 +1,6 @@
 LIBS= glib-2.0
 LIBS+= gtk+-2.0 webkit-1.0
-LIBS+= libsoup-2.4 gthread-2.0 gnutls
+LIBS+= libsoup-2.4 gnutls
 
 CFLAGS+= -O2 -Wall -D_GNU_SOURCE -I. -I.. $(shell pkg-config --cflags $(LIBS)) $(JS_CF)
 LDADD+= $(shell pkg-config --libs $(LIBS)) $(JS_LD) -ldl -lgcrypt -lX11
