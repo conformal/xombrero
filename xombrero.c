@@ -6918,10 +6918,10 @@ create_kiosk_toolbar(struct tab *t)
 	GtkWidget		*toolbar = NULL, *b;
 
 #if GTK_CHECK_VERSION(3, 0, 0)
-	b = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+	b = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
 	gtk_widget_set_name(GTK_WIDGET(b), "toolbar");
 #else
-	b = gtk_hbox_new(FALSE, 0);
+	b = gtk_hbox_new(FALSE, 1);
 #endif
 	toolbar = b;
 	gtk_container_set_border_width(GTK_CONTAINER(toolbar), 0);
@@ -6967,10 +6967,10 @@ create_toolbar(struct tab *t)
 	GtkWidget		*toolbar = NULL, *b;
 
 #if GTK_CHECK_VERSION(3, 0, 0)
-	b = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+	b = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
 	gtk_widget_set_name(GTK_WIDGET(b), "toolbar");
 #else
-	b = gtk_hbox_new(FALSE, 0);
+	b = gtk_hbox_new(FALSE, 1);
 #endif
 	toolbar = b;
 	gtk_container_set_border_width(GTK_CONTAINER(toolbar), 0);
@@ -7567,7 +7567,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_label_set_max_width_chars(GTK_LABEL(t->label), 20);
 	gtk_label_set_ellipsize(GTK_LABEL(t->label), PANGO_ELLIPSIZE_END);
 	gtk_label_set_line_wrap(GTK_LABEL(t->label), FALSE);
-	gtk_widget_set_size_request(b, 130, 0);
+	gtk_widget_set_size_request(t->tab_content, 130, 0);
 
 	/*
 	 * this is a total hack and most likely breaks with other styles but
@@ -7580,8 +7580,8 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_widget_set_size_request(t->label, 100, 0);
 #endif
 
-	gtk_box_pack_start(GTK_BOX(b), bb, FALSE, FALSE, 0);
-	gtk_box_pack_start(GTK_BOX(b), t->label, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(t->tab_content), bb, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(t->tab_content), t->label, FALSE, FALSE, 0);
 #if GTK_CHECK_VERSION(2, 20, 0)
 	gtk_box_pack_end(GTK_BOX(b), t->spinner, FALSE, FALSE, 0);
 #endif
@@ -7704,7 +7704,8 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 			append_tab(t);
 		else {
 			TAILQ_INSERT_TAIL(&tabs, t, entry);
-			gtk_notebook_insert_page(notebook, t->vbox, b, id);
+			gtk_notebook_insert_page(notebook, t->vbox, t->tab_content,
+			    id);
 			gtk_box_reorder_child(GTK_BOX(tab_bar_box),
 			    t->tab_elems.eventbox, id);
 			recalc_tabs();
@@ -7977,7 +7978,7 @@ create_button(char *name, char *stockid, int size)
 	gtk_icon_size = icon_size_map(size ? size : icon_size);
 
 	image = gtk_image_new_from_stock(stockid, gtk_icon_size);
-	gtk_container_set_border_width(GTK_CONTAINER(button), 1);
+	gtk_container_set_border_width(GTK_CONTAINER(button), 0);
 	gtk_container_add(GTK_CONTAINER(button), GTK_WIDGET(image));
 	gtk_widget_set_name(button, name);
 	gtk_button_set_relief(GTK_BUTTON(button), GTK_RELIEF_NONE);
