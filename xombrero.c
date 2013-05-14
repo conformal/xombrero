@@ -1759,9 +1759,10 @@ get_local_cert_chain(const char *uri, size_t *ncerts, const char **error_str,
 	return (certs);
 }
 
-/* This uses the pem-encoded cert chain saved in t->cert_chain instead
+/*
+ * This uses the pem-encoded cert chain saved in t->cert_chain instead
  * of grabbing the remote cert.  We save it beforehand and read it
- * here so as to not open a side channel that ignores proxy settings. 
+ * here so as to not open a side channel that ignores proxy settings.
  */
 gnutls_x509_crt_t *
 get_remote_cert_chain(const char *uri, size_t *ncerts, const char **error_str,
@@ -1864,12 +1865,13 @@ done:
 	return (0);
 }
 
-/* Checks whether the remote cert is identical to the local saved
+/*
+ * Checks whether the remote cert is identical to the local saved
  * cert.  Returns CERT_LOCAL if unchanged, CERT_UNTRUSTED if local
- * cert does not exist, and CERT_BAD if different. 
+ * cert does not exist, and CERT_BAD if different.
  *
  * Saves entire cert chain in pem encoding to chain for it to be
- * cached later, if needed. 
+ * cached later, if needed.
  */
 enum cert_trust
 check_local_certs(const char *file, GTlsCertificate *cert, char **chain)
