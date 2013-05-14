@@ -2146,7 +2146,7 @@ set_enable_cache(char *value)
 int
 check_enable_cache(char **tt)
 {
-	*tt = g_strdup_printf("Default: Enabled");
+	*tt = g_strdup_printf("Default: Disabled");
 
 	return (enable_cache);
 }
