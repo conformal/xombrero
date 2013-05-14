@@ -734,7 +734,7 @@ set_cmd_font(char *value)
 		cmd_font_name = g_strdup(value);
 	cmd_font = pango_font_description_from_string(cmd_font_name);
 	TAILQ_FOREACH(t, &tabs, entry)
-		gtk_widget_modify_font(GTK_WIDGET(t->cmd), cmd_font);
+		modify_font(GTK_WIDGET(t->cmd), cmd_font);
 	return (0);
 }
 
@@ -760,7 +760,7 @@ set_oops_font(char *value)
 		oops_font_name = g_strdup(value);
 	oops_font = pango_font_description_from_string(oops_font_name);
 	TAILQ_FOREACH(t, &tabs, entry)
-		gtk_widget_modify_font(GTK_WIDGET(t->oops), oops_font);
+		modify_font(GTK_WIDGET(t->oops), oops_font);
 	return (0);
 }
 
@@ -795,15 +795,15 @@ set_statusbar_font(char *value)
 	statusbar_font = pango_font_description_from_string(
 	    statusbar_font_name);
 	TAILQ_FOREACH(t, &tabs, entry) {
-		gtk_widget_modify_font(GTK_WIDGET(t->sbe.uri),
+		modify_font(GTK_WIDGET(t->sbe.uri),
 		    statusbar_font);
-		gtk_widget_modify_font(GTK_WIDGET(t->sbe.buffercmd),
+		modify_font(GTK_WIDGET(t->sbe.buffercmd),
 		    statusbar_font);
-		gtk_widget_modify_font(GTK_WIDGET(t->sbe.zoom),
+		modify_font(GTK_WIDGET(t->sbe.zoom),
 		    statusbar_font);
-		gtk_widget_modify_font(GTK_WIDGET(t->sbe.position),
+		modify_font(GTK_WIDGET(t->sbe.position),
 		    statusbar_font);
-		gtk_widget_modify_font(GTK_WIDGET(t->sbe.proxy),
+		modify_font(GTK_WIDGET(t->sbe.proxy),
 		    statusbar_font);
 	}
 	return (0);
@@ -831,7 +831,7 @@ set_tabbar_font(char *value)
 		tabbar_font_name = g_strdup(value);
 	tabbar_font = pango_font_description_from_string(tabbar_font_name);
 	TAILQ_FOREACH(t, &tabs, entry)
-		gtk_widget_modify_font(GTK_WIDGET(t->tab_elems.label),
+		modify_font(GTK_WIDGET(t->tab_elems.label),
 		    tabbar_font);
 	return (0);
 }

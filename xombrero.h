@@ -855,6 +855,12 @@ int		set_scrollbar_visibility(struct tab *, int);
 int		save_runtime_setting(const char *, const char *);
 void		wl_add(const char *, struct wl_list *, int);
 
+#if GTK_CHECK_VERSION(3,0,0)
+#define modify_font gtk_widget_override_font
+#else
+#define modify_font gtk_widget_modify_font
+#endif
+
 #define		XT_DL_START	(0)
 #define		XT_DL_RESTART	(1)
 int		download_start(struct tab *, struct download *, int flag);

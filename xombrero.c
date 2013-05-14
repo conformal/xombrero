@@ -7374,7 +7374,7 @@ create_sbe(void)
 
 	sbe = gtk_label_new(NULL);
 	gtk_widget_set_can_focus(GTK_WIDGET(sbe), FALSE);
-	gtk_widget_modify_font(GTK_WIDGET(sbe), statusbar_font);
+	modify_font(GTK_WIDGET(sbe), statusbar_font);
 	return (sbe);
 }
 
@@ -7436,7 +7436,7 @@ statusbar_create(struct tab *t)
 	/* create these widgets only if specified in statusbar_elems */
 	t->sbe.uri = gtk_entry_new();
 	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.uri), FALSE);
-	gtk_widget_modify_font(GTK_WIDGET(t->sbe.uri), statusbar_font);
+	modify_font(GTK_WIDGET(t->sbe.uri), statusbar_font);
 #if !GTK_CHECK_VERSION(3, 0, 0)
 	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.uri), NULL);
 	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.uri), FALSE);
@@ -7617,7 +7617,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_widget_modify_base(t->oops, GTK_STATE_NORMAL, &color);
 #endif
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->oops, FALSE, FALSE, 0);
-	gtk_widget_modify_font(GTK_WIDGET(t->oops), oops_font);
+	modify_font(GTK_WIDGET(t->oops), oops_font);
 
 	/* command entry */
 	t->cmd = gtk_entry_new();
@@ -7626,7 +7626,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_entry_set_inner_border(GTK_ENTRY(t->cmd), NULL);
 	gtk_entry_set_has_frame(GTK_ENTRY(t->cmd), FALSE);
 	gtk_box_pack_end(GTK_BOX(t->vbox), t->cmd, FALSE, FALSE, 0);
-	gtk_widget_modify_font(GTK_WIDGET(t->cmd), cmd_font);
+	modify_font(GTK_WIDGET(t->cmd), cmd_font);
 
 	/* status bar */
 	statusbar_create(t);
@@ -7676,7 +7676,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 	gtk_label_set_width_chars(GTK_LABEL(t->tab_elems.label), 1);
 	gtk_misc_set_alignment(GTK_MISC(t->tab_elems.label), 0.0, 0.0);
 	gtk_misc_set_padding(GTK_MISC(t->tab_elems.label), 4.0, 4.0);
-	gtk_widget_modify_font(GTK_WIDGET(t->tab_elems.label), tabbar_font);
+	modify_font(GTK_WIDGET(t->tab_elems.label), tabbar_font);
 
 	gdk_color_parse(XT_COLOR_CT_BACKGROUND, &color);
 	gtk_widget_modify_bg(t->tab_elems.eventbox, GTK_STATE_NORMAL, &color);
