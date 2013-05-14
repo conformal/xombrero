@@ -5,7 +5,7 @@
  * Copyright (c) 2011 Todd T. Fries <todd@fries.net>
  * Copyright (c) 2011 Raphael Graf <r@undefined.ch>
  * Copyright (c) 2011 Michal Mazurek <akfaew@jasminek.net>
- * Copyright (c) 2012 Josh Rickmar <jrick@devio.us>
+ * Copyright (c) 2012, 2013 Josh Rickmar <jrick@devio.us>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -905,6 +905,12 @@ load_uri(struct tab *t, gchar *uri)
 		goto done;
 	}
 
+	/* remove old HTTPS cert chain (if any) */
+	if (t->cert_chain) {
+		g_free(t->cert_chain);
+		t->cert_chain = NULL;
+	}
+
 	set_status(t, "Loading: %s", (char *)uri);
 	marks_clear(t);
 	webkit_web_view_load_uri(t->wv, uri);
@@ -1652,203 +1658,6 @@ focus(struct tab *t, struct karg *args)
 	return (0);
 }
 
-int
-connect_socket_from_uri(const gchar *uri, const gchar **error_str, char *domain,
-    size_t domain_sz)
-{
-	SoupURI			*su = NULL;
-	struct addrinfo		hints, *res = NULL, *ai;
-	int			rv = -1, s = -1, on, error;
-	char			port[8];
-	static gchar		myerror[256]; /* this is not thread safe */
-
-	myerror[0] = '\0';
-	*error_str = myerror;
-	if (uri && !g_str_has_prefix(uri, "https://")) {
-		*error_str = "invalid URI";
-		goto done;
-	}
-
-	su = soup_uri_new(uri);
-	if (su == NULL) {
-		*error_str = "invalid soup URI";
-		goto done;
-	}
-	if (!SOUP_URI_VALID_FOR_HTTP(su)) {
-		*error_str = "invalid HTTPS URI";
-		goto done;
-	}
-
-	snprintf(port, sizeof port, "%d", su->port);
-	bzero(&hints, sizeof(struct addrinfo));
-	hints.ai_flags = AI_CANONNAME;
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-
-	if ((error = getaddrinfo(su->host, port, &hints, &res))) {
-		snprintf(myerror, sizeof myerror, "getaddrinfo failed: %s",
-		    gai_strerror(errno));
-		goto done;
-	}
-
-	for (ai = res; ai; ai = ai->ai_next) {
-		if (s != -1) {
-			close(s);
-			s = -1;
-		}
-
-		if (ai->ai_family != AF_INET && ai->ai_family != AF_INET6)
-			continue;
-		s = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-		if (s == -1)
-			continue;
-		if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on,
-		    sizeof(on)) == -1)
-			continue;
-		if (connect(s, ai->ai_addr, ai->ai_addrlen) == 0)
-			break;
-	}
-	if (s == -1) {
-		snprintf(myerror, sizeof myerror,
-		    "could not obtain certificates from: %s",
-		    su->host);
-		goto done;
-	}
-
-	if (domain)
-		strlcpy(domain, su->host, domain_sz);
-	rv = s;
-done:
-	if (su)
-		soup_uri_free(su);
-	if (res)
-		freeaddrinfo(res);
-	if (rv == -1 && s != -1)
-		close(s);
-
-	return (rv);
-}
-
-#ifdef __MINGW32__
-static ssize_t
-custom_gnutls_push(void *s, const void *buf, size_t len)
-{
-	return send((size_t)s, buf, len, 0);
-}
-
-static ssize_t
-custom_gnutls_pull(void *s, void *buf, size_t len)
-{
-	return recv((size_t)s, buf, len, 0);
-}
-#endif
-
-int
-stop_tls(gnutls_session_t gsession, gnutls_certificate_credentials_t xcred)
-{
-	if (gsession)
-		gnutls_deinit(gsession);
-	if (xcred)
-		gnutls_certificate_free_credentials(xcred);
-
-	return (0);
-}
-
-int
-start_tls(const gchar **error_str, int s, gnutls_session_t *gs,
-    gnutls_certificate_credentials_t *xc)
-{
-	gnutls_certificate_credentials_t xcred;
-	gnutls_session_t	gsession;
-	int			rv = 1;
-	static gchar		myerror[1024]; /* this is not thread safe */
-
-	if (gs == NULL || xc == NULL)
-		goto done;
-
-	myerror[0] = '\0';
-	*gs = NULL;
-	*xc = NULL;
-
-	gnutls_certificate_allocate_credentials(&xcred);
-	gnutls_certificate_set_x509_trust_file(xcred, ssl_ca_file,
-	    GNUTLS_X509_FMT_PEM);
-
-	gnutls_init(&gsession, GNUTLS_CLIENT);
-	gnutls_priority_set_direct(gsession, "PERFORMANCE", NULL);
-	gnutls_credentials_set(gsession, GNUTLS_CRD_CERTIFICATE, xcred);
-	gnutls_transport_set_ptr(gsession, (gnutls_transport_ptr_t)(long)s);
-#ifdef __MINGW32__
-	/* sockets on windows don't use file descriptors */
-	gnutls_transport_set_push_function(gsession, custom_gnutls_push);
-	gnutls_transport_set_pull_function(gsession, custom_gnutls_pull);
-#endif
-	if ((rv = gnutls_handshake(gsession)) < 0) {
-		snprintf(myerror, sizeof myerror,
-		    "gnutls_handshake failed %d fatal %d %s",
-		    rv,
-		    gnutls_error_is_fatal(rv),
-#if LIBGNUTLS_VERSION_MAJOR >= 2 && LIBGNUTLS_VERSION_MINOR >= 6
-		    gnutls_strerror_name(rv));
-#else
-		    "GNUTLS version is too old to provide human readable error");
-#endif
-		stop_tls(gsession, xcred);
-		goto done;
-	}
-
-	gnutls_credentials_type_t cred;
-	cred = gnutls_auth_get_type(gsession);
-	if (cred != GNUTLS_CRD_CERTIFICATE) {
-		snprintf(myerror, sizeof myerror,
-		    "gnutls_auth_get_type failed %d",
-		    (int)cred);
-		stop_tls(gsession, xcred);
-		goto done;
-	}
-
-	*gs = gsession;
-	*xc = xcred;
-	rv = 0;
-done:
-	*error_str = myerror;
-	return (rv);
-}
-
-int
-get_connection_certs(gnutls_session_t gsession, gnutls_x509_crt_t **certs,
-    size_t *cert_count)
-{
-	unsigned int		len;
-	const gnutls_datum_t	*cl;
-	gnutls_x509_crt_t	*all_certs;
-	int			i, rv = 1;
-
-	if (certs == NULL || cert_count == NULL)
-		goto done;
-	if (gnutls_certificate_type_get(gsession) != GNUTLS_CRT_X509)
-		goto done;
-	cl = gnutls_certificate_get_peers(gsession, &len);
-	if (len == 0)
-		goto done;
-
-	all_certs = g_malloc(sizeof(gnutls_x509_crt_t) * len);
-	for (i = 0; i < len; i++) {
-		gnutls_x509_crt_init(&all_certs[i]);
-		if (gnutls_x509_crt_import(all_certs[i], &cl[i],
-		    GNUTLS_X509_FMT_PEM < 0)) {
-			g_free(all_certs);
-			goto done;
-		    }
-	}
-
-	*certs = all_certs;
-	*cert_count = len;
-	rv = 0;
-done:
-	return (rv);
-}
-
 void
 free_connection_certs(gnutls_x509_crt_t *certs, size_t cert_count)
 {
@@ -1923,114 +1732,6 @@ enum cert_trust {
 	CERT_BAD
 };
 
-enum cert_trust
-load_compare_cert(const gchar *uri, const gchar **error_str, const char *dir)
-{
-	char			domain[8182], file[PATH_MAX];
-	char			cert_buf[64 * 1024], r_cert_buf[64 * 1024];
-	int			s = -1, i;
-	unsigned int		error = 0;
-	FILE			*f = NULL;
-	size_t			cert_buf_sz, cert_count;
-	enum cert_trust		rv = CERT_UNTRUSTED;
-	static gchar		serr[80]; /* this isn't thread safe */
-	gnutls_session_t	gsession;
-	gnutls_x509_crt_t	*certs;
-	gnutls_certificate_credentials_t xcred;
-
-	DNPRINTF(XT_D_URL, "%s: %s\n", __func__, uri);
-
-	serr[0] = '\0';
-	*error_str = serr;
-	if ((s = connect_socket_from_uri(uri, error_str, domain,
-	    sizeof domain)) == -1)
-		return (rv);
-
-	DNPRINTF(XT_D_URL, "%s: fd %d\n", __func__, s);
-
-	/* go ssl/tls */
-	if (start_tls(error_str, s, &gsession, &xcred))
-		goto done;
-	DNPRINTF(XT_D_URL, "%s: got tls\n", __func__);
-
-	/* verify certs in case cert file doesn't exist */
-	if (gnutls_certificate_verify_peers2(gsession, &error) !=
-	    GNUTLS_E_SUCCESS) {
-		*error_str = "Invalid certificates";
-		goto done;
-	}
-
-	/* get certs */
-	if (get_connection_certs(gsession, &certs, &cert_count)) {
-		*error_str = "Can't get connection certificates";
-		goto done;
-	}
-
-	snprintf(file, sizeof file, "%s" PS "%s", dir, domain);
-	if ((f = fopen(file, "r")) == NULL) {
-		if (!error)
-			rv = CERT_TRUSTED;
-		goto freeit;
-	}
-
-	for (i = 0; i < cert_count; i++) {
-		cert_buf_sz = sizeof cert_buf;
-		if (gnutls_x509_crt_export(certs[i], GNUTLS_X509_FMT_PEM,
-		    cert_buf, &cert_buf_sz)) {
-			goto freeit;
-		}
-		if (fread(r_cert_buf, cert_buf_sz, 1, f) != 1 && !feof(f)) {
-			rv = CERT_BAD; /* critical */
-			goto freeit;
-		}
-		if (bcmp(r_cert_buf, cert_buf, cert_buf_sz)) {
-			rv = CERT_BAD; /* critical */
-			goto freeit;
-		}
-		rv = CERT_LOCAL;
-	}
-
-freeit:
-	if (f)
-		fclose(f);
-	free_connection_certs(certs, cert_count);
-done:
-	/* we close the socket first for speed */
-	if (s != -1)
-		close(s);
-
-	/* only complain if we didn't save it locally */
-	if (strlen(ssl_ca_file) != 0 && error && rv != CERT_LOCAL) {
-		strlcpy(serr, "Certificate exception(s): ", sizeof serr);
-		if (error & GNUTLS_CERT_INVALID)
-			strlcat(serr, "invalid, ", sizeof serr);
-		if (error & GNUTLS_CERT_REVOKED)
-			strlcat(serr, "revoked, ", sizeof serr);
-		if (error & GNUTLS_CERT_SIGNER_NOT_FOUND)
-			strlcat(serr, "signer not found, ", sizeof serr);
-		if (error & GNUTLS_CERT_SIGNER_NOT_CA)
-			strlcat(serr, "not signed by CA, ", sizeof serr);
-		if (error & GNUTLS_CERT_INSECURE_ALGORITHM)
-			strlcat(serr, "insecure algorithm, ", sizeof serr);
-#if LIBGNUTLS_VERSION_MAJOR >= 2 && LIBGNUTLS_VERSION_MINOR >= 6
-		if (error & GNUTLS_CERT_NOT_ACTIVATED)
-			strlcat(serr, "not activated, ", sizeof serr);
-		if (error & GNUTLS_CERT_EXPIRED)
-			strlcat(serr, "expired, ", sizeof serr);
-#endif
-		for (i = strlen(serr) - 1; i > 0; i--)
-			if (serr[i] == ',') {
-				serr[i] = '\0';
-				break;
-			}
-		*error_str = serr;
-	}
-
-	stop_tls(gsession, xcred);
-
-	return (rv);
-}
-
 gnutls_x509_crt_t *
 get_local_cert_chain(const char *uri, size_t *ncerts, const char **error_str,
     const char *dir)
@@ -2077,17 +1778,46 @@ get_local_cert_chain(const char *uri, size_t *ncerts, const char **error_str,
 	return (certs);
 }
 
+/* This uses the pem-encoded cert chain saved in t->cert_chain instead
+ * of grabbing the remote cert.  We save it beforehand and read it
+ * here so as to not open a side channel that ignores proxy settings. 
+ */
+gnutls_x509_crt_t *
+get_remote_cert_chain(const char *uri, size_t *ncerts, const char **error_str,
+    char *chain)
+{
+	gnutls_datum_t		data;
+	unsigned int		len = UINT_MAX;
+	gnutls_x509_crt_t	*certs;
+
+	if (chain == NULL) {
+		*error_str = "Error reading remote cert chain";
+		return (NULL);
+	}
+
+	data.data = (unsigned char *)chain;
+	data.size = strlen(chain);
+	certs = g_malloc(sizeof *certs);
+	*ncerts = INT_MAX;
+	if (gnutls_x509_crt_list_import(certs, &len, &data,
+	    GNUTLS_X509_FMT_PEM, 0) < 0) {
+		g_free(certs);
+		*error_str = "Error reading remote cert chain";
+		return (NULL);
+	}
+
+	*ncerts = len;
+	return (certs);
+}
+
 
 int
 cert_cmd(struct tab *t, struct karg *args)
 {
 	const gchar		*uri, *error_str = NULL;
-	char			domain[8182];
-	int			s = -1;
 	size_t			cert_count;
-	gnutls_session_t	gsession;
 	gnutls_x509_crt_t	*certs;
-	gnutls_certificate_credentials_t xcred;
+	SoupURI			*su;
 #if !GTK_CHECK_VERSION(3, 0, 0)
 	GdkColor		color;
 #endif
@@ -2095,9 +1825,13 @@ cert_cmd(struct tab *t, struct karg *args)
 	if (t == NULL)
 		return (1);
 
-	if (args->s != NULL)
+	if (args->s != NULL) {
 		uri = args->s;
-	else if ((uri = get_uri(t)) == NULL) {
+	} else if ((uri = get_uri(t)) == NULL) {
+		show_oops(t, "Invalid URI");
+		return (1);
+	}
+	if ((su = soup_uri_new(uri)) == NULL) {
 		show_oops(t, "Invalid URI");
 		return (1);
 	}
@@ -2119,26 +1853,15 @@ cert_cmd(struct tab *t, struct karg *args)
 		return (0);
 	}
 
-	if ((s = connect_socket_from_uri(uri, &error_str, domain,
-	    sizeof domain)) == -1) {
-		show_oops(t, "%s", error_str);
-		return (1);
-	}
-
-	/* go ssl/tls */
-	if (start_tls(&error_str, s, &gsession, &xcred))
+	certs = get_remote_cert_chain(uri, &cert_count, &error_str,
+	    t->cert_chain);
+	if (error_str)
 		goto done;
-
-	/* get certs */
-	if (get_connection_certs(gsession, &certs, &cert_count)) {
-		show_oops(t, "get_connection_certs failed");
-		goto done;
-	}
 
 	if (args->i & XT_SHOW)
 		show_certs(t, certs, cert_count, "Certificate Chain");
 	else if (args->i & XT_SAVE) {
-		save_certs(t, certs, cert_count, domain, certs_dir);
+		save_certs(t, certs, cert_count, su->host, certs_dir);
 #if GTK_CHECK_VERSION(3, 0, 0)
 		gtk_widget_set_name(t->uri_entry, XT_CSS_BLUE);
 		statusbar_modify_attr(t, XT_CSS_BLUE);
@@ -2148,14 +1871,13 @@ cert_cmd(struct tab *t, struct karg *args)
 		statusbar_modify_attr(t, XT_COLOR_BLACK, XT_COLOR_BLUE);
 #endif
 	} else if (args->i & XT_CACHE)
-		save_certs(t, certs, cert_count, domain, certs_cache_dir);
+		save_certs(t, certs, cert_count, su->host, certs_cache_dir);
 
 	free_connection_certs(certs, cert_count);
+
 done:
-	/* we close the socket first for speed */
-	if (s != -1)
-		close(s);
-	stop_tls(gsession, xcred);
+	soup_uri_free(su);
+
 	if (error_str && strlen(error_str))
 		show_oops(t, "%s", error_str);
 	return (0);
@@ -2178,19 +1900,77 @@ warn_cert_cache_differs_idle(struct karg *args)
 	return (0);
 }
 
+/* Checks whether the remote cert is identical to the local saved
+ * cert.  Returns CERT_LOCAL if unchanged, CERT_UNTRUSTED if local
+ * cert does not exist, and CERT_BAD if different. 
+ *
+ * Saves entire cert chain in pem encoding to chain for it to be
+ * cached later, if needed. 
+ */
+enum cert_trust
+check_local_certs(const char *file, GTlsCertificate *cert, char **chain)
+{
+	char			r_cert_buf[64 * 1024];
+	FILE			*f;
+	GTlsCertificate		*tmpcert = NULL;
+	GTlsCertificate		*issuer;
+	char			*pem;
+	char			*tmp;
+	enum cert_trust		rv = CERT_LOCAL;
+	int			i;
+
+	if ((f = fopen(file, "r")) == NULL) {
+		/* no local cert to check */
+		rv = CERT_UNTRUSTED;
+	}
+
+	for (i = 0;;) {
+		if (i == 0) {
+			g_object_get(G_OBJECT(cert), "certificate-pem", &pem,
+			    NULL);
+			g_object_get(G_OBJECT(cert), "issuer", &issuer,NULL);
+		} else {
+			if (issuer == NULL)
+				break;
+			g_object_get(G_OBJECT(tmpcert), "issuer", &issuer,
+			    NULL);
+			if (issuer == NULL)
+				break;
+
+			g_object_get(G_OBJECT(tmpcert), "certificate-pem", &pem,
+			    NULL);
+		}
+		i++;
+
+		tmpcert = issuer;
+		if (f) {
+			if (fread(r_cert_buf, strlen(pem), 1, f) != 1 && !feof(f))
+				rv = CERT_BAD;
+			if (bcmp(r_cert_buf, pem, strlen(pem)))
+				rv = CERT_BAD;
+		}
+		tmp = g_strdup_printf("%s%s", *chain, pem);
+		g_free(*chain);
+		*chain = tmp;
+	}
+
+	if (f != NULL)
+		fclose(f);
+	return (rv);
+}
+
 int
-check_cert_changes(struct tab *t, const char *uri)
+check_cert_changes(struct tab *t, GTlsCertificate *cert, const char *file, const char *uri)
 {
 	SoupURI			*soupuri = NULL;
 	struct karg		args = {0};
 	struct wl_entry		*w = NULL;
-	const char		*errstr = NULL;
 	struct karg		*argsp;
+	char			*chain = NULL;
+	int			ret = 0;
 
-	if (!(warn_cert_changes && g_str_has_prefix(uri, "https://")))
-		return (0);
-
-	switch (load_compare_cert(uri, &errstr, certs_cache_dir)) {
+	chain = g_strdup("");
+	switch(check_local_certs(file, cert, &chain)) {
 	case CERT_LOCAL:
 		/* The cached certificate is identical */
 		break;
@@ -2199,6 +1979,7 @@ check_cert_changes(struct tab *t, const char *uri)
 		/* cache new certificate */
 		args.i = XT_CACHE;
 		cert_cmd(t, &args);
+		ret = 1;
 		break;
 	case CERT_BAD:
 		if ((soupuri = soup_uri_new(uri)) == NULL ||
@@ -2216,6 +1997,8 @@ check_cert_changes(struct tab *t, const char *uri)
 
 	if (soupuri)
 		soup_uri_free(soupuri);
+	if (chain)
+		g_free(chain);
 	return (0);
 }
 
@@ -3791,86 +3574,82 @@ get_css_name(const char *col_str)
 #endif
 
 void
-check_certs(gpointer p)
+show_ca_status(struct tab *t, const char *uri)
 {
-	struct tab		*tt, *t = p;
-	gchar			*col_str = XT_COLOR_WHITE;
-	const gchar		*uri, *u = NULL, *error_str = NULL;
+	char			domain[8182], file[PATH_MAX];
+	SoupMessage		*msg = NULL;
+	GTlsCertificate		*cert = NULL;
+	GTlsCertificateFlags	flags = 0;
+	gchar			*col_str = XT_COLOR_RED;
+	char			*chain;
 #if GTK_CHECK_VERSION(3, 0, 0)
 	char			*name;
 #else
 	GdkColor		color;
 	gchar			*text, *base;
 #endif
+	enum cert_trust		trust;
+	int			nocolor = 0;
+	int			i;
 
-#ifdef USE_THREADS
-	gdk_threads_enter();
-#endif
-	DNPRINTF(XT_D_URL, "%s:\n", __func__);
+	DNPRINTF(XT_D_URL, "show_ca_status: %d %s %s\n",
+	    ssl_strict_certs, ssl_ca_file, uri);
 
-	/* make sure t still exists */
 	if (t == NULL)
+		return;
+
+	if (uri == NULL || g_str_has_prefix(uri, "http://") ||
+	    !g_str_has_prefix(uri, "https://"))
+		return;
+
+	msg = soup_message_new("GET", uri);
+	if (msg == NULL)
+		return;
+	soup_session_send_message(session, msg);
+	if (msg->status_code == SOUP_STATUS_SSL_FAILED ||
+	    msg->status_code == SOUP_STATUS_TLS_FAILED) {
+		DNPRINTF(XT_D_URL, "%s: status not ok: %d\n", uri,
+		    msg->status_code);
 		goto done;
-	TAILQ_FOREACH(tt, &tabs, entry)
-		if (t == tt)
+	}
+	if (!soup_message_get_https_status(msg, &cert, &flags)) {
+		DNPRINTF(XT_D_URL, "%s: invalid response\n", uri);
+		goto done;
+	}
+	if (!G_IS_TLS_CERTIFICATE(cert)) {
+		DNPRINTF(XT_D_URL, "%s: no cert\n", uri);
+		goto done;
+	}
+
+	if (flags == 0)
+		col_str = XT_COLOR_GREEN;
+	else
+		col_str = XT_COLOR_YELLOW;
+
+	strlcpy(domain, uri + strlen("https://"), sizeof domain);
+	for (i = 0; i < strlen(domain); i++)
+		if (domain[i] == '/') {
+			domain[i] = '\0';
 			break;
-	if (t != tt)
-		goto done;
+		}
 
-	if ((uri = get_uri(t)) == NULL)
-		goto white;
-	u = g_strdup(uri);
+	snprintf(file, sizeof file, "%s" PS "%s", certs_cache_dir, domain);
+	if (warn_cert_changes) {
+		if (check_cert_changes(t, cert, file, uri))
+			nocolor = 1;
+	}
 
-#ifdef USE_THREADS
-	GDK_FLUSH();
-	gdk_threads_leave();
-#endif
-
-	col_str = XT_COLOR_YELLOW;
-	switch (load_compare_cert(u, &error_str, certs_dir)) {
-	case CERT_LOCAL:
+	snprintf(file, sizeof file, "%s" PS "%s", certs_dir, domain);
+	chain = g_strdup("");
+	if ((trust = check_local_certs(file, cert, &chain)) == CERT_LOCAL)
 		col_str = XT_COLOR_BLUE;
-		break;
-	case CERT_TRUSTED:
-		col_str = (strlen(ssl_ca_file) == 0) ? XT_COLOR_RED
-		    : XT_COLOR_GREEN;
-		break;
-	case CERT_UNTRUSTED:
-		col_str = (strlen(ssl_ca_file) == 0) ? XT_COLOR_RED
-		    : XT_COLOR_YELLOW;
-		break;
-	case CERT_BAD:
-		col_str = XT_COLOR_RED;
-		break;
-	}
+	if (t->cert_chain)
+		g_free(t->cert_chain);
+	t->cert_chain = chain;
 
-#ifdef USE_THREADS
-	gdk_threads_enter();
-#endif
-	/* make sure t isn't deleted */
-	TAILQ_FOREACH(tt, &tabs, entry)
-		if (t == tt)
-			break;
-	if (t != tt)
-		goto done;
-
-#ifdef USE_THREADS
-	/* test to see if the user navigated away and canceled the thread */
-	if (t->thread != g_thread_self())
-		goto done;
-	if ((uri = get_uri(t)) == NULL) {
-		t->thread = NULL;
-		goto done;
-	}
-	if (strcmp(uri, u)) {
-		/* make sure we are still the same url */
-		t->thread = NULL;
-		goto done;
-	}
-#endif
-white:
-
-	if (!strcmp(col_str, XT_COLOR_WHITE)) {
+done:
+	g_object_unref(msg);
+	if (!strcmp(col_str, XT_COLOR_WHITE) || nocolor) {
 #if GTK_CHECK_VERSION(3, 0, 0)
 		gtk_widget_set_name(t->uri_entry, XT_CSS_NORMAL);
 		statusbar_modify_attr(t, XT_CSS_NORMAL);
@@ -3896,90 +3675,6 @@ white:
 		gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
 		statusbar_modify_attr(t, XT_COLOR_BLACK, col_str);
 #endif
-	}
-
-	if (error_str && error_str[0] != '\0')
-		show_oops(t, "%s", error_str);
-
-	check_cert_changes(t, u);
-
-#ifdef USE_THREADS
-	t->thread = NULL;
-#endif
-done:
-	/* t is invalid at this point */
-	if (u)
-		g_free((gpointer)u);
-#ifdef USE_THREADS
-	GDK_FLUSH();
-	gdk_threads_leave();
-#endif
-}
-
-void
-show_ca_status(struct tab *t, const char *uri)
-{
-	gchar			*col_str = XT_COLOR_WHITE;
-#if GTK_CHECK_VERSION(3, 0, 0)
-	char			*name;
-#else
-	GdkColor		color;
-	gchar			*text, *base;
-#endif
-
-	DNPRINTF(XT_D_URL, "show_ca_status: %d %s %s\n",
-	    ssl_strict_certs, ssl_ca_file, uri);
-
-	if (t == NULL)
-		return;
-
-	if (uri == NULL || g_str_has_prefix(uri, "http://") ||
-	    !g_str_has_prefix(uri, "https://"))
-		goto done;
-
-#ifdef USE_THREADS
-	/*
-	 * It is not necessary to see if the thread is already running.
-	 * If the thread is in progress setting it to something else aborts it
-	 * on the way out.
-	 */
-
-	/* thread the coloring of the address bar */
-	t->thread = g_thread_create((GThreadFunc)check_certs, t, TRUE, NULL);
-#else
-	check_certs(t);
-#endif
-	return;
-
-done:
-	if (col_str) {
-		if (!strcmp(col_str, XT_COLOR_WHITE)) {
-#if GTK_CHECK_VERSION(3, 0, 0)
-			gtk_widget_set_name(t->uri_entry, XT_CSS_NORMAL);
-			statusbar_modify_attr(t, XT_CSS_NORMAL);
-#else
-			text = gdk_color_to_string(
-			    &t->default_style->text[GTK_STATE_NORMAL]);
-			base = gdk_color_to_string(
-			    &t->default_style->base[GTK_STATE_NORMAL]);
-			gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL,
-			    &t->default_style->base[GTK_STATE_NORMAL]);
-			statusbar_modify_attr(t, text, base);
-			g_free(text);
-			g_free(base);
-#endif
-		} else {
-#if GTK_CHECK_VERSION(3, 0, 0)
-			name = get_css_name(col_str);
-			gtk_widget_set_name(t->uri_entry, name);
-			statusbar_modify_attr(t, name);
-			g_free(name);
-#else
-			gdk_color_parse(col_str, &color);
-			gtk_widget_modify_base(t->uri_entry, GTK_STATE_NORMAL, &color);
-			statusbar_modify_attr(t, XT_COLOR_BLACK, col_str);
-#endif
-		}
 	}
 }
 

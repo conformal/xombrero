@@ -2,6 +2,7 @@
  * Copyright (c) 2011 Conformal Systems LLC <info@conformal.com>
  * Copyright (c) 2011 Marco Peereboom <marco@peereboom.us>
  * Copyright (c) 2010, 2011, 2012 Edd Barrett <vext01@gmail.com>
+ * Copyright (c) 2012, 2013 Josh Rickmar <jrick@devio.us>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -321,6 +322,9 @@ struct tab {
 
 	/* signal handles */
 	gulong			progress_handle;
+
+	/* cert chain (pem) */
+	char			*cert_chain;
 };
 TAILQ_HEAD(tab_list, tab);
 
