@@ -93,7 +93,7 @@ mv "${HEADER}.tmp" "$HEADER"
 TAG="${PROJECT_UC}_${MAJOR}_${MINOR}_${PATCH}"
 git commit -am "Prepare for release ${PROJ_VER}." ||
     report_err "unable to commit changes"
-git tag -a "$TAG" -m "Release ${PROJ_VER}" || report_err "unable to create tag"
+git tag -s -u release@conformal.com "$TAG" -m "Release ${PROJ_VER}" || report_err "unable to create tag"
 
 # create temp working space and copy repo over
 TD=$(mktemp -d /tmp/release.XXXXXXXXXX)
