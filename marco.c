@@ -39,12 +39,11 @@ static const char *message[] = {
 };
 
 const char *
-marco_message(int *len)
+marco_message(void)
 {
 	const char	*str;
 
 	str = message[arc4random_uniform(sizeof(message)/sizeof(message[0]))];
-	*len = strlen(str);
 
 	return str;
 }
@@ -53,13 +52,12 @@ int
 marco(struct tab *t, struct karg *args)
 {
 	char			*page, line[64 * 1024];
-	int			len;
 
 	if (t == NULL)
 		show_oops(NULL, "marco invalid parameters");
 
 	line[0] = '\0';
-	snprintf(line, sizeof line, "%s", marco_message(&len));
+	snprintf(line, sizeof line, "%s", marco_message());
 
 	page = get_html_page("Marco Sez...", line, "", 0);
 

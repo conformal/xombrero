@@ -3634,7 +3634,9 @@ show_ca_status(struct tab *t, const char *uri)
 	GTlsCertificate		*cert = NULL;
 	GTlsCertificateFlags	flags = 0;
 	gchar			*col_str = XT_COLOR_RED;
+	char			*cut_uri;
 	char			*chain;
+	char			*s;
 #if GTK_CHECK_VERSION(3, 0, 0)
 	char			*name;
 #else
@@ -3655,9 +3657,22 @@ show_ca_status(struct tab *t, const char *uri)
 	    !g_str_has_prefix(uri, "https://"))
 		return;
 
-	msg = soup_message_new("GET", uri);
+	/*
+	 * Cut the uri to get the certs off the homepage. We can't use the
+	 * full URI here since it may include arguments and we don't want to make
+	 * these requests multiple times.
+	 */
+	cut_uri = g_strdup(uri);
+	s = cut_uri;
+	for (i = 0; i < 3; ++i)
+		s = strchr(&(s[1]), '/');
+	s[1] = '\0';
+
+	msg = soup_message_new("HEAD", cut_uri);
+	g_free(cut_uri);
 	if (msg == NULL)
 		return;
+	soup_message_set_flags(msg, SOUP_MESSAGE_NO_REDIRECT);
 	soup_session_send_message(session, msg);
 	if (msg->status_code == SOUP_STATUS_SSL_FAILED ||
 	    msg->status_code == SOUP_STATUS_TLS_FAILED) {
