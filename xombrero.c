@@ -887,6 +887,12 @@ load_uri(struct tab *t, gchar *uri)
 		uri = newuri;
 	}
 
+	/* clear :cert show host */
+	if (t->about_cert_host) {
+		g_free(t->about_cert_host);
+		t->about_cert_host = NULL;
+	}
+
 	if (!strncmp(uri, XT_URI_ABOUT, XT_URI_ABOUT_LEN)) {
 		for (i = 0; i < about_list_size(); i++)
 			if (!strcmp(&uri[XT_URI_ABOUT_LEN], about_list[i].name) &&
@@ -1800,6 +1806,7 @@ cert_cmd(struct tab *t, struct karg *args)
 	size_t			cert_count;
 	gnutls_x509_crt_t	*certs;
 	SoupURI			*su;
+	char			*host;
 #if !GTK_CHECK_VERSION(3, 0, 0)
 	GdkColor		color;
 #endif
@@ -1826,6 +1833,7 @@ cert_cmd(struct tab *t, struct karg *args)
 		certs = get_local_cert_chain(uri, &cert_count, &error_str,
 		    certs_cache_dir);
 		if (error_str == NULL) {
+			t->about_cert_host = g_strdup(su->host);
 			show_certs(t, certs, cert_count, "Certificate Chain");
 			free_connection_certs(certs, cert_count);
 		} else {
@@ -1840,10 +1848,12 @@ cert_cmd(struct tab *t, struct karg *args)
 	if (error_str)
 		goto done;
 
-	if (args->i & XT_SHOW)
+	if (args->i & XT_SHOW) {
+		t->about_cert_host = g_strdup(su->host);
 		show_certs(t, certs, cert_count, "Certificate Chain");
-	else if (args->i & XT_SAVE) {
-		save_certs(t, certs, cert_count, su->host, certs_dir);
+	} else if (args->i & XT_SAVE) {
+		host = t->about_cert_host ? t->about_cert_host : su->host;
+		save_certs(t, certs, cert_count, host, certs_dir);
 #if GTK_CHECK_VERSION(3, 0, 0)
 		gtk_widget_set_name(t->uri_entry, XT_CSS_BLUE);
 		statusbar_modify_attr(t, XT_CSS_BLUE);

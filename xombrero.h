@@ -303,6 +303,9 @@ struct tab {
 
 	/* cert chain (pem) */
 	char			*cert_chain;
+
+	/* previous host (:cert show) */
+	char			*about_cert_host;
 };
 TAILQ_HEAD(tab_list, tab);
 
