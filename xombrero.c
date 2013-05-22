@@ -908,9 +908,9 @@ load_uri(struct tab *t, gchar *uri)
 	}
 
 	/* remove old HTTPS cert chain (if any) */
-	if (t->cert_chain) {
-		g_free(t->cert_chain);
-		t->cert_chain = NULL;
+	if (t->pem) {
+		g_free(t->pem);
+		t->pem = NULL;
 	}
 
 	set_status(t, "Loading: %s", (char *)uri);
@@ -1766,25 +1766,24 @@ get_local_cert_chain(const char *uri, size_t *ncerts, const char **error_str,
 }
 
 /*
- * This uses the pem-encoded cert chain saved in t->cert_chain instead
- * of grabbing the remote cert.  We save it beforehand and read it
- * here so as to not open a side channel that ignores proxy settings.
+ * This uses the pem-encoded cert chain saved in t->pem instead of
+ * grabbing the remote cert.  We save it beforehand and read it here
+ * so as to not open a side channel that ignores proxy settings.
  */
 gnutls_x509_crt_t *
-get_remote_cert_chain(const char *uri, size_t *ncerts, const char **error_str,
-    char *chain)
+get_chain_for_pem(char *pem, size_t *ncerts, const char **error_str)
 {
 	gnutls_datum_t		data;
 	unsigned int		len = UINT_MAX;
 	gnutls_x509_crt_t	*certs;
 
-	if (chain == NULL) {
+	if (pem == NULL) {
 		*error_str = "Error reading remote cert chain";
 		return (NULL);
 	}
 
-	data.data = (unsigned char *)chain;
-	data.size = strlen(chain);
+	data.data = (unsigned char *)pem;
+	data.size = strlen(pem);
 	certs = g_malloc(sizeof *certs);
 	*ncerts = INT_MAX;
 	if (gnutls_x509_crt_list_import(certs, &len, &data,
@@ -1843,8 +1842,7 @@ cert_cmd(struct tab *t, struct karg *args)
 		return (0);
 	}
 
-	certs = get_remote_cert_chain(uri, &cert_count, &error_str,
-	    t->cert_chain);
+	certs = get_chain_for_pem(t->pem, &cert_count, &error_str);
 	if (error_str)
 		goto done;
 
@@ -3721,9 +3719,9 @@ show_ca_status(struct tab *t, const char *uri)
 	chain = g_strdup("");
 	if ((trust = check_local_certs(file, cert, &chain)) == CERT_LOCAL)
 		col_str = XT_COLOR_BLUE;
-	if (t->cert_chain)
-		g_free(t->cert_chain);
-	t->cert_chain = chain;
+	if (t->pem)
+		g_free(t->pem);
+	t->pem = chain;
 
 done:
 	g_object_unref(msg);

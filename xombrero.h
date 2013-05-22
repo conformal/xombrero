@@ -302,7 +302,7 @@ struct tab {
 	gulong			progress_handle;
 
 	/* cert chain (pem) */
-	char			*cert_chain;
+	char			*pem;
 
 	/* previous host (:cert show) */
 	char			*about_cert_host;
