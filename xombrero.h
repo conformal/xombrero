@@ -858,6 +858,10 @@ int		set_scrollbar_visibility(struct tab *, int);
 int		save_runtime_setting(const char *, const char *);
 void		wl_add(const char *, struct wl_list *, int);
 
+#ifndef SOUP_CHECK_VERSION
+#define SOUP_CHECK_VERSION(major, minor, micro) (0)
+#endif
+
 #if GTK_CHECK_VERSION(3,0,0)
 #define modify_font gtk_widget_override_font
 #else
@@ -875,7 +879,13 @@ extern int	fancy_bar;
 extern int	browser_mode;
 extern int	enable_localstorage;
 extern char	*statusbar_elems;
-extern SoupURI	*proxy_uri;
+
+#if SOUP_CHECK_VERSION(2, 42, 2)
+extern GProxyResolver	*proxy_uri;
+extern gchar		*proxy_exclude[];
+#else
+extern SoupURI		*proxy_uri;
+#endif
 
 extern int	show_tabs;
 extern int	tab_style;

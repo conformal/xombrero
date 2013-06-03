@@ -24,7 +24,13 @@
 #include "tooltip.h"
 
 /* globals */
-SoupURI			*proxy_uri = NULL;
+#if SOUP_CHECK_VERSION(2, 42, 2)
+GProxyResolver	*proxy_uri = NULL;
+gchar		*proxy_exclude[] = { "::1", "127.0.0.1", NULL };
+#else
+SoupURI		*proxy_uri = NULL;
+#endif
+
 PangoFontDescription	*cmd_font;
 PangoFontDescription	*oops_font;
 PangoFontDescription	*statusbar_font;
@@ -592,7 +598,7 @@ struct settings		rs[] = {
 int
 set_http_proxy(char *proxy)
 {
-	SoupURI			*uri;
+	char *scheme;
 
 	/* see if we need to clear it */
 	if (proxy == NULL || strlen(proxy) == 0) {
@@ -600,17 +606,25 @@ set_http_proxy(char *proxy)
 		return (0);
 	}
 
-	uri = soup_uri_new(proxy);
-	if (uri == NULL)
+	scheme = g_uri_parse_scheme(proxy);
+	if (scheme == NULL)
 		return (1);
-	if (!SOUP_URI_VALID_FOR_HTTP(uri)) {
-		soup_uri_free(uri);
+
+#if SOUP_CHECK_VERSION(2, 42, 2)
+	if (strcmp(scheme, "socks5") != 0 && strcmp(scheme, "socks4a") != 0 &&
+	    strcmp(scheme, "socks4") != 0 && strcmp(scheme, "socks") != 0 &&
+	    strcmp(scheme, "http") != 0) {
+		free(scheme);
 		return (1);
 	}
-
+#else
+	if (strcmp(scheme, "http") != 0) {
+		free(scheme);
+		return (1);
+	}
+#endif
+	free(scheme);
 	setup_proxy(proxy);
-
-	soup_uri_free(uri);
 
 	return (0);
 }
@@ -3043,8 +3057,13 @@ setup_proxy(char *uri)
 	struct tab		*t;
 
 	if (proxy_uri) {
-		g_object_set(session, "proxy_uri", NULL, (char *)NULL);
+#if SOUP_CHECK_VERSION(2, 42, 2)
+		g_object_set(session, "proxy-resolver", NULL, (char *)NULL);
+		g_object_unref(proxy_uri);
+#else
+		g_object_set(session, "proxy-uri", NULL, (char *)NULL);
 		soup_uri_free(proxy_uri);
+#endif
 		proxy_uri = NULL;
 		TAILQ_FOREACH(t, &tabs, entry)
 			gtk_label_set_text(GTK_LABEL(t->sbe.proxy), "");
@@ -3059,10 +3078,17 @@ setup_proxy(char *uri)
 	if (uri) {
 		http_proxy = g_strdup(uri);
 		DNPRINTF(XT_D_CONFIG, "setup_proxy: %s\n", uri);
+#if SOUP_CHECK_VERSION(2, 42, 2)
+		proxy_uri = g_simple_proxy_resolver_new(http_proxy, proxy_exclude);
+		if (proxy_uri != NULL) {
+			g_object_set(session, "proxy-resolver", proxy_uri,
+			    (char *)NULL);
+#else
 		proxy_uri = soup_uri_new(http_proxy);
 		if (proxy_uri != NULL && SOUP_URI_VALID_FOR_HTTP(proxy_uri)) {
 			g_object_set(session, "proxy-uri", proxy_uri,
 			    (char *)NULL);
+#endif
 			TAILQ_FOREACH(t, &tabs, entry) {
 				gtk_label_set_text(GTK_LABEL(t->sbe.proxy),
 				    "proxy");
