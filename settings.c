@@ -815,14 +815,18 @@ set_statusbar_font(char *value)
 	TAILQ_FOREACH(t, &tabs, entry) {
 		modify_font(GTK_WIDGET(t->sbe.uri),
 		    statusbar_font);
-		modify_font(GTK_WIDGET(t->sbe.buffercmd),
-		    statusbar_font);
-		modify_font(GTK_WIDGET(t->sbe.zoom),
-		    statusbar_font);
-		modify_font(GTK_WIDGET(t->sbe.position),
-		    statusbar_font);
-		modify_font(GTK_WIDGET(t->sbe.proxy),
-		    statusbar_font);
+		if (t->sbe.buffercmd != NULL)
+			modify_font(GTK_WIDGET(t->sbe.buffercmd),
+			    statusbar_font);
+		if (t->sbe.zoom != NULL)
+			modify_font(GTK_WIDGET(t->sbe.zoom),
+			    statusbar_font);
+		if (t->sbe.position != NULL)
+			modify_font(GTK_WIDGET(t->sbe.position),
+			    statusbar_font);
+		if (t->sbe.proxy != NULL)
+			modify_font(GTK_WIDGET(t->sbe.proxy),
+			    statusbar_font);
 	}
 	return (0);
 }
@@ -3066,7 +3070,8 @@ setup_proxy(char *uri)
 #endif
 		proxy_uri = NULL;
 		TAILQ_FOREACH(t, &tabs, entry)
-			gtk_label_set_text(GTK_LABEL(t->sbe.proxy), "");
+			if (t->sbe.proxy != NULL)
+				gtk_label_set_text(GTK_LABEL(t->sbe.proxy), "");
 	}
 	if (http_proxy) {
 		if (http_proxy != uri) {
@@ -3090,8 +3095,10 @@ setup_proxy(char *uri)
 			    (char *)NULL);
 #endif
 			TAILQ_FOREACH(t, &tabs, entry) {
-				gtk_label_set_text(GTK_LABEL(t->sbe.proxy),
-				    "proxy");
+				if (t->sbe.proxy != NULL) {
+					gtk_label_set_text(
+					    GTK_LABEL(t->sbe.proxy), "proxy");
+				}
 				gtk_widget_show(t->proxy_toggle);
 				button_set_file(t->proxy_toggle,
 				    "torenabled.ico");

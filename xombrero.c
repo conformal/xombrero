@@ -188,7 +188,7 @@ TAILQ_HEAD(command_list, command_entry);
 
 #define XT_EJS_SHOW		(1<<0)
 
-GtkWidget *	create_button(char *, char *, int);
+GtkWidget *	create_button(const char *, const char *, int);
 
 void		recalc_tabs(void);
 void		recolor_compact_tabs(void);
@@ -537,10 +537,10 @@ sort_tabs_by_page_num(struct tab ***stabs)
 void
 buffers_make_list(void)
 {
-	int			i, num_tabs;
-	const gchar		*title = NULL;
 	GtkTreeIter		iter;
+	const gchar		*title = NULL;
 	struct tab		**stabs = NULL;
+	int			i, num_tabs;
 
 	num_tabs = sort_tabs_by_page_num(&stabs);
 
@@ -680,7 +680,7 @@ struct mime_type_list	mtl;
 struct alias_list	aliases;
 
 /* protos */
-struct tab		*create_new_tab(char *, struct undo *, int, int);
+struct tab		*create_new_tab(const char *, struct undo *, int, int);
 void			delete_tab(struct tab *);
 void			setzoom_webkit(struct tab *, int);
 int			download_rb_cmp(struct download *, struct download *);
@@ -740,7 +740,7 @@ struct valid_url_types {
 };
 
 int
-valid_url_type(char *url)
+valid_url_type(const char *url)
 {
 	int			i;
 
@@ -752,7 +752,7 @@ valid_url_type(char *url)
 }
 
 char *
-match_alias(char *url_in)
+match_alias(const char *url_in)
 {
 	struct alias		*a;
 	char			*arg;
@@ -791,7 +791,7 @@ done:
 }
 
 char *
-guess_url_type(char *url_in)
+guess_url_type(const char *url_in)
 {
 	struct stat		sb;
 	char			cwd[PATH_MAX] = {0};
@@ -863,7 +863,7 @@ set_normal_tab_meaning(struct tab *t)
 }
 
 void
-load_uri(struct tab *t, gchar *uri)
+load_uri(struct tab *t, const gchar *uri)
 {
 	struct karg	args;
 	gchar		*newuri = NULL;
@@ -947,8 +947,9 @@ const gchar *
 get_title(struct tab *t, bool window)
 {
 	const gchar		*set = NULL, *title = NULL;
-	WebKitLoadStatus	status = webkit_web_view_get_load_status(t->wv);
+	WebKitLoadStatus	status;
 
+	status = webkit_web_view_get_load_status(t->wv);
 	if (status == WEBKIT_LOAD_PROVISIONAL ||
 	    (status == WEBKIT_LOAD_FAILED && !t->download_requested) ||
 	    t->xtp_meaning == XT_XTP_TAB_MEANING_BL)
@@ -1776,9 +1777,12 @@ get_local_cert_chain(const char *uri, size_t *ncerts, const char **error_str,
 	}
 
 	certs = gnutls_malloc(sizeof(*certs) * max_certs);
+	if (certs == NULL) {
+		*error_str = "Error allocating memory";
+		return (NULL);
+	}
 	data.data = cert_buf;
 	data.size = bytes_read;
-	*ncerts = max_certs;
 	if (gnutls_x509_crt_list_import(certs, &max_certs, &data,
 	    GNUTLS_X509_FMT_PEM, 0) < 0) {
 		gnutls_free(certs);
@@ -1808,9 +1812,12 @@ get_chain_for_pem(char *pem, size_t *ncerts, const char **error_str)
 	}
 
 	certs = gnutls_malloc(sizeof(*certs) * max_certs);
+	if (certs == NULL) {
+		*error_str = "Error allocating memory";
+		return (NULL);
+	}
 	data.data = (unsigned char *)pem;
 	data.size = strlen(pem);
-	*ncerts = max_certs;
 	if (gnutls_x509_crt_list_import(certs, &max_certs, &data,
 	    GNUTLS_X509_FMT_PEM, 0) < 0) {
 		gnutls_free(certs);
@@ -1862,8 +1869,10 @@ cert_cmd(struct tab *t, struct karg *args)
 			free_connection_certs(certs, cert_count);
 		} else {
 			show_oops(t, "%s", error_str);
+			soup_uri_free(su);
 			return (1);
 		}
+		soup_uri_free(su);
 		return (0);
 	}
 
@@ -1912,9 +1921,9 @@ check_local_certs(const char *file, GTlsCertificate *cert, char **chain)
 	char			r_cert_buf[64 * 1024];
 	FILE			*f;
 	GTlsCertificate		*tmpcert = NULL;
-	GTlsCertificate		*issuer;
-	char			*pem;
-	char			*tmp;
+	GTlsCertificate		*issuer = NULL;
+	char			*pem = NULL;
+	char			*tmp = NULL;
 	enum cert_trust		rv = CERT_LOCAL;
 	int			i;
 
@@ -1927,7 +1936,7 @@ check_local_certs(const char *file, GTlsCertificate *cert, char **chain)
 		if (i == 0) {
 			g_object_get(G_OBJECT(cert), "certificate-pem", &pem,
 			    NULL);
-			g_object_get(G_OBJECT(cert), "issuer", &issuer,NULL);
+			g_object_get(G_OBJECT(cert), "issuer", &issuer, NULL);
 		} else {
 			if (issuer == NULL)
 				break;
@@ -1941,6 +1950,8 @@ check_local_certs(const char *file, GTlsCertificate *cert, char **chain)
 		}
 		i++;
 
+		if (tmpcert != NULL)
+			g_object_unref(G_OBJECT(tmpcert));
 		tmpcert = issuer;
 		if (f) {
 			if (fread(r_cert_buf, strlen(pem), 1, f) != 1 && !feof(f))
@@ -1949,10 +1960,13 @@ check_local_certs(const char *file, GTlsCertificate *cert, char **chain)
 				rv = CERT_BAD;
 		}
 		tmp = g_strdup_printf("%s%s", *chain, pem);
+		g_free(pem);
 		g_free(*chain);
 		*chain = tmp;
 	}
 
+	if (issuer != NULL)
+		g_object_unref(G_OBJECT(issuer));
 	if (f != NULL)
 		fclose(f);
 	return (rv);
@@ -2996,6 +3010,7 @@ print_page(struct tab *t, struct karg *args)
 	GtkPrintOperationResult		print_res;
 	GError				*g_err = NULL;
 	int				marg_l, marg_r, marg_t, marg_b;
+	int				ret = 0;
 
 	DNPRINTF(XT_D_PRINTING, "%s:", __func__);
 
@@ -3022,17 +3037,18 @@ print_page(struct tab *t, struct karg *args)
 
 	gtk_print_operation_set_default_page_setup(op, ps);
 
-	/* this appears to free 'op' and 'ps' */
 	print_res = webkit_web_frame_print_full(frame, op, action, &g_err);
 
 	/* check it worked */
 	if (print_res == GTK_PRINT_OPERATION_RESULT_ERROR) {
 		show_oops(NULL, "can't print: %s", g_err->message);
 		g_error_free (g_err);
-		return (1);
+		ret = 1;
 	}
 
-	return (0);
+	g_object_unref(G_OBJECT(ps));
+	g_object_unref(G_OBJECT(op));
+	return (ret);
 }
 
 int
@@ -3442,6 +3458,7 @@ wv_button_cb(GtkWidget *btn, GdkEventButton *e, struct tab *t)
 
 	hit_test_result = webkit_web_view_get_hit_test_result(t->wv, e);
 	g_object_get(hit_test_result, "context", &context, NULL);
+	g_object_unref(G_OBJECT(hit_test_result));
 
 	hide_oops(t);
 	hide_buffers(t);
@@ -4251,7 +4268,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		if (statusbar_style == XT_STATUSBAR_URL)
 			set_status(t, "%s", (char *)tmp_uri);
 		else
-			set_status(t, "%s", (char *)get_title(t, FALSE));
+			set_status(t, "%s", get_title(t, FALSE));
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 #if GTK_CHECK_VERSION(2, 20, 0)
 		gtk_spinner_stop(GTK_SPINNER(t->spinner));
@@ -4866,7 +4883,8 @@ webview_rrs_cb(WebKitWebView *wv, WebKitWebFrame *wf, WebKitWebResource *res,
 	char			*uri_s = NULL;
 
 	msg = webkit_network_request_get_message(request);
-	if (!msg) return;
+	if (!msg)
+		return;
 
 	uri = soup_message_get_uri(msg);
 	if (!uri)
@@ -5109,7 +5127,7 @@ download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
 
 	if (download_notifications)
 		show_oops(NULL, "Download of '%s' finished",
-		    basename((char *)webkit_download_get_destination_uri(download)));
+		    basename(webkit_download_get_destination_uri(download)));
 	uri = webkit_download_get_destination_uri(download);
 	if (uri == NULL)
 		return;
@@ -5219,6 +5237,7 @@ download_start(struct tab *t, struct download *d, int flag)
 		webkit_download_cancel(d->download);
 		g_object_unref(d->download);
 		d->download = webkit_download_new(req);
+		g_object_unref(req);
 	}
 
 	webkit_download_set_destination_uri(d->download, uri);
@@ -5236,7 +5255,7 @@ download_start(struct tab *t, struct download *d, int flag)
 		/* get from history */
 		g_object_ref(d->download);
 		show_oops(t, "Download of '%s' started...",
-		    basename((char *)webkit_download_get_destination_uri(d->download)));
+		    basename(webkit_download_get_destination_uri(d->download)));
 	}
 
 	if (flag != XT_DL_START)
@@ -5676,7 +5695,8 @@ buffercmd_abort(struct tab *t)
 		bcmd[i] = '\0';
 
 	cmd_prefix = 0; /* clear prefix for non-buffer commands */
-	gtk_label_set_text(GTK_LABEL(t->sbe.buffercmd), bcmd);
+	if (t->sbe.buffercmd)
+		gtk_label_set_text(GTK_LABEL(t->sbe.buffercmd), bcmd);
 }
 
 void
@@ -5741,7 +5761,8 @@ buffercmd_addkey(struct tab *t, guint keyval)
 		return (XT_CB_HANDLED);
 	}
 
-	gtk_label_set_text(GTK_LABEL(t->sbe.buffercmd), bcmd);
+	if (t->sbe.buffercmd != NULL)
+		gtk_label_set_text(GTK_LABEL(t->sbe.buffercmd), bcmd);
 
 	/* find exact match */
 	for (i = 0; i < LENGTH(buffercmds); i++)
@@ -6825,6 +6846,8 @@ setup_webkit(struct tab *t)
 		    FALSE, (char *)NULL);
 	else
 		warnx("webkit does not have \"enable-dns-prefetching\" property");
+	g_object_set(G_OBJECT(t->settings), "default-encoding", encoding,
+	    (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
 	    "enable-scripts", enable_scripts, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
@@ -6893,7 +6916,8 @@ update_statusbar_position(GtkAdjustment* adjustment, gpointer data)
 	else
 		position = g_strdup_printf("%d%%", (int) ((value / max) * 100));
 
-	gtk_label_set_text(GTK_LABEL(t->sbe.position), position);
+	if (t->sbe.position != NULL)
+		gtk_label_set_text(GTK_LABEL(t->sbe.position), position);
 	g_free(position);
 
 	return (TRUE);
@@ -6942,10 +6966,7 @@ create_browser(struct tab *t)
 	gtk_container_add(GTK_CONTAINER(w), GTK_WIDGET(t->wv));
 
 	/* set defaults */
-	t->settings = webkit_web_settings_new();
-
-	g_object_set(t->settings, "default-encoding", encoding, (char *)NULL);
-
+	t->settings = webkit_web_view_get_settings(t->wv);
 	t->stylesheet = g_strdup(stylesheet);
 	t->load_images = auto_load_images;
 
@@ -6963,15 +6984,17 @@ create_browser(struct tab *t)
 GtkWidget *
 create_kiosk_toolbar(struct tab *t)
 {
-	GtkWidget		*toolbar = NULL, *b;
+	GtkWidget		*toolbar = NULL;
+	GtkBox			*b;
 
 #if GTK_CHECK_VERSION(3, 0, 0)
-	b = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-	gtk_widget_set_name(GTK_WIDGET(b), "toolbar");
+	toolbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+	gtk_widget_set_name(toolbar, "toolbar");
 #else
-	b = gtk_hbox_new(FALSE, 1);
+	toolbar = gtk_hbox_new(FALSE, 1);
 #endif
-	toolbar = b;
+
+	b = GTK_BOX(toolbar);
 	gtk_container_set_border_width(GTK_CONTAINER(toolbar), 0);
 
 	/* backward button */
@@ -6979,32 +7002,40 @@ create_kiosk_toolbar(struct tab *t)
 	gtk_widget_set_sensitive(t->backward, FALSE);
 	g_signal_connect(G_OBJECT(t->backward), "clicked",
 	    G_CALLBACK(backward_cb), t);
-	gtk_box_pack_start(GTK_BOX(b), t->backward, TRUE, TRUE, 0);
+	gtk_box_pack_start(b, t->backward, TRUE, TRUE, 0);
 
 	/* forward button */
 	t->forward = create_button("Forward", GTK_STOCK_GO_FORWARD, 0);
 	gtk_widget_set_sensitive(t->forward, FALSE);
 	g_signal_connect(G_OBJECT(t->forward), "clicked",
 	    G_CALLBACK(forward_cb), t);
-	gtk_box_pack_start(GTK_BOX(b), t->forward, TRUE, TRUE, 0);
+	gtk_box_pack_start(b, t->forward, TRUE, TRUE, 0);
 
 	/* home button */
 	t->gohome = create_button("Home", GTK_STOCK_HOME, 0);
 	gtk_widget_set_sensitive(t->gohome, true);
 	g_signal_connect(G_OBJECT(t->gohome), "clicked",
 	    G_CALLBACK(home_cb), t);
-	gtk_box_pack_start(GTK_BOX(b), t->gohome, TRUE, TRUE, 0);
+	gtk_box_pack_start(b, t->gohome, TRUE, TRUE, 0);
 
-	/* create widgets but don't use them */
+	/*
+	 * Create widgets but don't use them. This is just so we don't get
+	 * loads of errors when trying to do stuff with them.  Sink the floating
+	 * reference here, and do a manual unreference when the tab is deleted.
+	 */
 	t->uri_entry = gtk_entry_new();
+	g_object_ref_sink(G_OBJECT(t->uri_entry));
 	g_signal_connect(G_OBJECT(t->uri_entry), "focus-in-event",
 	    G_CALLBACK(entry_focus_cb), t);
+	t->stop = create_button("Stop", GTK_STOCK_STOP, 0);
+	g_object_ref_sink(G_OBJECT(t->stop));
+	t->js_toggle = create_button("JS-Toggle", enable_scripts ?
+	    GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE, 0);
+	g_object_ref_sink(G_OBJECT(t->stop));
+
 #if !GTK_CHECK_VERSION(3, 0, 0)
 	t->default_style = gtk_rc_get_style(t->uri_entry);
 #endif
-	t->stop = create_button("Stop", GTK_STOCK_STOP, 0);
-	t->js_toggle = create_button("JS-Toggle", enable_scripts ?
-	    GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE, 0);
 
 	return (toolbar);
 }
@@ -7012,15 +7043,25 @@ create_kiosk_toolbar(struct tab *t)
 GtkWidget *
 create_toolbar(struct tab *t)
 {
-	GtkWidget		*toolbar = NULL, *b;
+	GtkWidget		*toolbar = NULL;
+	GtkBox			*b;
+
+	/*
+	 * t->stop, t->js_toggle, and t->uri_entry are shared by the kiosk
+	 * toolbar, but not shown or used.  We still create them there so we can
+	 * avoid loads of warnings when trying to use them.  Instead, we sink
+	 * the floating reference here, and do the final unreference when
+	 * deleting the tab.
+	 */
 
 #if GTK_CHECK_VERSION(3, 0, 0)
-	b = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
-	gtk_widget_set_name(GTK_WIDGET(b), "toolbar");
+	toolbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
+	gtk_widget_set_name(toolbar, "toolbar");
 #else
 	b = gtk_hbox_new(FALSE, 1);
 #endif
-	toolbar = b;
+
+	b = GTK_BOX(toolbar);
 	gtk_container_set_border_width(GTK_CONTAINER(toolbar), 0);
 
 	/* backward button */
@@ -7028,28 +7069,30 @@ create_toolbar(struct tab *t)
 	gtk_widget_set_sensitive(t->backward, FALSE);
 	g_signal_connect(G_OBJECT(t->backward), "clicked",
 	    G_CALLBACK(backward_cb), t);
-	gtk_box_pack_start(GTK_BOX(b), t->backward, FALSE, FALSE, 0);
+	gtk_box_pack_start(b, t->backward, FALSE, FALSE, 0);
 
 	/* forward button */
 	t->forward = create_button("Forward",GTK_STOCK_GO_FORWARD, 0);
 	gtk_widget_set_sensitive(t->forward, FALSE);
 	g_signal_connect(G_OBJECT(t->forward), "clicked",
 	    G_CALLBACK(forward_cb), t);
-	gtk_box_pack_start(GTK_BOX(b), t->forward, FALSE, FALSE, 0);
+	gtk_box_pack_start(b, t->forward, FALSE, FALSE, 0);
 
 	/* stop button */
 	t->stop = create_button("Stop", GTK_STOCK_STOP, 0);
+	g_object_ref_sink(G_OBJECT(t->stop));
 	gtk_widget_set_sensitive(t->stop, FALSE);
 	g_signal_connect(G_OBJECT(t->stop), "clicked", G_CALLBACK(stop_cb), t);
-	gtk_box_pack_start(GTK_BOX(b), t->stop, FALSE, FALSE, 0);
+	gtk_box_pack_start(b, t->stop, FALSE, FALSE, 0);
 
 	/* JS button */
 	t->js_toggle = create_button("JS-Toggle", enable_scripts ?
 	    GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE, 0);
+	g_object_ref_sink(G_OBJECT(t->js_toggle));
 	gtk_widget_set_sensitive(t->js_toggle, TRUE);
 	g_signal_connect(G_OBJECT(t->js_toggle), "clicked",
 	    G_CALLBACK(js_toggle_cb), t);
-	gtk_box_pack_start(GTK_BOX(b), t->js_toggle, FALSE, FALSE, 0);
+	gtk_box_pack_start(b, t->js_toggle, FALSE, FALSE, 0);
 
 	/* toggle proxy button */
 	t->proxy_toggle = create_button("Proxy-Toggle", proxy_uri ?
@@ -7062,9 +7105,10 @@ create_toolbar(struct tab *t)
 	gtk_widget_set_sensitive(t->proxy_toggle, TRUE);
 	g_signal_connect(G_OBJECT(t->proxy_toggle), "clicked",
 	    G_CALLBACK(proxy_toggle_cb), t);
-	gtk_box_pack_start(GTK_BOX(b), t->proxy_toggle, FALSE, FALSE, 0);
+	gtk_box_pack_start(b, t->proxy_toggle, FALSE, FALSE, 0);
 
 	t->uri_entry = gtk_entry_new();
+	g_object_ref_sink(G_OBJECT(t->uri_entry));
 	g_signal_connect(G_OBJECT(t->uri_entry), "activate",
 	    G_CALLBACK(activate_uri_entry_cb), t);
 	g_signal_connect(G_OBJECT(t->uri_entry), "key-press-event",
@@ -7072,7 +7116,7 @@ create_toolbar(struct tab *t)
 	g_signal_connect(G_OBJECT(t->uri_entry), "focus-in-event",
 	    G_CALLBACK(entry_focus_cb), t);
 	completion_add(t);
-	gtk_box_pack_start(GTK_BOX(b), t->uri_entry, TRUE, TRUE, 0);
+	gtk_box_pack_start(b, t->uri_entry, TRUE, TRUE, 0);
 
 	/* search entry */
 	t->search_entry = gtk_entry_new();
@@ -7083,7 +7127,7 @@ create_toolbar(struct tab *t)
 	    G_CALLBACK(entry_key_cb), t);
 	g_signal_connect(G_OBJECT(t->search_entry), "focus-in-event",
 	    G_CALLBACK(entry_focus_cb), t);
-	gtk_box_pack_start(GTK_BOX(b), t->search_entry, FALSE, FALSE, 0);
+	gtk_box_pack_start(b, t->search_entry, FALSE, FALSE, 0);
 
 #if !GTK_CHECK_VERSION(3, 0, 0)
 	t->default_style = gtk_rc_get_style(t->uri_entry);
@@ -7168,7 +7212,7 @@ update_statusbar_tabs(struct tab *t)
 	if (t == NULL)
 		t = get_current_tab();
 
-	if (t != NULL)
+	if (t != NULL && t->sbe.tabs != NULL)
 		gtk_label_set_text(GTK_LABEL(t->sbe.tabs), s);
 }
 
@@ -7219,7 +7263,8 @@ undo_close_tab_save(struct tab *t)
 	const gchar		*uri;
 	struct undo		*u1, *u2;
 	GList			*items;
-	WebKitWebHistoryItem	*item;
+	GList			*item;
+	WebKitWebHistoryItem	*el;
 
 	if ((uri = get_uri(t)) == NULL)
 		return (1);
@@ -7235,30 +7280,26 @@ undo_close_tab_save(struct tab *t)
 
 	/* forward history */
 	items = webkit_web_back_forward_list_get_forward_list_with_limit(t->bfl, m);
-
-	while (items) {
-		item = items->data;
+	for (item = g_list_first(items); item; item = item->next) {
 		u1->history = g_list_prepend(u1->history,
-		    webkit_web_history_item_copy(item));
-		items = g_list_next(items);
+		    webkit_web_history_item_copy(item->data));
 	}
+	g_list_free(items);
 
 	/* current item */
 	if (m) {
-		item = webkit_web_back_forward_list_get_current_item(t->bfl);
+		el = webkit_web_back_forward_list_get_current_item(t->bfl);
 		u1->history = g_list_prepend(u1->history,
-		    webkit_web_history_item_copy(item));
+		    webkit_web_history_item_copy(el));
 	}
 
 	/* back history */
 	items = webkit_web_back_forward_list_get_back_list_with_limit(t->bfl, n);
-
-	while (items) {
-		item = items->data;
+	for (item = g_list_first(items); item; item = item->next) {
 		u1->history = g_list_prepend(u1->history,
-		    webkit_web_history_item_copy(item));
-		items = g_list_next(items);
+		    webkit_web_history_item_copy(item->data));
 	}
+	g_list_free(items);
 
 	TAILQ_INSERT_HEAD(&undos, u1, entry);
 
@@ -7313,7 +7354,15 @@ delete_tab(struct tab *t)
 		gtk_widget_destroy(t->js_toggle);
 	}
 
-	g_object_unref(t->completion);
+	/* widgets not shown in the kiosk toolbar */
+	gtk_widget_destroy(t->stop);
+	g_object_unref(G_OBJECT(t->stop));
+	gtk_widget_destroy(t->js_toggle);
+	g_object_unref(G_OBJECT(t->js_toggle));
+	gtk_widget_destroy(t->uri_entry);
+	g_object_unref(G_OBJECT(t->uri_entry));
+
+	g_object_unref(G_OBJECT(t->completion));
 	if (t->item)
 		g_object_unref(t->item);
 
@@ -7353,7 +7402,8 @@ update_statusbar_zoom(struct tab *t)
 	g_object_get(G_OBJECT(t->wv), "zoom-level", &zoom, (char *)NULL);
 	if ((zoom <= 0.99 || zoom >= 1.01))
 		snprintf(s, sizeof s, "%d%%", (int)(zoom * 100));
-	gtk_label_set_text(GTK_LABEL(t->sbe.zoom), s);
+	if (t->sbe.zoom != NULL)
+		gtk_label_set_text(GTK_LABEL(t->sbe.zoom), s);
 }
 
 void
@@ -7427,33 +7477,12 @@ create_sbe(void)
 }
 
 int
-add_sbe(GtkWidget *box, char flag, int *used, GtkWidget *sbe)
-{
-	if (box == NULL || used == NULL || sbe == NULL) {
-		DPRINTF("%s: invalid parameters", __func__);
-		return (1);
-	}
-
-	if (*used) {
-		warnx("flag \"%c\" specified more than "
-		    "once in statusbar_elems\n", flag);
-		return (1);
-	}
-
-	gtk_box_pack_start(GTK_BOX(box), sbe, FALSE, FALSE, 0);
-	*used = 1;
-
-	return (0);
-}
-
-int
 statusbar_create(struct tab *t)
 {
 	GtkWidget		*box;	/* container for statusbar elems */
 	GtkWidget		*sep;
+	GtkBox			*b;
 	char			*p;
-	int			sbe_P = 0, sbe_B = 0, sbe_Z = 0, sbe_T = 0,
-				sbe_p = 0;
 #if !GTK_CHECK_VERSION(3, 0, 0)
 	GdkColor		color;
 #endif
@@ -7481,7 +7510,6 @@ statusbar_create(struct tab *t)
 	gtk_box_pack_start(GTK_BOX(t->statusbar), t->sbe.ebox, TRUE, TRUE, 0);
 	gtk_container_add(GTK_CONTAINER(t->sbe.ebox), box);
 
-	/* create these widgets only if specified in statusbar_elems */
 	t->sbe.uri = gtk_entry_new();
 	gtk_widget_set_can_focus(GTK_WIDGET(t->sbe.uri), FALSE);
 	modify_font(GTK_WIDGET(t->sbe.uri), statusbar_font);
@@ -7489,11 +7517,6 @@ statusbar_create(struct tab *t)
 	gtk_entry_set_inner_border(GTK_ENTRY(t->sbe.uri), NULL);
 	gtk_entry_set_has_frame(GTK_ENTRY(t->sbe.uri), FALSE);
 #endif	
-	t->sbe.position = create_sbe();
-	t->sbe.zoom = create_sbe();
-	t->sbe.buffercmd = create_sbe();
-	t->sbe.tabs = create_sbe();
-	t->sbe.proxy = create_sbe();
 
 #if GTK_CHECK_VERSION(3, 0, 0)
 	statusbar_modify_attr(t, XT_CSS_NORMAL);
@@ -7501,12 +7524,9 @@ statusbar_create(struct tab *t)
 	statusbar_modify_attr(t, XT_COLOR_WHITE, XT_COLOR_BLACK);
 #endif
 
-	gtk_box_pack_start(GTK_BOX(box), t->sbe.uri, TRUE, TRUE, 0);
+	b = GTK_BOX(box);
+	gtk_box_pack_start(b, t->sbe.uri, TRUE, TRUE, 0);
 
-	/*
-	 * gtk widgets cannot be added to a box twice. The sbe_* variables
-	 * make sure of this
-	 */
 	for (p = statusbar_elems; *p != '\0'; p++) {
 		switch (*p) {
 		case '|':
@@ -7517,25 +7537,45 @@ statusbar_create(struct tab *t)
 			gdk_color_parse(XT_COLOR_SB_SEPARATOR, &color);
 			gtk_widget_modify_bg(sep, GTK_STATE_NORMAL, &color);
 #endif
-			gtk_box_pack_start(GTK_BOX(box), sep, FALSE, FALSE, 0);
+			gtk_box_pack_start(b, sep, FALSE, FALSE, 0);
 			break;
 		case 'P':
-			add_sbe(box, *p, &sbe_P, t->sbe.position);
+			if (t->sbe.position == NULL) {
+				t->sbe.position = create_sbe();
+				gtk_box_pack_start(b, t->sbe.position, FALSE,
+				    FALSE, 0);
+			}
 			break;
 		case 'B':
-			add_sbe(box, *p, &sbe_B, t->sbe.buffercmd);
+			if (t->sbe.buffercmd == NULL) {
+				t->sbe.buffercmd = create_sbe();
+				gtk_box_pack_start(b, t->sbe.buffercmd, FALSE,
+				    FALSE, 0);
+			}
 			break;
 		case 'Z':
-			add_sbe(box, *p, &sbe_Z, t->sbe.zoom);
+			if (t->sbe.zoom == NULL) {
+				t->sbe.zoom = create_sbe();
+				gtk_box_pack_start(b, t->sbe.zoom, FALSE, FALSE,
+				    0);
+			}
 			break;
 		case 'T':
-			add_sbe(box, *p, &sbe_T, t->sbe.tabs);
+			if (t->sbe.tabs == NULL) {
+				t->sbe.tabs = create_sbe();
+				gtk_box_pack_start(b, t->sbe.tabs, FALSE, FALSE,
+				    0);
+			}
 			break;
 		case 'p':
-			if (add_sbe(box, *p, &sbe_p, t->sbe.proxy) == 0)
+			if (t->sbe.proxy == NULL) {
+				t->sbe.proxy = create_sbe();
+				gtk_box_pack_start(b, t->sbe.proxy, FALSE,
+				    FALSE, 0);
 				if (proxy_uri)
 					gtk_entry_set_text(
 					    GTK_ENTRY(t->sbe.proxy), "proxy");
+			}
 			break;
 		default:
 			warnx("illegal flag \"%c\" in statusbar_elems\n", *p);
@@ -7549,7 +7589,7 @@ statusbar_create(struct tab *t)
 }
 
 struct tab *
-create_new_tab(char *title, struct undo *u, int focus, int position)
+create_new_tab(const char *title, struct undo *u, int focus, int position)
 {
 	struct tab			*t;
 	int				load = 1, id;
@@ -7570,7 +7610,7 @@ create_new_tab(char *title, struct undo *u, int focus, int position)
 			return (NULL);
 		}
 		sv[0] = start_argv[0];
-		sv[1] = title;
+		sv[1] = (char *)title;
 		sv[2] = (char *)NULL;
 		if (!g_spawn_async(NULL, sv, NULL, G_SPAWN_SEARCH_PATH,
 		    NULL, NULL, NULL, NULL))
@@ -7941,6 +7981,7 @@ int
 destroy_menu(GtkMenuShell *m, void *notused)
 {
 	gtk_widget_destroy(GTK_WIDGET(m));
+	g_object_unref(G_OBJECT(m));
 	return (XT_CB_PASSTHROUGH);
 }
 
@@ -7956,6 +7997,7 @@ arrow_cb(GtkWidget *w, GdkEventButton *event, gpointer user_data)
 	if (event->type == GDK_BUTTON_PRESS) {
 		bevent = (GdkEventButton *) event;
 		menu = gtk_menu_new();
+		g_object_ref_sink(G_OBJECT(menu));
 
 		num_tabs = sort_tabs_by_page_num(&stabs);
 		for (i = 0; i < num_tabs; ++i) {
@@ -7999,7 +8041,7 @@ icon_size_map(int iconsz)
 }
 
 GtkWidget *
-create_button(char *name, char *stockid, int size)
+create_button(const char *name, const char *stockid, int size)
 {
 	GtkWidget		*button, *image;
 	int			gtk_icon_size;
@@ -8027,7 +8069,7 @@ create_button(char *name, char *stockid, int size)
 
 	image = gtk_image_new_from_stock(stockid, gtk_icon_size);
 	gtk_container_set_border_width(GTK_CONTAINER(button), 0);
-	gtk_container_add(GTK_CONTAINER(button), GTK_WIDGET(image));
+	gtk_button_set_image(GTK_BUTTON(button), GTK_WIDGET(image));
 	gtk_widget_set_name(button, name);
 	gtk_button_set_relief(GTK_BUTTON(button), GTK_RELIEF_NONE);
 
@@ -8086,7 +8128,7 @@ create_canvas(void)
 	gtk_widget_set_can_focus(abtn, FALSE);
 	arrow = gtk_arrow_new(GTK_ARROW_DOWN, GTK_SHADOW_NONE);
 	gtk_widget_set_name(abtn, "Arrow");
-	gtk_container_add(GTK_CONTAINER(abtn), arrow);
+	gtk_button_set_image(GTK_BUTTON(abtn), arrow);
 	gtk_widget_set_size_request(abtn, -1, 20);
 
 #if GTK_CHECK_VERSION(2, 20, 0)
@@ -8133,6 +8175,9 @@ create_canvas(void)
 		l = g_list_append(l, pb);
 	}
 	gtk_window_set_default_icon_list(l);
+
+	for (; l; l = l->next)
+		g_object_unref(G_OBJECT(l->data));
 
 	gtk_widget_show_all(abtn);
 	gtk_widget_show_all(main_window);
@@ -8337,6 +8382,7 @@ setup_css(void)
 	gtk_style_context_add_provider_for_screen(screen,
 	    GTK_STYLE_PROVIDER(provider),
 	    GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+	g_object_unref(G_OBJECT(provider));
 #if defined __MINGW32__
 	windows_hacks = gtk_css_provider_new();
 	gtk_css_provider_load_from_data(windows_hacks,
@@ -8346,8 +8392,9 @@ setup_css(void)
 	gtk_style_context_add_provider_for_screen(screen,
 	    GTK_STYLE_PROVIDER(windows_hacks),
 	    GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+	g_object_unref(G_OBJECT(windows_hacks));
 #endif
-	g_object_unref(file);
+	g_object_unref(G_OBJECT(file));
 }
 #endif
 

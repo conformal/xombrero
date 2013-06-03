@@ -306,21 +306,25 @@ void
 show_certs(struct tab *t, gnutls_x509_crt_t *certs,
     size_t cert_count, char *title)
 {
-	gnutls_datum_t		cinfo;
+	gnutls_datum_t		*cinfo;
 	char			*tmp, *body;
 	int			i;
 
 	body = g_strdup("");
 
 	for (i = 0; i < cert_count; i++) {
+		cinfo = gnutls_malloc(sizeof *cinfo);
 		if (gnutls_x509_crt_print(certs[i], GNUTLS_CRT_PRINT_FULL,
-		    &cinfo))
+		    cinfo)) {
+			gnutls_free(cinfo);
+			g_free(body);
 			return;
+		}
 
 		tmp = body;
 		body = g_strdup_printf("%s<h2>Cert #%d</h2><pre>%s</pre>",
-		    body, i, cinfo.data);
-		gnutls_free(cinfo.data);
+		    body, i, cinfo->data);
+		gnutls_free(cinfo);
 		g_free(tmp);
 	}
 
@@ -335,7 +339,8 @@ int
 ca_cmd(struct tab *t, struct karg *args)
 {
 	FILE			*f = NULL;
-	int			rv = 1, certs = 0, certs_read;
+	int			rv = 1, certs_read;
+	unsigned int		certs = 0;
 	struct stat		sb;
 	gnutls_datum_t		dt;
 	gnutls_x509_crt_t	*c = NULL;
@@ -367,8 +372,8 @@ ca_cmd(struct tab *t, struct karg *args)
 	bzero(&dt, sizeof dt);
 	dt.data = (unsigned char *)certs_buf;
 	dt.size = sb.st_size;
-	c = g_malloc(sizeof(gnutls_x509_crt_t) * certs);
-	certs_read = gnutls_x509_crt_list_import(c, (unsigned int *)&certs, &dt,
+	c = gnutls_malloc(sizeof(*c) * certs);
+	certs_read = gnutls_x509_crt_list_import(c, &certs, &dt,
 	    GNUTLS_X509_FMT_PEM, 0);
 	if (certs_read <= 0) {
 		show_oops(t, "No cert(s) available");
@@ -377,7 +382,7 @@ ca_cmd(struct tab *t, struct karg *args)
 	show_certs(t, c, certs_read, "Certificate Authority Certificates");
 done:
 	if (c)
-		g_free(c);
+		gnutls_free(c);
 	if (certs_buf)
 		g_free(certs_buf);
 	if (f)
