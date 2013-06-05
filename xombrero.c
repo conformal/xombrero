@@ -97,6 +97,7 @@ TAILQ_HEAD(command_list, command_entry);
 #define XT_PRINT_EXTRA_MARGIN	10
 #define XT_URL_REGEX		("^[[:blank:]]*[^[:blank:]]*([[:alnum:]-]+\\.)+[[:alnum:]-][^[:blank:]]*[[:blank:]]*$")
 #define XT_INVALID_MARK		(-1) /* XXX this is a double, maybe use something else, like a nan */
+#define XT_MAX_CERTS		(32)
 
 /* colors */
 #define XT_COLOR_RED		"#cc0000"
@@ -1652,7 +1653,7 @@ free_connection_certs(gnutls_x509_crt_t *certs, size_t cert_count)
 
 	for (i = 0; i < cert_count; i++)
 		gnutls_x509_crt_deinit(certs[i]);
-	g_free(certs);
+	gnutls_free(certs);
 }
 
 #if GTK_CHECK_VERSION(3, 0, 0)
@@ -1681,7 +1682,9 @@ save_certs(struct tab *t, gnutls_x509_crt_t *certs,
     size_t cert_count, const char *domain, const char *dir)
 {
 	size_t			cert_buf_sz;
-	char			cert_buf[64 * 1024], file[PATH_MAX];
+	char			file[PATH_MAX];
+	char			*cert_buf = NULL;
+	int			rv;
 	int			i;
 	FILE			*f;
 
@@ -1696,19 +1699,41 @@ save_certs(struct tab *t, gnutls_x509_crt_t *certs,
 	}
 
 	for (i = 0; i < cert_count; i++) {
-		cert_buf_sz = sizeof cert_buf;
-		if (gnutls_x509_crt_export(certs[i], GNUTLS_X509_FMT_PEM,
-		    cert_buf, &cert_buf_sz)) {
-			show_oops(t, "gnutls_x509_crt_export failed");
+		/*
+		 * Because we support old crap and can't use 
+		 * gnutls_x509_crt_export2(), we intentionally use an empty
+		 * buffer and then make a second call with the known size
+		 * needed.
+		 */
+		cert_buf_sz = 0;
+		rv = gnutls_x509_crt_export(certs[i], GNUTLS_X509_FMT_PEM,
+		    cert_buf, &cert_buf_sz);
+		if (rv == GNUTLS_E_SHORT_MEMORY_BUFFER) {
+			cert_buf = gnutls_malloc(cert_buf_sz * sizeof(char));
+			if (cert_buf == NULL) {
+				show_oops(t, "gnutls_x509_crt_export failed");
+				goto done;
+			}
+			rv = gnutls_x509_crt_export(certs[i],
+			    GNUTLS_X509_FMT_PEM, cert_buf, &cert_buf_sz);
+		}
+		if (rv != 0) {
+			show_oops(t, "gnutls_x509_crt_export failure: %s",
+			    gnutls_strerror(rv));
 			goto done;
 		}
+		cert_buf[cert_buf_sz] = '\0';
 		if (fwrite(cert_buf, cert_buf_sz, 1, f) != 1) {
 			show_oops(t, "Can't write certs: %s", strerror(errno));
 			goto done;
 		}
+		gnutls_free(cert_buf);
+		cert_buf = NULL;
 	}
 
 done:
+	if (cert_buf)
+		gnutls_free(cert_buf);
 	fclose(f);
 }
 
@@ -1726,7 +1751,7 @@ get_local_cert_chain(const char *uri, size_t *ncerts, const char **error_str,
 	SoupURI			*su;
 	unsigned char		cert_buf[64 * 1024] = {0};
 	gnutls_datum_t		data;
-	unsigned int		len = UINT_MAX;
+	unsigned int		max_certs = XT_MAX_CERTS;
 	int			bytes_read;
 	char			file[PATH_MAX];
 	FILE			*f;
@@ -1750,18 +1775,18 @@ get_local_cert_chain(const char *uri, size_t *ncerts, const char **error_str,
 		return (NULL);
 	}
 
+	certs = gnutls_malloc(sizeof(*certs) * max_certs);
 	data.data = cert_buf;
 	data.size = bytes_read;
-	certs = g_malloc(sizeof *certs);
-	*ncerts = INT_MAX;
-	if (gnutls_x509_crt_list_import(certs, &len, &data,
+	*ncerts = max_certs;
+	if (gnutls_x509_crt_list_import(certs, &max_certs, &data,
 	    GNUTLS_X509_FMT_PEM, 0) < 0) {
-		g_free(certs);
+		gnutls_free(certs);
 		*error_str = "Error reading local cert chain";
 		return (NULL);
 	}
 
-	*ncerts = len;
+	*ncerts = max_certs;
 	return (certs);
 }
 
@@ -1774,7 +1799,7 @@ gnutls_x509_crt_t *
 get_chain_for_pem(char *pem, size_t *ncerts, const char **error_str)
 {
 	gnutls_datum_t		data;
-	unsigned int		len = UINT_MAX;
+	unsigned int		max_certs = XT_MAX_CERTS;
 	gnutls_x509_crt_t	*certs;
 
 	if (pem == NULL) {
@@ -1782,18 +1807,18 @@ get_chain_for_pem(char *pem, size_t *ncerts, const char **error_str)
 		return (NULL);
 	}
 
+	certs = gnutls_malloc(sizeof(*certs) * max_certs);
 	data.data = (unsigned char *)pem;
 	data.size = strlen(pem);
-	certs = g_malloc(sizeof *certs);
-	*ncerts = INT_MAX;
-	if (gnutls_x509_crt_list_import(certs, &len, &data,
+	*ncerts = max_certs;
+	if (gnutls_x509_crt_list_import(certs, &max_certs, &data,
 	    GNUTLS_X509_FMT_PEM, 0) < 0) {
-		g_free(certs);
+		gnutls_free(certs);
 		*error_str = "Error reading remote cert chain";
 		return (NULL);
 	}
 
-	*ncerts = len;
+	*ncerts = max_certs;
 	return (certs);
 }
 
