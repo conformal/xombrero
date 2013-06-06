@@ -7058,7 +7058,7 @@ create_toolbar(struct tab *t)
 	toolbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
 	gtk_widget_set_name(toolbar, "toolbar");
 #else
-	b = gtk_hbox_new(FALSE, 1);
+	toolbar = gtk_hbox_new(FALSE, 1);
 #endif
 
 	b = GTK_BOX(toolbar);
