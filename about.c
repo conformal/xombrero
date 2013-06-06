@@ -932,7 +932,6 @@ xtp_handle_rt(struct tab *t, uint8_t cmd, int id, const char *query)
 		for (i = 0; i < get_settings_size(); ++i) {
 			if (!rs[i].activate)
 				continue;
-			sr = g_malloc(sizeof *sr);
 			val = (char *)g_hash_table_lookup(new_settings,
 			    rs[i].name);
 			modify = 0;
@@ -963,6 +962,7 @@ xtp_handle_rt(struct tab *t, uint8_t cmd, int id, const char *query)
 				break;
 			}
 			if (rs[i].activate(val)) {
+				sr = g_malloc(sizeof *sr);
 				sr->name = g_strdup(rs[i].name);
 				sr->value = g_strdup(val);
 				TAILQ_INSERT_TAIL(&srl, sr, entry);
