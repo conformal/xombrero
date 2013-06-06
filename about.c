@@ -117,7 +117,7 @@ struct search_type {
 	const char		*name;
 	const char		*url;
 } search_list[] = {
-	{ "Google (SSL)",	"https://encrypted.google.com/search?q=%s&&client=xombrero" },
+	{ "Google (SSL)",	"https://encrypted.google.com/search?q=%s" },
 	{ "Bing",		"http://www.bing.com/search?q=%s" },
 	{ "Yahoo",		"http://search.yahoo.com/search?p=%s" },
 	{ "DuckDuckGo",		"https://duckduckgo.com/?q=%s" },
