@@ -1396,6 +1396,7 @@ xtp_page_dl_row(struct tab *t, char *html, struct download *dl)
 
 	WebKitDownloadStatus	stat;
 	const gchar		*destination;
+	gchar			*d;
 	char			*status_html = NULL, *cmd_html = NULL, *new_html;
 	gdouble			progress;
 	char			cur_sz[FMT_SCALED_STRSIZE];
@@ -1472,11 +1473,12 @@ xtp_page_dl_row(struct tab *t, char *html, struct download *dl)
 	/* we might not have a destination set yet */
 	if (!destination)
 		destination = webkit_download_get_suggested_filename(dl->download);
+	d = g_strdup(destination);	/* copy for basename */
 	new_html = g_strdup_printf(
 	    "%s\n<tr><td>%s</td><td>%s</td>"
 	    "<td style='text-align:center'>%s</td></tr>\n",
-	    html, basename((char *)destination),
-	    status_html, cmd_html);
+	    html, basename(d), status_html, cmd_html);
+	g_free(d);
 	g_free(html);
 
 	if (status_html)

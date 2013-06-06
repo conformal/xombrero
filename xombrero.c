@@ -5118,6 +5118,7 @@ download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
 	const char		*uri;
 	char			*file = NULL;
 	char			*mime = NULL;
+	char			*destination;
 
 	if (download == NULL)
 		return;
@@ -5125,9 +5126,14 @@ download_status_changed_cb(WebKitDownload *download, GParamSpec *spec,
 	if (status != WEBKIT_DOWNLOAD_STATUS_FINISHED)
 		return;
 
-	if (download_notifications)
+	if (download_notifications) {
+		/* because basename() takes a char * on linux */
+		destination = g_strdup(
+		    webkit_download_get_destination_uri(download));
 		show_oops(NULL, "Download of '%s' finished",
-		    basename(webkit_download_get_destination_uri(download)));
+		    basename(destination));
+		g_free(destination);
+	}
 	uri = webkit_download_get_destination_uri(download);
 	if (uri == NULL)
 		return;
@@ -5185,6 +5191,7 @@ download_start(struct tab *t, struct download *d, int flag)
 	gchar			*filename = NULL;
 	char			*uri = NULL;
 	char			*path = NULL;
+	char			*destination;
 	int			ret = TRUE;
 	int			i;
 
@@ -5254,8 +5261,12 @@ download_start(struct tab *t, struct download *d, int flag)
 
 		/* get from history */
 		g_object_ref(d->download);
+		/* because basename() takes a char * on linux */
+		destination = g_strdup(
+		    webkit_download_get_destination_uri(d->download));
 		show_oops(t, "Download of '%s' started...",
-		    basename(webkit_download_get_destination_uri(d->download)));
+		    basename(destination));
+		g_free(destination);
 	}
 
 	if (flag != XT_DL_START)
