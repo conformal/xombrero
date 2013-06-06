@@ -1991,7 +1991,6 @@ check_cert_changes(struct tab *t, GTlsCertificate *cert, const char *file, const
 		/* cache new certificate */
 		args.i = XT_CACHE;
 		cert_cmd(t, &args);
-		ret = 1;
 		break;
 	case CERT_BAD:
 		if ((soupuri = soup_uri_new(uri)) == NULL ||
@@ -2002,6 +2001,7 @@ check_cert_changes(struct tab *t, GTlsCertificate *cert, const char *file, const
 		t->xtp_meaning = XT_XTP_TAB_MEANING_SV;
 		args.s = g_strdup((char *)uri);
 		xtp_page_sv(t, &args);
+		ret = 1;
 		break;
 	}
 
@@ -2009,7 +2009,7 @@ check_cert_changes(struct tab *t, GTlsCertificate *cert, const char *file, const
 		soup_uri_free(soupuri);
 	if (chain)
 		g_free(chain);
-	return (0);
+	return (ret);
 }
 
 int
