@@ -1365,9 +1365,12 @@ It must be noted that on older webkit versions one MUST use an IP address and
 not a FQDN.
 This works as expected with webkit 1.4.2.
 .Pp
-If one desires to use a socks proxy then an intermediary tool must be used.
-It has been reported that tsocks and polipo work with
-.Nm .
+If using libsoup 2.42.2 or newer, one may use a socks proxy directly.
+For example:
+.Bd -literal -offset indent
+http_proxy = socks5://127.0.0.1:9050
+.Ed
+Otherwise, an intermediary tool, such as polipo or tsocks, must be used. 
 .It Cm http_accept
 If set, the HTTP Accept header will be modified for each text/html request.
 If this setting is set multiple times, the Accept header will be changed
