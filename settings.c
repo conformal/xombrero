@@ -3066,7 +3066,7 @@ check_fancy_bar(char **tt)
 }
 
 int
-setup_proxy(char *uri)
+setup_proxy(const char *uri)
 {
 	struct tab		*t;
 
