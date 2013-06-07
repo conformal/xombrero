@@ -26,7 +26,7 @@
 /* globals */
 #if SOUP_CHECK_VERSION(2, 42, 2)
 GProxyResolver	*proxy_uri = NULL;
-gchar		*proxy_exclude[] = { "::1", "127.0.0.1", NULL };
+gchar		*proxy_exclude[] = { "fc00::/7", "::1", "127.0.0.1", NULL };
 #else
 SoupURI		*proxy_uri = NULL;
 #endif
