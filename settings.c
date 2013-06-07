@@ -262,6 +262,7 @@ int		check_gui_mode(char **);
 int		check_history_autosave(char **);
 int		check_home(char **);
 int		check_http_proxy(char **);
+int		check_http_proxy_scheme(const char *);
 int		check_http_proxy_starts_enabled(char **);
 int		check_icon_size(char **);
 int		check_max_connections(char **);
@@ -598,35 +599,16 @@ struct settings		rs[] = {
 int
 set_http_proxy(char *proxy)
 {
-	char *scheme;
+	char *tmpproxy = proxy;
 
 	/* see if we need to clear it */
-	if (proxy == NULL || strlen(proxy) == 0) {
-		setup_proxy(NULL);
-		return (0);
-	}
+	if (proxy == NULL || strlen(proxy) == 0)
+		tmpproxy = NULL;
 
-	scheme = g_uri_parse_scheme(proxy);
-	if (scheme == NULL)
-		return (1);
+	if (check_http_proxy_scheme(proxy) == 0)
+		tmpproxy = NULL;
 
-#if SOUP_CHECK_VERSION(2, 42, 2)
-	if (strcmp(scheme, "socks5") != 0 && strcmp(scheme, "socks4a") != 0 &&
-	    strcmp(scheme, "socks4") != 0 && strcmp(scheme, "socks") != 0 &&
-	    strcmp(scheme, "http") != 0) {
-		free(scheme);
-		return (1);
-	}
-#else
-	if (strcmp(scheme, "http") != 0) {
-		free(scheme);
-		return (1);
-	}
-#endif
-	free(scheme);
-	setup_proxy(proxy);
-
-	return (0);
+	return (setup_proxy(tmpproxy));
 }
 
 int
@@ -634,6 +616,34 @@ check_http_proxy(char **tt)
 {
 	*tt = g_strdup("Default: (empty)");
 	return (g_strcmp0(http_proxy, NULL));
+}
+
+int
+check_http_proxy_scheme(const char *uri)
+{
+	int rv = 0;
+	char *scheme;
+
+	if (!uri)
+		return (0);
+
+	scheme = g_uri_parse_scheme(uri);
+	if (!scheme)
+		return (0);
+
+#if SOUP_CHECK_VERSION(2, 42, 2)
+	if (strcmp(scheme, "socks5") == 0 || strcmp(scheme, "socks4a") == 0 ||
+	    strcmp(scheme, "socks4") == 0 || strcmp(scheme, "socks") == 0 ||
+	    strcmp(scheme, "http") == 0) {
+		rv = 1;
+	}
+#else
+	if (strcmp(scheme, "http") == 0) {
+		rv = 1;
+	}
+#endif
+	free(scheme);
+	return (rv);
 }
 
 int
@@ -3055,11 +3065,12 @@ check_fancy_bar(char **tt)
 	return (0);
 }
 
-void
+int
 setup_proxy(char *uri)
 {
 	struct tab		*t;
 
+	printf("setup_proxy: uri: %s, proxy_uri: %p\n", uri, proxy_uri);
 	if (proxy_uri) {
 #if SOUP_CHECK_VERSION(2, 42, 2)
 		g_object_set(session, "proxy-resolver", NULL, (char *)NULL);
@@ -3073,12 +3084,16 @@ setup_proxy(char *uri)
 			if (t->sbe.proxy != NULL)
 				gtk_label_set_text(GTK_LABEL(t->sbe.proxy), "");
 	}
+
 	if (http_proxy) {
 		if (http_proxy != uri) {
 			g_free(http_proxy);
 			http_proxy = NULL;
 		}
 	}
+
+	if (uri && check_http_proxy_scheme(uri) != 1)
+		return (1);
 
 	if (uri) {
 		http_proxy = g_strdup(uri);
@@ -3108,6 +3123,7 @@ setup_proxy(char *uri)
 		TAILQ_FOREACH(t, &tabs, entry)
 			button_set_file(t->proxy_toggle, "tordisabled.ico");
 	}
+	return (0);
 }
 
 char *

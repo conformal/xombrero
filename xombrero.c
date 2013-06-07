@@ -3121,13 +3121,17 @@ proxy_cmd(struct tab *t, struct karg *args)
 		TAILQ_FOREACH(tt, &tabs, entry)
 			gtk_widget_show(t->proxy_toggle);
 		if (http_proxy) {
-			setup_proxy(NULL);
-			button_set_file(t->proxy_toggle, "tordisabled.ico");
+			if (setup_proxy(NULL) == 0)
+				button_set_file(t->proxy_toggle,
+				    "tordisabled.ico");
 			show_oops(t, "http proxy disabled");
 		} else {
-			setup_proxy(http_proxy_save);
-			button_set_file(t->proxy_toggle, "torenabled.ico");
-			show_oops(t, "http_proxy = %s", http_proxy);
+			if (setup_proxy(http_proxy_save) == 0 && http_proxy) {
+				button_set_file(t->proxy_toggle,
+				    "torenabled.ico");
+				show_oops(t, "http_proxy = %s", http_proxy);
+			} else
+				show_oops(t, "invalid proxy: %s", http_proxy_save);
 		}
 	}
 done:
