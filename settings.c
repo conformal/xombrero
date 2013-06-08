@@ -3070,7 +3070,6 @@ setup_proxy(const char *uri)
 {
 	struct tab		*t;
 
-	printf("setup_proxy: uri: %s, proxy_uri: %p\n", uri, proxy_uri);
 	if (proxy_uri) {
 #if SOUP_CHECK_VERSION(2, 42, 2)
 		g_object_set(session, "proxy-resolver", NULL, (char *)NULL);
