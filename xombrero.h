@@ -964,6 +964,7 @@ extern int	do_not_track;
 extern int	preload_strict_transport;
 extern char	*gnutls_priority_string;
 extern int	anonymize_headers;
+extern int	js_auto_open_windows;
 
 /* globals */
 extern void		(*os_init)(void);

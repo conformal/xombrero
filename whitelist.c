@@ -472,7 +472,7 @@ toggle_js(struct tab *t, struct karg *args)
 	g_object_set(G_OBJECT(t->settings),
 	    "enable-scripts", es, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
-	    "javascript-can-open-windows-automatically", es, (char *)NULL);
+	    "javascript-can-open-windows-automatically", js_auto_open_windows ? es : 0, (char *)NULL);
 	webkit_web_view_set_settings(t->wv, t->settings);
 
 	if (args->i & XT_WL_RELOAD)

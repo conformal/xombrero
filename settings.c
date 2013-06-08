@@ -121,7 +121,7 @@ int		allow_insecure_scripts = XT_DS_ALLOW_INSECURE_SCRIPTS;
 int		do_not_track = XT_DS_DO_NOT_TRACK;
 int		preload_strict_transport = XT_DS_PRELOAD_STRICT_TRANSPORT;
 char		*gnutls_priority_string = XT_DS_GNUTLS_PRIORITY_STRING;
-
+int		js_auto_open_windows = 1;
 char		*cmd_font_name = NULL;	/* these are all set at startup */
 char		*oops_font_name = NULL;
 char		*statusbar_font_name = NULL;
@@ -546,6 +546,7 @@ struct settings		rs[] = {
 	{ "http_proxy_starts_enabled",	XT_S_BOOL, 0,		&http_proxy_starts_enabled, NULL, NULL, NULL, NULL, check_http_proxy_starts_enabled, TT_HTTP_PROXY_STARTS_ENABLED },
 	{ "icon_size",			XT_S_INT, 0,		&icon_size, NULL, NULL, NULL, NULL, check_icon_size, TT_ICON_SIZE },
 	{ "include_config",		XT_S_STR, XT_SF_INVISIBLE, NULL, &include_config, NULL, NULL, NULL, NULL },
+	{ "js_auto_open_windows",	XT_S_BOOL, 1,		&js_auto_open_windows, NULL, NULL, NULL, NULL, NULL, TT_JS_AUTO_OPEN_WINDOWS },
 	{ "max_connections",		XT_S_INT, XT_SF_RESTART,&max_connections, NULL, NULL, NULL, NULL, check_max_connections, TT_MAX_CONNECTIONS },
 	{ "max_host_connections",	XT_S_INT, XT_SF_RESTART,&max_host_connections, NULL, NULL, NULL, NULL, check_max_host_connections, TT_MAX_HOST_CONNECTIONS },
 	{ "oops_font",			XT_S_STR, 0, NULL, &oops_font_name, NULL, NULL, set_oops_font, check_oops_font, TT_OOPS_FONT },

@@ -3630,7 +3630,7 @@ check_and_set_js(const gchar *uri, struct tab *t)
 	g_object_set(G_OBJECT(t->settings),
 	    "enable-scripts", es, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
-	    "javascript-can-open-windows-automatically", es, (char *)NULL);
+	    "javascript-can-open-windows-automatically", js_auto_open_windows ? es : 0, (char *)NULL);
 	webkit_web_view_set_settings(t->wv, t->settings);
 
 	button_set_stockid(t->js_toggle,
@@ -6868,8 +6868,8 @@ setup_webkit(struct tab *t)
 	g_object_set(G_OBJECT(t->settings),
 	    "enable-plugins", enable_plugins, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
-	    "javascript-can-open-windows-automatically", enable_scripts,
-	    (char *)NULL);
+	    "javascript-can-open-windows-automatically",
+	    js_auto_open_windows ? enable_scripts : 0, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
 	    "enable-html5-database", FALSE, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
