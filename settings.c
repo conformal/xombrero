@@ -2610,6 +2610,7 @@ set_js_auto_open_windows(char *value)
 {
 	int		tmp;
 	const char	*errstr;
+	struct tab	*t;
 
 	if (value == NULL || strlen(value) == 0)
 		js_auto_open_windows = XT_DS_JS_AUTO_OPEN_WINDOWS;
@@ -2619,6 +2620,10 @@ set_js_auto_open_windows(char *value)
 			return (-1);
 		js_auto_open_windows = tmp;
 	}
+	TAILQ_FOREACH(t, &tabs, entry)
+		g_object_set(G_OBJECT(t->settings),
+		    "javascript-can-open-windows-automatically",
+		    js_auto_open_windows, NULL);
 	return (0);
 }
 
