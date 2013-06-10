@@ -192,6 +192,7 @@ int		set_enable_favicon_tabs(char *);
 int		set_guess_search(char *);
 int		set_download_mode(struct settings *, char *);
 int		set_download_mode_rt(char *);
+int		set_js_auto_open_windows(char *);
 int		set_oops_font(char *);
 int		set_read_only_cookies(char *);
 int		set_referer(struct settings *, char *);
@@ -265,6 +266,7 @@ int		check_http_proxy(char **);
 int		check_http_proxy_scheme(const char *);
 int		check_http_proxy_starts_enabled(char **);
 int		check_icon_size(char **);
+int		check_js_auto_open_windows(char **);
 int		check_max_connections(char **);
 int		check_max_host_connections(char **);
 int		check_oops_font(char **);
@@ -546,7 +548,7 @@ struct settings		rs[] = {
 	{ "http_proxy_starts_enabled",	XT_S_BOOL, 0,		&http_proxy_starts_enabled, NULL, NULL, NULL, NULL, check_http_proxy_starts_enabled, TT_HTTP_PROXY_STARTS_ENABLED },
 	{ "icon_size",			XT_S_INT, 0,		&icon_size, NULL, NULL, NULL, NULL, check_icon_size, TT_ICON_SIZE },
 	{ "include_config",		XT_S_STR, XT_SF_INVISIBLE, NULL, &include_config, NULL, NULL, NULL, NULL },
-	{ "js_auto_open_windows",	XT_S_BOOL, 1,		&js_auto_open_windows, NULL, NULL, NULL, NULL, NULL, TT_JS_AUTO_OPEN_WINDOWS },
+	{ "js_auto_open_windows",	XT_S_BOOL, 1,		&js_auto_open_windows, NULL, NULL, NULL, set_js_auto_open_windows, check_js_auto_open_windows, TT_JS_AUTO_OPEN_WINDOWS },
 	{ "max_connections",		XT_S_INT, XT_SF_RESTART,&max_connections, NULL, NULL, NULL, NULL, check_max_connections, TT_MAX_CONNECTIONS },
 	{ "max_host_connections",	XT_S_INT, XT_SF_RESTART,&max_host_connections, NULL, NULL, NULL, NULL, check_max_host_connections, TT_MAX_HOST_CONNECTIONS },
 	{ "oops_font",			XT_S_STR, 0, NULL, &oops_font_name, NULL, NULL, set_oops_font, check_oops_font, TT_OOPS_FONT },
@@ -2601,6 +2603,30 @@ check_guess_search(char **tt)
 	*tt = g_strdup_printf("Default: %s",
 	    XT_DS_GUESS_SEARCH ? "Enabled" : "Disabled");
 	return (guess_search != XT_DS_GUESS_SEARCH);
+}
+
+int
+set_js_auto_open_windows(char *value)
+{
+	int		tmp;
+	const char	*errstr;
+
+	if (value == NULL || strlen(value) == 0)
+		js_auto_open_windows = 1;
+	else {
+		tmp = (int)strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		js_auto_open_windows = tmp;
+	}
+	return (0);
+}
+
+int
+check_js_auto_open_windows(char **tt)
+{
+	*tt = g_strdup("Default: Enabled");
+	return (js_auto_open_windows != 1);
 }
 
 char *
