@@ -1,8 +1,6 @@
 force_https = bitbucket.org
 force_https = re:^(www\.)?bitrig\.org$
-force_https = .conformal.com
 force_https = .conformalsys.org
-force_https = .cyphertite.com
 force_https = .defcon.org
 force_https = duck.co
 force_https = .eff.org
@@ -15,7 +13,7 @@ force_https = mtgox.com
 force_https = gitweb.torproject.org
 
 # sites from chromium's preloaded HSTS list
-# http://src.chromium.org/viewvc/chrome/trunk/src/net/base/transport_security_state_static.json?view=markup
+# http://src.chromium.org/viewvc/chrome/trunk/src/net/http/transport_security_state_static.json?view=markup
 force_https = re:^(.*\.)*(health|checkout|chrome|docs|sites|spreadsheets|appengine|encrypted|accounts|profiles|mail|talkgadget|talk|hostedtalkgadget|plus|plus\.sandbox|script|history|security|code|dl)\.google\.com$
 force_https = .market.android.com
 force_https = .developer.android.com
@@ -134,5 +132,8 @@ force_https = .sah3.net
 force_https = re:^(www\.)?grc\.com$
 force_https = re:^(www\.|manager\.|blog\.|library\.|forum\.|p\.|paste\.|pastebin\.)linode\.com$
 force_https = .inertianetworks.com
+force_https = carezone.com
+force_https = .conformal.com
+force_https = .cyphertite.com
 force_https = re:^(www\.)?gmail\.com$
 force_https = re:^(www\.)?googlemail\.com$
