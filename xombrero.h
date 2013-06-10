@@ -691,7 +691,7 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_DS_DO_NOT_TRACK	(0)
 #define XT_DS_PRELOAD_STRICT_TRANSPORT	(1)
 #define XT_DS_GNUTLS_PRIORITY_STRING	(NULL)
-
+#define XT_DS_JS_AUTO_OPEN_WINDOWS	(1)
 
 /* actions */
 #define XT_STYLE_CURRENT_TAB	(0)

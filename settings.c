@@ -121,7 +121,7 @@ int		allow_insecure_scripts = XT_DS_ALLOW_INSECURE_SCRIPTS;
 int		do_not_track = XT_DS_DO_NOT_TRACK;
 int		preload_strict_transport = XT_DS_PRELOAD_STRICT_TRANSPORT;
 char		*gnutls_priority_string = XT_DS_GNUTLS_PRIORITY_STRING;
-int		js_auto_open_windows = 1;
+int		js_auto_open_windows = XT_DS_JS_AUTO_OPEN_WINDOWS;
 char		*cmd_font_name = NULL;	/* these are all set at startup */
 char		*oops_font_name = NULL;
 char		*statusbar_font_name = NULL;
@@ -2612,7 +2612,7 @@ set_js_auto_open_windows(char *value)
 	const char	*errstr;
 
 	if (value == NULL || strlen(value) == 0)
-		js_auto_open_windows = 1;
+		js_auto_open_windows = XT_DS_JS_AUTO_OPEN_WINDOWS;
 	else {
 		tmp = (int)strtonum(value, 0, 1, &errstr);
 		if (errstr)
@@ -2626,7 +2626,7 @@ int
 check_js_auto_open_windows(char **tt)
 {
 	*tt = g_strdup("Default: Enabled");
-	return (js_auto_open_windows != 1);
+	return (js_auto_open_windows != XT_DS_JS_AUTO_OPEN_WINDOWS);
 }
 
 char *
