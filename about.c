@@ -1242,6 +1242,7 @@ xtp_page_ab(struct tab *t, struct karg *args)
 	    "<li>Raphael Graf &lt;r@undefined.ch&gt;</li>"
 	    "<li>Michal Mazurek &lt;akfaew@jasminek.net&gt;</li>"
 	    "<li>Josh Rickmar &lt;jrick@devio.us&gt;</li>"
+	    "<li>David Hill &lt;dhill@mindcry.org&gt;</li>"
 	    "</ul>"
 	    "Copyrights and licenses can be found on the xombrero "
 	    "<a href=\"http://opensource.conformal.com/wiki/xombrero\">website</a>"
