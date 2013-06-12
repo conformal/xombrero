@@ -309,7 +309,7 @@ Print page
 Global history
 .Pq Cm history
 .It Cm C-j
-Toggle Java Script enabled for FQDN
+Toggle JavaScript enabled for FQDN
 .Pq Cm js
 .It Cm C-s
 Toggle source view
@@ -438,18 +438,18 @@ Edit the contents of the currently active input-element in an external editor.
 Command mode works in a similar fashion to the
 .Xr vi 1
 editor;
-it is entered by typing a colon and exited by typing Esc.
+it is entered by typing a colon and exited by pressing Esc.
 The commands and their descriptions are listed below.
 .Bl -tag -width Ds -offset indent
 .It Cm about , version
-Show the "About" page.
+Display the About page.
 .It Cm buffers , ls , tabs
-Displays the currently open tabs and lets the user switch tab by typing
-the tab number or using the mouse.
+Display the currently opened tabs and let the user switch tabs by typing
+the tab number or by using the mouse.
 .It Cm ca
 Display CA certificates.
 .It Cm cert , cert show
-Download and display certificates of domain on tab.
+Download and display certificates of the domain on current tab.
 .It Cm cert save
 Save certificate into a local store.
 The next time the site is visited it is compared against the store.
@@ -489,24 +489,18 @@ Toggle cookie support for the current top level domain.
 Toggle cookie support for the current FQDN.
 .It Cm dl
 Show download manager.
-.It Cm encoding <encoding>
+.It Cm encoding Op Ar encoding
+Set the current tab's encoding to
+.Ar encoding
+and reload the tab.
 If
-.Cm <encoding>
-is set the tab's encoding will be set to
-.Cm <encoding>
-and
-.Nm
-reloads the tab.
-If
-.Cm <encoding>
-is not set
-.Nm
-will display the current tab encoding.
+.Ar encoding
+is not provided, the current tab's encoding is displayed.
 .It Cm editsrc
-Opens the source for the current tab in the editor specified by the
+Open the source for the current tab in the editor specified by the
 setting
 .Cm external_editor
-and then checks for changes to the file opened. If it is changed, the
+and then check for changes to the file opened. If it is changed, the
 page will be updated.
 .It Cm editelement
 If a text-element is currently active (<input> or <textarea>), it's
@@ -520,7 +514,7 @@ Add the current page to favorites.
 The title can be overridden by specifying
 .Ar title .
 .It Cm favedit
-Shows favorites list and links to remove entries.
+Show favorites list and links to remove entries.
 .It Cm fullscreen , f
 Toggle hiding tabs and url entry toolbar.
 .It Cm h , hist , history
@@ -532,21 +526,21 @@ Go to home URL.
 .It Cm https
 The
 .Cm https
-command is used to manitulate the items in the HTTPS force list.
+command is used to manipulate the items in the HTTPS force list.
 Used by itself it expands to
 .Cm https show all .
 .It Cm https save, save fqdn
-Saves the FQDN to the persistent force HTTPS list.
+Save the FQDN to the persistent force HTTPS list.
 For example,
 the www.peereboom.us domain would result in saving www.peereboom.us.
 .It Cm https save domain
-Saves the top level domain name to the persistent whitelist.
+Save the top level domain name to the persistent whitelist.
 For example,
 the www.peereboom.us domain would result in saving .peereboom.us.
 .It Cm https show all
-Show all persistent ans session entries in the HTTPS force list.
+Show all persistent and session entries in the HTTPS force list.
 .It Cm https show persistent
-Shows all persistent entries in the HTTPS force list.
+Show all persistent entries in the HTTPS force list.
 .It Cm https show session
 Shows all session entries in the HTTPS force list.
 .It Cm https toggle, https toggle fqdn
@@ -556,33 +550,36 @@ Toggle the top level domain in the HTTPS force list.
 .It Cm js
 The
 .Cm js
-command is used to manipulate the Java Script whitelist.
+command is used to manipulate the JavaScript whitelist.
 Used by itself it expands to
 .Cm js show all .
 .It Cm js save, save fqdn
-Saves the FQDN to the persistent whitelist.
+Save the FQDN to the persistent whitelist.
 For example,
 the www.peereboom.us domain would result in saving www.peereboom.us.
 .It Cm js save domain
-Saves the top level domain name to the persistent whitelist.
+Save the top level domain name to the persistent whitelist.
 For example,
 the www.peereboom.us domain would result in saving .peereboom.us.
 .Pp
-This action enables Java Script if it is currently disabled for this entry.
+This action enables JavaScript if it is currently disabled for this entry.
 .It Cm js show all
-Shows all persistent and session entries in the JS whitelist.
+Show all persistent and session entries in the JavaScript whitelist.
 .It Cm js show persistent
-Shows all persistent entries in the JS whitelist.
+Show all persistent entries in the JavaScript whitelist.
 .It Cm js show session
-Shows all session entries in the JS whitelist.
+Show all session entries in the JavaScript whitelist.
 .It Cm js toggle, js toggle fqdn
-Toggle Java Script execution for the current FQDN.
+Toggle JavaScript execution for the current FQDN.
 .It Cm js toggle domain
-Toggle Java Script execution for the current top level domain.
+Toggle JavaScript execution for the current top level domain.
 .It Cm loadimages
-If auto_load_images is disabled, load all images for current site.
-.It Cm open , op , o URL
-Open URL.
+If the setting
+.Cm auto_load_images
+is disabled, load all images for current site.
+.It Cm open , op , o Ar URL
+Open
+.Ar URL .
 .It Cm plugin
 The
 .Cm plugin
@@ -590,21 +587,21 @@ command is used to manipulate the plugin whitelist.
 Used by itself it expands to
 .Cm plugin show all .
 .It Cm plugin save, save fqdn
-Saves the FQDN to the persistent whitelist.
+Save the FQDN to the persistent whitelist.
 For example,
 the www.peereboom.us domain would result in saving www.peereboom.us.
 .It Cm plugin save domain
-Saves the top level domain name to the persistent whitelist.
+Save the top level domain name to the persistent whitelist.
 For example,
 the www.peereboom.us domain would result in saving .peereboom.us.
 .Pp
 This action enables plugins if they are currently disabled for this entry.
 .It Cm plugin show all
-Shows all persistent and session entries in the plugin whitelist.
+Show all persistent and session entries in the plugin whitelist.
 .It Cm plugin show persistent
-Shows all persistent entries in the plugin whitelist.
+Show all persistent entries in the plugin whitelist.
 .It Cm plugin show session
-Shows all session entries in the plugin whitelist.
+Show all session entries in the plugin whitelist.
 .It Cm plugin toggle, plugin toggle fqdn
 Toggle plugin execution for the current FQDN.
 .It Cm plugin toggle domain
@@ -618,11 +615,11 @@ command is used to manipulate the currently set proxy.
 Used by itself it expands to
 .Cm proxy show .
 .It Cm proxy show
-Displays the current
+Display the current
 .Cm http_proxy
 setting.
 .It Cm proxy toggle
-Enables or disables the proxy for
+Enable or disable the proxy for
 .Nm .
 Note that
 .Cm http_proxy
@@ -638,47 +635,62 @@ if it is the last tab.
 Restart
 .Nm
 and reload all current tabs.
-.It Cm run_script [path_to_script]
-Runs the script path_to_script with the current uri as the argument.
-If path_to_script is not provided, the value of default_script is used
-instead.
-.It Cm script [filename]
+.It Cm run_script Op Ar path_to_script
+Run the script
+.Ar path_to_script
+with the current uri as the argument.
+If
+.Ar path_to_script
+is not provided, the script specified by the
+.Cm default_script
+setting is used instead.
+.It Cm script Ar filename
 Run an external JavaScript script file in the current tab context.
 .It Cm session , Cm session show
 Display the current session name.
-By default the session name is main_session.
+By default the session name is
+.Dq main_session .
 To create a new session use the
 .Cm session save
 command.
 A session is defined as the lifetime of the browser application.
-.It Cm session delete <session_name>
-Delete session session_name from persistent storage.
-If session_name is the current session then the session will revert to
-main_session.
-.It Cm session open <session_name>
-Open session_name and close all currently open tabs.
-Going forward this session is named session_name.
-.It Cm session save <session_name>
-Save current tabs to session_name session.
+.It Cm session delete Ar session_name
+Delete session
+.Ar session_name
+from persistent storage.
+If
+.Ar session_name
+is the current session then the session will revert to
+.Dq main_session .
+.It Cm session open Ar session_name
+Close all tabs and open session
+.Ar session_name .
+Going forward this session is named
+.Ar session_name .
+.It Cm session save Ar session_name
+Save current tabs to session
+.Ar session_name .
 This will close the current session and going forward this session is named
-session_name.
+.Ar session_name .
 .It Cm set
-The set command is used to inspect, clear or change runtime options.
+The
+.Cm set
+command is used to inspect, clear or change runtime options.
 There are 3 methods to use
-.Cm :set .
+.Cm set .
 When used by itself as
-.Cm :set
+.Dq Cm :set
 the command displays all options as currently set.
 .Pp
 To set a value use
-.Cm :set option=value .
+.Dq Cm :set Ao Ar option Ac Ns = Ns Aq Ar value .
 For example,
-.Cm :set http_proxy=http://127.0.0.1:8080 .
+.Dq Cm :set http_proxy=http://127.0.0.1:8080 .
 .Pp
 To clear a value use
-.Cm :set option= .
+.Dq Cm :set Ao Ar option Ac Ns = .
 For example,
-.Cm :set http_proxy= .
+.Dq Cm :set http_proxy= .
 .Pp
 Note, not all options can be set at runtime.
 .It Cm stats
@@ -692,8 +704,9 @@ Stop loading the current web page.
 Close current tab.
 .It Cm tabhide
 Hide tabs.
-.It Cm tabnew , tabedit [URL]
-Create new tab and optionally open provided URL.
+.It Cm tabnew , tabedit Op Ar URL
+Create a new tab and optionally open provided
+.Ar URL .
 .It Cm tabnext
 Go to the next tab.
 .It Cm tabonly
@@ -707,40 +720,38 @@ Toggle the top level domain name cookie and JS session whitelist.
 This is to enable/disable short lived full site functionality without
 permanently adding the top level domain to the persistent whitelist.
 .It Cm urlhide , urlh
-Hide url entry and tool bar.
+Hide url entry and toolbar.
 .It Cm urlshow , urls
-Show url entry and tool bar.
-.It Cm userstyle <stylesheet>
-Toggle the current tab between using a custom stylesheet and the
-page's default CSS.
-If there is no stylesheet argument to this command, the stylesheet
-specified by the
+Show url entry and toolbar.
+.It Cm userstyle Op Ar stylesheet
+Toggle the current tab between using the custom stylesheet
+.Ar stylesheet
+and the page's default CSS.
+If
+.Ar stylesheet
+is not provided, the stylesheet specified by the
 .Cm userstyle
-setting will be used instead.
+setting will be used.
 This
 .Cm userstyle
 setting is set by default to a low-contrast color scheme.
-If a stylesheet is specified, the current tab will be toggled with
-this stylesheet instead.
 .Pp
-If the
+Additional stylesheets may be used in addition to that set by
 .Cm userstyle
-setting is left unchanged, this command without any arguments will
-toggle between the default page's CSS and the low-contrast color
-scheme.
-.Pp
-Additional stylesheets may be used in addition to the low-contrast
-color scheme by specifying additonal keybindings.  For example,
+by specifying additional keybindings.
+For example,
 .Pp
 .D1 keybinding = userstyle ~/style.css,v
 .D1 keybinding = userstyle_global ~/style.css,V
 .Pp
 will map toggling between ~/style.css to the v and V keys while
-keeping the low-contrast feature mapped to the s and S keys.
-.It Cm userstyle_global <stylesheet>
-Same as
+keeping the stylesheet specified by
 .Cm userstyle
-but the change affects all open tabs, and newly created tabs will use
+mapped to the s and S keys.
+.It Cm userstyle_global Op Ar stylesheet
+Same as the
+.Cm userstyle
+command but affects all open tabs and newly created tabs will use
 this style.
 .It Cm w
 Save open tabs to current session.
@@ -748,10 +759,10 @@ The tabs will be restored next time the session is opened.
 See the session command for additional details.
 .It Cm wq
 Save open tabs and quit.
-The tabs will be restored next time
-.Nm
-the session is opened.
-See the session command for additional details.
+The tabs will be restored next time the session is opened.
+See the
+.Cm session
+command for more details.
 .El
 .Sh BUFFER COMMANDS
 In addition to shortcuts and commands
@@ -765,7 +776,7 @@ Pressing Esc or switching to another tab cancels a partially entered
 buffer command. In the following list
 .Cm arg
 denotes the argument a buffer command accepts. Buffer commands are
-defined as extended regular experssions.
+defined as extended regular expressions.
 Note that if a character is used as a shortcut it will not be interpreted
 as the beginning of a buffer command. This is the case with
 .Cm 0 .
@@ -847,7 +858,7 @@ set zoom level to
 %
 .El
 .Sh QUICKMARKS
-Quickmarks are like bookmarks, except they are refered to by a single
+Quickmarks are like bookmarks, except they are referred to by a single
 character (a letter or a digit), instead of a longer name. See the
 .Cm M[a-zA-Z0-9] ,
 .Cm go[a-zA-Z0-9]
@@ -888,7 +899,7 @@ show the help web page
 .It Cm history
 show the history screen
 .It Cm jswl
-show the Java Script whitelist screen
+show the JavaScript whitelist screen
 .It Cm set
 show the settings screen
 .It Cm stats
@@ -903,12 +914,12 @@ instead to setup
 and skip over this section.
 .Pp
 .Nm
-has a number of whitelists to control blocking cookies and Java Script
+has a number of whitelists to control blocking cookies and JavaScript
 execution for FQDNs or domains.
 When properly enabled these whitelists require either the FQDN or top level
 domain to exist in the whitelists in order to allow cookies to be stored or
-Java Script to execute.
-Both Java Script and cookies have two whitelists associated with them.
+JavaScript to execute.
+Both JavaScript and cookies have two whitelists associated with them.
 The whitelists are called session and persistent.
 Items in the session whitelists are only allowed for the lifetime of the
 .Nm
@@ -917,7 +928,7 @@ Items in the persistent whitelists are stored on disk and are restored
 upon restarting.
 .Pp
 Setting up the whitelists is a little tricky due to intricacies of WebKit.
-In fact the semantics are different for cookies and Java Script.
+In fact the semantics are different for cookies and JavaScript.
 .Pp
 Cookie whitelist requires the following configuration to be set:
 .Pp
@@ -937,7 +948,7 @@ These entries in the configuration file are the actual domains names in the
 cookie whitelist.
 .El
 .Pp
-Java Script whitelist requires the following configuration to be set:
+JavaScript whitelist requires the following configuration to be set:
 .Pp
 .Bl -tag -width "enable_js_whitelistXXX" -offset indent -compact
 .It Cm enable_scripts
@@ -945,14 +956,14 @@ This is a WebKit setting and must be set to
 .Pa 0
 (DISABLED)
 in order to be able to use a
-Java Script whitelist.
+JavaScript whitelist.
 .It Cm enable_js_whitelist
 This needs to be set to
 .Pa 1
-to enable the Java Script whitelist functionality.
+to enable the JavaScript whitelist functionality.
 .It Cm js_wl
 These entries in the configuration file are the actual domains names in the
-Java Script whitelist.
+JavaScript whitelist.
 .El
 .Pp
 Plugin whitelist requires the following configuration to be set:
@@ -1063,10 +1074,10 @@ and
 .Pa kiosk .
 In the
 .Pa normal
-mode the browser allows all cookies, plugins and Java Script as any other
+mode the browser allows all cookies, plugins and JavaScript as any other
 browser would.
 This means that all cookies are saved to persistent storage and that all
-Java Script and plugins run.
+JavaScript and plugins run.
 .Pp
 On the other hand, using the
 .Pa whitelist
@@ -1079,7 +1090,7 @@ and
 items.
 If a domain does not appear in the whitelists
 .Nm
-disallows cookies, Java Script and plugin execution.
+disallows cookies, JavaScript and plugin execution.
 If insecure web content or scripts are referenced by a secure website,
 they will be blocked from loading or running.
 .Pp
@@ -1363,9 +1374,9 @@ Proxy server in URL format.
 overrides
 .Cm http_proxy
 if it is specified as an environment variable.
-It must be noted that on older webkit versions one MUST use an IP address and
+It must be noted that on older Webkit versions one MUST use an IP address and
 not a FQDN.
-This works as expected with webkit 1.4.2.
+This works as expected with Webkit 1.4.2.
 .Pp
 If using libsoup 2.42.2 or newer, one may use a socks proxy directly.
 For example:
@@ -1406,7 +1417,7 @@ Configuration files are usually read from top to bottom, however, if
 this option is set,
 .Nm
 will begin reading the included file at this location and continue
-reading the rest of the configuation after the included file has
+reading the rest of the configuration after the included file has
 finished being read.
 .Pp
 Any simple settings set before the include may
@@ -1430,7 +1441,7 @@ based on the current
 .Cm browser_mode .
 If disabled, it will never be allowed.  The default setting is 1 (enabled).
 .It Cm js_wl
-This is a Java Script whitelist item.
+This is a JavaScript whitelist item.
 See
 .Cm cookie_wl
 for semantics and more details.
@@ -1492,18 +1503,21 @@ terminated.
 Refresh interval while in the download manager.
 The default is 10.
 .It Cm referer
-Control how 'Referer' is handled in http-requests.
+Control how
+.Dq referer
+is handled in http-requests.
 .Bd -literal -offset indent
 always      - always send referer
 never       - never send referer
 same-domain - only send referer if it's
               for the same public suffix - this means that
-              it's ok for subdomains to refer to each other
+              it's OK for subdomains to refer to each other
 same-fqdn   - only send referer if it's FQDN match
 .Ed
 Any other value that is also a valid URL will use this
 custom value as referer. (E.g. you could set it to http://no-referer.com)
-The default value is "always"
+The default value is 
+.Dq always .
 .It Cm resource_dir
 Directory that contains various
 .Nm
