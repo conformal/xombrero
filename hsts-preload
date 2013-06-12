@@ -135,5 +135,6 @@ force_https = .inertianetworks.com
 force_https = carezone.com
 force_https = .conformal.com
 force_https = .cyphertite.com
+force_https = .logotype.se
 force_https = re:^(www\.)?gmail\.com$
 force_https = re:^(www\.)?googlemail\.com$
