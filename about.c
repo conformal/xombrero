@@ -243,10 +243,10 @@ help(struct tab *t, struct karg *args)
 		show_oops(NULL, "help invalid parameters");
 
 	head = "<meta http-equiv=\"REFRESH\" content=\"0;"
-	    "url=http://opensource.conformal.com/cgi-bin/man-cgi?xombrero\">"
+	    "url=https://opensource.conformal.com/cgi-bin/man-cgi?xombrero\">"
 	    "</head>\n";
-	body = "xombrero man page <a href=\"http://opensource.conformal.com/"
-	    "cgi-bin/man-cgi?xombrero\">http://opensource.conformal.com/"
+	body = "xombrero man page <a href=\"https://opensource.conformal.com/"
+	    "cgi-bin/man-cgi?xombrero\">https://opensource.conformal.com/"
 	    "cgi-bin/man-cgi?xombrero</a>";
 
 	page = get_html_page(XT_NAME, body, head, FALSE);
@@ -1245,7 +1245,7 @@ xtp_page_ab(struct tab *t, struct karg *args)
 	    "<li>David Hill &lt;dhill@mindcry.org&gt;</li>"
 	    "</ul>"
 	    "Copyrights and licenses can be found on the xombrero "
-	    "<a href=\"http://opensource.conformal.com/wiki/xombrero\">website</a>"
+	    "<a href=\"https://opensource.conformal.com/wiki/xombrero\">website</a>"
 	    "</p>",
 #ifdef XOMBRERO_BUILDSTR
 	    version, XOMBRERO_BUILDSTR,
