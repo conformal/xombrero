@@ -12,6 +12,8 @@ settings provide a secure environment. With simple keyboard commands,
 the user can "whitelist" specific sites, allowing cookies and scripts
 from those sites.
 
+For more information, please visit https://opensource.conformal.com/wiki/xombrero
+
 ## GPG Verification Key
 
 All official release tags are signed by Conformal so users can ensure the code
@@ -34,4 +36,4 @@ signature perform the following:
 
 ## License
 
-xombrero is licensed under the liberal ISC License.
+xombrero is ISC licensed unless otherwise specified in individual files
