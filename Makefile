@@ -12,7 +12,7 @@ CFLAGS+= -O2 -Wall -Wno-format-extra-args -Wunused
 CFLAGS+= -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare -Wno-deprecated-declarations ${DEBUG}
 CFLAGS+= -DGTK_DISABLE_SINGLE_INCLUDES -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED -DGSEAL_ENABLE
 CFLAGS+= -I. -I${.CURDIR}
-LDADD= -lutil -lgcrypt
+LDADD= -lutil
 GTK_VERSION ?= gtk3
 .if ${GTK_VERSION} == "gtk2"
 LIBS+= gtk+-2.0

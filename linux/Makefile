@@ -18,7 +18,7 @@ endif
 LIBS+= libsoup-2.4 gnutls libbsd
 
 CFLAGS+= -O2 -Wall -ggdb3 -D_GNU_SOURCE -I. -I.. $(shell pkg-config --cflags $(LIBS)) $(JS_CF)
-LDADD+= $(shell pkg-config --libs $(LIBS)) $(JS_LD) -ldl -lgcrypt -lX11
+LDADD+= $(shell pkg-config --libs $(LIBS)) $(JS_LD) -ldl -lX11
 
 PREFIX?= /usr/local
 BINDIR?= $(PREFIX)/bin
