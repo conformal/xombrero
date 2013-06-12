@@ -6,6 +6,7 @@
  * Copyright (c) 2011 Raphael Graf <r@undefined.ch>
  * Copyright (c) 2011 Michal Mazurek <akfaew@jasminek.net>
  * Copyright (c) 2012 Josh Rickmar <jrick@devio.us>
+ * Copyright (c) 2013 David Hill <dhill@mindcry.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
