@@ -407,7 +407,7 @@ void			load_uri(struct tab *t, const gchar *uri);
 gboolean		match_uri(const gchar *uri, const gchar *key);
 int			valid_url_type(const char *);
 void			expand_tilde(char *, size_t, const char *);
-char			*html_escape(const char *val);
+gchar			*html_escape(const char *val);
 void			set_status(struct tab *t, gchar *fmt, ...);
 
 void			load_webkit_string(struct tab *, const char *, gchar *, int);

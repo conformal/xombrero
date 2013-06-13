@@ -992,7 +992,7 @@ find_mime_type(char *mime_type)
  * This only escapes the & and < characters, as per the discussion found here:
  * http://lists.apple.com/archives/Webkitsdk-dev/2007/May/msg00056.html
  */
-char *
+gchar *
 html_escape(const char *val)
 {
 	char			*s, *sp;
@@ -3289,7 +3289,7 @@ struct cmd {
 	{ "favorites",		0,	xtp_page_fl,		XT_SHOW,		0 },
 	{ "fav",		0,	xtp_page_fl,		XT_SHOW,		0 },
 	{ "favedit",		0,	xtp_page_fl,		XT_SHOW|XT_DELETE,	0 },
-	{ "favadd",		0,	add_favorite,		0,			0 },
+	{ "favadd",		0,	add_favorite,		0,			XT_USERARG },
 
 	{ "qall",		0,	quit,			0,			0 },
 	{ "quitall",		0,	quit,			0,			0 },

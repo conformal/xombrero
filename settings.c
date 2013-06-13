@@ -3740,7 +3740,8 @@ struct settings_args {
 void
 print_setting(struct settings *s, char *val, void *cb_args)
 {
-	char			*enc_val, *tmp, *color;
+	char			*color;
+	gchar			*tmp, *enc_val;
 	struct settings_args	*sa = cb_args;
 
 	if (sa == NULL || s->flags & XT_SF_INVISIBLE)

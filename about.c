@@ -618,7 +618,7 @@ remove_favorite(struct tab *t, int index)
 		return;
 	}
 
-	/* build a string which will become the new favroites file */
+	/* build a string which will become the new favorites file */
 	new_favs = g_strdup("");
 
 	for (i = 1;;) {
@@ -683,6 +683,7 @@ add_favorite(struct tab *t, struct karg *args)
 	FILE			*f;
 	char			*line = NULL;
 	size_t			urilen, linelen;
+	gchar			*argtitle = NULL;
 	const gchar		*uri, *title;
 
 	if (t == NULL)
@@ -700,7 +701,10 @@ add_favorite(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	title = get_title(t, FALSE);
+	if (args->s && strlen(g_strstrip(args->s)))
+		argtitle = html_escape(g_strstrip(args->s));
+
+	title = argtitle ? argtitle :  get_title(t, FALSE);
 	uri = get_uri(t);
 
 	if (title == NULL || uri == NULL) {
@@ -724,6 +728,8 @@ add_favorite(struct tab *t, struct karg *args)
 
 	fprintf(f, "\n%s\n%s", title, uri);
 done:
+	if (argtitle)
+		g_free(argtitle);
 	if (line)
 		free(line);
 	fclose(f);
