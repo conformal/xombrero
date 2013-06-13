@@ -78,7 +78,7 @@ function Hints() {
             if (typeof(inputText) == "undefined" || inputText == "") {
                 xpath_expr = "//*[@onclick or @onmouseover or @onmousedown or @onmouseup or @oncommand or @class='lk' or @role='link' or @href] | //input[not(@type='hidden')] | //a[href] | //area | //textarea | //button | //select";
             } else {
-                xpath_expr = "//*[(@onclick or @onmouseover or @onmousedown or @onmouseup or @oncommand or @class='lk' or @role='link' or @href) and contains(., '" + inputText + "')] | //input[not(@type='hidden') and contains(., '" + inputText + "')] | //a[@href and contains(., '" + inputText + "')] | //area[contains(., '" + inputText + "')] |  //textarea[contains(., '" + inputText + "')] | //button[contains(@value, '" + inputText + "')] | //select[contains(., '" + inputText + "')]";
+                xpath_expr = _caseInsensitiveExpr("//*[(@onclick or @onmouseover or @onmousedown or @onmouseup or @oncommand or @class='lk' or @role='link' or @href) and contains(translate(., '$u', '$l'), '$l')] | //input[not(@type='hidden') and contains(translate(., '$u', '$l'), '$l')] | //a[@href and contains(translate(., '$u', '$l'), '$l')] | //area[contains(translate(., '$u', '$l'), '$l')] | //textarea[contains(translate(., '$u', '$l'), '$l')] | //button[contains(translate(@value, '$u', '$l'), '$l')] | //select[contains(translate(., '$u', '$l'), '$l')]", inputText);
             }
 
             var res = doc.evaluate(xpath_expr, doc,
@@ -453,6 +453,13 @@ function Hints() {
     {
         var url = elem.href || elem.src;
         return url;
+    }
+
+    /* returns a case-insensitive version of the XPath expression */
+    function _caseInsensitiveExpr(xpath, searchString)
+    {
+        return xpath.split("$u").join(searchString.toUpperCase())
+                    .split("$l").join(searchString.toLowerCase());
     }
 }
 hints = new Hints();
