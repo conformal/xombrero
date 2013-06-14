@@ -77,7 +77,8 @@ scan_scaled(char *scaled, long long *result)
 	long long scale_fact = 1, whole = 0, fpart = 0;
 
 	/* Skip leading whitespace */
-	while (isascii(*p) && isspace(*p))
+	while (isascii((unsigned char)*p) &&
+		  isspace((unsigned char)*p))
 		++p;
 
 	/* Then at most one leading + or - */
@@ -104,7 +105,8 @@ scan_scaled(char *scaled, long long *result)
 	 * (but note that E for Exa might look like e to some!).
 	 * Advance 'p' to end, to get scale factor.
 	 */
-	for (; isascii(*p) && (isdigit(*p) || *p=='.'); ++p) {
+	for (; isascii((unsigned char)*p) &&
+		    (isdigit((unsigned char)*p) || *p=='.'); ++p) {
 		if (*p == '.') {
 			if (fract_digits > 0) {	/* oops, more than one '.' */
 				errno = EINVAL;
@@ -148,10 +150,10 @@ scan_scaled(char *scaled, long long *result)
 
 		/* Are we there yet? */
 		if (*p == scale_chars[i] ||
-			*p == tolower(scale_chars[i])) {
+			*p == tolower((unsigned char)scale_chars[i])) {
 
 			/* If it ends with alphanumerics after the scale char, bad. */
-			if (isalnum(*(p+1))) {
+			if (isalnum((unsigned char)*(p+1))) {
 				errno = EINVAL;
 				return -1;
 			}

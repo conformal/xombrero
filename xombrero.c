@@ -874,7 +874,7 @@ load_uri(struct tab *t, const gchar *uri)
 		return;
 
 	/* Strip leading spaces. */
-	while (*uri && isspace(*uri))
+	while (*uri && isspace((unsigned char)*uri))
 		uri++;
 
 	if (strlen(uri) == 0) {
@@ -1545,7 +1545,7 @@ paste_uri(struct tab *t, struct karg *args)
 			if (uri[i] == '\n')
 				uri[i] = ' ';
 
-		while (*uri && isspace(*uri))
+		while (*uri && isspace((unsigned char)*uri))
 			uri++;
 		if (strlen(uri) == 0) {
 			show_oops(t, "empty paste buffer");
@@ -5789,7 +5789,7 @@ buffercmd_addkey(struct tab *t, guint keyval)
 		c = -1;
 		s[0] = '\0';
 		if (buffercmds[i].precount == XT_PRE_MAYBE) {
-			if (isdigit(bcmd[0])) {
+			if (isdigit((unsigned char)bcmd[0])) {
 				if (sscanf(bcmd, "%d%s", &c, s) == 0)
 					continue;
 			} else {
@@ -5935,7 +5935,7 @@ wv_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 	} else if (t->mode == XT_MODE_COMMAND || t->mode == XT_MODE_HINT) {
 		/* prefix input */
 		snprintf(s, sizeof s, "%c", e->keyval);
-		if (CLEAN(e->state) == 0 && isdigit(s[0]))
+		if (CLEAN(e->state) == 0 && isdigit((unsigned char)s[0]))
 			cmd_prefix = 10 * cmd_prefix + atoi(s);
 		return (handle_keypress(t, e, 0));
 	} else {
@@ -5964,7 +5964,7 @@ hint_continue(struct tab *t)
 		goto done;
 	}
 
-	if (isdigit(c[1])) {
+	if (isdigit((unsigned char)c[1])) {
 		/* numeric input */
 		i = strtonum(&c[1], 1, 4096, &errstr);
 		if (errstr) {
@@ -6171,7 +6171,7 @@ cmd_getlist(int id, char *key)
 		if (cmds[i].level < dep)
 			break;
 		if (cmds[i].level == dep && !strncmp(key, cmds[i].cmd,
-		    strlen(key)) && !isdigit(cmds[i].cmd[0]))
+		    strlen(key)) && !isdigit((unsigned char)cmds[i].cmd[0]))
 			cmd_status.list[c++] = cmds[i].cmd;
 
 	}
@@ -6225,10 +6225,10 @@ cmd_complete(struct tab *t, char *str, int dir)
 	DNPRINTF(XT_D_CMD, "%s: complete %s\n", __func__, str);
 
 	/* copy prefix*/
-	for (i = 0; isdigit(s[i]); i++)
+	for (i = 0; isdigit((unsigned char)s[i]); i++)
 		res[i + 1] = s[i];
 
-	for (; isspace(s[i]); i++)
+	for (; isspace((unsigned char)s[i]); i++)
 		 res[i + 1] = s[i];
 
 	s += i;
@@ -6286,9 +6286,10 @@ parse_prefix_and_alias(const char *str, int *prefix)
 	g_strstrip(s);
 	sc = s;
 
-	if (isdigit(s[0])) {
+	if (isdigit((unsigned char)s[0])) {
 		sscanf(s, "%d", prefix);
-		while (isdigit(s[0]) || isspace(s[0]))
+		while (isdigit((unsigned char)s[0]) ||
+			    isspace((unsigned char)s[0]))
 			++s;
 	}
 
@@ -6301,7 +6302,7 @@ parse_prefix_and_alias(const char *str, int *prefix)
 			return (g_strdup(c->cmd));
 		}
 
-		if (!isspace(s[strlen(c->alias)]))
+		if (!isspace((unsigned char)s[strlen(c->alias)]))
 			continue;
 
 		s = g_strdup_printf("%s %s", c->cmd, &s[strlen(c->alias) + 1]);

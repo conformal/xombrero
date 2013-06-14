@@ -41,7 +41,7 @@ find_domain(const gchar *s, int flags)
 	}
 
 	if (flags & XT_WL_TOPLEVEL &&
-	    !isdigit(uri->host[strlen(uri->host) - 1]))
+	    !isdigit((unsigned char)uri->host[strlen(uri->host) - 1]))
 		p = tld_get_suffix(uri->host);
 	else
 		p = uri->host;
