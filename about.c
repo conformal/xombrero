@@ -704,7 +704,7 @@ add_favorite(struct tab *t, struct karg *args)
 	if (args->s && strlen(g_strstrip(args->s)))
 		argtitle = html_escape(g_strstrip(args->s));
 
-	title = argtitle ? argtitle :  get_title(t, FALSE);
+	title = argtitle ? argtitle : get_title(t, FALSE);
 	uri = get_uri(t);
 
 	if (title == NULL || uri == NULL) {
