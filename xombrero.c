@@ -3492,15 +3492,12 @@ wv_button_cb(GtkWidget *btn, GdkEventButton *e, struct tab *t)
 	return (FALSE);
 }
 
-gboolean
-tab_close_cb(GtkWidget *btn, GdkEventButton *e, struct tab *t)
+void
+tab_close_cb(GtkWidget *btn, struct tab *t)
 {
 	DNPRINTF(XT_D_TAB, "tab_close_cb: tab %d\n", t->tab_id);
 
-	if (e->type == GDK_BUTTON_PRESS && e->button == 1)
-		delete_tab(t);
-
-	return (FALSE);
+	delete_tab(t);
 }
 
 int
@@ -7876,8 +7873,7 @@ create_new_tab(const char *title, struct undo *u, int focus, int position)
 	//    "signal-after::key-press-event", G_CALLBACK(wv_keypress_after_cb), t,
 	//    (char *)NULL);
 
-	g_signal_connect(G_OBJECT(bb), "button_press_event",
-	    G_CALLBACK(tab_close_cb), t);
+	g_signal_connect(G_OBJECT(bb), "clicked", G_CALLBACK(tab_close_cb), t);
 
 	/* setup history */
 	t->bfl = webkit_web_view_get_back_forward_list(t->wv);
