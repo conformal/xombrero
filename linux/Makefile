@@ -83,7 +83,7 @@ install: all
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/xombrero
 	rm -f $(DESTDIR)$(MANDIR)/man1/xombrero.1
-	rm -f $(DESTDIR)$(PREFIX)/share/applications/xombrero.desktop
+	rm -f $(DESTDIR)$(APPDIR)/xombrero.desktop
 	rm -f $(DESTDIR)$(RESDIR)/xombreroicon.png
 	rm -f $(DESTDIR)$(RESDIR)/xombreroicon16.png
 	rm -f $(DESTDIR)$(RESDIR)/xombreroicon32.png
