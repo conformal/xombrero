@@ -7,7 +7,9 @@
 javascript.h
 xombrero
 xombrero.cat1
+xombrero.1.manlint
 tags
+tooltip.h
 osx/tooltip.h
 osx/tree.h
 osx/util.h
