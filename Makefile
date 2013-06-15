@@ -76,21 +76,4 @@ beforeinstall:
 
 ${PROG} ${OBJS} beforedepend: javascript.h tooltip.h
 
-# clang targets
-.if ${.TARGETS:M*analyze*}
-CFLAGS+= -Wdeclaration-after-statement -Wshadow
-CC=clang
-CXX=clang++
-CPP=clang -E
-CFLAGS+=--analyze
-.elif ${.TARGETS:M*clang*}
-CFLAGS+= -Wdeclaration-after-statement -Wshadow
-CC=clang
-CXX=clang++
-CPP=clang -E
-.endif
-
-analyze: all
-clang: all
-
 .include <bsd.prog.mk>
