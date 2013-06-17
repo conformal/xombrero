@@ -885,8 +885,10 @@ load_uri(struct tab *t, const gchar *uri)
 	set_normal_tab_meaning(t);
 
 	if (valid_url_type(uri)) {
-		newuri = guess_url_type(uri);
-		uri = newuri;
+		if ((newuri = guess_url_type(uri)) != NULL)
+			uri = newuri;
+		else
+			uri = "";
 	}
 
 	/* clear :cert show host */
@@ -1708,17 +1710,15 @@ save_certs(struct tab *t, gnutls_x509_crt_t *certs,
 		 * needed.
 		 */
 		cert_buf_sz = 0;
-		rv = gnutls_x509_crt_export(certs[i], GNUTLS_X509_FMT_PEM,
-		    cert_buf, &cert_buf_sz);
-		if (rv == GNUTLS_E_SHORT_MEMORY_BUFFER) {
-			cert_buf = gnutls_malloc(cert_buf_sz * sizeof(char));
-			if (cert_buf == NULL) {
-				show_oops(t, "gnutls_x509_crt_export failed");
-				goto done;
-			}
-			rv = gnutls_x509_crt_export(certs[i],
-			    GNUTLS_X509_FMT_PEM, cert_buf, &cert_buf_sz);
+		gnutls_x509_crt_export(certs[i], GNUTLS_X509_FMT_PEM,
+		    NULL, &cert_buf_sz);
+		cert_buf = gnutls_malloc(cert_buf_sz * sizeof(char));
+		if (cert_buf == NULL) {
+			show_oops(t, "gnutls_x509_crt_export failed");
+			goto done;
 		}
+		rv = gnutls_x509_crt_export(certs[i],
+		    GNUTLS_X509_FMT_PEM, cert_buf, &cert_buf_sz);
 		if (rv != 0) {
 			show_oops(t, "gnutls_x509_crt_export failure: %s",
 			    gnutls_strerror(rv));
@@ -5291,14 +5291,15 @@ download_start(struct tab *t, struct download *d, int flag)
 int
 download_ask_cb(struct tab *t, GdkEventKey *e, gpointer data)
 {
-	struct download *d = data;
+	struct download		*d = data;
 
 	/* unset mode */
 	t->mode_cb = NULL;
 	t->mode_cb_data = NULL;
 
-	if (!e || !d) {
-		e->keyval = GDK_Escape;
+	if (d == NULL) {
+		if (e != NULL)
+			e->keyval = GDK_Escape;
 		return (XT_CB_PASSTHROUGH);
 	}
 
@@ -6135,6 +6136,9 @@ cmd_getlist(int id, char *key)
 	struct history		*h;
 	struct session		*s;
 
+	if (key == NULL)
+		return;
+
 	if (id >= 0) {
 		if (cmds[id].type & XT_URLARG) {
 			RB_FOREACH_REVERSE(h, history_list, &hl)
@@ -6218,7 +6222,7 @@ cmd_complete(struct tab *t, char *str, int dir)
 	int			i, j, levels, c = 0, dep = 0, parent = -1;
 	int			matchcount = 0;
 	char			*tok, *match, *s = g_strdup(str);
-	char			*tokens[3];
+	char			*tokens[3] = {'\0'};
 	char			res[XT_MAX_URL_LENGTH + 32] = ":";
 	char			*sc = s;
 

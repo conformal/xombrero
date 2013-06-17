@@ -73,7 +73,6 @@ update_contents(struct external_editor_args *args)
 				break;
 		}
 		close(fd);
-		fd = -1;
 
 		DPRINTF("external_editor_cb: contents updated\n");
 		if (args->callback)

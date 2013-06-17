@@ -715,9 +715,15 @@ add_favorite(struct tab *t, struct karg *args)
 	urilen = strlen(uri);
 
 	for (;;) {
-		if ((line = fparseln(f, &linelen, NULL, NULL, 0)) == NULL)
-			if (feof(f) || ferror(f))
+		if ((line = fparseln(f, &linelen, NULL, NULL, 0)) == NULL) {
+			if (feof(f))
 				break;
+			else {
+				show_oops(t, "Error reading favorites file: %s",
+				    strerror(errno));
+				goto done;
+			}
+		}
 
 		if (linelen == urilen && !strcmp(line, uri))
 			goto done;
@@ -1019,8 +1025,11 @@ generate_xtp_session_key(char **key)
 {
 	uint8_t			rand_bytes[XT_XTP_SES_KEY_SZ];
 
+	if (key == NULL)
+		return;
+
 	/* free old key */
-	if (*key)
+	if (*key != NULL)
 		g_free(*key);
 
 	/* make a new one */
@@ -1079,8 +1088,6 @@ parse_xtp_url(struct tab *t, const char *uri_str)
 		goto clean;
 	if (uri->host == NULL || strlen(uri->host) == 0)
 		goto clean;
-	else
-		class = atoi(uri->host);
 	if ((sv = g_strsplit(uri->path + 1, "/", 3)) == NULL)
 		goto clean;
 
@@ -1222,8 +1229,10 @@ xtp_page_ab(struct tab *t, struct karg *args)
 {
 	char			*page, *body;
 
-	if (t == NULL)
+	if (t == NULL) {
 		show_oops(NULL, "about invalid parameters");
+		return (-1);
+	}
 
 	generate_xtp_session_key(&t->session_key);
 
@@ -1266,7 +1275,7 @@ xtp_page_ab(struct tab *t, struct karg *args)
 	    ,pwd->pw_dir,
 	    XT_XTP_STR,
 	    XT_XTP_AB,
-	    t->session_key,
+	    t->session_key ? t->session_key : "",
 	    XT_XTP_AB_EDIT_CONF,
 	    XT_CONF_FILE
 	    );
@@ -1295,8 +1304,10 @@ xtp_page_fl(struct tab *t, struct karg *args)
 
 	DNPRINTF(XT_D_FAVORITE, "%s:", __func__);
 
-	if (t == NULL)
-		warn("%s: bad param", __func__);
+	if (t == NULL) {
+		show_oops(NULL, "%s: bad param", __func__);
+		return (-1);
+	}
 
 	generate_xtp_session_key(&t->session_key);
 
@@ -1341,7 +1352,8 @@ xtp_page_fl(struct tab *t, struct karg *args)
 			    "<a href='%s%d/%s/%d/%d'>X</a></td>"
 			    "</tr>\n",
 			    body, i, uri, title,
-			    XT_XTP_STR, XT_XTP_FL, t->session_key,
+			    XT_XTP_STR, XT_XTP_FL,
+			    t->session_key ? t->session_key : "",
 			    XT_XTP_FL_REMOVE, i);
 		else
 			body = g_strdup_printf("%s<tr>"
@@ -1842,8 +1854,10 @@ xtp_page_sv(struct tab *t, struct karg *args)
 	struct secviolation	find, *sv;
 	char			*page, *body;
 
-	if (t == NULL)
+	if (t == NULL) {
 		show_oops(NULL, "secviolation invalid parameters");
+		return (-1);
+	}
 
 	generate_xtp_session_key(&t->session_key);
 

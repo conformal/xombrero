@@ -435,7 +435,7 @@ tld_get_suffix(const char *domain)
 	 */
 	if (!suffix) {
 		saveptr = NULL;
-		lbl = strrchr2(domain, &saveptr, '.');
+		strrchr2(domain, &saveptr, '.');
 		lbl = strrchr2(domain, &saveptr, '.');
 		suffix = lbl;
 	}
