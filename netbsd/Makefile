@@ -74,4 +74,6 @@ beforeinstall:
 	install -m 644 ${.CURDIR}/../style.css ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/../hsts-preload ${PREFIX}/share/xombrero
 
+${PROG} ${OBJS} beforedepend: javascript.h tooltip.h
+
 .include <bsd.prog.mk>
