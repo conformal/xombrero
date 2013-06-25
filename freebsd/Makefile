@@ -7,8 +7,8 @@ LIBS= gtk+-3.0 webkitgtk-3.0
 LIBS+= libsoup-2.4 gnutls
 
 LDADD= -lutil
-GTK_CFLAGS!= pkg-config --cflags $(LIBS)
-GTK_LDFLAGS!= pkg-config --libs $(LIBS)
+GTK_CFLAGS!= pkgconf --cflags $(LIBS)
+GTK_LDFLAGS!= pkgconf --libs $(LIBS)
 CFLAGS+= $(GTK_CFLAGS) -O2 -Wall -I. -I..
 LDFLAGS+= $(GTK_LDFLAGS)
 
