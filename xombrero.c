@@ -1712,6 +1712,10 @@ save_certs(struct tab *t, gnutls_x509_crt_t *certs,
 		cert_buf_sz = 0;
 		gnutls_x509_crt_export(certs[i], GNUTLS_X509_FMT_PEM,
 		    NULL, &cert_buf_sz);
+		if (cert_buf_sz == 0) {
+			show_oops(t, "no certs found");
+			goto done;
+		}
 		cert_buf = gnutls_malloc(cert_buf_sz * sizeof(char));
 		if (cert_buf == NULL) {
 			show_oops(t, "gnutls_x509_crt_export failed");
