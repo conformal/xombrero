@@ -61,7 +61,6 @@ xombrero: $(OBJS)
 
 install: all
 	install -m 755 -d $(DESTDIR)$(BINDIR)
-	install -m 755 -d $(DESTDIR)$(LIBDIR)
 	install -m 755 -d $(DESTDIR)$(MANDIR)/man1
 	install -m 755 -d $(DESTDIR)$(RESDIR)
 	install -m 755 -d $(DESTDIR)$(APPDIR)
