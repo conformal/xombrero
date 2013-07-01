@@ -7,7 +7,6 @@ LDADD+= $(shell pkg-config --libs $(LIBS)) $(JS_LD) -ldl -lX11
 
 PREFIX?= /usr/local
 BINDIR?= $(PREFIX)/bin
-LIBDIR?= $(PREFIX)/lib
 APPDIR?= $(PREFIX)/share/applications
 MANDIR?= $(PREFIX)/share/man
 RESDIR?= $(PREFIX)/share/xombrero
@@ -48,7 +47,6 @@ xombrero: $(OBJS)
 
 install: all
 	install -m 755 -d $(DESTDIR)$(BINDIR)
-	install -m 755 -d $(DESTDIR)$(LIBDIR)
 	install -m 755 -d $(DESTDIR)$(MANDIR)/man1
 	install -m 755 -d $(DESTDIR)$(RESDIR)
 	install -m 755 -d $(DESTDIR)$(APPDIR)

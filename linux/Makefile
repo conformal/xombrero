@@ -22,7 +22,6 @@ LDADD+= $(shell pkg-config --libs $(LIBS)) $(JS_LD) -ldl -lX11
 
 PREFIX?= /usr/local
 BINDIR?= $(PREFIX)/bin
-LIBDIR?= $(PREFIX)/lib
 APPDIR?= $(PREFIX)/share/applications
 MANDIR?= $(PREFIX)/share/man
 RESDIR?= $(PREFIX)/share/xombrero

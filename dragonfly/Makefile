@@ -14,7 +14,6 @@ LDFLAGS+= $(GTK_LDFLAGS)
 
 PREFIX?= /usr/local
 BINDIR?= $(PREFIX)/bin
-LIBDIR?= $(PREFIX)/lib
 MANDIR?= $(PREFIX)/man
 RESDIR?= $(PREFIX)/share/xombrero/
 
@@ -66,7 +65,6 @@ xombrero: xombrero.o dragonfly.o marco.o about.o inspector.o whitelist.o setting
 
 install: all
 	install -m 755 -d $(DESTDIR)$(BINDIR)
-	install -m 755 -d $(DESTDIR)$(LIBDIR)
 	install -m 755 -d $(DESTDIR)$(MANDIR)/man1
 	install -m 755 -d $(DESTDIR)$(RESDIR)
 	install -m 755 xombrero $(DESTDIR)$(BINDIR)
