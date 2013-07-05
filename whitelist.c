@@ -570,9 +570,6 @@ toggle_force_https(struct tab *t, struct karg *args)
 	else if ((args->i & XT_WL_DISABLE) && es != 0)
 		es = 0;
 
-	uri = get_uri(t);
-	dom = find_domain(uri, args->i);
-
 	if (es) {
 		args->i |= !XT_WL_PERSISTENT;
 		wl_add(dom, &force_https, args->i);
