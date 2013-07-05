@@ -78,7 +78,7 @@ int		cookies_enabled = XT_DS_COOKIES_ENABLED; /* enable cookies */
 int		read_only_cookies = XT_DS_READ_ONLY_COOKIES; /* enable to not write cookies */
 int		enable_scripts = XT_DS_ENABLE_SCRIPTS;
 int		enable_plugins = XT_DS_ENABLE_PLUGINS;
-gfloat		default_zoom_level = XT_DS_DEFAULT_ZOOM_LEVEL;
+double		default_zoom_level = XT_DS_DEFAULT_ZOOM_LEVEL;
 char		default_script[PATH_MAX];	/* special setting - is never g_free'd */
 int		refresh_interval = XT_DS_REFRESH_INTERVAL; /* download refresh interval */
 int		enable_plugin_whitelist = XT_DS_ENABLE_PLUGIN_WHITELIST;
@@ -3608,11 +3608,15 @@ int
 settings_add(char *var, char *val)
 {
 	int			i, rv, *p;
-	gfloat			*f;
+	int			tmp;
+	double			*f;
 	char			c[PATH_MAX], **s;
+	const char		*errstr;
 
 	/* get settings */
 	for (i = 0, rv = 0; i < LENGTH(rs); i++) {
+		errstr = NULL;
+
 		if (strcmp(var, rs[i].name))
 			continue;
 
@@ -3634,7 +3638,10 @@ settings_add(char *var, char *val)
 			case XT_S_INT:	/* FALLTHROUGH */
 			case XT_S_BOOL:
 				p = rs[i].ival;
-				*p = atoi(val);
+				tmp = strtonum(val, INT_MIN, INT_MAX, &errstr);
+				if (errstr)
+					break;
+				*p = tmp;
 				rv = 1;
 				break;
 			case XT_S_STR:
@@ -3649,7 +3656,7 @@ settings_add(char *var, char *val)
 				break;
 			case XT_S_FLOAT:
 				f = rs[i].fval;
-				*f = atof(val);
+				*f = g_ascii_strtod(val, NULL);
 				rv = 1;
 				break;
 			case XT_S_INVALID:

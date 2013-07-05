@@ -812,7 +812,7 @@ struct settings {
 	int		*ival;
 	char		**sval;
 	struct special	*s;
-	gfloat		*fval;
+	double		*fval;
 	int		(*activate)(char *);
 	int		(*ismodified)(char **);
 	char		*tt;
@@ -899,7 +899,7 @@ extern int	read_only_cookies;
 extern int	enable_cache;
 extern int	enable_scripts;
 extern int	enable_plugins;
-extern gfloat	default_zoom_level;
+extern double	default_zoom_level;
 extern char	default_script[PATH_MAX];
 extern int	window_height;
 extern int	window_width;
