@@ -5414,7 +5414,8 @@ mark(struct tab *t, struct karg *arg)
 	if (arg->i == XT_MARK_SET)
 		t->mark[index] = gtk_adjustment_get_value(t->adjust_v);
 	else if (arg->i == XT_MARK_GOTO) {
-		if (t->mark[index] == XT_INVALID_MARK) {
+		if (t->mark[index] > (XT_INVALID_MARK - 0.001) &&
+		    t->mark[index] < (XT_INVALID_MARK + 0.001)) {
 			show_oops(t, "mark '%c' does not exist", mark);
 			return (-1);
 		}
@@ -6927,11 +6928,11 @@ update_statusbar_position(GtkAdjustment* adjustment, gpointer data)
 	value = gtk_adjustment_get_value(adjustment);
 	max = gtk_adjustment_get_upper(adjustment) - view_size;
 
-	if (max == 0)
+	if (max > -0.0001 && max < 0.0001)
 		position = g_strdup("All");
-	else if (value == max)
+	else if (value > (max - 0.0001) && value < (max + 0.0001))
 		position = g_strdup("Bot");
-	else if (value == 0)
+	else if (value > -0.0001 && value < 0.0001)
 		position = g_strdup("Top");
 	else
 		position = g_strdup_printf("%d%%", (int) ((value / max) * 100));

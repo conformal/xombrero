@@ -8,8 +8,9 @@ DEBUG= -g
 
 SRCS= cookie.c inspector.c marco.c about.c whitelist.c settings.c inputfocus.c
 SRCS+= history.c completion.c tldlist.c externaleditor.c unix.c xombrero.c
-CFLAGS+= -O2 -Wall -Wno-format-extra-args -Wunused
-CFLAGS+= -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare -Wno-deprecated-declarations ${DEBUG}
+CFLAGS+= -O2 -Wall -Wno-format-extra-args -Wunused -Wextra -Wno-unused-parameter
+CFLAGS+= -Wno-missing-field-initializers -Wno-sign-compare
+CFLAGS+= -Wno-deprecated-declarations -Wfloat-equal ${DEBUG}
 CFLAGS+= -DGTK_DISABLE_SINGLE_INCLUDES -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED -DGSEAL_ENABLE
 CFLAGS+= -I. -I${.CURDIR}
 LDADD= -lutil
