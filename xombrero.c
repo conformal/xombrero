@@ -1907,8 +1907,10 @@ cert_cmd(struct tab *t, struct karg *args)
 done:
 	soup_uri_free(su);
 
-	if (error_str && strlen(error_str))
+	if (error_str && strlen(error_str)) {
 		show_oops(t, "%s", error_str);
+		return (1);
+	}
 	return (0);
 }
 
@@ -3755,12 +3757,6 @@ show_ca_status(struct tab *t, const char *uri)
 			break;
 		}
 
-	snprintf(file, sizeof file, "%s" PS "%s", certs_cache_dir, domain);
-	if (warn_cert_changes) {
-		if (check_cert_changes(t, cert, file, uri))
-			nocolor = 1;
-	}
-
 	snprintf(file, sizeof file, "%s" PS "%s", certs_dir, domain);
 	chain = g_strdup("");
 	if ((trust = check_local_certs(file, cert, &chain)) == CERT_LOCAL)
@@ -3768,6 +3764,12 @@ show_ca_status(struct tab *t, const char *uri)
 	if (t->pem)
 		g_free(t->pem);
 	t->pem = chain;
+
+	snprintf(file, sizeof file, "%s" PS "%s", certs_cache_dir, domain);
+	if (warn_cert_changes) {
+		if (check_cert_changes(t, cert, file, uri))
+			nocolor = 1;
+	}
 
 done:
 	g_object_unref(msg);
