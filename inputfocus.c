@@ -159,7 +159,7 @@ focus_input(struct tab *t)
 
 	/* try current active element */
 	a = webkit_dom_html_document_get_active_element(
-	    (WebKitDOMHTMLDocument*)doc);
+	    WEBKIT_DOM_HTML_DOCUMENT(doc);
 	if (node_is_valid_entry((WebKitDOMNode *)a)) {
 		rv = 1; /* found */
 		goto done;
@@ -245,6 +245,8 @@ dom_is_input(struct tab *t, char **text)
 
 	/* unwind frames and iframes until the cows come home */
 	for (;;) {
+		if (!WEBKIT_DOM_IS_HTML_DOCUMENT(doc))
+			return (0);
 		a = webkit_dom_html_document_get_active_element(
 		    (WebKitDOMHTMLDocument*)doc);
 		if (a == NULL)
