@@ -167,7 +167,7 @@ focus_input(struct tab *t)
 
 	/* try current active element */
 	a = webkit_dom_html_document_get_active_element(
-	    WEBKIT_DOM_HTML_DOCUMENT(doc));
+	    (WebKitDOMHTMLDocument*)doc);
 	if (node_is_valid_entry((WebKitDOMNode *)a)) {
 		rv = 1; /* found */
 		goto done;
@@ -258,7 +258,7 @@ dom_is_input(struct tab *t, char **text)
 			return (0);
 #endif
 		a = webkit_dom_html_document_get_active_element(
-		    WEBKIT_DOM_HTML_DOCUMENT(doc));
+		    (WebKitDOMHTMLDocument*)doc);
 		if (a == NULL)
 			return (0);
 
@@ -360,7 +360,7 @@ command_mode(struct tab *t, struct karg *args)
 		}
 #endif
 		a = webkit_dom_html_document_get_active_element(
-		    WEBKIT_DOM_HTML_DOCUMENT(doc));
+		    (WebKitDOMHTMLDocument *)doc);
 		if (a) {
 			webkit_dom_element_blur(a);
 			focus_body(doc);
