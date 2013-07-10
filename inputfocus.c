@@ -159,7 +159,7 @@ focus_input(struct tab *t)
 
 	/* try current active element */
 	a = webkit_dom_html_document_get_active_element(
-	    WEBKIT_DOM_HTML_DOCUMENT(doc);
+	    WEBKIT_DOM_HTML_DOCUMENT(doc));
 	if (node_is_valid_entry((WebKitDOMNode *)a)) {
 		rv = 1; /* found */
 		goto done;
