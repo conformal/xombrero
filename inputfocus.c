@@ -156,11 +156,14 @@ focus_input(struct tab *t)
 	 */
 
 	doc = webkit_web_view_get_dom_document(t->wv);
+#if WEBKIT_CHECK_VERSION(2, 0, 0)
+	/* This check is broken on old webkit */
 	if (!WEBKIT_DOM_IS_HTML_DOCUMENT(doc)) {
 		show_oops(t, "%s: DOM node is not a valid HTML document",
 		    __func__);
 		goto done;
 	}
+#endif
 
 	/* try current active element */
 	a = webkit_dom_html_document_get_active_element(
@@ -250,8 +253,10 @@ dom_is_input(struct tab *t, char **text)
 
 	/* unwind frames and iframes until the cows come home */
 	for (;;) {
+#if WEBKIT_CHECK_VERSION(2, 0, 0)
 		if (!WEBKIT_DOM_IS_HTML_DOCUMENT(doc))
 			return (0);
+#endif
 		a = webkit_dom_html_document_get_active_element(
 		    WEBKIT_DOM_HTML_DOCUMENT(doc));
 		if (a == NULL)
@@ -343,16 +348,19 @@ int
 command_mode(struct tab *t, struct karg *args)
 {
 	WebKitDOMDocument	*doc;
-	WebKitDOMElement	*a = NULL;
+	WebKitDOMElement	*a;
 
 	if (args->i == XT_MODE_COMMAND) {
 		doc = webkit_web_view_get_dom_document(t->wv);
+#if WEBKIT_CHECK_VERSION(2, 0, 0)
 		if (!WEBKIT_DOM_IS_HTML_DOCUMENT(doc)) {
 			show_oops(t, "%s: DOM node is not a valid HTML "
 			    "document", __func__);
-		} else
-			a = webkit_dom_html_document_get_active_element(
-			    WEBKIT_DOM_HTML_DOCUMENT(doc));
+			return (XT_CB_HANDLED);
+		}
+#endif
+		a = webkit_dom_html_document_get_active_element(
+		    WEBKIT_DOM_HTML_DOCUMENT(doc));
 		if (a) {
 			webkit_dom_element_blur(a);
 			focus_body(doc);
