@@ -210,6 +210,11 @@ setup_cookies(void)
 	set_hook((void *)&_soup_cookie_jar_delete_cookie,
 	    "soup_cookie_jar_delete_cookie");
 
+#if defined __MINGW32__
+	/* windows hooking is a horror show, nothing to see here move along */
+	fixup_windows_hooks();
+#endif
+
 	if (cookies_enabled == 0)
 		return;
 

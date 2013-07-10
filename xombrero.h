@@ -416,11 +416,13 @@ void			button_set_file(GtkWidget *, char *);
 void			webview_progress_changed_cb(WebKitWebView *, GParamSpec *, struct tab *);
 
 /* cookies */
-int			remove_cookie(int);
-int			remove_cookie_domain(int);
-int			remove_cookie_all(void);
-void			print_cookie(char *msg, SoupCookie *);
-void			setup_cookies(void);
+int	remove_cookie(int);
+int	remove_cookie_domain(int);
+int	remove_cookie_all(void);
+void	print_cookie(char *msg, SoupCookie *);
+void	setup_cookies(void);
+void	soup_cookie_jar_add_cookie(SoupCookieJar *, SoupCookie *);
+void	soup_cookie_jar_delete_cookie(SoupCookieJar *, SoupCookie *);
 
 /* history */
 int			insert_history_item(const gchar *uri, const gchar *title, time_t time);
@@ -983,6 +985,8 @@ extern uint64_t		blocked_cookies;
 extern SoupSession	*session;
 
 extern void	(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
+extern void	(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
+		    SoupCookie *);
 
 extern struct history_list	hl;
 extern int			hl_purge_count;
