@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2011 Marco Peereboom <marco@peereboom.us>
- * Copyright (c) 2012 Josh Rickmar <jrick@devio.us>
+ * Copyright (c) 2012, 2013 Josh Rickmar <jrick@devio.us>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -156,6 +156,11 @@ focus_input(struct tab *t)
 	 */
 
 	doc = webkit_web_view_get_dom_document(t->wv);
+	if (!WEBKIT_DOM_IS_HTML_DOCUMENT(doc)) {
+		show_oops(t, "%s: DOM node is not a valid HTML document",
+		    __func__);
+		goto done;
+	}
 
 	/* try current active element */
 	a = webkit_dom_html_document_get_active_element(
@@ -248,7 +253,7 @@ dom_is_input(struct tab *t, char **text)
 		if (!WEBKIT_DOM_IS_HTML_DOCUMENT(doc))
 			return (0);
 		a = webkit_dom_html_document_get_active_element(
-		    (WebKitDOMHTMLDocument*)doc);
+		    WEBKIT_DOM_HTML_DOCUMENT(doc));
 		if (a == NULL)
 			return (0);
 
@@ -338,12 +343,16 @@ int
 command_mode(struct tab *t, struct karg *args)
 {
 	WebKitDOMDocument	*doc;
-	WebKitDOMElement	*a;
+	WebKitDOMElement	*a = NULL;
 
 	if (args->i == XT_MODE_COMMAND) {
 		doc = webkit_web_view_get_dom_document(t->wv);
-		a = webkit_dom_html_document_get_active_element(
-		    (WebKitDOMHTMLDocument *)doc);
+		if (!WEBKIT_DOM_IS_HTML_DOCUMENT(doc)) {
+			show_oops(t, "%s: DOM node is not a valid HTML "
+			    "document", __func__);
+		} else
+			a = webkit_dom_html_document_get_active_element(
+			    WEBKIT_DOM_HTML_DOCUMENT(doc));
 		if (a) {
 			webkit_dom_element_blur(a);
 			focus_body(doc);
