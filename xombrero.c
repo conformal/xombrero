@@ -6692,6 +6692,13 @@ wv_popup_cb(WebKitWebView *wview, GtkMenu *menu, struct tab *t)
 }
 
 void
+wv_deny_location_cb(WebKitWebView *wv, WebKitWebFrame *frame,
+    WebKitGeolocationPolicyDecision *pd, struct tab *t)
+{
+	webkit_geolocation_policy_deny(pd);
+}
+
+void
 cmd_popup_cb(GtkEntry *entry, GtkMenu *menu, struct tab *t)
 {
 	/* popup menu enabled */
@@ -7872,6 +7879,7 @@ create_new_tab(const char *title, struct undo *u, int focus, int position)
 	    "signal::button_press_event", G_CALLBACK(wv_button_cb), t,
 	    "signal::button_release_event", G_CALLBACK(wv_release_button_cb), t,
 	    "signal::populate-popup", G_CALLBACK(wv_popup_cb), t,
+	    "signal::geolocation-policy-decision-requested", G_CALLBACK(wv_deny_location_cb), t,
 	    (char *)NULL);
 	g_signal_connect(t->wv,
 	    "notify::load-status", G_CALLBACK(notify_load_status_cb), t);
