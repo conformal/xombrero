@@ -3726,6 +3726,7 @@ config_parse(char *filename, int runtime)
 
 			DNPRINTF(XT_D_CONFIG, "config_parse: %s=%s\n",
 			    var, val);
+			g_strstrip(val);
 			handled = settings_add(var, val);
 
 			if (handled == 0)
