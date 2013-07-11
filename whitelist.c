@@ -573,13 +573,10 @@ toggle_force_https(struct tab *t, struct karg *args)
 	if (es) {
 		args->i |= !XT_WL_PERSISTENT;
 		wl_add(dom, &force_https, args->i);
-	} else {
-		w = wl_find(dom, &force_https);
-		if (w != NULL) {
-			TAILQ_REMOVE(&force_https, w, entry);
-			g_free(w->re);
-			g_free(w->pat);
-		}
+	} else if (w != NULL) {
+		TAILQ_REMOVE(&force_https, w, entry);
+		g_free(w->re);
+		g_free(w->pat);
 	}
 
 	if (args->i & XT_WL_RELOAD)
