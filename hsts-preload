@@ -16,7 +16,7 @@ force_https = gitweb.torproject.org
 # Sites from chromium's preloaded HSTS list:
 # http://src.chromium.org/viewvc/chrome/trunk/src/net/http/transport_security_state_static.json?view=markup
 #
-# Last synced with chromium revision 208209
+# Last synced with chromium revision 210837
 #
 force_https = re:^(.*\.)*(health|checkout|chrome|docs|sites|spreadsheets|appengine|encrypted|accounts|profiles|mail|talkgadget|talk|hostedtalkgadget|plus|plus\.sandbox|script|history|security|code|dl)\.google\.com$
 force_https = .market.android.com
@@ -131,6 +131,7 @@ force_https = ssl.panoramio.com
 force_https = kiwiirc.com
 force_https = re:^(.*\.)*(pay|controlcenter)\.gigahost\.dk$
 force_https = re:^(www\.|fj\.|api\.)?simple\.com$
+force_https = .bank.simple.com
 force_https = .bassh.net
 force_https = .sah3.net
 force_https = re:^(www\.)?grc\.com$
@@ -143,5 +144,11 @@ force_https = .logotype.se
 force_https = .bccx.com
 force_https = .launchkey.com
 force_https = .carlolly.co.uk
+force_https = .www.cyveillance.com
+force_https = .blog.cyveillance.com
+force_https = .whonix.org
+force_https = .blueseed.co
+force_https = .forum.quantifiedself.com
+force_https = .shodan.io
 force_https = re:^(www\.)?gmail\.com$
 force_https = re:^(www\.)?googlemail\.com$
