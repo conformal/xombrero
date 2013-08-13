@@ -1,5 +1,12 @@
 LIBS= glib-2.0
-LIBS+= gtk+-2.0 webkit-1.0
+GTK_VERSION ?= gtk3
+ifeq ("${GTK_VERSION}", "gtk2")
+LIBS+= gtk+-2.0
+LIBS+= webkit-1.0
+else
+LIBS+= gtk+-3.0
+LIBS+= webkitgtk-3.0
+endif
 LIBS+= libsoup-2.4 gnutls
 
 CFLAGS+= -O2 -Wall -D_GNU_SOURCE -I. -I.. $(shell pkg-config --cflags $(LIBS)) $(JS_CF)
