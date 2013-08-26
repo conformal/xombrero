@@ -517,7 +517,7 @@ struct settings		rs[] = {
 	{ "cookies_enabled",		XT_S_BOOL, 0,		&cookies_enabled, NULL, NULL, NULL, set_cookies_enabled, check_cookies_enabled, TT_COOKIES_ENABLED },
 	{ "ctrl_click_focus",		XT_S_BOOL, 0,		&ctrl_click_focus, NULL, NULL, NULL, set_ctrl_click_focus, check_ctrl_click_focus, TT_CTRL_CLICK_FOCUS },
 	{ "default_script",		XT_S_STR, 1, NULL, NULL,&s_default_script, NULL, set_default_script_rt, check_default_script, TT_DEFAULT_SCRIPT },
-	{ "default_zoom_level",		XT_S_FLOAT, 0,		NULL, NULL, NULL, &default_zoom_level, set_default_zoom_level, check_default_zoom_level, TT_DEFAULT_ZOOM_LEVEL },
+	{ "default_zoom_level",		XT_S_DOUBLE, 0,		NULL, NULL, NULL, &default_zoom_level, set_default_zoom_level, check_default_zoom_level, TT_DEFAULT_ZOOM_LEVEL },
 	{ "do_not_track",		XT_S_BOOL, 0,		&do_not_track, NULL, NULL, NULL, set_do_not_track, check_do_not_track, TT_DO_NOT_TRACK },
 	{ "download_dir",		XT_S_STR, 0, NULL, NULL,&s_download_dir, NULL, NULL, check_download_dir, TT_DOWNLOAD_DIR },
 	{ "download_mode",		XT_S_STR, 0, NULL, NULL,&s_download_mode, NULL, set_download_mode_rt, check_download_mode, TT_DOWNLOAD_MODE },
@@ -698,7 +698,8 @@ int
 check_default_zoom_level(char **tt)
 {
 	*tt = g_strdup_printf("Default: %f", XT_DS_DEFAULT_ZOOM_LEVEL);
-	return (default_zoom_level != XT_DS_DEFAULT_ZOOM_LEVEL);
+	return (default_zoom_level < (XT_DS_DEFAULT_ZOOM_LEVEL - 0.0001) ||
+		default_zoom_level > (XT_DS_DEFAULT_ZOOM_LEVEL + 0.0001));
 }
 
 int
@@ -984,8 +985,8 @@ get_as_string(struct settings *s)
 		r = g_strdup_printf("%d", *s->ival);
 	else if (s->type == XT_S_STR)
 		r = g_strdup(*s->sval);
-	else if (s->type == XT_S_FLOAT)
-		r = g_strdup_printf("%f", *s->fval);
+	else if (s->type == XT_S_DOUBLE)
+		r = g_strdup_printf("%lf", *s->dval);
 	else if (s->type == XT_S_BOOL)
 		r = g_strdup_printf("%d", *s->ival);
 	else
@@ -3609,7 +3610,7 @@ settings_add(char *var, char *val)
 {
 	int			i, rv, *p;
 	int			tmp;
-	double			*f;
+	double			*d;
 	char			c[PATH_MAX], **s;
 	const char		*errstr;
 
@@ -3654,9 +3655,9 @@ settings_add(char *var, char *val)
 				*s = g_strdup(val);
 				rv = 1;
 				break;
-			case XT_S_FLOAT:
-				f = rs[i].fval;
-				*f = g_ascii_strtod(val, NULL);
+			case XT_S_DOUBLE:
+				d = rs[i].dval;
+				*d = g_ascii_strtod(val, NULL);
 				rv = 1;
 				break;
 			case XT_S_INVALID:
@@ -3836,7 +3837,7 @@ print_runtime_setting(struct settings *s, char *val, void *cb_args)
 		    *sa->body,
 		    s->name,
 		    val);
-	else if (s->type == XT_S_FLOAT)
+	else if (s->type == XT_S_DOUBLE)
 		*sa->body = g_strdup_printf(
 		    "%s<input type='number' step='0.000001' name='%s' value='%s'>"
 		    "</div></td></tr>",
@@ -4052,10 +4053,10 @@ set(struct tab *t, struct karg *args)
 				else
 					show_oops(t, "%s = ", rs[i].name);
 				break;
-			case XT_S_FLOAT:
-				if (rs[i].fval)
+			case XT_S_DOUBLE:
+				if (rs[i].dval)
 					show_oops(t, "%s = %f",
-					    rs[i].name, *rs[i].fval);
+					    rs[i].name, *rs[i].dval);
 				else if (rs[i].s && rs[i].s->get)
 					show_oops(t, "%s = %s",
 					    rs[i].name,

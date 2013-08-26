@@ -805,7 +805,7 @@ struct settings {
 #define XT_S_INVALID	(0)
 #define XT_S_INT	(1)
 #define XT_S_STR	(2)
-#define XT_S_FLOAT	(3)
+#define XT_S_DOUBLE	(3)
 #define XT_S_BOOL	(4)
 	uint32_t	flags;
 #define XT_SF_RESTART	(1<<0)
@@ -814,7 +814,7 @@ struct settings {
 	int		*ival;
 	char		**sval;
 	struct special	*s;
-	double		*fval;
+	double		*dval;
 	int		(*activate)(char *);
 	int		(*ismodified)(char **);
 	char		*tt;

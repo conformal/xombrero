@@ -953,9 +953,9 @@ xtp_handle_rt(struct tab *t, uint8_t cmd, int id, const char *query)
 				if (atoi(val) != *rs[i].ival)
 					modify = 1;
 				break;
-			case XT_S_FLOAT:
-				if (atof(val) < (*rs[i].fval - 0.0001) ||
-				    atof(val) > (*rs[i].fval + 0.0001))
+			case XT_S_DOUBLE:
+				if (atof(val) < (*rs[i].dval - 0.0001) ||
+				    atof(val) > (*rs[i].dval + 0.0001))
 					modify = 1;
 				break;
 			case XT_S_STR:
