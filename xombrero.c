@@ -7603,8 +7603,8 @@ statusbar_create(struct tab *t)
 				gtk_box_pack_start(b, t->sbe.proxy, FALSE,
 				    FALSE, 0);
 				if (proxy_uri)
-					gtk_entry_set_text(
-					    GTK_ENTRY(t->sbe.proxy), "proxy");
+					gtk_label_set_text(
+					    GTK_LABEL(t->sbe.proxy), "proxy");
 			}
 			break;
 		default:
