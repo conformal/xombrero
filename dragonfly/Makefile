@@ -76,6 +76,8 @@ install: all
 	install -m 644 ../xombreroicon48.png $(DESTDIR)$(RESDIR)
 	install -m 644 ../xombreroicon64.png $(DESTDIR)$(RESDIR)
 	install -m 644 ../xombreroicon128.png $(DESTDIR)$(RESDIR)
+	install -m 644 ../xombreroicon256.png $(DESTDIR)$(RESDIR)
+	install -m 644 ../favicon.ico $(DESTDIR)$(RESDIR)
 	install -m 644 ../tld-rules $(DESTDIR)$(RESDIR)
 	install -m 644 ../style.css $(DESTDIR)$(RESDIR)
 	install -m 644 ../hsts-preload $(DESTDIR)$(RESDIR)

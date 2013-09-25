@@ -64,12 +64,13 @@ beforeinstall:
 	install -m 755 -d ${PREFIX}/man/html1/
 	install -m 755 -d ${PREFIX}/share/xombrero
 	install -m 644 $(.CURDIR)/../xombrero.css ${PREFIX}/share/xombrero
-	install -m 644 ${.CURDIR}/../xombreroicon.png ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/../xombreroicon16.png ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/../xombreroicon32.png ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/../xombreroicon48.png ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/../xombreroicon64.png ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/../xombreroicon128.png ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../xombreroicon256.png ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../favicon.ico ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/../tld-rules ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/../style.css ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/../hsts-preload ${PREFIX}/share/xombrero

@@ -66,6 +66,8 @@ install: all
 	install -m 644 ../xombreroicon48.png $(DESTDIR)$(RESDIR)
 	install -m 644 ../xombreroicon64.png $(DESTDIR)$(RESDIR)
 	install -m 644 ../xombreroicon128.png $(DESTDIR)$(RESDIR)
+	install -m 644 ../xombreroicon256.png $(DESTDIR)$(RESDIR)
+	install -m 644 ../favicon.ico $(DESTDIR)$(RESDIR)
 	install -m 644 ../tld-rules $(DESTDIR)$(RESDIR)
 	install -m 644 ../style.css $(DESTDIR)$(RESDIR)
 	install -m 644 ../hsts-preload $(DESTDIR)$(RESDIR)
@@ -76,13 +78,14 @@ uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/xombrero
 	rm -f $(DESTDIR)$(MANDIR)/man1/xombrero.1
 	rm -f $(DESTDIR)$(APPDIR)/xombrero.desktop
-	rm -f $(DESTDIR)$(RESDIR)/xombreroicon.png
 	rm -f $(DESTDIR)$(RESDIR)/xombreroicon16.png
 	rm -f $(DESTDIR)$(RESDIR)/xombreroicon32.png
 	rm -f $(DESTDIR)$(RESDIR)/xombreroicon48.png
 	rm -f $(DESTDIR)$(RESDIR)/xombreroicon64.png
 	rm -f $(DESTDIR)$(RESDIR)/xombreroicon128.png
+	rm -f $(DESTDIR)$(RESDIR)/xombreroicon256.png
 	rm -f $(DESTDIR)$(RESDIR)/xombrero.css
+	rm -f $(DESTDIR)$(RESDIR)/favicon.ico
 	rm -f $(DESTDIR)$(RESDIR)/tordisabled.ico
 	rm -f $(DESTDIR)$(RESDIR)/torenabled.ico
 	rm -f $(DESTDIR)$(RESDIR)/tld-rules
