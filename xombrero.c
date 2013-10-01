@@ -3635,8 +3635,8 @@ check_and_set_js(const gchar *uri, struct tab *t)
 	    "enable-scripts", es, (char *)NULL);
 	webkit_web_view_set_settings(t->wv, t->settings);
 
-	button_set_stockid(t->js_toggle,
-	    es ? GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE);
+	button_set_icon_name(t->js_toggle,
+	    es ? "media-playback-start" : "media-playback-pause");
 }
 
 void
@@ -6646,14 +6646,20 @@ done:
 void
 wv_popup_activ_cb(GtkMenuItem *menu, struct tab *t)
 {
-	GtkAction		*a = NULL;
 	GtkClipboard		*clipboard, *primary;
 	const gchar		*name, *uri;
+#if !GTK_CHECK_VERSION(3, 4, 0)
+	GtkAction		*a;
 
 	a = gtk_activatable_get_related_action(GTK_ACTIVATABLE(menu));
 	if (a == NULL)
 		return;
 	name = gtk_action_get_name(a);
+#else
+	name = gtk_actionable_get_action_name(GTK_ACTIONABLE(menu));
+#endif
+	if (name == NULL)
+                return;
 
 	DNPRINTF(XT_D_CMD, "wv_popup_activ_cb: tab %d action %s\n",
 	    t->tab_id, name);
@@ -7028,21 +7034,21 @@ create_kiosk_toolbar(struct tab *t)
 	gtk_container_set_border_width(GTK_CONTAINER(toolbar), 0);
 
 	/* backward button */
-	t->backward = create_button("Back", GTK_STOCK_GO_BACK, 0);
+	t->backward = create_button("Back", "go-previous", 0);
 	gtk_widget_set_sensitive(t->backward, FALSE);
 	g_signal_connect(G_OBJECT(t->backward), "clicked",
 	    G_CALLBACK(backward_cb), t);
 	gtk_box_pack_start(b, t->backward, TRUE, TRUE, 0);
 
 	/* forward button */
-	t->forward = create_button("Forward", GTK_STOCK_GO_FORWARD, 0);
+	t->forward = create_button("Forward", "go-next", 0);
 	gtk_widget_set_sensitive(t->forward, FALSE);
 	g_signal_connect(G_OBJECT(t->forward), "clicked",
 	    G_CALLBACK(forward_cb), t);
 	gtk_box_pack_start(b, t->forward, TRUE, TRUE, 0);
 
 	/* home button */
-	t->gohome = create_button("Home", GTK_STOCK_HOME, 0);
+	t->gohome = create_button("Home", "go-home", 0);
 	gtk_widget_set_sensitive(t->gohome, true);
 	g_signal_connect(G_OBJECT(t->gohome), "clicked",
 	    G_CALLBACK(home_cb), t);
@@ -7057,10 +7063,10 @@ create_kiosk_toolbar(struct tab *t)
 	g_object_ref_sink(G_OBJECT(t->uri_entry));
 	g_signal_connect(G_OBJECT(t->uri_entry), "focus-in-event",
 	    G_CALLBACK(entry_focus_cb), t);
-	t->stop = create_button("Stop", GTK_STOCK_STOP, 0);
+	t->stop = create_button("Stop", "process-stop", 0);
 	g_object_ref_sink(G_OBJECT(t->stop));
 	t->js_toggle = create_button("JS-Toggle", enable_scripts ?
-	    GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE, 0);
+	    "media-playback-start" : "media-playback-pause", 0);
 	g_object_ref_sink(G_OBJECT(t->stop));
 
 #if !GTK_CHECK_VERSION(3, 0, 0)
@@ -7095,21 +7101,21 @@ create_toolbar(struct tab *t)
 	gtk_container_set_border_width(GTK_CONTAINER(toolbar), 0);
 
 	/* backward button */
-	t->backward = create_button("Back", GTK_STOCK_GO_BACK, 0);
+	t->backward = create_button("Back", "go-previous", 0);
 	gtk_widget_set_sensitive(t->backward, FALSE);
 	g_signal_connect(G_OBJECT(t->backward), "clicked",
 	    G_CALLBACK(backward_cb), t);
 	gtk_box_pack_start(b, t->backward, FALSE, FALSE, 0);
 
 	/* forward button */
-	t->forward = create_button("Forward",GTK_STOCK_GO_FORWARD, 0);
+	t->forward = create_button("Forward", "go-next", 0);
 	gtk_widget_set_sensitive(t->forward, FALSE);
 	g_signal_connect(G_OBJECT(t->forward), "clicked",
 	    G_CALLBACK(forward_cb), t);
 	gtk_box_pack_start(b, t->forward, FALSE, FALSE, 0);
 
 	/* stop button */
-	t->stop = create_button("Stop", GTK_STOCK_STOP, 0);
+	t->stop = create_button("Stop", "process-stop", 0);
 	g_object_ref_sink(G_OBJECT(t->stop));
 	gtk_widget_set_sensitive(t->stop, FALSE);
 	g_signal_connect(G_OBJECT(t->stop), "clicked", G_CALLBACK(stop_cb), t);
@@ -7117,7 +7123,7 @@ create_toolbar(struct tab *t)
 
 	/* JS button */
 	t->js_toggle = create_button("JS-Toggle", enable_scripts ?
-	    GTK_STOCK_MEDIA_PLAY : GTK_STOCK_MEDIA_PAUSE, 0);
+	    "media-playback-start" : "media-playback-pause", 0);
 	g_object_ref_sink(G_OBJECT(t->js_toggle));
 	gtk_widget_set_sensitive(t->js_toggle, TRUE);
 	g_signal_connect(G_OBJECT(t->js_toggle), "clicked",
@@ -7126,7 +7132,7 @@ create_toolbar(struct tab *t)
 
 	/* toggle proxy button */
 	t->proxy_toggle = create_button("Proxy-Toggle", proxy_uri ?
-	    GTK_STOCK_CONNECT : GTK_STOCK_DISCONNECT, 0);
+	    "gtk-connect" : "gtk-disconnect", 0);
 	/* override icons */
 	if (proxy_uri)
 		button_set_file(t->proxy_toggle, "torenabled.ico");
@@ -7681,7 +7687,7 @@ create_new_tab(const char *title, struct undo *u, int focus, int position)
 	t->spinner = gtk_spinner_new();
 #endif
 	t->label = gtk_label_new(title);
-	bb = create_button("Close", GTK_STOCK_CLOSE, 1);
+	bb = create_button("Close", "window-close", 1);
 	gtk_label_set_max_width_chars(GTK_LABEL(t->label), 20);
 	gtk_label_set_ellipsize(GTK_LABEL(t->label), PANGO_ELLIPSIZE_END);
 	gtk_label_set_line_wrap(GTK_LABEL(t->label), FALSE);
@@ -8071,7 +8077,7 @@ icon_size_map(int iconsz)
 }
 
 GtkWidget *
-create_button(const char *name, const char *stockid, int size)
+create_button(const char *name, const char *icon_name, int size)
 {
 	GtkWidget		*button, *image;
 	int			gtk_icon_size;
@@ -8097,7 +8103,7 @@ create_button(const char *name, const char *stockid, int size)
 	gtk_button_set_focus_on_click(GTK_BUTTON(button), FALSE);
 	gtk_icon_size = icon_size_map(size ? size : icon_size);
 
-	image = gtk_image_new_from_stock(stockid, gtk_icon_size);
+	image = gtk_image_new_from_icon_name(icon_name, gtk_icon_size);
 	gtk_container_set_border_width(GTK_CONTAINER(button), 0);
 	gtk_button_set_image(GTK_BUTTON(button), GTK_WIDGET(image));
 	gtk_widget_set_name(button, name);
@@ -8118,11 +8124,12 @@ button_set_file(GtkWidget *button, char *filename)
 }
 
 void
-button_set_stockid(GtkWidget *button, char *stockid)
+button_set_icon_name(GtkWidget *button, char *icon_name)
 {
-	GtkWidget		*image;
+	GtkWidget		*image = NULL;
 
-	image = gtk_image_new_from_stock(stockid, icon_size_map(icon_size));
+	image = gtk_image_new_from_icon_name(icon_name,
+	    icon_size_map(icon_size));
 	gtk_button_set_image(GTK_BUTTON(button), image);
 }
 

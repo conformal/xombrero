@@ -457,7 +457,7 @@ toggle_js(struct tab *t, struct karg *args)
 	}
 
 	if (es) {
-		button_set_stockid(t->js_toggle, GTK_STOCK_MEDIA_PLAY);
+		button_set_icon_name(t->js_toggle, "media-playback-start");
 		args->i |= !XT_WL_PERSISTENT;
 		wl_add(dom, &js_wl, args->i);
 	} else {
@@ -467,7 +467,7 @@ toggle_js(struct tab *t, struct karg *args)
 			g_free(w->re);
 			g_free(w->pat);
 		}
-		button_set_stockid(t->js_toggle, GTK_STOCK_MEDIA_PAUSE);
+		button_set_icon_name(t->js_toggle, "media-playback-pause");
 	}
 	g_object_set(G_OBJECT(t->settings),
 	    "enable-scripts", es, (char *)NULL);
