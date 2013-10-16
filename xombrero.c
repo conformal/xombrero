@@ -4464,9 +4464,9 @@ webview_progress_changed_cb(WebKitWebView *wv, GParamSpec *pspec, struct tab *t)
 
 	progress = webkit_web_view_get_progress(wv);
 	gtk_entry_set_progress_fraction(GTK_ENTRY(t->sbe.uri),
-	    progress == 1.0 ? 0 : progress);
+	    progress > (1.0 - 0.0001) ? 0 : progress);
 	gtk_entry_set_progress_fraction(GTK_ENTRY(t->uri_entry),
-	    progress == 1.0 ? 0 : progress);
+	    progress > (1.0 - 0.0001) ? 0 : progress);
 
 	update_statusbar_position(NULL, NULL);
 }
