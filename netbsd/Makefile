@@ -11,8 +11,9 @@ SRCS+= history.c completion.c tldlist.c externaleditor.c unix.c xombrero.c
 SRCS+= netbsd.c
 .PATH: ${.CURDIR}/..
 
-CFLAGS+= -O2 -Wall -Wno-format-extra-args -Wunused
-CFLAGS+= -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare ${DEBUG}
+CFLAGS+= -O2 -Wall -Wno-format-extra-args -Wunused -Wextra -Wno-unused-parameter 
+CFLAGS+= -Wno-missing-field-initializers -Wno-sign-compare
+CFLAGS+= -Wno-deprecated-declarations -Wfloat-equal ${DEBUG}
 CFLAGS+= -DGTK_DISABLE_SINGLE_INCLUDES -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED -DGSEAL_ENABLE
 CFLAGS+= -DGDK_DISABLE_DEPRECATION_WARNINGS -DGLIB_DISABLE_DEPRECATION_WARNINGS
 CFLAGS+= -I. -I..
@@ -60,10 +61,12 @@ tooltip.h: ${MAN} ../ascii2txt.pl ../txt2tooltip.pl
 
 beforeinstall:
 	install -m 755 -d ${PREFIX}/bin
-	install -m 755 -d ${PREFIX}/man/man1/
-	install -m 755 -d ${PREFIX}/man/html1/
+	install -m 755 -d ${MANDIR}/man1/
+	install -m 755 -d ${MANDIR}/html1/
 	install -m 755 -d ${PREFIX}/share/xombrero
-	install -m 644 $(.CURDIR)/../xombrero.css ${PREFIX}/share/xombrero
+	install -m 755 -d ${PREFIX}/share/applications
+	install -m 644 ${.CURDIR}/../xombrero.css ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../xombrero.desktop ${PREFIX}/share/applications
 	install -m 644 ${.CURDIR}/../xombreroicon16.png ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/../xombreroicon32.png ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/../xombreroicon48.png ${PREFIX}/share/xombrero
@@ -74,6 +77,10 @@ beforeinstall:
 	install -m 644 ${.CURDIR}/../tld-rules ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/../style.css ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/../hsts-preload ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../user-agent-headers ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../http-accept-headers ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../torenabled.ico ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../tordisabled.ico ${PREFIX}/share/xombrero
 
 ${PROG} ${OBJS} beforedepend: javascript.h tooltip.h
 
