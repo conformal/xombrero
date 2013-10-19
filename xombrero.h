@@ -689,7 +689,6 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_DS_ALLOW_INSECURE_CONTENT	(TRUE)
 #define XT_DS_ALLOW_INSECURE_SCRIPTS	(TRUE)
 #define XT_DS_WARN_CERT_CHANGES	(0)
-#define XT_DS_RESOURCE_DIR	("/usr/local/share/xombrero")
 #define XT_DS_DO_NOT_TRACK	(0)
 #define XT_DS_PRELOAD_STRICT_TRANSPORT	(1)
 #define XT_DS_GNUTLS_PRIORITY_STRING	(NULL)
