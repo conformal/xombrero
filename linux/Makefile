@@ -1,109 +1,87 @@
-GTK_VERSION?= gtk3
-ifeq ("${GTK_VERSION}", "gtk2")
-JS_CF=$(shell pkg-config --silence-errors --cflags javascriptcoregtk-1.0)
-JS_LD=$(shell pkg-config --silence-errors --libs javascriptcoregtk-1.0)
-else
-JS_CF=$(shell pkg-config --silence-errors --cflags javascriptcoregtk-3.0)
-JS_LD=$(shell pkg-config --silence-errors --libs javascriptcoregtk-3.0)
-endif
+PREFIX?=/usr/local
+BINDIR=${PREFIX}/bin
 
-LIBS= glib-2.0
-ifeq ("${GTK_VERSION}", "gtk2")
-LIBS+= gtk+-2.0 webkit-1.0
-CFLAGS+=-I/usr/include/gtk-2.0
-else
-LIBS+= gtk+-3.0 webkitgtk-3.0
-CFLAGS+=-I/usr/include/gtk-3.0
-endif
-LIBS+= libsoup-2.4 gnutls libbsd
+PROG=xombrero
+MAN=xombrero.1
 
-CFLAGS+= -O2 -Wall -ggdb3 -D_GNU_SOURCE -I. -I.. $(shell pkg-config --cflags $(LIBS)) $(JS_CF)
-LDADD+= $(shell pkg-config --libs $(LIBS)) $(JS_LD) -ldl -lX11
+DEBUG= -g
 
-PREFIX?= /usr/local
-BINDIR?= $(PREFIX)/bin
-APPDIR?= $(PREFIX)/share/applications
-MANDIR?= $(PREFIX)/share/man
-RESDIR?= $(PREFIX)/share/xombrero
-
-SRCS= $(shell ls ../*.c)
+SRCS= cookie.c inspector.c marco.c about.c whitelist.c settings.c inputfocus.c
+SRCS+= history.c completion.c tldlist.c externaleditor.c unix.c xombrero.c
 SRCS+= linux.c
-OBJS= $(SRCS:.c=.o)
-DEPS= $(addsuffix .depend, $(OBJS))
+.PATH: ${.CURDIR}/..
 
-CC?= gcc
+CFLAGS+= -O2 -Wall -Wno-format-extra-args -Wunused -Wextra -Wno-unused-parameter 
+CFLAGS+= -Wno-missing-field-initializers -Wno-sign-compare
+CFLAGS+= -Wno-deprecated-declarations -Wfloat-equal ${DEBUG}
+CFLAGS+= -DGTK_DISABLE_SINGLE_INCLUDES -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED -DGSEAL_ENABLE
+CFLAGS+= -DGDK_DISABLE_DEPRECATION_WARNINGS -DGLIB_DISABLE_DEPRECATION_WARNINGS
+CFLAGS+= -I. -I..
+CFLAGS+= -D_GNU_SOURCE
+LDADD= -lutil -lbsd -ldl
+GTK_VERSION ?= gtk3
+.if ${GTK_VERSION} == "gtk2"
+LIBS+= gtk+-2.0
+LIBS+= webkit-1.0
+.else
+LIBS+= gtk+-3.0
+LIBS+= webkitgtk-3.0
+.endif
+LIBS+= libsoup-2.4
+LIBS+= gnutls
+GTK_CFLAGS!= pkg-config --cflags $(LIBS)
+GTK_LDFLAGS!= pkg-config --libs $(LIBS)
+CFLAGS+= $(GTK_CFLAGS)
+LDFLAGS+= $(GTK_LDFLAGS)
+BUILDVERSION != sh "${.CURDIR}/../buildver.sh"
+.if !${BUILDVERSION} == ""
+CPPFLAGS+= -DXOMBRERO_BUILDSTR=\"$(BUILDVERSION)\"
+.endif
 
-BUILDVERSION= $(shell sh $(CURDIR)/../buildver.sh)
-ifneq ("${BUILDVERSION}", "")
-CFLAGS+= -DXOMBRERO_BUILDSTR=\"$(BUILDVERSION)\"
-endif
+MANDIR= ${PREFIX}/share/man/
 
-all: javascript.h tooltip.h xombrero
+CLEANFILES += ${.CURDIR}/javascript.h javascript.h tooltip.h xombrero.cat1 xombrero.core
 
-javascript.h: ../js-merge-helper.pl ../hinting.js ../autoscroll.js
-	perl ../js-merge-helper.pl ../hinting.js ../input-focus.js \
-	../autoscroll.js > javascript.h
+JSFILES += ../hinting.js
+JSFILES += ../input-focus.js
+JSFILES += ../autoscroll.js
 
-tooltip.h: ../ascii2txt.pl ../txt2tooltip.pl ../xombrero.1
-	nroff -c -Tascii -mandoc ../xombrero.1 | \
-	perl ../ascii2txt.pl | \
-	perl ../txt2tooltip.pl > tooltip.h
+.for _js in ${JSFILES}
+JSCURDIR += ${.CURDIR}/${_js}
+.endfor
 
-xombrero: $(OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $+ $(LDADD)
+.NOPATH: javascript.h tooltip.h
+javascript.h: ${JSFILES} ../js-merge-helper.pl
+	perl ${.CURDIR}/../js-merge-helper.pl \
+		${JSCURDIR} > javascript.h
 
-%.o: %.c
-	@echo "Generating $@.depend"
-	@$(CC) -MM $(CPPFLAGS) $(CFLAGS) $< | \
-	sed 's,^.*\.o[ :]*,$@ $@.depend : ,g' > $@.depend
-	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+tooltip.h: ${MAN} ../ascii2txt.pl ../txt2tooltip.pl
+	mandoc -Tascii ${.CURDIR}/../${MAN} | \
+		perl ${.CURDIR}/../ascii2txt.pl | \
+		perl ${.CURDIR}/../txt2tooltip.pl > tooltip.h
 
-install: all
-	install -m 755 -d $(DESTDIR)$(BINDIR)
-	install -m 755 -d $(DESTDIR)$(MANDIR)/man1
-	install -m 755 -d $(DESTDIR)$(RESDIR)
-	install -m 755 -d $(DESTDIR)$(APPDIR)
-	install -m 755 xombrero $(DESTDIR)$(BINDIR)
-	install -m 644 ../xombrero.1 $(DESTDIR)$(MANDIR)/man1/xombrero.1
-	install -m 644 ../xombrero.css $(DESTDIR)$(RESDIR)
-	install -m 644 ../xombrero.desktop $(DESTDIR)$(APPDIR)
-	install -m 644 ../xombreroicon16.png $(DESTDIR)$(RESDIR)
-	install -m 644 ../xombreroicon32.png $(DESTDIR)$(RESDIR)
-	install -m 644 ../xombreroicon48.png $(DESTDIR)$(RESDIR)
-	install -m 644 ../xombreroicon64.png $(DESTDIR)$(RESDIR)
-	install -m 644 ../xombreroicon128.png $(DESTDIR)$(RESDIR)
-	install -m 644 ../xombreroicon256.png $(DESTDIR)$(RESDIR)
-	install -m 644 ../favicon.ico $(DESTDIR)$(RESDIR)
-	install -m 644 ../tld-rules $(DESTDIR)$(RESDIR)
-	install -m 644 ../style.css $(DESTDIR)$(RESDIR)
-	install -m 644 ../hsts-preload $(DESTDIR)$(RESDIR)
-	install -m 644 ../torenabled.ico $(DESTDIR)$(RESDIR)
-	install -m 644 ../tordisabled.ico $(DESTDIR)$(RESDIR)
+beforeinstall:
+	install -m 755 -d ${PREFIX}/bin
+	install -m 755 -d ${MANDIR}/man1/
+	install -m 755 -d ${PREFIX}/share/xombrero
+	install -m 755 -d ${PREFIX}/share/applications
+	install -m 644 ${.CURDIR}/../xombrero.css ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../xombrero.desktop ${PREFIX}/share/applications
+	install -m 644 ${.CURDIR}/../xombreroicon16.png ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../xombreroicon32.png ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../xombreroicon48.png ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../xombreroicon64.png ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../xombreroicon128.png ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../xombreroicon256.png ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../favicon.ico ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../tld-rules ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../style.css ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../hsts-preload ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../user-agent-headers ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../http-accept-headers ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../torenabled.ico ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/../tordisabled.ico ${PREFIX}/share/xombrero
 
-uninstall:
-	rm -f $(DESTDIR)$(BINDIR)/xombrero
-	rm -f $(DESTDIR)$(MANDIR)/man1/xombrero.1
-	rm -f $(DESTDIR)$(APPDIR)/xombrero.desktop
-	rm -f $(DESTDIR)$(RESDIR)/xombreroicon16.png
-	rm -f $(DESTDIR)$(RESDIR)/xombreroicon32.png
-	rm -f $(DESTDIR)$(RESDIR)/xombreroicon48.png
-	rm -f $(DESTDIR)$(RESDIR)/xombreroicon64.png
-	rm -f $(DESTDIR)$(RESDIR)/xombreroicon128.png
-	rm -f $(DESTDIR)$(RESDIR)/xombreroicon256.png
-	rm -f $(DESTDIR)$(RESDIR)/xombrero.css
-	rm -f $(DESTDIR)$(RESDIR)/favicon.ico
-	rm -f $(DESTDIR)$(RESDIR)/tordisabled.ico
-	rm -f $(DESTDIR)$(RESDIR)/torenabled.ico
-	rm -f $(DESTDIR)$(RESDIR)/tld-rules
-	rm -f $(DESTDIR)$(RESDIR)/style.css
-	rm -f $(DESTDIR)$(RESDIR)/hsts-preload
-	if [ -d $(DESTDIR)$(RESDIR) ]; then rmdir $(DESTDIR)$(RESDIR); fi
-clean:
-	rm -f xombrero $(OBJS) $(DEPS)
-	rm -f javascript.h
-	rm -f tooltip.h
+${PROG} ${OBJS} beforedepend: javascript.h tooltip.h
 
-
--include $(DEPS)
-
-.PHONY: all install clean
+.include <bsd.prog.mk>

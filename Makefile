@@ -59,8 +59,8 @@ beforeinstall:
 	install -m 755 -d ${PREFIX}/man/man1/
 	install -m 755 -d ${PREFIX}/share/xombrero
 	install -m 755 -d ${PREFIX}/share/applications
-	install -m 644 $(.CURDIR)/xombrero.css ${PREFIX}/share/xombrero
-	install -m 644 $(.CURDIR)/xombrero.desktop ${PREFIX}/share/applications
+	install -m 644 ${.CURDIR}/xombrero.css ${PREFIX}/share/xombrero
+	install -m 644 ${.CURDIR}/xombrero.desktop ${PREFIX}/share/applications
 	install -m 644 ${.CURDIR}/xombreroicon16.png ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/xombreroicon32.png ${PREFIX}/share/xombrero
 	install -m 644 ${.CURDIR}/xombreroicon48.png ${PREFIX}/share/xombrero
