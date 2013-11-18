@@ -4769,10 +4769,13 @@ session_rq_cb(SoupSession *s, SoupMessage *msg, SoupSocket *socket,
 			ref_uri = soup_uri_new(ref);
 			dest = soup_message_get_uri(msg);
 
+			if (ref_uri == NULL || dest == NULL)
+				return;
+
 			ref_suffix = tld_get_suffix(ref_uri->host);
 			dest_suffix = tld_get_suffix(dest->host);
 
-			if (dest && ref_suffix && dest_suffix &&
+			if (ref_suffix && dest_suffix &&
 			    strcmp(ref_suffix, dest_suffix) != 0) {
 				soup_message_headers_remove(msg->request_headers,
 				    "Referer");
@@ -4785,7 +4788,11 @@ session_rq_cb(SoupSession *s, SoupMessage *msg, SoupSocket *socket,
 		case XT_REFERER_SAME_FQDN:
 			ref_uri = soup_uri_new(ref);
 			dest = soup_message_get_uri(msg);
-			if (dest && strcmp(ref_uri->host, dest->host) != 0) {
+
+			if (ref_uri == NULL || dest == NULL)
+				return;
+
+			if (strcmp(ref_uri->host, dest->host) != 0) {
 				soup_message_headers_remove(msg->request_headers,
 				    "Referer");
 				DNPRINTF(XT_D_NAV, "session_rq_cb: removing "
