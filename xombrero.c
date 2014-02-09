@@ -6236,7 +6236,7 @@ cmd_complete(struct tab *t, char *str, int dir)
 	int			i, j, levels, c = 0, dep = 0, parent = -1;
 	int			matchcount = 0;
 	char			*tok, *match, *s = g_strdup(str);
-	char			*tokens[3] = {'\0'};
+	char			*tokens[3] = {0};
 	char			res[XT_MAX_URL_LENGTH + 32] = ":";
 	char			*sc = s;
 
