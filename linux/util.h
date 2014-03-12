@@ -20,8 +20,12 @@
 #define FPARSELN_UNESCREST	0x08
 #define FPARSELN_UNESCALL	0x0f
 
+#if !__has_builtin(strlcpy)
 size_t	strlcpy(char *, const char *, size_t);
+#endif
+#if !__has_builtin(strlcat)
 size_t	strlcat(char *, const char *, size_t);
+#endif
 
 char   *fgetln(FILE *, size_t *);
 char   *fparseln(FILE *, size_t *, size_t *, const char [3], int);
