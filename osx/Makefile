@@ -37,8 +37,6 @@ javascript.h: ../js-merge-helper.pl ../hinting.js ../autoscroll.js
 	../autoscroll.js > javascript.h
 
 tooltip.h: ../ascii2txt.pl ../txt2tooltip.pl ../xombrero.1
-	ln -sf ../linux/tree.h
-	ln -sf ../linux/util.h
 	nroff -c -Tascii -mandoc ../xombrero.1 | \
 	perl ../ascii2txt.pl | \
 	perl ../txt2tooltip.pl > tooltip.h
@@ -96,8 +94,6 @@ clean:
 	rm -f xombrero $(OBJS) $(DEPS)
 	rm -f javascript.h
 	rm -f tooltip.h
-	rm -f tree.h
-	rm -f util.h
 
 -include $(DEPS)
 
