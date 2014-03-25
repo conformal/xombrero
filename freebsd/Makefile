@@ -66,6 +66,7 @@ xombrero: xombrero.o freebsd.o marco.o about.o inspector.o whitelist.o settings.
 install: all
 	install -m 755 -d $(DESTDIR)$(BINDIR)
 	install -m 755 -d $(DESTDIR)$(MANDIR)/man1
+	install -m 755 -d $(DESTDIR)$(PREFIX)/share/applications
 	install -m 755 xombrero $(DESTDIR)$(BINDIR)
 	install -m 644 ../xombrero.1 $(DESTDIR)$(MANDIR)/man1/xombrero.1
 	install -m 644 ../xombrero.css $(DESTDIR)$(RESDIR)
