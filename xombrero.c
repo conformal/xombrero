@@ -251,6 +251,7 @@ int			next_download_id = 1;
 void			xxx_dir(char *);
 int			icon_size_map(int);
 void			activate_uri_entry_cb(GtkWidget*, struct tab *);
+void			activate_search_entry_cb(GtkWidget*, struct tab *);
 
 void
 history_delete(struct command_list *l, int *counter)
@@ -1159,6 +1160,25 @@ modurl(struct tab *t, struct karg *args)
 			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), u);
 			g_free(u);
 			activate_uri_entry_cb(t->uri_entry, t);
+		}
+	}
+	return (0);
+}
+
+int
+modsearchentry(struct tab *t, struct karg *args)
+{
+	const gchar		*s = NULL;
+	struct tab		*tt;
+
+	/* XXX kind of a bad hack (in honor of the modurl hack) */
+	if (gtk_widget_has_focus(t->search_entry)) {
+		if ((s = gtk_entry_get_text(GTK_ENTRY(t->search_entry))) &&
+		    (strlen(s))) {
+			tt = create_new_tab(NULL, NULL, 1, -1);
+			gtk_entry_set_text(GTK_ENTRY(tt->search_entry), s);
+			activate_search_entry_cb(t->search_entry,tt);
+			gtk_entry_set_text(GTK_ENTRY(t->search_entry), "");
 		}
 	}
 	return (0);
@@ -3248,6 +3268,7 @@ struct cmd {
 	{ "editelement",	0,	edit_element,		0,			0 },
 	{ "passthrough",	0,	passthrough,		0,			0 },
 	{ "modurl",		0,	modurl,			0,			0 },
+	{ "modsearchentry",	0,	modsearchentry,		0,			0 },
 
 	/* yanking and pasting */
 	{ "yankuri",		0,	yank_uri,		0,			0 },
