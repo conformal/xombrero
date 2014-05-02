@@ -1486,6 +1486,7 @@ struct key_binding	keys[] = {
 	{ "editelement",	CTRL,	1,	GDK_i		},
 	{ "passthrough",	CTRL,	1,	GDK_z		},
 	{ "modurl",		CTRL,	1,	GDK_Return	},
+	{ "modsearchentry",	CTRL,	1,	GDK_Return	},
 	{ "urlmod plus",	MOD1,	1,	GDK_a		},
 	{ "urlmod min",		MOD1,	1,	GDK_A		},
 
