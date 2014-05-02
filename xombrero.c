@@ -1168,15 +1168,15 @@ modurl(struct tab *t, struct karg *args)
 int
 modsearchentry(struct tab *t, struct karg *args)
 {
-	const gchar		*searchstr = NULL;
+	const gchar		*s = NULL;
 	struct tab		*tt;
 
 	/* XXX kind of a bad hack (in honor of the modurl hack) */
 	if (gtk_widget_has_focus(t->search_entry)) {
-		if ((searchstr = gtk_entry_get_text(GTK_ENTRY(t->search_entry))) &&
-		    (strlen(searchstr))) {
+		if ((s = gtk_entry_get_text(GTK_ENTRY(t->search_entry))) &&
+		    (strlen(s))) {
 			tt = create_new_tab(NULL, NULL, 1, -1);
-			gtk_entry_set_text(GTK_ENTRY(tt->search_entry), searchstr);
+			gtk_entry_set_text(GTK_ENTRY(tt->search_entry), s);
 			activate_search_entry_cb(t->search_entry,tt);
 			gtk_entry_set_text(GTK_ENTRY(t->search_entry), "");
 		}
