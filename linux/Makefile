@@ -1,5 +1,6 @@
 PREFIX?=/usr/local
 BINDIR=${PREFIX}/bin
+CFLAGS+=-DXT_DS_RESOURCE_DIR=\"$(PREFIX)/share/xombrero/\"
 
 PROG=xombrero
 MAN=xombrero.1
@@ -11,7 +12,7 @@ SRCS+= history.c completion.c tldlist.c externaleditor.c unix.c xombrero.c
 SRCS+= linux.c
 .PATH: ${.CURDIR}/..
 
-CFLAGS+= -O2 -Wall -Wno-format-extra-args -Wunused -Wextra -Wno-unused-parameter 
+CFLAGS+= -O2 -Wall -Wno-format-extra-args -Wunused -Wextra -Wno-unused-parameter
 CFLAGS+= -Wno-missing-field-initializers -Wno-sign-compare
 CFLAGS+= -Wno-deprecated-declarations -Wfloat-equal ${DEBUG}
 CFLAGS+= -DGTK_DISABLE_SINGLE_INCLUDES -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED -DGSEAL_ENABLE

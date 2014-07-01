@@ -16,6 +16,7 @@ PREFIX?= /usr/local
 BINDIR?= $(PREFIX)/bin
 MANDIR?= $(PREFIX)/man
 RESDIR?= $(PREFIX)/share/xombrero/
+CFLAGS+= -DXT_DS_RESOURCE_DIR=\"$(RESDIR)\"
 
 CC= cc
 

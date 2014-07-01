@@ -17,6 +17,7 @@ BINDIR?= $(PREFIX)/bin
 APPDIR?= $(PREFIX)/share/applications
 MANDIR?= $(PREFIX)/share/man
 RESDIR?= $(PREFIX)/share/xombrero
+CFLAGS+= -DXT_DS_RESOURCE_DIR=\"$(RESDIR)\"
 
 SRCS= $(shell ls ../*.c)
 SRCS+= osx.c

@@ -1,5 +1,6 @@
 PREFIX?=/usr/local
 BINDIR=${PREFIX}/bin
+CFLAGS+= -DXT_DS_RESOURCE_DIR=\"$(PREFIX)/share/xombrero/\"
 
 PROG=xombrero
 MAN=xombrero.1
