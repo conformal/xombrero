@@ -22,6 +22,7 @@
 @define-color ct_inactive #dddddd;
 @define-color ct_active #bbbb00;
 @define-color ct_separator #555555;
+@define-color text_color #000000;
 
 * {
 	border-width: 1px;
