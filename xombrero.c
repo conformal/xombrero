@@ -6640,6 +6640,10 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 			}
 		}
 		goto done;
+	case GDK_Home:
+		if (c[0] == ':' || c[0] == '/' || c[0] == '?')
+			gtk_editable_set_position(GTK_EDITABLE(w), 1);
+		goto done;
 	case GDK_BackSpace:
 		if (!(!strcmp(c, ":") || !strcmp(c, "/") || !strcmp(c, "?") ||
 		    !strcmp(c, ".") || !strcmp(c, ","))) {
