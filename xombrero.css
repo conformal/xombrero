@@ -44,7 +44,7 @@ GtkMenu :insensitive {
 
 .entry {
 	padding: 2px;
-	color: @text_color;
+	color: black;
 }
 
 #vbox > .entry,
@@ -108,7 +108,7 @@ GtkEventBox#blue,
 #statusbar .entry.progressbar#blue {
 	background-image: none;
 	background-color: @selected_bg_color;
-	color: @selected_fg_color;
+	color: black;
 }
 
 .button#Back,
