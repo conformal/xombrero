@@ -1383,22 +1383,25 @@ xtp_page_fl(struct tab *t, struct karg *args)
 			title = NULL;
 			continue;
 		}
-        if( strlen(title) > 2 && title[0] == '*')
+        if(title[0] == '*')
         {
-            if( title[1] == 'A')
+            if(strlen(title)>2 && title[1] == 'A')
             {
                 /* folder start */
                 folderDepth += 1;
+                printf("*a %d\n", folderDepth);
+                
                 if(folderDepth>maxFolderDepth)
                     maxFolderDepth = folderDepth;
                 free(title);
                 title = NULL;
                 continue;
             }
-            if( title[1] == 'O')
+            if(strlen(title)>=2 && title[1] == 'O')
             {
                 /* folder end */
                 folderDepth -= 1;
+                printf("*e %d\n", folderDepth);
                 free(title);
                 title = NULL;
                 if(folderDepth<0)
@@ -1410,22 +1413,22 @@ xtp_page_fl(struct tab *t, struct karg *args)
                 continue;
             }
         }
-        free(title);
-        title = NULL;
 		if ((uri = fparseln(f, &len, &lineno, delim, 0)) == NULL)
 			if (feof(f) || ferror(f)) {
-				show_oops(t, "favorites file corrupt");
+				show_oops(t, "favorites file corrupt (last title: %s)", title);
 				failed = 1;
 				break;
 			}
 
-        free(uri);
+        free(title);
         title = NULL;
+        free(uri);
+        uri = NULL;
     }
     if(folderDepth != 0)
     {
-        show_oops(t, "favorites file corrupt, missing folder end lines",
-                  title);
+        show_oops(t, "favorites file corrupt, missing folder end lines (%d)",
+                  folderDepth);
         return (1);
     }
 
@@ -1455,9 +1458,9 @@ xtp_page_fl(struct tab *t, struct karg *args)
 			continue;
 		}
 
-        if( strlen(title) > 2 && title[0] == '*')
+        if(title[0] == '*')
         {
-            if( title[1] == 'A')
+            if(strlen(title) > 2 && title[1] == 'A')
             {
                 /* folder start */
                 tmp = body;
@@ -1497,7 +1500,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
                 title = NULL;
                 continue;
             }
-            if( title[1] == 'O')
+            if(strlen(title) >= 2 &&  title[1] == 'O')
             {
                 /* folder end */
                 folderDepth -= 1;
@@ -1510,7 +1513,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
         
 		if ((uri = fparseln(f, &len, &lineno, delim, 0)) == NULL)
 			if (feof(f) || ferror(f)) {
-				show_oops(t, "favorites file corrupt");
+				show_oops(t, "favorites file corrupt (last title: %s)", title);
 				failed = 1;
 				break;
 			}
