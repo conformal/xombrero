@@ -33,6 +33,22 @@ signature perform the following:
   ```bash
   git tag -v TAG_NAME
   ```
+## Bookmarks folders
+
+A folder is started by a line of the form
+
+    *A foldername
+
+and goes until a matching line
+
+    *O [any text]
+
+is found. Folders can be nested.
+
+Convert from google chrome export:
+    sed -n -e '/<DT><A HREF/ { s/.*HREF="\([^"]*\)".*>\(.*\)<\/A>.*/\2\n\1/p }' \
+            -e 's/.*<DT><H3 .*>\(.*\)<\/H3>.*/*A \1/p' \
+            -e 's/ .*<\/DL><p>.*/*O/p' bookmarks_1_9_15.html > ~/.xombrero/favorites
 
 ## License
 
