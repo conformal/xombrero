@@ -642,7 +642,6 @@ remove_favorite(struct tab *t, int index, bool folder)
                 if(folder && i == index)
                 {
                     folderDepthMarker = folderDepth - 1;
-                    /* printf("REMOVING A i:%d %d/%d %s\n", i, folderDepth, folderDepthMarker, title); */
                 } else {
                     tmp = new_favs;
                     new_favs = g_strdup_printf("%s%s\n",
@@ -657,7 +656,6 @@ remove_favorite(struct tab *t, int index, bool folder)
                 if(folderDepth == folderDepthMarker)
                 {
                     folderDepthMarker = -1;
-                    /* printf("REMOVING O i:%d %d %s\n", i, folderDepth, title); */
                 } else {
                     tmp = new_favs;
                     new_favs = g_strdup_printf("%s%s\n",
@@ -1376,15 +1374,6 @@ xtp_page_fl(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	/* body */
-	if (args && args->i & XT_DELETE)
-		body = g_strdup_printf("<table style='table-layout:auto'><tr>"
-		    "<th style='width: 40px'>&#35;</th><th>Link</th>"
-		    "<th style='width: 40px'>Rm</th></tr>\n");
-	else
-		body = g_strdup_printf("<table style='table-layout:auto'><tr>"
-		    "<th style='width: 40px'>&#35;</th><th colspan=\"5\">Link</th></tr>\n");
-
     /* 1st pass. get folder depth */
 	for (;;) {
 		if ((title = fparseln(f, &len, &lineno, delim, 0)) == NULL)
@@ -1402,7 +1391,6 @@ xtp_page_fl(struct tab *t, struct karg *args)
                 folderDepth += 1;
                 if(folderDepth>maxFolderDepth)
                     maxFolderDepth = folderDepth;
-                /* printf(" +1:%d, <%s>\n", maxFolderDepth, title); */
                 free(title);
                 title = NULL;
                 continue;
@@ -1413,12 +1401,15 @@ xtp_page_fl(struct tab *t, struct karg *args)
                 folderDepth -= 1;
                 free(title);
                 title = NULL;
+                if(folderDepth<0)
+                {
+                    show_oops(t, "favorites file corrupt at line containing: %s",
+                              title);
+                    return (1);
+                }
                 continue;
             }
         }
-        /* strncpy(intermed, title, 10); */
-        /* intermed[10] = 0; */
-        /* printf("tELSE:<%s>\n", intermed); */
         free(title);
         title = NULL;
 		if ((uri = fparseln(f, &len, &lineno, delim, 0)) == NULL)
@@ -1427,15 +1418,29 @@ xtp_page_fl(struct tab *t, struct karg *args)
 				failed = 1;
 				break;
 			}
-        /* strncpy(intermed, uri, 10); */
-        /* intermed[10] = 0; */
-        /* printf("uELSE:<%s>\n", intermed); */
 
         free(uri);
         title = NULL;
     }
+    if(folderDepth != 0)
+    {
+        show_oops(t, "favorites file corrupt, missing folder end lines",
+                  title);
+        return (1);
+    }
 
-    /* printf("max:%d\n", maxFolderDepth); */
+    /* body */
+	if (args && args->i & XT_DELETE)
+		body = g_strdup_printf("<table style='table-layout:auto'><tr>"
+                               "<th style='width: 40px'>&#35;</th>"
+                               "<th colspan=\"%d\">Link</th>"
+                               "<th style='width: 40px'>Rm</th></tr>\n",
+                               maxFolderDepth+1);
+	else
+		body = g_strdup_printf("<table style='table-layout:auto'><tr>"
+                               "<th style='width: 40px'>&#35;</th>"
+                               "<th colspan=\"%d\">Link</th></tr>\n",
+            maxFolderDepth+1);
     
     rewind(f);
     folderDepth = 0;
@@ -1460,7 +1465,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
                     body = g_strdup_printf("%s<tr>"
                                            "<td>&nbsp;</td>"
                                            "%s"
-                                           "<td colspan=\"%d\">%s</td>"
+                                           "<td colspan=\"%d\"><b>%s</b></td>"
                                            "<td style='text-align: center'>"
                                            "<a href='%s%d/%s/%d/%d'>X</a></td>"
                                            "</tr>\n",
@@ -1475,7 +1480,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
                     body = g_strdup_printf("%s<tr>"
                                            "<td>&nbsp;</td>"
                                            "%s"
-                                           "<td colspan=\"%d\">%s</td>"
+                                           "<td colspan=\"%d\"><b>%s</b></td>"
                                            "</tr>\n",
                                            body,
                                            folderPrefix,
@@ -1571,9 +1576,6 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	if (!failed) {
 		page = get_html_page("Favorites", body, "", 1);
 		load_webkit_string(t, page, XT_URI_ABOUT_FAVORITES, 0);
-
-        /* printf("FAVS PAGE:\n%s\n", page); */
-
 		g_free(page);
 	}
 
