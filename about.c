@@ -601,14 +601,16 @@ xtp_handle_hl(struct tab *t, uint8_t cmd, int id, const char *query)
 
 /* remove a favorite */
 void
-remove_favorite(struct tab *t, int index)
+remove_favorite(struct tab *t, int index, bool folder)
 {
 	char			file[PATH_MAX], *title, *uri = NULL;
 	char			*new_favs, *tmp;
 	FILE			*f;
 	int			i;
 	size_t			len, lineno;
-
+    int         folderDepth = 0;
+    int         folderDepthMarker = -1;
+    
 	/* open favorites */
 	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_FAVS_FILE);
 
@@ -632,6 +634,42 @@ remove_favorite(struct tab *t, int index)
 			continue;
 		}
 
+        if(strlen(title) > 2 && title[0] == '*')
+        {
+            if(title[1] == 'A')
+            {
+                folderDepth += 1;
+                if(folder && i == index)
+                {
+                    folderDepthMarker = folderDepth - 1;
+                    /* printf("REMOVING A i:%d %d/%d %s\n", i, folderDepth, folderDepthMarker, title); */
+                } else {
+                    tmp = new_favs;
+                    new_favs = g_strdup_printf("%s%s\n",
+                                               new_favs, title);
+                    g_free(tmp);
+                }
+                
+            }
+            if(title[1] == 'O')
+            {
+                folderDepth -= 1;
+                if(folderDepth == folderDepthMarker)
+                {
+                    folderDepthMarker = -1;
+                    /* printf("REMOVING O i:%d %d %s\n", i, folderDepth, title); */
+                } else {
+                    tmp = new_favs;
+                    new_favs = g_strdup_printf("%s%s\n",
+                                               new_favs, title);
+                    g_free(tmp);
+                }
+            }
+            free(title);
+            title = NULL;
+            continue;
+        }
+        
 		if ((uri = fparseln(f, &len, &lineno, NULL, 0)) == NULL) {
 			if (feof(f) || ferror(f)) {
 				show_oops(t, "%s: can't parse favorites %s",
@@ -641,7 +679,7 @@ remove_favorite(struct tab *t, int index)
 		}
 
 		/* as long as this isn't the one we are deleting add to file */
-		if (i != index) {
+		if (i != index || (i == index && folder)) {
 			tmp = new_favs;
 			new_favs = g_strdup_printf("%s%s\n%s\n",
 			    new_favs, title, uri);
@@ -809,7 +847,11 @@ xtp_handle_fl(struct tab *t, uint8_t cmd, int arg, const char *query)
 		/* nothing, just the below call to xtp_page_fl() */
 		break;
 	case XT_XTP_FL_REMOVE:
-		remove_favorite(t, arg);
+		remove_favorite(t, arg, false);
+		args.i = XT_DELETE;
+		break;
+	case XT_XTP_FL_REMOVE_FOLDER:
+		remove_favorite(t, arg, true);
 		args.i = XT_DELETE;
 		break;
 	default:
@@ -1105,7 +1147,7 @@ parse_xtp_url(struct tab *t, const char *uri_str)
 		dsp++;
 	}
 
-	/* did we find one atall? */
+	/* did we find one at all? */
 	if (dsp_match == NULL) {
 		show_oops(t, "%s: no matching xtp despatch found", __func__);
 		goto clean;
@@ -1291,6 +1333,19 @@ xtp_page_ab(struct tab *t, struct karg *args)
 	return (0);
 }
 
+char*
+getFolderPrefix(int depth)
+{
+    int i;
+    char* prefix = "<td width=\"10\">&nbsp;</td>";
+    char* prefixStr = (char*) malloc(depth * strlen(prefix) + 1);
+    prefixStr[0] = 0;
+    for(i=0; i<depth; i++)
+        strcat(prefixStr, prefix);
+    /* printf("PREF:%s\n", prefixStr); */
+    return prefixStr;
+}
+
 /* show a list of favorites (bookmarks) */
 int
 xtp_page_fl(struct tab *t, struct karg *args)
@@ -1302,6 +1357,8 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	int			i, failed = 0;
 	char			*body, *tmp, *page = NULL;
 	const char		delim[3] = {'\\', '\\', '\0'};
+    int maxFolderDepth = 0, folderDepth = 0;
+    char* folderPrefix = NULL;
 
 	DNPRINTF(XT_D_FAVORITE, "%s:", __func__);
 
@@ -1321,13 +1378,69 @@ xtp_page_fl(struct tab *t, struct karg *args)
 
 	/* body */
 	if (args && args->i & XT_DELETE)
-		body = g_strdup_printf("<table style='table-layout:fixed'><tr>"
+		body = g_strdup_printf("<table style='table-layout:auto'><tr>"
 		    "<th style='width: 40px'>&#35;</th><th>Link</th>"
 		    "<th style='width: 40px'>Rm</th></tr>\n");
 	else
-		body = g_strdup_printf("<table style='table-layout:fixed'><tr>"
-		    "<th style='width: 40px'>&#35;</th><th>Link</th></tr>\n");
+		body = g_strdup_printf("<table style='table-layout:auto'><tr>"
+		    "<th style='width: 40px'>&#35;</th><th colspan=\"5\">Link</th></tr>\n");
 
+    /* 1st pass. get folder depth */
+	for (;;) {
+		if ((title = fparseln(f, &len, &lineno, delim, 0)) == NULL)
+			break;
+		if (strlen(title) == 0) {
+			free(title);
+			title = NULL;
+			continue;
+		}
+        if( strlen(title) > 2 && title[0] == '*')
+        {
+            if( title[1] == 'A')
+            {
+                /* folder start */
+                folderDepth += 1;
+                if(folderDepth>maxFolderDepth)
+                    maxFolderDepth = folderDepth;
+                /* printf(" +1:%d, <%s>\n", maxFolderDepth, title); */
+                free(title);
+                title = NULL;
+                continue;
+            }
+            if( title[1] == 'O')
+            {
+                /* folder end */
+                folderDepth -= 1;
+                free(title);
+                title = NULL;
+                continue;
+            }
+        }
+        /* strncpy(intermed, title, 10); */
+        /* intermed[10] = 0; */
+        /* printf("tELSE:<%s>\n", intermed); */
+        free(title);
+        title = NULL;
+		if ((uri = fparseln(f, &len, &lineno, delim, 0)) == NULL)
+			if (feof(f) || ferror(f)) {
+				show_oops(t, "favorites file corrupt");
+				failed = 1;
+				break;
+			}
+        /* strncpy(intermed, uri, 10); */
+        /* intermed[10] = 0; */
+        /* printf("uELSE:<%s>\n", intermed); */
+
+        free(uri);
+        title = NULL;
+    }
+
+    /* printf("max:%d\n", maxFolderDepth); */
+    
+    rewind(f);
+    folderDepth = 0;
+    folderPrefix = getFolderPrefix(0);
+        
 	for (i = 1;;) {
 		if ((title = fparseln(f, &len, &lineno, delim, 0)) == NULL)
 			break;
@@ -1337,6 +1450,59 @@ xtp_page_fl(struct tab *t, struct karg *args)
 			continue;
 		}
 
+        if( strlen(title) > 2 && title[0] == '*')
+        {
+            if( title[1] == 'A')
+            {
+                /* folder start */
+                tmp = body;
+                if (args && args->i & XT_DELETE)
+                    body = g_strdup_printf("%s<tr>"
+                                           "<td>&nbsp;</td>"
+                                           "%s"
+                                           "<td colspan=\"%d\">%s</td>"
+                                           "<td style='text-align: center'>"
+                                           "<a href='%s%d/%s/%d/%d'>X</a></td>"
+                                           "</tr>\n",
+                                           body,
+                                           folderPrefix,
+                                           maxFolderDepth + 1 - folderDepth,
+                                           &(title[2]),
+                                           XT_XTP_STR, XT_XTP_FL,
+                                           t->session_key ? t->session_key : "",
+                                           XT_XTP_FL_REMOVE_FOLDER, i);
+                else
+                    body = g_strdup_printf("%s<tr>"
+                                           "<td>&nbsp;</td>"
+                                           "%s"
+                                           "<td colspan=\"%d\">%s</td>"
+                                           "</tr>\n",
+                                           body,
+                                           folderPrefix,
+                                           maxFolderDepth + 1 - folderDepth,
+                                           &(title[2]));
+                folderDepth += 1;
+                if(folderPrefix)
+                    free(folderPrefix);
+                folderPrefix = getFolderPrefix(folderDepth);
+                
+                
+                g_free(tmp);
+                free(title);
+                title = NULL;
+                continue;
+            }
+            if( title[1] == 'O')
+            {
+                /* folder end */
+                folderDepth -= 1;
+                if(folderPrefix)
+                    free(folderPrefix);
+                folderPrefix = getFolderPrefix(folderDepth);
+                continue;
+            }
+        }
+        
 		if ((uri = fparseln(f, &len, &lineno, delim, 0)) == NULL)
 			if (feof(f) || ferror(f)) {
 				show_oops(t, "favorites file corrupt");
@@ -1347,21 +1513,31 @@ xtp_page_fl(struct tab *t, struct karg *args)
 		tmp = body;
 		if (args && args->i & XT_DELETE)
 			body = g_strdup_printf("%s<tr>"
-			    "<td>%d</td>"
-			    "<td><a href='%s'>%s</a></td>"
-			    "<td style='text-align: center'>"
-			    "<a href='%s%d/%s/%d/%d'>X</a></td>"
-			    "</tr>\n",
-			    body, i, uri, title,
-			    XT_XTP_STR, XT_XTP_FL,
-			    t->session_key ? t->session_key : "",
-			    XT_XTP_FL_REMOVE, i);
+                                   "<td>%d</td>"
+                                   "%s"
+                                   "<td colspan=\"%d\"><a href='%s'>%s</a></td>"
+                                   "<td style='text-align: center'>"
+                                   "<a href='%s%d/%s/%d/%d'>X</a></td>"
+                                   "</tr>\n",
+                                   body, i,
+                                   folderPrefix,
+                                   maxFolderDepth + 1 - folderDepth,
+                                   uri, title,
+                                   XT_XTP_STR, XT_XTP_FL,
+                                   t->session_key ? t->session_key : "",
+                                   XT_XTP_FL_REMOVE, i);
 		else
 			body = g_strdup_printf("%s<tr>"
-			    "<td>%d</td>"
-			    "<td><a href='%s'>%s</a></td>"
-			    "</tr>\n",
-			    body, i, uri, title);
+                                   "<td>%d</td>"
+                                   "%s"
+                                   "<td colspan=\"%d\"><a href='%s'>%s</a></td>"
+                                   "</tr>\n",
+                                   body,
+                                   i,
+                                   folderPrefix,
+                                   maxFolderDepth + 1 - folderDepth,
+                                   uri,
+                                   title);
 		g_free(tmp);
 
 		free(uri);
@@ -1395,6 +1571,9 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	if (!failed) {
 		page = get_html_page("Favorites", body, "", 1);
 		load_webkit_string(t, page, XT_URI_ABOUT_FAVORITES, 0);
+
+        /* printf("FAVS PAGE:\n%s\n", page); */
+
 		g_free(page);
 	}
 

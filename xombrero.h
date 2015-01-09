@@ -747,8 +747,9 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_XTP_CL_REMOVE_ALL	(4)
 
 /* XTP cookie actions */
-#define XT_XTP_FL_LIST		(1)
-#define XT_XTP_FL_REMOVE	(2)
+#define XT_XTP_FL_LIST		    (1)
+#define XT_XTP_FL_REMOVE	    (2)
+#define XT_XTP_FL_REMOVE_FOLDER	(3)
 
 /* XPT search actions */
 #define XT_XTP_SL_SET		(1)
