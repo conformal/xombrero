@@ -43,7 +43,9 @@ and goes until a matching line
 
     *O [any text]
 
-is found. Folders can be nested.
+is found. Folders can be nested. Folders can be deleted with :favedit (including the matching *O line),
+favorites which where inside the deleted folder will move one level up.
+Folders must be created and adminstrated with an external tool, usually $EDITOR.
 
 Convert from google chrome export:
 
