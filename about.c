@@ -1389,8 +1389,6 @@ xtp_page_fl(struct tab *t, struct karg *args)
             {
                 /* folder start */
                 folderDepth += 1;
-                printf("*a %d\n", folderDepth);
-                
                 if(folderDepth>maxFolderDepth)
                     maxFolderDepth = folderDepth;
                 free(title);
@@ -1401,7 +1399,6 @@ xtp_page_fl(struct tab *t, struct karg *args)
             {
                 /* folder end */
                 folderDepth -= 1;
-                printf("*e %d\n", folderDepth);
                 free(title);
                 title = NULL;
                 if(folderDepth<0)
