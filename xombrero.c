@@ -208,7 +208,7 @@ GtkWidget		*tab_bar_box;
 GtkWidget		*arrow, *abtn;
 GdkEvent		*fevent = NULL;
 struct tab_list		tabs;
-struct history_list	hl;
+struct pagelist		hl;
 int			hl_purge_count = 0;
 struct session_list	sessions;
 struct wl_list		c_wl;
@@ -689,11 +689,11 @@ int			download_rb_cmp(struct download *, struct download *);
 gboolean		cmd_execute(struct tab *t, char *str);
 
 int
-history_rb_cmp(struct pagelist_entry *h1, struct pagelist_entry *h2)
+pagelist_rb_cmp(struct pagelist_entry *h1, struct pagelist_entry *h2)
 {
 	return (strcmp(h1->uri, h2->uri));
 }
-RB_GENERATE(history_list, pagelist_entry, entry, history_rb_cmp);
+RB_GENERATE(pagelist, pagelist_entry, entry, pagelist_rb_cmp);
 
 int
 download_rb_cmp(struct download *e1, struct download *e2)
@@ -4284,7 +4284,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		    !strncmp(tmp_uri, "https://", strlen("https://")) ||
 		    !strncmp(tmp_uri, "file://", strlen("file://"))) {
 			find.uri = (gchar *)tmp_uri;
-			h = RB_FIND(history_list, &hl, &find);
+			h = RB_FIND(pagelist, &hl, &find);
 			if (!h)
 				insert_history_item(tmp_uri,
 				    get_title(t, FALSE), time(NULL));
@@ -6176,7 +6176,7 @@ cmd_getlist(int id, char *key)
 
 	if (id >= 0) {
 		if (cmds[id].type & XT_URLARG) {
-			RB_FOREACH_REVERSE(h, history_list, &hl)
+			RB_FOREACH_REVERSE(h, pagelist, &hl)
 				if (match_uri(h->uri, key)) {
 					cmd_status.list[c] = (char *)h->uri;
 					if (++c > 255)

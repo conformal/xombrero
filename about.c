@@ -566,27 +566,15 @@ xtp_handle_dl(struct tab *t, uint8_t cmd, int id, const char *query)
 void
 xtp_handle_hl(struct tab *t, uint8_t cmd, int id, const char *query)
 {
-	struct pagelist_entry		*h, *next, *ht;
-	int			i = 1;
+	struct pagelist_entry	*h, *ht;
 
 	switch (cmd) {
 	case XT_XTP_HL_REMOVE:
-		/* walk backwards, as listed in reverse */
-		for (h = RB_MAX(history_list, &hl); h != NULL; h = next) {
-			next = RB_PREV(history_list, &hl, h);
-			if (id == i) {
-				RB_REMOVE(history_list, &hl, h);
-				g_free((gpointer) h->title);
-				g_free((gpointer) h->uri);
-				g_free(h);
-				break;
-			}
-			i++;
-		}
+		remove_pagelist_entry_by_count(&hl, 1);
 		break;
 	case XT_XTP_HL_REMOVE_ALL:
-		RB_FOREACH_SAFE(h, history_list, &hl, ht)
-			RB_REMOVE(history_list, &hl, h);
+		RB_FOREACH_SAFE(h, pagelist, &hl, ht)
+			remove_pagelist_entry(&hl, h);
 		break;
 	case XT_XTP_HL_LIST:
 		/* Nothing - just xtp_page_hl() below */
@@ -1676,7 +1664,7 @@ xtp_page_hl(struct tab *t, struct karg *args)
 	    "<th style='width: 40px'>Rm</th></tr>\n",
 	    XT_XTP_STR, XT_XTP_HL, t->session_key, XT_XTP_HL_REMOVE_ALL);
 
-	RB_FOREACH_REVERSE(h, history_list, &hl) {
+	RB_FOREACH_REVERSE(h, pagelist, &hl) {
 		tmp = body;
 		body = g_strdup_printf(
 		    "%s\n<tr>"
