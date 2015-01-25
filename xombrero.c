@@ -208,7 +208,7 @@ GtkWidget		*tab_bar_box;
 GtkWidget		*arrow, *abtn;
 GdkEvent		*fevent = NULL;
 struct tab_list		tabs;
-struct pagelist_entry	hl;
+struct history_list	hl;
 int			hl_purge_count = 0;
 struct session_list	sessions;
 struct wl_list		c_wl;
@@ -693,7 +693,7 @@ history_rb_cmp(struct pagelist_entry *h1, struct pagelist_entry *h2)
 {
 	return (strcmp(h1->uri, h2->uri));
 }
-RB_GENERATE(history_list, history, entry, history_rb_cmp);
+RB_GENERATE(history_list, pagelist_entry, entry, history_rb_cmp);
 
 int
 download_rb_cmp(struct download *e1, struct download *e2)

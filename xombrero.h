@@ -326,13 +326,13 @@ RB_HEAD(download_list, download);
 RB_PROTOTYPE(download_list, download, entry, download_rb_cmp);
 
 struct pagelist_entry {
-	RB_ENTRY(history)	entry;
-	gchar			*uri;
-	gchar			*title;
-	time_t			time; /* When the item was added. */
+	RB_ENTRY(pagelist_entry)	entry;
+	gchar				*uri;
+	gchar				*title;
+	time_t	 			time; /* When the item was added. */
 };
-RB_HEAD(history_list, history);
-RB_PROTOTYPE(history_list, history, entry, history_rb_cmp);
+RB_HEAD(history_list, pagelist_entry);
+RB_PROTOTYPE(history_list, pagelist_entry, entry, history_rb_cmp);
 
 #define XT_STS_FLAGS_INCLUDE_SUBDOMAINS		(1)
 #define XT_STS_FLAGS_EXPAND			(2)
