@@ -19,6 +19,10 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+/* This module contains generic code for lists of web pages, as well
+as special handling for history and favorites. */
+
+
 #include <xombrero.h>
 
 #define XT_HISTORY_FILE		("history")
@@ -31,7 +35,7 @@
 int
 purge_history(void)
 {
-	struct history		*h, *next;
+	struct pagelist_entry		*h, *next;
 	double			age = 0.0;
 
 	DNPRINTF(XT_D_HISTORY, "%s: hl_purge_count = %d (%d is max)\n",
@@ -67,12 +71,12 @@ purge_history(void)
 int
 insert_history_item(const gchar *uri, const gchar *title, time_t time)
 {
-	struct history		*h;
+	struct pagelist_entry		*h;
 
 	if (!(uri && strlen(uri) && title && strlen(title)))
 		return (1);
 
-	h = g_malloc(sizeof(struct history));
+	h = g_malloc(sizeof(struct pagelist_entry));
 	h->uri = g_strdup(uri);
 	h->title = g_strdup(title);
 	h->time = time;
@@ -161,7 +165,7 @@ save_global_history_to_disk(struct tab *t)
 {
 	char			file[PATH_MAX];
 	FILE			*f;
-	struct history		*h;
+	struct pagelist_entry		*h;
 
 	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_HISTORY_FILE);
 
@@ -190,7 +194,7 @@ char *
 color_visited_helper(void)
 {
 	char			*d, *s = NULL, *t;
-	struct history		*h;
+	struct pagelist_entry		*h;
 
 	RB_FOREACH_REVERSE(h, history_list, &hl) {
 		if (s == NULL)

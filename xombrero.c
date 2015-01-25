@@ -208,7 +208,7 @@ GtkWidget		*tab_bar_box;
 GtkWidget		*arrow, *abtn;
 GdkEvent		*fevent = NULL;
 struct tab_list		tabs;
-struct history_list	hl;
+struct pagelist_entry	hl;
 int			hl_purge_count = 0;
 struct session_list	sessions;
 struct wl_list		c_wl;
@@ -689,7 +689,7 @@ int			download_rb_cmp(struct download *, struct download *);
 gboolean		cmd_execute(struct tab *t, char *str);
 
 int
-history_rb_cmp(struct history *h1, struct history *h2)
+history_rb_cmp(struct pagelist_entry *h1, struct pagelist_entry *h2)
 {
 	return (strcmp(h1->uri, h2->uri));
 }
@@ -4150,7 +4150,7 @@ void
 notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 {
 	const gchar		*uri = NULL;
-	struct history		*h, find;
+	struct pagelist_entry		*h, find;
 	struct karg		a;
 #if !GTK_CHECK_VERSION(3, 0, 0)
 	gchar			*text, *base;
@@ -6168,7 +6168,7 @@ void
 cmd_getlist(int id, char *key)
 {
 	int			i,  dep, c = 0;
-	struct history		*h;
+	struct pagelist_entry		*h;
 	struct session		*s;
 
 	if (key == NULL)

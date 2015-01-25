@@ -4,6 +4,7 @@
 *.rej
 *.rej.orig
 *~
+*.swp
 javascript.h
 xombrero
 xombrero.cat1
