@@ -20,7 +20,10 @@
  */
 
 /* This module contains generic code for lists of web pages, as well
-as special handling for history and favorites. */
+as special handling for history and favorites. 
+
+The page lists are actually managed as red-black trees, but that's
+an implementation detail. */
 
 
 #include <xombrero.h>
@@ -31,6 +34,39 @@ as special handling for history and favorites. */
 					* history and delete all items older
 					* than MAX_HISTORY_AGE. */
 #define XT_MAX_HISTORY_AGE	(60.0 * 60.0 * 24 * 14) /* 14 days */
+
+/* remove what's pointed to by item from list.
+*/
+void 
+remove_pagelist_entry(struct pagelist *list, struct pagelist_entry *item)
+{
+	RB_REMOVE(pagelist, list, item);
+	g_free((gpointer) item->title);
+	g_free((gpointer) item->uri);
+	g_free(item);
+}
+
+/* remove the n-th item from a pagelist.
+
+Returns 0 on success, 1 if the list is too short.
+*/
+int remove_pagelist_entry_by_count(struct pagelist *list,
+	int count)
+{
+	int 			i;
+	struct pagelist_entry	*item, *next;
+
+	/* walk backwards, as listed in reverse */
+	for (item = RB_MAX(pagelist, list); item != NULL; item = next) {
+		next = RB_PREV(pagelist, list, item);
+		if (count == i) {
+			remove_pagelist_entry(list, item);
+			return 0;
+		}
+		i++;
+	}
+	return 1;
+}
 
 int
 purge_history(void)
@@ -44,9 +80,9 @@ purge_history(void)
 	if (hl_purge_count == XT_MAX_HL_PURGE_COUNT) {
 		hl_purge_count = 0;
 
-		for (h = RB_MIN(history_list, &hl); h != NULL; h = next) {
+		for (h = RB_MIN(pagelist, &hl); h != NULL; h = next) {
 
-			next = RB_NEXT(history_list, &hl, h);
+			next = RB_NEXT(pagelist, &hl, h);
 
 			age = difftime(time(NULL), h->time);
 
@@ -54,7 +90,7 @@ purge_history(void)
 				DNPRINTF(XT_D_HISTORY, "%s: removing %s (age %.1f)\n",
 				    __func__, h->uri, age);
 
-				RB_REMOVE(history_list, &hl, h);
+				RB_REMOVE(pagelist, &hl, h);
 				g_free(h->uri);
 				g_free(h->title);
 				g_free(h);
@@ -69,7 +105,8 @@ purge_history(void)
 }
 
 int
-insert_history_item(const gchar *uri, const gchar *title, time_t time)
+insert_pagelist_entry(struct pagelist *list,
+	const gchar *uri, const gchar *title, time_t time)
 {
 	struct pagelist_entry		*h;
 
@@ -83,18 +120,13 @@ insert_history_item(const gchar *uri, const gchar *title, time_t time)
 
 	DNPRINTF(XT_D_HISTORY, "%s: adding %s\n", __func__, h->uri);
 
-	RB_INSERT(history_list, &hl, h);
-	completion_add_uri(h->uri);
-	hl_purge_count++;
-
-	purge_history();
-	update_history_tabs(NULL);
-
+	RB_INSERT(pagelist, list, h);
+	
 	return (0);
 }
 
 int
-restore_global_history(void)
+load_pagelist_from_disk(struct pagelist *list, char *file_name)
 {
 	char			file[PATH_MAX];
 	FILE			*f;
@@ -103,7 +135,7 @@ restore_global_history(void)
 	struct tm		tm;
 	const char		delim[3] = {'\\', '\\', '\0'};
 
-	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_HISTORY_FILE);
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, file_name);
 
 	if ((f = fopen(file, "r")) == NULL) {
 		warnx("%s: fopen", __func__);
@@ -134,7 +166,7 @@ restore_global_history(void)
 
 		time = mktime(&tm);
 
-		if (insert_history_item(uri, title, time)) {
+		if (insert_pagelist_entry(list, uri, title, time)) {
 			err = "failed to insert item";
 			goto done;
 		}
@@ -161,21 +193,21 @@ done:
 }
 
 int
-save_global_history_to_disk(struct tab *t)
+save_pagelist_to_disk(struct pagelist *list, char *file_name)
 {
 	char			file[PATH_MAX];
 	FILE			*f;
 	struct pagelist_entry		*h;
 
-	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_HISTORY_FILE);
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, file_name);
 
 	if ((f = fopen(file, "w")) == NULL) {
-		show_oops(t, "%s: global history file: %s",
+		warnx("%s: global history file: %s",
 		    __func__, strerror(errno));
 		return (1);
 	}
 
-	RB_FOREACH_REVERSE(h, history_list, &hl) {
+	RB_FOREACH_REVERSE(h, pagelist, list) {
 		if (h->uri && h->title && h->time)
 			fprintf(f, "%s\n%s\n%s", h->uri, h->title,
 			    ctime(&h->time));
@@ -196,7 +228,7 @@ color_visited_helper(void)
 	char			*d, *s = NULL, *t;
 	struct pagelist_entry		*h;
 
-	RB_FOREACH_REVERSE(h, history_list, &hl) {
+	RB_FOREACH_REVERSE(h, pagelist, &hl) {
 		if (s == NULL)
 			s = g_strdup_printf("'%s':'dummy'", h->uri);
 		else {
@@ -248,4 +280,38 @@ color_visited(struct tab *t, char *visited)
 	g_free(visited);
 
 	return (0);
+}
+
+int
+insert_history_item(const gchar *uri, const gchar *title, time_t time)
+{
+	int retval;
+
+	retval = (insert_pagelist_entry(&hl, uri, title, time));
+
+	if (retval==0) {
+		completion_add_uri(uri);
+		hl_purge_count++;
+	}
+
+	purge_history();
+	update_history_tabs(NULL);
+
+	return (retval);
+}
+
+int
+restore_global_history(void)
+{
+	return (load_pagelist_from_disk(
+		&hl, XT_HISTORY_FILE));
+}
+
+int
+save_global_history_to_disk(struct tab *t)
+{
+	/* tab was passed for error messaging; we're now using warnx 
+	in save_pagelist and hence don't need that any more.  Do we? */
+	return (save_pagelist_to_disk(
+		&hl, XT_HISTORY_FILE));
 }
