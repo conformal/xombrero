@@ -566,7 +566,7 @@ xtp_handle_dl(struct tab *t, uint8_t cmd, int id, const char *query)
 void
 xtp_handle_hl(struct tab *t, uint8_t cmd, int id, const char *query)
 {
-	struct history		*h, *next, *ht;
+	struct pagelist_entry		*h, *next, *ht;
 	int			i = 1;
 
 	switch (cmd) {
@@ -1656,7 +1656,7 @@ int
 xtp_page_hl(struct tab *t, struct karg *args)
 {
 	char			*body, *page, *tmp;
-	struct history		*h;
+	struct pagelist_entry		*h;
 	int			i = 1; /* all ids start 1 */
 
 	DNPRINTF(XT_D_CMD, "%s", __func__);

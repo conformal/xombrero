@@ -325,7 +325,7 @@ struct download {
 RB_HEAD(download_list, download);
 RB_PROTOTYPE(download_list, download, entry, download_rb_cmp);
 
-struct history {
+struct pagelist_entry {
 	RB_ENTRY(history)	entry;
 	gchar			*uri;
 	gchar			*title;
