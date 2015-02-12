@@ -8195,7 +8195,8 @@ create_canvas(void)
 
 	abtn = gtk_button_new();
 	gtk_widget_set_can_focus(abtn, FALSE);
-	arrow = gtk_arrow_new(GTK_ARROW_DOWN, GTK_SHADOW_NONE);
+	arrow = gtk_image_new_from_icon_name("pan-down-symbolic",
+	    icon_size_map(icon_size));
 	gtk_widget_set_name(abtn, "Arrow");
 	gtk_button_set_image(GTK_BUTTON(abtn), arrow);
 	gtk_widget_set_size_request(abtn, -1, 20);
