@@ -25,12 +25,12 @@
 
 * {
 	border-width: 1px;
-	padding: 0;
-	margin: 0;
-	-GtkScrolledWindow-scrollbar-spacing: 0;
-	-GtkWidget-line-width: 0;
+	padding: 1;
+	margin: 1;
+	-GtkScrolledWindow-scrollbar-spacing: 1;
+	-GtkWidget-line-width: 1;
 }
-
+/*
 .button,
 GtkSpinner {
 	-GtkWidget-focus-padding: 0;
@@ -159,3 +159,4 @@ GtkScrollbar#hidden {
 #compact_tab GtkLabel#active {
 	color: @ct_active;
 }
+*/
