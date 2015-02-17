@@ -203,8 +203,12 @@ struct tab {
 		GtkWidget	*eventbox;
 		GtkWidget	*box;
 	} tab_elems;
-	GtkWidget		*label;
-	GtkWidget		*spinner;
+	struct {
+		GtkWidget	*label;
+		GtkWidget	*favicon;
+		GtkWidget	*spinner;
+		GtkWidget	*close;
+	} gtktab_elems;
 	GtkWidget		*uri_entry;
 #if !GTK_CHECK_VERSION(3, 0, 0)
 	GtkStyle		*default_style;
@@ -880,6 +884,7 @@ extern int	fancy_bar;
 extern int	browser_mode;
 extern int	enable_localstorage;
 extern char	*statusbar_elems;
+extern char	*tab_elems;
 
 #if SOUP_CHECK_VERSION(2, 42, 2)
 extern GProxyResolver	*proxy_uri;

@@ -206,8 +206,11 @@ load_webkit_string(struct tab *t, const char *str, gchar *title, int nohist)
 		webkit_web_view_load_string(t->wv, str, NULL, encoding,
 		    XT_XTP_STR);
 #if GTK_CHECK_VERSION(2, 20, 0)
-		gtk_spinner_stop(GTK_SPINNER(t->spinner));
-		gtk_widget_hide(t->spinner);
+		if (t->gtktab_elems.spinner) {
+			gtk_spinner_stop(GTK_SPINNER(t->gtktab_elems.spinner));
+			gtk_widget_hide(t->gtktab_elems.spinner);
+			gtk_widget_show(t->gtktab_elems.favicon);
+		}
 #endif
 		snprintf(file, sizeof file, "%s" PS "%s", resource_dir, icons[0]);
 		xt_icon_from_file(t, file);

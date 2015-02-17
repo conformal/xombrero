@@ -3527,6 +3527,18 @@ tab_close_cb(GtkWidget *btn, struct tab *t)
 	delete_tab(t);
 }
 
+bool
+tab_click_cb(GtkWidget *btn, GdkEventButton *e, struct tab *t)
+{
+	if (e->type == GDK_BUTTON_RELEASE && e->button == 2) {
+		DNPRINTF(XT_D_TAB, "tab_click_cb: tab %d\n", t->tab_id);
+		delete_tab(t);
+		return (TRUE);
+	}
+
+	return (FALSE);
+}
+
 int
 parse_custom_uri(struct tab *t, const char *uri)
 {
@@ -3880,10 +3892,14 @@ xt_icon_from_pixbuf(struct tab *t, GdkPixbuf *pb)
 			    GTK_ENTRY_ICON_PRIMARY, NULL);
 	}
 
-	/* XXX: Only supports the minimal tabs atm. */
 	if (enable_favicon_tabs)
 		gtk_image_set_from_pixbuf(GTK_IMAGE(t->tab_elems.favicon),
 		    pb_scaled);
+
+	if (t->gtktab_elems.favicon)
+		gtk_image_set_from_pixbuf(GTK_IMAGE(t->gtktab_elems.favicon),
+		    pb_scaled);
+
 
 	if (pb_scaled != pb)
 		g_object_unref(pb_scaled);
@@ -4163,8 +4179,11 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		/* 0 */
 		abort_favicon_download(t);
 #if GTK_CHECK_VERSION(2, 20, 0)
-		gtk_widget_show(t->spinner);
-		gtk_spinner_start(GTK_SPINNER(t->spinner));
+		if (t->gtktab_elems.spinner) {
+			gtk_widget_show(t->gtktab_elems.spinner);
+			gtk_spinner_start(GTK_SPINNER(t->gtktab_elems.spinner));
+			gtk_widget_hide(t->gtktab_elems.favicon);
+		}
 #endif
 		t->download_requested = 0;
 
@@ -4298,8 +4317,11 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 			set_status(t, "%s", get_title(t, FALSE));
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 #if GTK_CHECK_VERSION(2, 20, 0)
-		gtk_spinner_stop(GTK_SPINNER(t->spinner));
-		gtk_widget_hide(t->spinner);
+		if (t->gtktab_elems.spinner) {
+			gtk_spinner_stop(GTK_SPINNER(t->gtktab_elems.spinner));
+			gtk_widget_hide(t->gtktab_elems.spinner);
+			gtk_widget_show(t->gtktab_elems.favicon);
+		}
 #endif
 		g_free(tmp_uri);
 		break;
@@ -4308,8 +4330,9 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	case WEBKIT_LOAD_FAILED:
 		/* 4 */
 		if (!t->download_requested) {
-			gtk_label_set_text(GTK_LABEL(t->label),
-			    get_title(t, FALSE));
+			if (t->gtktab_elems.label)
+				gtk_label_set_text(GTK_LABEL(t->gtktab_elems.label),
+					 get_title(t, FALSE));
 			gtk_label_set_text(GTK_LABEL(t->tab_elems.label),
 			    get_title(t, FALSE));
 			set_status(t, "%s", (char *)get_title(t, FALSE));
@@ -4321,8 +4344,11 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 #endif
 	default:
 #if GTK_CHECK_VERSION(2, 20, 0)
-		gtk_spinner_stop(GTK_SPINNER(t->spinner));
-		gtk_widget_hide(t->spinner);
+		if (t->gtktab_elems.spinner) {
+			gtk_spinner_stop(GTK_SPINNER(t->gtktab_elems.spinner));
+			gtk_widget_hide(t->gtktab_elems.spinner);
+			gtk_widget_show(t->gtktab_elems.favicon);
+		}
 #endif
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
 		break;
@@ -4343,7 +4369,8 @@ notify_title_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	title = get_title(t, FALSE);
 	win_title = get_title(t, TRUE);
 	if (title) {
-		gtk_label_set_text(GTK_LABEL(t->label), title);
+		if (t->gtktab_elems.label)
+			gtk_label_set_text(GTK_LABEL(t->gtktab_elems.label), title);
 		gtk_label_set_text(GTK_LABEL(t->tab_elems.label), title);
 	}
 
@@ -7656,18 +7683,32 @@ statusbar_create(struct tab *t)
 	return (0);
 }
 
+static int
+check_te(char flag, int *used)
+{
+	if (*used) {
+		warnx("flag \"%c\" specified more than "
+		    "once in tab_elems\n", flag);
+		return (1);
+	}
+	*used = 1;
+	return (0);
+}
+
 struct tab *
 create_new_tab(const char *title, struct undo *u, int focus, int position)
 {
 	struct tab			*t;
 	int				load = 1, id;
-	GtkWidget			*b, *bb;
+	GtkWidget			*b, *bb = NULL;
 	WebKitWebHistoryItem		*item;
 	GList				*items;
 	char				*sv[3];
 #if !GTK_CHECK_VERSION(3, 0, 0)
 	GdkColor			color;
 #endif
+	int				te_C = 0, te_T = 0, te_F = 0;
+	char				*p;
 
 	DNPRINTF(XT_D_TAB, "create_new_tab: title %s focus %d\n", title, focus);
 
@@ -7715,32 +7756,55 @@ create_new_tab(const char *title, struct undo *u, int focus, int position)
 	t->active = NULL;
 #endif
 
-#if GTK_CHECK_VERSION(2, 20, 0)
-	t->spinner = gtk_spinner_new();
-#endif
-	t->label = gtk_label_new(title);
-	bb = create_button("Close", "window-close", 1);
-	gtk_label_set_max_width_chars(GTK_LABEL(t->label), 20);
-	gtk_label_set_ellipsize(GTK_LABEL(t->label), PANGO_ELLIPSIZE_END);
-	gtk_label_set_line_wrap(GTK_LABEL(t->label), FALSE);
-	gtk_widget_set_size_request(t->tab_content, 130, 0);
-
 	/*
-	 * this is a total hack and most likely breaks with other styles but
-	 * is necessary so the text doesn't bounce around when the spinner is
-	 * shown/hidden
+	 * gtk widgets cannot be added to a box twice. The te_* variables
+	 * make sure of this
 	 */
-#if GTK_CHECK_VERSION(3, 0, 0)
-	gtk_widget_set_size_request(t->label, 95, 0);
-#else
-	gtk_widget_set_size_request(t->label, 100, 0);
-#endif
 
-	gtk_box_pack_start(GTK_BOX(t->tab_content), bb, FALSE, FALSE, 0);
-	gtk_box_pack_start(GTK_BOX(t->tab_content), t->label, FALSE, FALSE, 0);
+	for (p = tab_elems; *p != '\0'; p++) {
+		switch (*p) {
+		case 'C':
+			if (!check_te(*p, &te_C)) {
+				t->gtktab_elems.close = create_button("Close", "window-close", 1);
+				gtk_box_pack_start(GTK_BOX(t->tab_content), t->gtktab_elems.close, FALSE, FALSE, 0);
+				bb = t->gtktab_elems.close;
+			}
+			break;
+		case 'T':
+			if (!check_te(*p, &te_T)) {
+				t->gtktab_elems.label = gtk_label_new(title);
+				gtk_label_set_ellipsize(GTK_LABEL(t->gtktab_elems.label), PANGO_ELLIPSIZE_END);
+				gtk_label_set_line_wrap(GTK_LABEL(t->gtktab_elems.label), FALSE);
+				gtk_box_pack_start(GTK_BOX(t->tab_content), t->gtktab_elems.label, TRUE, TRUE, 0);
+			}
+			break;
+		case 'F':
+			if (!check_te(*p, &te_F)) {
 #if GTK_CHECK_VERSION(2, 20, 0)
-	gtk_box_pack_end(GTK_BOX(b), t->spinner, FALSE, FALSE, 0);
-#endif
+				t->gtktab_elems.spinner = gtk_spinner_new();
+				gtk_box_pack_start(GTK_BOX(b), t->gtktab_elems.spinner, FALSE, FALSE, 0);
+ #endif
+				t->gtktab_elems.favicon = gtk_image_new();
+				gtk_box_pack_start(GTK_BOX(b), t->gtktab_elems.favicon, FALSE, FALSE, 0);
+			}
+			break;
+		default:
+			warnx("illegal flag \"%c\" in tab_elems\n", *p);
+			break;
+		}
+	}
+	
+	if (!bb) { //Wrap b in a gtkEventBox to handle middle-click close
+		GtkWidget *eb = gtk_event_box_new();
+		gtk_event_box_set_visible_window (GTK_EVENT_BOX (eb), FALSE);
+		gtk_container_add(GTK_CONTAINER(eb), b);
+		t->tab_content = eb;
+		b = eb;
+		g_signal_connect(G_OBJECT(eb), "button_release_event", G_CALLBACK(tab_click_cb), t);
+	}
+
+	if (te_T) //If title is not displayed, tab size is constant.
+		gtk_widget_set_size_request(t->tab_content, 130, 0);
 
 	/* toolbar */
 	if (browser_mode == XT_BM_KIOSK) {
@@ -7870,9 +7934,10 @@ create_new_tab(const char *title, struct undo *u, int focus, int position)
 
 #if GTK_CHECK_VERSION(2, 20, 0)
 	/* turn spinner off if we are a new tab without uri */
-	if (!load) {
-		gtk_spinner_stop(GTK_SPINNER(t->spinner));
-		gtk_widget_hide(t->spinner);
+	if (!load && t->gtktab_elems.spinner) {
+		gtk_spinner_stop(GTK_SPINNER(t->gtktab_elems.spinner));
+		gtk_widget_hide(t->gtktab_elems.spinner);
+		gtk_widget_show(t->gtktab_elems.favicon);
 	}
 #endif
 	/* make notebook tabs reorderable */
@@ -7931,6 +7996,7 @@ create_new_tab(const char *title, struct undo *u, int focus, int position)
 	//    "signal-after::key-press-event", G_CALLBACK(wv_keypress_after_cb), t,
 	//    (char *)NULL);
 
+	if (bb)
 	g_signal_connect(G_OBJECT(bb), "clicked", G_CALLBACK(tab_close_cb), t);
 
 	/* setup history */
@@ -8616,6 +8682,7 @@ main(int argc, char **argv)
 	statusbar_font_name = g_strdup(XT_DS_STATUSBAR_FONT_NAME);
 	tabbar_font_name = g_strdup(XT_DS_TABBAR_FONT_NAME);
 	statusbar_elems = g_strdup("BP");
+	tab_elems = g_strdup("CT");
 	spell_check_languages = g_strdup(XT_DS_SPELL_CHECK_LANGUAGES);
 	encoding = g_strdup(XT_DS_ENCODING);
 	spell_check_languages = g_strdup(XT_DS_SPELL_CHECK_LANGUAGES);

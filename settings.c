@@ -49,6 +49,7 @@ int		fancy_bar = 1;	/* fancy toolbar */
 int		browser_mode = XT_BM_NORMAL;
 int		gui_mode = XT_GM_CLASSIC;
 char		*statusbar_elems = NULL;
+char		*tab_elems = NULL;
 int		window_height = 768;
 int		window_width = 1024;
 int		window_maximize = 0;
@@ -289,6 +290,7 @@ int		check_spell_check_languages(char **);
 int		check_ssl_ca_file(char **);
 int		check_ssl_strict_certs(char **);
 int		check_statusbar_elems(char **);
+int		check_tab_elems(char **);
 int		check_statusbar_font(char **);
 int		check_statusbar_style(char **);
 int		check_tab_style(char **);
@@ -572,6 +574,7 @@ struct settings		rs[] = {
 	{ "ssl_ca_file",		XT_S_STR, 0, NULL, NULL,&s_ssl_ca_file, NULL, set_ssl_ca_file_rt, check_ssl_ca_file, TT_SSL_CA_FILE },
 	{ "ssl_strict_certs",		XT_S_BOOL, 0,		&ssl_strict_certs, NULL, NULL, NULL, set_ssl_strict_certs, check_ssl_strict_certs, TT_SSL_STRICT_CERTS },
 	{ "statusbar_elems",		XT_S_STR, 0, NULL,	&statusbar_elems, NULL, NULL, NULL, check_statusbar_elems, TT_STATUSBAR_ELEMS },
+	{ "tab_elems",			XT_S_STR, 0, NULL,	&tab_elems, NULL, NULL, NULL, check_tab_elems, TT_TAB_ELEMS },
 	{ "statusbar_font",		XT_S_STR, 0, NULL, &statusbar_font_name, NULL, NULL, set_statusbar_font, check_statusbar_font, TT_STATUSBAR_FONT },
 	{ "statusbar_style",		XT_S_STR, 0, NULL, NULL,&s_statusbar_style, NULL, set_statusbar_style_rt, check_statusbar_style, TT_STATUSBAR_STYLE },
 	{ "tab_style",			XT_S_STR, 0, NULL, NULL,&s_tab_style, NULL, set_tab_style_rt, check_tab_style, TT_TAB_STYLE },
@@ -3033,6 +3036,13 @@ check_statusbar_elems(char **tt)
 {
 	*tt = g_strdup("Default: BP");
 	return (g_strcmp0(statusbar_elems, "BP"));
+}
+
+int
+check_tab_elems(char **tt)
+{
+	*tt = g_strdup("Default: CT");
+	return (g_strcmp0(tab_elems, "CT"));
 }
 
 int
