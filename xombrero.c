@@ -196,6 +196,7 @@ void		recolor_compact_tabs(void);
 void		set_current_tab(int page_num);
 gboolean	update_statusbar_position(GtkAdjustment*, gpointer);
 void		marks_clear(struct tab *t);
+int		urltoggle(struct tab *t, struct karg *args);
 
 /* globals */
 extern char		*__progname;
@@ -244,7 +245,8 @@ char			*stylesheet;
 char			*qmarks[XT_NOQMARKS];
 int			btn_down;	/* M1 down in any wv */
 regex_t			url_re;		/* guess_search regex */
-
+static int	autohide_toolbar = 0; /* if toolbar was made visible by command, auto-hide on finish use */
+static int	link_hover = FALSE; /* Indicates whether cursor is over link */
 /* starts from 1 to catch atoi() failures when calling xtp_handle_dl() */
 int			next_download_id = 1;
 
@@ -1667,8 +1669,10 @@ focus(struct tab *t, struct karg *args)
 	if (t == NULL || args == NULL)
 		return (1);
 
-	if (show_url == 0)
-		return (0);
+	if (show_url == 0) {
+		urltoggle(t, args);
+		autohide_toolbar = 1;
+	}
 
 	if (args->i == XT_FOCUS_URI)
 		gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
@@ -2412,6 +2416,16 @@ url_set_visibility(void)
 			focus_webview(t);
 		} else
 			gtk_widget_show(t->toolbar);
+}
+
+int
+urltoggle(struct tab *t, struct karg *args)
+{
+	DNPRINTF(XT_D_TAB, "%s: %p\n", __func__, t);
+
+	show_url = !show_url;
+	url_set_visibility();
+	return (XT_CB_HANDLED);
 }
 
 void
@@ -3410,6 +3424,7 @@ struct cmd {
 	{ "urlhide",		0,	urlaction,		XT_URL_HIDE,		0 },
 	{ "urlshow",		0,	urlaction,		XT_URL_SHOW,		0 },
 	{ "statustoggle",	0,	statustoggle,		0,			0 },
+	{ "urltoggle",		0,	urltoggle,		0,			0 },
 	{ "run_script",		0,	run_page_script,	0,			XT_USERARG },
 
 	{ "print",		0,	print_page,		0,			0 },
@@ -3510,6 +3525,22 @@ wv_button_cb(GtkWidget *btn, GdkEventButton *e, struct tab *t)
 
 	if (e->type == GDK_BUTTON_PRESS && e->button == 1)
 		btn_down = 1;
+	else if (e->type == GDK_BUTTON_PRESS && e->button == 2 && t->mode == XT_MODE_COMMAND && !link_hover) {
+		GtkClipboard* clipboard;
+		gchar* uri;
+		clipboard = gtk_clipboard_get (GDK_SELECTION_PRIMARY);
+		if ((uri = gtk_clipboard_wait_for_text (clipboard)))
+		{
+			if (show_url == 0) {
+				urltoggle(t, NULL);
+				autohide_toolbar = 1;
+			}
+			gtk_entry_set_text(GTK_ENTRY(t->uri_entry), uri);
+			gtk_widget_grab_focus(GTK_WIDGET(t->uri_entry));
+			gtk_clipboard_clear(clipboard);
+			return (TRUE);
+		}
+	}
 	else if (e->type == GDK_BUTTON_PRESS && e->button == 8 /* btn 4 */) {
 		/* go backward */
 		a.i = XT_NAV_BACK;
@@ -3594,6 +3625,10 @@ activate_uri_entry_cb(GtkWidget* entry, struct tab *t)
 
 	/* otherwise continue to load page normally */
 	load_uri(t, (gchar *)uri);
+	if (autohide_toolbar) {
+		urltoggle(t, NULL);
+		autohide_toolbar = 0;
+	}
 	focus_webview(t);
 }
 
@@ -3627,6 +3662,10 @@ activate_search_entry_cb(GtkWidget* entry, struct tab *t)
 
 	marks_clear(t);
 	load_uri(t, newuri);
+	if (autohide_toolbar) {
+		urltoggle(t, NULL);
+		autohide_toolbar = 0;
+	}
 	focus_webview(t);
 
 	if (newuri)
@@ -5444,9 +5483,10 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 		return;
 	}
 
-	if (uri)
+	if (uri) {
 		set_status(t, "Link: %s", uri);
-	else {
+		link_hover = TRUE;
+	} else {
 		if (statusbar_style == XT_STATUSBAR_URL) {
 			const gchar *page_uri;
 
@@ -5454,6 +5494,7 @@ webview_hover_cb(WebKitWebView *wv, gchar *title, gchar *uri, struct tab *t)
 				set_status(t, "%s", page_uri);
 		} else
 			set_status(t, "%s", (char *)get_title(t, FALSE));
+		link_hover = FALSE;
 	}
 }
 
