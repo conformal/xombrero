@@ -243,12 +243,13 @@ GtkListStore		*buffers_store;
 char			*stylesheet;
 
 char			*qmarks[XT_NOQMARKS];
-int			btn_down;	/* M1 down in any wv */
-regex_t			url_re;		/* guess_search regex */
-static int	autohide_toolbar = 0; /* if toolbar was made visible by command, auto-hide on finish use */
-static int	link_hover = FALSE; /* Indicates whether cursor is over link */
+int			btn_down;		/* M1 down in any wv */
+regex_t			url_re;			/* guess_search regex */
+int			link_hover = FALSE;	/* cursor is over link */
 /* starts from 1 to catch atoi() failures when calling xtp_handle_dl() */
 int			next_download_id = 1;
+/* if toolbar was made visible by command, auto-hide on finish use */
+int			autohide_toolbar = 0;
 
 void			xxx_dir(char *);
 int			icon_size_map(int);
@@ -3525,7 +3526,8 @@ wv_button_cb(GtkWidget *btn, GdkEventButton *e, struct tab *t)
 
 	if (e->type == GDK_BUTTON_PRESS && e->button == 1)
 		btn_down = 1;
-	else if (e->type == GDK_BUTTON_PRESS && e->button == 2 && t->mode == XT_MODE_COMMAND && !link_hover) {
+	else if (e->type == GDK_BUTTON_PRESS && e->button == 2 &&
+	    t->mode == XT_MODE_COMMAND && !link_hover) {
 		GtkClipboard* clipboard;
 		gchar* uri;
 		clipboard = gtk_clipboard_get (GDK_SELECTION_PRIMARY);
@@ -5582,13 +5584,14 @@ qmarks_load(void)
 int
 qmarks_save(void)
 {
-	char			 file[PATH_MAX];
-	int			 i;
-	FILE			*f;
+	char	 file[PATH_MAX];
+	int	 i;
+	FILE	*f;
 
 	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_QMARKS_FILE);
 	if ((f = fopen(file, "r+")) == NULL) {
-		show_oops(NULL, "Can't open quickmarks file: %s", strerror(errno));
+		show_oops(NULL, "Can't open quickmarks file: %s",
+		    strerror(errno));
 		return (1);
 	}
 
@@ -7724,7 +7727,7 @@ statusbar_create(struct tab *t)
 	return (0);
 }
 
-static int
+int
 check_te(char flag, int *used)
 {
 	if (*used) {
@@ -7806,27 +7809,34 @@ create_new_tab(const char *title, struct undo *u, int focus, int position)
 		switch (*p) {
 		case 'C':
 			if (!check_te(*p, &te_C)) {
-				t->gtktab_elems.close = create_button("Close", "window-close", 1);
-				gtk_box_pack_start(GTK_BOX(t->tab_content), t->gtktab_elems.close, FALSE, FALSE, 0);
+				t->gtktab_elems.close = create_button("Close",
+				    "window-close", 1);
+				gtk_box_pack_start(GTK_BOX(t->tab_content),
+				    t->gtktab_elems.close, FALSE, FALSE, 0);
 				bb = t->gtktab_elems.close;
 			}
 			break;
 		case 'T':
 			if (!check_te(*p, &te_T)) {
 				t->gtktab_elems.label = gtk_label_new(title);
-				gtk_label_set_ellipsize(GTK_LABEL(t->gtktab_elems.label), PANGO_ELLIPSIZE_END);
-				gtk_label_set_line_wrap(GTK_LABEL(t->gtktab_elems.label), FALSE);
-				gtk_box_pack_start(GTK_BOX(t->tab_content), t->gtktab_elems.label, TRUE, TRUE, 0);
+				gtk_label_set_ellipsize(GTK_LABEL(t->gtktab_elems.label),
+				    PANGO_ELLIPSIZE_END);
+				gtk_label_set_line_wrap(GTK_LABEL(t->gtktab_elems.label),
+				    FALSE);
+				gtk_box_pack_start(GTK_BOX(t->tab_content),
+				    t->gtktab_elems.label, TRUE, TRUE, 0);
 			}
 			break;
 		case 'F':
 			if (!check_te(*p, &te_F)) {
 #if GTK_CHECK_VERSION(2, 20, 0)
 				t->gtktab_elems.spinner = gtk_spinner_new();
-				gtk_box_pack_start(GTK_BOX(b), t->gtktab_elems.spinner, FALSE, FALSE, 0);
+				gtk_box_pack_start(GTK_BOX(b),
+				    t->gtktab_elems.spinner, FALSE, FALSE, 0);
  #endif
 				t->gtktab_elems.favicon = gtk_image_new();
-				gtk_box_pack_start(GTK_BOX(b), t->gtktab_elems.favicon, FALSE, FALSE, 0);
+				gtk_box_pack_start(GTK_BOX(b),
+				    t->gtktab_elems.favicon, FALSE, FALSE, 0);
 			}
 			break;
 		default:
@@ -7834,14 +7844,15 @@ create_new_tab(const char *title, struct undo *u, int focus, int position)
 			break;
 		}
 	}
-	
+
 	if (!bb) { //Wrap b in a gtkEventBox to handle middle-click close
 		GtkWidget *eb = gtk_event_box_new();
 		gtk_event_box_set_visible_window (GTK_EVENT_BOX (eb), FALSE);
 		gtk_container_add(GTK_CONTAINER(eb), b);
 		t->tab_content = eb;
 		b = eb;
-		g_signal_connect(G_OBJECT(eb), "button_release_event", G_CALLBACK(tab_click_cb), t);
+		g_signal_connect(G_OBJECT(eb), "button_release_event",
+		    G_CALLBACK(tab_click_cb), t);
 	}
 
 	if (te_T) //If title is not displayed, tab size is constant.
