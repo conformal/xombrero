@@ -406,6 +406,7 @@ GtkWidget		*create_window(const gchar *);
 void			show_oops(struct tab *, const char *, ...);
 gchar			*get_html_page(gchar *, gchar *, gchar *, bool);
 const gchar		*get_uri(struct tab *);
+void			set_xtp_meaning(struct tab *, int);
 const gchar		*get_title(struct tab *, bool);
 void			load_uri(struct tab *t, const gchar *uri);
 gboolean		match_uri(const gchar *uri, const gchar *key);

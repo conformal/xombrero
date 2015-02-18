@@ -182,7 +182,7 @@ void
 load_webkit_string(struct tab *t, const char *str, gchar *title, int nohist)
 {
 	char			file[PATH_MAX];
-	int			i;
+	int			i, xtp_meaning;
 
 	if (g_signal_handler_is_connected(t->wv, t->progress_handle))
 		g_signal_handler_disconnect(t->wv, t->progress_handle);
@@ -194,12 +194,12 @@ load_webkit_string(struct tab *t, const char *str, gchar *title, int nohist)
 			g_object_ref(t->item);
 	}
 
-	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
+	xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
 	if (title) {
-		/* set t->xtp_meaning */
+		/* set xtp_meaning */
 		for (i = 0; i < LENGTH(about_list); i++)
 			if (!strcmp(title, about_list[i].name)) {
-				t->xtp_meaning = i;
+				xtp_meaning = i;
 				break;
 			}
 
@@ -216,11 +216,7 @@ load_webkit_string(struct tab *t, const char *str, gchar *title, int nohist)
 		xt_icon_from_file(t, file);
 	}
 
-	if (t->xtp_meaning == XT_XTP_TAB_MEANING_NORMAL &&
-	    t->session_key != NULL) {
-		g_free(t->session_key);
-		t->session_key = NULL;
-	}
+	set_xtp_meaning(t, xtp_meaning);
 
 	t->progress_handle = g_signal_connect(t->wv,
 	    "notify::progress", G_CALLBACK(webview_progress_changed_cb), t);
