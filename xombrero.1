@@ -1645,13 +1645,14 @@ Change your
 setting also if you wish to disable the display of tabs.
 Default is 0.
 .It Cm tab_elems
-Define the components of the gtk tabs. The possible components are:
+Define the components (and their order) of the gtk tabs. The possible components are:
 .Bd -literal -offset indent
 T - tab title
 C - close button
-F - favicon/spinner
+S - spinner (incompatible with F)
+F - favicon / spinner (incompatible with S)
 .Ed
-The default is "CT".
+The default is "CTS".
 .It Cm url_regex
 This is the regular expression that is used to match what constitutes a valid
 URL when using

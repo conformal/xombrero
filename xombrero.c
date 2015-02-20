@@ -4230,7 +4230,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		if (t->gtktab_elems.spinner) {
 			gtk_widget_show(t->gtktab_elems.spinner);
 			gtk_spinner_start(GTK_SPINNER(t->gtktab_elems.spinner));
-			gtk_widget_hide(t->gtktab_elems.favicon);
+			if (t->gtktab_elems.favicon)
+				gtk_widget_hide(t->gtktab_elems.favicon);
 		}
 #endif
 		t->download_requested = 0;
@@ -4362,7 +4363,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		if (t->gtktab_elems.spinner) {
 			gtk_spinner_stop(GTK_SPINNER(t->gtktab_elems.spinner));
 			gtk_widget_hide(t->gtktab_elems.spinner);
-			gtk_widget_show(t->gtktab_elems.favicon);
+			if (t->gtktab_elems.favicon)
+				gtk_widget_show(t->gtktab_elems.favicon);
 		}
 #endif
 		break;
@@ -4388,7 +4390,8 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		if (t->gtktab_elems.spinner) {
 			gtk_spinner_stop(GTK_SPINNER(t->gtktab_elems.spinner));
 			gtk_widget_hide(t->gtktab_elems.spinner);
-			gtk_widget_show(t->gtktab_elems.favicon);
+			if (t->gtktab_elems.favicon)
+				gtk_widget_show(t->gtktab_elems.favicon);
 		}
 #endif
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
@@ -7839,6 +7842,15 @@ create_new_tab(const char *title, struct undo *u, int focus, int position)
 				    t->gtktab_elems.favicon, FALSE, FALSE, 0);
 			}
 			break;
+		case 'S':
+#if GTK_CHECK_VERSION(2, 20, 0)
+			if (!check_te(*p, &te_F)) {
+				t->gtktab_elems.spinner = gtk_spinner_new();
+				gtk_box_pack_start(GTK_BOX(b),
+				    t->gtktab_elems.spinner, FALSE, FALSE, 0);
+			}
+ #endif
+			break;
 		default:
 			warnx("illegal flag \"%c\" in tab_elems\n", *p);
 			break;
@@ -7855,7 +7867,8 @@ create_new_tab(const char *title, struct undo *u, int focus, int position)
 		    G_CALLBACK(tab_click_cb), t);
 	}
 
-	if (te_T) //If title is not displayed, tab size is constant.
+	//tab size is constant unless title or spinner without favicon is present 
+	if (te_T || (te_F && !t->gtktab_elems.favicon))
 		gtk_widget_set_size_request(t->tab_content, 130, 0);
 
 	/* toolbar */
@@ -7989,7 +8002,8 @@ create_new_tab(const char *title, struct undo *u, int focus, int position)
 	if (!load && t->gtktab_elems.spinner) {
 		gtk_spinner_stop(GTK_SPINNER(t->gtktab_elems.spinner));
 		gtk_widget_hide(t->gtktab_elems.spinner);
-		gtk_widget_show(t->gtktab_elems.favicon);
+		if (t->gtktab_elems.favicon)
+			gtk_widget_show(t->gtktab_elems.favicon);
 	}
 #endif
 	/* make notebook tabs reorderable */
@@ -8734,7 +8748,7 @@ main(int argc, char **argv)
 	statusbar_font_name = g_strdup(XT_DS_STATUSBAR_FONT_NAME);
 	tabbar_font_name = g_strdup(XT_DS_TABBAR_FONT_NAME);
 	statusbar_elems = g_strdup("BP");
-	tab_elems = g_strdup("CT");
+	tab_elems = g_strdup("CTS");
 	spell_check_languages = g_strdup(XT_DS_SPELL_CHECK_LANGUAGES);
 	encoding = g_strdup(XT_DS_ENCODING);
 	spell_check_languages = g_strdup(XT_DS_SPELL_CHECK_LANGUAGES);
