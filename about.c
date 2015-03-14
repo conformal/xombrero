@@ -641,7 +641,6 @@ add_favorite(struct tab *t, struct karg *args)
 }
 
 /* read a legacy favorites from an open FILE*
-
 (we don't write these any more)
 */
 static int
@@ -710,9 +709,8 @@ restore_favorites(void)
 		return retval;
 
 	} else {
-	/* TODO: when we can reasonable assume all favourites files
-		are updated, remove everything in here but this: */
-
+	/* TODO: when we can reasonably assume all favourites files
+	are updated, remove everything in here but this: */
 		/* file seems to start with URL, use new-style code */
 		fclose(f);
 		return load_pagelist_from_disk(&favs, XT_FAVS_FILE);
