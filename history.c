@@ -46,14 +46,15 @@ remove_pagelist_entry(struct pagelist *list, struct pagelist_entry *item)
 	g_free(item);
 }
 
-/* remove the n-th item from a pagelist.
+/* remove the n-th item from a pagelist, counted from the end.
 
 Returns 0 on success, 1 if the list is too short.
 */
-int remove_pagelist_entry_by_count(struct pagelist *list,
+int 
+remove_pagelist_entry_by_count(struct pagelist *list,
 	int count)
 {
-	int 			i;
+	int 			i = 0;
 	struct pagelist_entry	*item, *next;
 
 	/* walk backwards, as listed in reverse */
@@ -66,6 +67,24 @@ int remove_pagelist_entry_by_count(struct pagelist *list,
 		i++;
 	}
 	return 1;
+}
+
+/* remove the first item with uri from a pagelist.
+
+It is not an error for no such entry to exist.
+*/
+void
+remove_pagelist_entry_by_uri(struct pagelist *list,
+	const gchar *uri)
+{
+	struct pagelist_entry *item;
+
+	RB_FOREACH(item, pagelist, list) {
+		if (item->uri==uri) {
+			remove_pagelist_entry(list, item);
+			break;
+		}
+	}
 }
 
 int
@@ -125,6 +144,22 @@ insert_pagelist_entry(struct pagelist *list,
 	return (0);
 }
 
+/* delete all items in a pagelist */
+void
+empty_pagelist(struct pagelist *list)
+{
+	struct pagelist_entry *item;
+
+	RB_FOREACH(item, pagelist, list) {
+		RB_REMOVE(pagelist, list, item);
+		g_free(item->uri);
+		g_free(item->title);
+		g_free(item);
+	}
+}
+
+/* load a list of url/title pairs from disk into memory.
+*/
 int
 load_pagelist_from_disk(struct pagelist *list, char *file_name)
 {
@@ -159,7 +194,9 @@ load_pagelist_from_disk(struct pagelist *list, char *file_name)
 				goto done;
 			}
 
-		if (strptime(stime, "%a %b %d %H:%M:%S %Y", &tm) == NULL) {
+		/* TODO: This is locale-dependent and breaks in non-C */
+		if (strptime(stime, "%a %b %d %H:%M:%S %Y", &tm) 
+				== NULL) {
 			err = "strptime failed to parse time";
 			goto done;
 		}
@@ -208,7 +245,7 @@ save_pagelist_to_disk(struct pagelist *list, char *file_name)
 	}
 
 	RB_FOREACH_REVERSE(h, pagelist, list) {
-		if (h->uri && h->title && h->time)
+		if (h->uri && h->title)
 			fprintf(f, "%s\n%s\n%s", h->uri, h->title,
 			    ctime(&h->time));
 	}

@@ -210,6 +210,7 @@ GdkEvent		*fevent = NULL;
 struct tab_list		tabs;
 struct pagelist		hl;
 int			hl_purge_count = 0;
+struct pagelist		favs;
 struct session_list	sessions;
 struct wl_list		c_wl;
 struct wl_list		js_wl;
@@ -8853,6 +8854,9 @@ main(int argc, char **argv)
 
 	if (enable_strict_transport)
 		strict_transport_init();
+
+	/* pull favorites into memory */
+	restore_favorites();
 
 	/* uri completion */
 	completion_model = gtk_list_store_new(1, G_TYPE_STRING);
