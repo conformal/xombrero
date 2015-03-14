@@ -5,6 +5,7 @@
 *.rej.orig
 *~
 *.swp
+.exrc
 javascript.h
 xombrero
 xombrero.cat1

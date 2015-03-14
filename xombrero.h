@@ -432,7 +432,15 @@ int			restore_global_history(void);
 char			*color_visited_helper(void);
 int			color_visited(struct tab *t, char *visited);
 int 			remove_pagelist_entry_by_count(struct pagelist *list, int count);
+void 			remove_pagelist_entry_by_uri(struct pagelist *list, const gchar *uri);
 void 			remove_pagelist_entry(struct pagelist *list, struct pagelist_entry *item);
+int			load_pagelist_from_disk(struct pagelist *list, char *file_name);
+int			save_pagelist_to_disk(struct pagelist *list, char *file_name);
+int			insert_pagelist_entry(struct pagelist *list, const gchar *uri, const gchar *title, time_t time);
+void			empty_pagelist(struct pagelist *list);
+
+
+
 
 /* completion */
 void			completion_add(struct tab *);
@@ -520,6 +528,7 @@ int			xtp_page_sl(struct tab *, struct karg *);
 int			xtp_page_sv(struct tab *, struct karg *);
 int			parse_xtp_url(struct tab *, const char *);
 int			add_favorite(struct tab *, struct karg *);
+int			restore_favorites(void);
 void			update_favorite_tabs(struct tab *);
 void			update_history_tabs(struct tab *);
 void			update_download_tabs(struct tab *);
@@ -990,7 +999,8 @@ extern void	(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 extern void	(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
 		    SoupCookie *);
 
-extern struct pagelist	hl;
+extern struct pagelist		hl;
+extern struct pagelist		favs;
 extern int			hl_purge_count;
 extern struct download_list	downloads;
 extern struct tab_list		tabs;
