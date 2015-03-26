@@ -75,6 +75,7 @@ int		show_scrollbars = XT_DS_SHOW_SCROLLBARS;
 int		show_statusbar = XT_DS_SHOW_STATUSBAR; /* vimperator style status bar */
 int		ctrl_click_focus = XT_DS_CTRL_CLICK_FOCUS; /* ctrl click gets focus */
 int		cookies_enabled = XT_DS_COOKIES_ENABLED; /* enable cookies */
+int		complete_uri_anywhere = XT_DS_COMPLETE_URI_ANYWHERE; /* complete uris by looking for matches anywhere within them */
 int		read_only_cookies = XT_DS_READ_ONLY_COOKIES; /* enable to not write cookies */
 int		enable_scripts = XT_DS_ENABLE_SCRIPTS;
 int		enable_plugins = XT_DS_ENABLE_PLUGINS;
@@ -159,6 +160,7 @@ int		set_cmd_font(char *);
 int		set_color_visited_uris(char *);
 int		set_cookie_policy_rt(char *);
 int		set_cookies_enabled(char *);
+int		set_complete_uri_anywhere(char *);
 int		set_ctrl_click_focus(char *);
 int		set_fancy_bar(char *);
 int		set_home(char *);
@@ -234,6 +236,7 @@ int		check_cmd_font(char **);
 int		check_color_visited_uris(char **);
 int		check_cookie_policy(char **);
 int		check_cookies_enabled(char **);
+int		check_complete_uri_anywhere(char **);
 int		check_ctrl_click_focus(char **);
 int		check_default_script(char **);
 int		check_default_zoom_level(char **);
@@ -515,6 +518,7 @@ struct settings		rs[] = {
 	{ "color_visited_uris",		XT_S_BOOL, 0,		&color_visited_uris , NULL, NULL, NULL, set_color_visited_uris, check_color_visited_uris, TT_COLOR_VISITED_URIS },
 	{ "cookie_policy",		XT_S_STR, 0, NULL, NULL,&s_cookie, NULL, set_cookie_policy_rt, check_cookie_policy, TT_COOKIE_POLICY },
 	{ "cookies_enabled",		XT_S_BOOL, 0,		&cookies_enabled, NULL, NULL, NULL, set_cookies_enabled, check_cookies_enabled, TT_COOKIES_ENABLED },
+	{ "complete_uri_anywhere",	XT_S_BOOL, 0,		&complete_uri_anywhere, NULL, NULL, NULL, set_complete_uri_anywhere, check_complete_uri_anywhere, TT_COMPLETE_URI_ANYWHERE },
 	{ "ctrl_click_focus",		XT_S_BOOL, 0,		&ctrl_click_focus, NULL, NULL, NULL, set_ctrl_click_focus, check_ctrl_click_focus, TT_CTRL_CLICK_FOCUS },
 	{ "default_script",		XT_S_STR, 1, NULL, NULL,&s_default_script, NULL, set_default_script_rt, check_default_script, TT_DEFAULT_SCRIPT },
 	{ "default_zoom_level",		XT_S_DOUBLE, 0,		NULL, NULL, NULL, &default_zoom_level, set_default_zoom_level, check_default_zoom_level, TT_DEFAULT_ZOOM_LEVEL },
@@ -725,6 +729,31 @@ check_cookies_enabled(char **tt)
 	*tt = g_strdup_printf("Default: %s",
 	    XT_DS_COOKIES_ENABLED ? "Enabled" : "Disabled");
 	return (cookies_enabled != XT_DS_COOKIES_ENABLED);
+}
+
+int
+set_complete_uri_anywhere(char *value)
+{
+	int			tmp;
+	const char		*errstr;
+
+	if (value == NULL || strlen(value) == 0)
+		complete_uri_anywhere = XT_DS_COMPLETE_URI_ANYWHERE;
+	else {
+		tmp = strtonum(value, 0, 1, &errstr);
+		if (errstr)
+			return (-1);
+		complete_uri_anywhere = tmp;
+	}
+	return (0);
+}
+
+int
+check_complete_uri_anywhere(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s",
+	    XT_DS_COMPLETE_URI_ANYWHERE ? "Enabled" : "Disabled");
+	return (complete_uri_anywhere != XT_DS_COMPLETE_URI_ANYWHERE);
 }
 
 int

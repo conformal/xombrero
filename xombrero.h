@@ -657,6 +657,7 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_DS_SHOW_STATUSBAR	(0)
 #define XT_DS_CTRL_CLICK_FOCUS	(0)
 #define XT_DS_COOKIES_ENABLED	(1)
+#define XT_DS_COMPLETE_URI_ANYWHERE	(0)
 #define XT_DS_READ_ONLY_COOKIES	(0)
 #define XT_DS_ENABLE_SCRIPTS	(1)
 #define XT_DS_ENABLE_PLUGINS	(1)
@@ -907,6 +908,7 @@ extern int	show_scrollbars;
 extern int	show_statusbar;
 extern int	ctrl_click_focus;
 extern int	cookies_enabled;
+extern int	complete_uri_anywhere;
 extern int	read_only_cookies;
 extern int	enable_cache;
 extern int	enable_scripts;
