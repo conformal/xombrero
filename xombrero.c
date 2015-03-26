@@ -6177,6 +6177,21 @@ cmd_getlist(int id, char *key)
 
 	if (id >= 0) {
 		if (cmds[id].type & XT_URLARG) {
+			/* It'd be great if we could use the 
+			completion_model here.  Alas, GtkTreeModel apparently
+			has no API to access the char * in there; it seems
+			you only can get copies from there, which would
+			then have to be freed by the calling function.
+			Hence, we manually to through history and favourites
+			for now. */
+
+			RB_FOREACH_REVERSE(h, pagelist, &favs)
+				if (match_uri(h->uri, key)) {
+					cmd_status.list[c] = (char *)h->uri;
+					if (++c > 255)
+						break;
+				}
+
 			RB_FOREACH_REVERSE(h, pagelist, &hl)
 				if (match_uri(h->uri, key)) {
 					cmd_status.list[c] = (char *)h->uri;
@@ -8855,9 +8870,6 @@ main(int argc, char **argv)
 	if (enable_strict_transport)
 		strict_transport_init();
 
-	/* pull favorites into memory */
-	restore_favorites();
-
 	/* uri completion */
 	completion_model = gtk_list_store_new(1, G_TYPE_STRING);
 
@@ -8873,6 +8885,14 @@ main(int argc, char **argv)
 
 	if (save_global_history)
 		restore_global_history();
+
+	/* pull favorites into memory */
+	if (!restore_favorites()) {
+		struct pagelist_entry	*item;
+		RB_FOREACH(item, pagelist, &favs) {
+			completion_add_uri(item->uri);
+		}
+	}
 
 	/* restore session list */
 	restore_sessions_list();
