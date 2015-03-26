@@ -6143,13 +6143,17 @@ match_uri(const gchar *uri, const gchar *key) {
 	if (!strncmp(key, uri, len))
 		match = TRUE;
 	else {
-		voffset = strstr(uri, "/") + 2;
-		if (!strncmp(key, voffset, len))
-			match = TRUE;
-		else if (g_str_has_prefix(voffset, "www.")) {
+		if (complete_uri_anywhere) {
+			match = !! strstr(uri, key);
+		} else {
+		  voffset = strstr(uri, "/") + 2;
+		  if (!strncmp(key, voffset, len))
+			  match = TRUE;
+		  else if (g_str_has_prefix(voffset, "www.")) {
 			voffset = voffset + strlen("www.");
 			if (!strncmp(key, voffset, len))
 				match = TRUE;
+			}
 		}
 	}
 
