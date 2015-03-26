@@ -599,7 +599,8 @@ remove_favorite(struct tab *t, int index)
 	if (save_pagelist_to_disk(&favs, XT_FAVS_FILE)) {
 		update_favorite_tabs(NULL);
 	}
-
+	/* TODO: We should remove the URI from the list of completions here,
+	too */
 }
 
 int
@@ -629,6 +630,7 @@ add_favorite(struct tab *t, struct karg *args)
 	title = argtitle ? argtitle : get_title(t, FALSE);
 	uri = get_uri(t);
 	insert_pagelist_entry(&favs, uri, title, 0);
+	completion_add_uri(uri);
 
 	if ((retval = save_pagelist_to_disk(&favs, XT_FAVS_FILE))) {
 
@@ -683,7 +685,8 @@ to the new standard pagelist format.
 int
 restore_favorites(void)
 {
-	char                    file[PATH_MAX], magic[5];
+	int			retval;
+	char                    file[PATH_MAX], magic[4];
 	FILE			*f;
 
 	empty_pagelist(&favs);
@@ -696,25 +699,24 @@ restore_favorites(void)
 		return (1);
 	}
 
-	magic[4] = 0;
 	if (4==fread(magic, 1, 4, f)
-			&& strcmp(magic, "http")) {
+			&& strncmp(magic, "http", 4)) {
 		/* doesn't start with http, try old-style favorite parsing */
-		int retval;
 
 		warnx("Warning: Suspecting old-style favorites file.");
 		rewind(f);
 		retval = load_legacy_favorites(f);
 		fclose(f);
-		return retval;
 
 	} else {
 	/* TODO: when we can reasonably assume all favourites files
-	are updated, remove everything in here but this: */
+		are updated, remove everything in here but this: */
 		/* file seems to start with URL, use new-style code */
 		fclose(f);
-		return load_pagelist_from_disk(&favs, XT_FAVS_FILE);
+		retval = load_pagelist_from_disk(&favs, XT_FAVS_FILE);
 	}
+	
+	return retval;
 }
 
 
