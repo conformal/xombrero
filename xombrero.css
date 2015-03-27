@@ -26,31 +26,16 @@
 
 * {
 	border-width: 1px;
-	padding: 0;
-	margin: 0;
-	-GtkScrolledWindow-scrollbar-spacing: 0;
-	-GtkWidget-line-width: 0;
+	padding: 1;
+	margin: 1;
+	-GtkScrolledWindow-scrollbar-spacing: 1;
+	-GtkWidget-line-width: 1;
 }
 
 .button,
 GtkSpinner {
 	-GtkWidget-focus-padding: 0;
 	-GtkWidget-line-width: 0;
-}
-
-.button :insensitive,
-GtkMenu :insensitive {
-	background-color: rgba(0,0,0,0); /* transparent */
-}
-
-.entry {
-	padding: 2px;
-	color: @text_color;
-}
-
-#vbox > .entry,
-#statusbar * {
-	border-width: 0px;
 }
 
 #statusbar > GtkEventBox {
@@ -107,38 +92,7 @@ GtkEventBox#blue,
 #statusbar .entry.progressbar#yellow,
 #statusbar .entry.progressbar#green,
 #statusbar .entry.progressbar#blue {
-	background-image: none;
-	background-color: @selected_bg_color;
-	color: @selected_fg_color;
-}
-
-.button#Back,
-.button#Forward,
-.button#Home,
-.button#Stop,
-.button#JS-Toggle,
-.button#Close {
-	border-width: 0;
-}
-
-.menuitem {
-	padding: 3px;
-}
-
-.notebook tab {
-	background-color: shade(@bg_color, 0.85);
-	color: @fg_color;
-	padding: 0px;
-}
-
-.notebook tab:active {
-	background-color: @bg_color;
-}
-
-GtkScrollbar#hidden {
-	border-width: 0px;
-	-GtkRange-slider-width: 0px;
-	-GtkRange-trough-border: 0px;
+	background-color: shade (@blue, 0.70);
 }
 
 /* compact tabs */

@@ -858,11 +858,7 @@ set_normal_tab_meaning(struct tab *t)
 	if (t == NULL)
 		return;
 
-	t->xtp_meaning = XT_XTP_TAB_MEANING_NORMAL;
-	if (t->session_key != NULL) {
-		g_free(t->session_key);
-		t->session_key = NULL;
-	}
+	set_xtp_meaning(t, XT_XTP_TAB_MEANING_NORMAL);
 }
 
 void
@@ -930,22 +926,34 @@ done:
 const gchar *
 get_uri(struct tab *t)
 {
-	const gchar		*uri = NULL;
+	const gchar		*uri;
 
 	if (webkit_web_view_get_load_status(t->wv) == WEBKIT_LOAD_FAILED &&
 	    !t->download_requested)
 		return (NULL);
 	if (t->xtp_meaning == XT_XTP_TAB_MEANING_NORMAL)
 		uri = webkit_web_view_get_uri(t->wv);
-	else {
+	else
+		uri = t->tmp_uri;
+	return (uri);
+}
+
+void
+set_xtp_meaning(struct tab *t, int tab_meaning)
+{
+	t->xtp_meaning = tab_meaning;
+	if (tab_meaning == XT_XTP_TAB_MEANING_NORMAL) {
+		if (t->session_key != NULL) {
+			g_free(t->session_key);
+			t->session_key = NULL;
+		}
+	} else {
 		/* use tmp_uri to make sure it is g_freed */
 		if (t->tmp_uri)
 			g_free(t->tmp_uri);
 		t->tmp_uri = g_strdup_printf("%s%s", XT_URI_ABOUT,
-		    about_list[t->xtp_meaning].name);
-		uri = t->tmp_uri;
+			 about_list[t->xtp_meaning].name);
 	}
-	return (uri);
 }
 
 const gchar *
@@ -2026,7 +2034,7 @@ check_cert_changes(struct tab *t, GTlsCertificate *cert, const char *file, const
 			break;
 		if ((w = wl_find(soupuri->host, &svil)) != NULL)
 			break;
-		t->xtp_meaning = XT_XTP_TAB_MEANING_SV;
+		set_xtp_meaning(t, XT_XTP_TAB_MEANING_SV);
 		args.s = g_strdup((char *)uri);
 		xtp_page_sv(t, &args);
 		ret = 1;
@@ -4145,7 +4153,6 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 	const gchar		*uri = NULL;
 	struct pagelist_entry		*h, find;
 	struct karg		a;
-	gchar			*tmp_uri = NULL;
 #if !GTK_CHECK_VERSION(3, 0, 0)
 	gchar			*text, *base;
 #endif
@@ -4269,32 +4276,26 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		/* 2 */
 		if ((uri = get_uri(t)) == NULL)
 			return;
-		/* 
-		 * js_autorun calls get_uri which frees t->tmp_uri if on an
-		 * "about:" page. On "about:" pages, uri points to t->tmp_uri.
-		 * I.e. we will use freed memory. Prevent that.
-		 */
-		tmp_uri = g_strdup(uri);
 
 		/* autorun some js if enabled */
 		js_autorun(t);
 
 		input_autofocus(t);
 
-		if (!strncmp(tmp_uri, "http://", strlen("http://")) ||
-		    !strncmp(tmp_uri, "https://", strlen("https://")) ||
-		    !strncmp(tmp_uri, "file://", strlen("file://"))) {
-			find.uri = (gchar *)tmp_uri;
-			h = RB_FIND(pagelist, &hl, &find);
+		if (!strncmp(uri, "http://", strlen("http://")) ||
+		    !strncmp(uri, "https://", strlen("https://")) ||
+		    !strncmp(uri, "file://", strlen("file://"))) {
+			find.uri = (gchar *)uri;
+			h = RB_FIND(history_list, &hl, &find);
 			if (!h)
-				insert_history_item(tmp_uri,
+				insert_history_item(uri,
 				    get_title(t, FALSE), time(NULL));
 			else
 				h->time = time(NULL);
 		}
 
 		if (statusbar_style == XT_STATUSBAR_URL)
-			set_status(t, "%s", (char *)tmp_uri);
+			set_status(t, "%s", (char *)uri);
 		else
 			set_status(t, "%s", get_title(t, FALSE));
 		gtk_widget_set_sensitive(GTK_WIDGET(t->stop), FALSE);
@@ -4302,7 +4303,6 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		gtk_spinner_stop(GTK_SPINNER(t->spinner));
 		gtk_widget_hide(t->spinner);
 #endif
-		g_free(tmp_uri);
 		break;
 
 #if WEBKIT_CHECK_VERSION(1, 1, 18)
@@ -6660,6 +6660,10 @@ cmd_keypress_cb(GtkEntry *w, GdkEventKey *e, struct tab *t)
 			}
 		}
 		goto done;
+	case GDK_Home:
+		if (c[0] == ':' || c[0] == '/' || c[0] == '?')
+			gtk_editable_set_position(GTK_EDITABLE(w), 1);
+		goto done;
 	case GDK_BackSpace:
 		if (!(!strcmp(c, ":") || !strcmp(c, "/") || !strcmp(c, "?") ||
 		    !strcmp(c, ".") || !strcmp(c, ","))) {
@@ -8211,7 +8215,8 @@ create_canvas(void)
 
 	abtn = gtk_button_new();
 	gtk_widget_set_can_focus(abtn, FALSE);
-	arrow = gtk_arrow_new(GTK_ARROW_DOWN, GTK_SHADOW_NONE);
+	arrow = gtk_image_new_from_icon_name("pan-down-symbolic",
+	    icon_size_map(icon_size));
 	gtk_widget_set_name(abtn, "Arrow");
 	gtk_button_set_image(GTK_BUTTON(abtn), arrow);
 	gtk_widget_set_size_request(abtn, -1, 20);
