@@ -70,6 +70,8 @@ install: all
 	install -m 644 ../tld-rules $(DESTDIR)$(RESDIR)
 	install -m 644 ../style.css $(DESTDIR)$(RESDIR)
 	install -m 644 ../hsts-preload $(DESTDIR)$(RESDIR)
+	install -m 644 ../user-agent-headers ${DESTDIR}$(RESDIR)
+	install -m 644 ../http-accept-headers ${DESTDIR}$(RESDIR)
 	install -m 644 ../torenabled.ico $(DESTDIR)$(RESDIR)
 	install -m 644 ../tordisabled.ico $(DESTDIR)$(RESDIR)
 
@@ -90,6 +92,8 @@ uninstall:
 	rm -f $(DESTDIR)$(RESDIR)/tld-rules
 	rm -f $(DESTDIR)$(RESDIR)/style.css
 	rm -f $(DESTDIR)$(RESDIR)/hsts-preload
+	rm -f ${DESTDIR}$(RESDIR)/user-agent-headers
+	rm -f ${DESTDIR}$(RESDIR)/http-accept-headers
 	if [ -d $(DESTDIR)$(RESDIR) ]; then rmdir $(DESTDIR)$(RESDIR); fi
 clean:
 	rm -f xombrero $(OBJS) $(DEPS)
