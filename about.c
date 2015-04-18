@@ -642,16 +642,26 @@ add_favorite(struct tab *t, struct karg *args)
 	return (retval);
 }
 
-/* read a legacy favorites from an open FILE*
-(we don't write these any more)
+/* read legacy (up to 1.6.4) favorites 
+
+We don't write these any more, so this function should be removed once
+we're satisfied all old files have been updated.
 */
 static int
-load_legacy_favorites(FILE *f)
+load_legacy_favorites(char *file_name)
 {
 	char                    *uri = NULL, *title = NULL;
 	size_t                  len, lineno;
 	int                     failed = 0;
 	const char              delim[3] = {'\\', '\\', '\0'};
+	char			file[PATH_MAX];
+	FILE 			*f;
+	
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, file_name);
+	f = fopen(file, "r");
+	if (!f) {
+		return 1;
+	}
 
 	for (lineno = 1;;) {
 		if ((title = fparseln(f, &len, &lineno, delim, 0)) == NULL)
@@ -674,6 +684,8 @@ load_legacy_favorites(FILE *f)
 		free(uri);
 		lineno += 1;
 	}
+
+	fclose(f);
 	return failed;
 }
 
@@ -686,34 +698,11 @@ int
 restore_favorites(void)
 {
 	int			retval;
-	char                    file[PATH_MAX], magic[4];
-	FILE			*f;
 
 	empty_pagelist(&favs);
 
-	/* heuristic: new-style favourites should start with a http url
-	   if our favorites file doesn't, assume it's old style */
-	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_FAVS_FILE);
-	if ((f = fopen(file, "r")) == NULL) {
-		warnx("%s: fopen", __func__);
-		return (1);
-	}
-
-	if (4==fread(magic, 1, 4, f)
-			&& strncmp(magic, "http", 4)) {
-		/* doesn't start with http, try old-style favorite parsing */
-
-		warnx("Warning: Suspecting old-style favorites file.");
-		rewind(f);
-		retval = load_legacy_favorites(f);
-		fclose(f);
-
-	} else {
-	/* TODO: when we can reasonably assume all favourites files
-		are updated, remove everything in here but this: */
-		/* file seems to start with URL, use new-style code */
-		fclose(f);
-		retval = load_pagelist_from_disk(&favs, XT_FAVS_FILE);
+	if (2 == (retval = load_pagelist_from_disk(&favs, XT_FAVS_FILE))) {
+		retval = load_legacy_favorites(XT_FAVS_FILE);
 	}
 	
 	return retval;

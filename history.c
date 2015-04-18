@@ -158,10 +158,12 @@ empty_pagelist(struct pagelist *list)
 	}
 }
 
-/* load a list of url/title pairs from disk into memory.
-*/
+
+/* This function reads old-style (up to 1.6.4) history files.
+It should go once we can reasonably assume all those have been
+updated */
 int
-load_pagelist_from_disk(struct pagelist *list, char *file_name)
+load_pagelist_from_disk_legacy(struct pagelist *list, char *file_name)
 {
 	char			file[PATH_MAX];
 	FILE			*f;
@@ -229,12 +231,125 @@ done:
 	return (0);
 }
 
+/* load a list of url/title pairs from disk into memory.
+
+
+This returns 0 if all went well, 2 if the magic wasn't found, 1 for
+all other errors.
+*/
+int
+load_pagelist_from_disk(struct pagelist *list, char *file_name)
+{
+	char			file[PATH_MAX];
+	FILE			*f;
+	gchar			*uri, *title = NULL, *stime = NULL, *err = NULL;
+	gchar			*magic;
+	time_t			time;
+	struct tm		tm;
+	const char		delim[3] = {'\\', '\\', '\0'};
+
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, file_name);
+
+	if ((f = fopen(file, "r")) == NULL) {
+		warnx("%s: fopen", __func__);
+		return (1);
+	}
+
+	if ((magic = fparseln(f, NULL, NULL, delim, 0)) == NULL) {
+		return 2;
+	} else {
+		if (0!=strncmp(XT_PAGELIST_MAGIC, magic, 
+			strlen(XT_PAGELIST_MAGIC))) {
+			return 2;
+		}
+	}
+
+	for (;;) {
+		if ((uri = fparseln(f, NULL, NULL, delim, 0)) == NULL)
+			if (feof(f) || ferror(f))
+				break;
+
+		if ((title = fparseln(f, NULL, NULL, delim, 0)) == NULL)
+			if (feof(f) || ferror(f)) {
+				err = "broken history file (title)";
+				goto done;
+			}
+
+		if ((stime = fparseln(f, NULL, NULL, delim, 0)) == NULL)
+			if (feof(f) || ferror(f)) {
+				err = "broken history file (time)";
+				goto done;
+			}
+
+		if (strptime(stime, XT_PAGELIST_DATEFMT, &tm) 
+				== NULL) {
+			err = "strptime failed to parse time";
+			goto done;
+		}
+
+		time = mktime(&tm);
+
+		if (insert_pagelist_entry(list, uri, title, time)) {
+			err = "failed to insert item";
+			goto done;
+		}
+
+		free(uri);
+		free(title);
+		free(stime);
+		uri = NULL;
+		title = NULL;
+		stime = NULL;
+	}
+
+done:
+	if (err && strlen(err)) {
+		warnx("%s: %s\n", __func__, err);
+		free(uri);
+		free(title);
+		free(stime);
+
+		return (1);
+	}
+
+	return (0);
+}
+
+
+/* format and write a single pagelist entry to f 
+
+Returns 0 on success, 1 if formatting failed; in the latter case,
+the entry is not written.
+*/
+int
+write_pagelist_entry(FILE *f, struct pagelist_entry *entry)
+{
+	char		formatted_time[XT_PAGELIST_DATELENGTH];
+	struct tm	*timestamp = gmtime(&(entry->time));
+
+	if (timestamp == NULL
+		|| !strftime(formatted_time, XT_PAGELIST_DATELENGTH,
+			XT_PAGELIST_DATEFMT, timestamp)) {
+		warnx("%s: date formatting failed",
+		__func__);
+		return (1);
+	}
+	if (entry->uri && entry->title) {
+		fprintf(f, "%s\n%s\n%s\n", entry->uri, entry->title,
+		    formatted_time);
+	} else {
+		return 1;
+	}
+	return 0;
+}
+
+
 int
 save_pagelist_to_disk(struct pagelist *list, char *file_name)
 {
 	char			file[PATH_MAX];
 	FILE			*f;
-	struct pagelist_entry		*h;
+	struct pagelist_entry	*h;
 
 	snprintf(file, sizeof file, "%s" PS "%s", work_dir, file_name);
 
@@ -243,11 +358,11 @@ save_pagelist_to_disk(struct pagelist *list, char *file_name)
 		    __func__, strerror(errno));
 		return (1);
 	}
+	fprintf(f, "%s\n", XT_PAGELIST_MAGIC);
+	
 
 	RB_FOREACH_REVERSE(h, pagelist, list) {
-		if (h->uri && h->title)
-			fprintf(f, "%s\n%s\n%s", h->uri, h->title,
-			    ctime(&h->time));
+		write_pagelist_entry(f, h);
 	}
 
 	fclose(f);
@@ -340,8 +455,14 @@ insert_history_item(const gchar *uri, const gchar *title, time_t time)
 int
 restore_global_history(void)
 {
-	return (load_pagelist_from_disk(
-		&hl, XT_HISTORY_FILE));
+	int retval;
+
+	if (2 == (retval = load_pagelist_from_disk(
+		&hl, XT_HISTORY_FILE))) {
+		retval = load_pagelist_from_disk_legacy(
+			&hl, XT_HISTORY_FILE);
+	}
+	return retval;
 }
 
 int

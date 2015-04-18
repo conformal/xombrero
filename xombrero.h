@@ -395,6 +395,11 @@ RB_PROTOTYPE(domain_id_list, domain_id, entry, domain_id_rb_cmp);
 #define XT_HTTP_ACCEPT_FILE	("http-accept-headers")
 #define XT_RESERVED_CHARS	"$&+,/:;=?@ \"<>#%%{}|^~[]`"
 
+#define XT_PAGELIST_MAGIC	"# Xombrero Pagelist"
+#define XT_PAGELIST_DATEFMT	"%Y-%m-%dT%H:%M:%S"
+/* The length for a date formatted with XT_PAGELIST_DATEMFT */
+#define XT_PAGELIST_DATELENGTH	20
+
 int			run_script(struct tab *, char *);
 void			js_autorun(struct tab *);
 void			xt_icon_from_file(struct tab *, char *);
