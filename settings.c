@@ -127,6 +127,11 @@ char		*cmd_font_name = NULL;	/* these are all set at startup */
 char		*oops_font_name = NULL;
 char		*statusbar_font_name = NULL;
 char		*tabbar_font_name = NULL;
+char		*default_font_family = NULL;
+int		default_font_size = XT_DS_DEFAULT_FONT_SIZE;
+char		*serif_font_family = NULL;
+char		*sans_serif_font_family = NULL;
+int		min_font_size = XT_DS_MIN_FONT_SIZE;
 
 char		*get_download_dir(struct settings *);
 char		*get_default_script(struct settings *);
@@ -221,6 +226,11 @@ int		set_allow_insecure_scripts(char *);
 int		set_http_proxy(char *);
 int		set_do_not_track(char *);
 int		set_gnutls_priority_string(struct settings *, char *);
+int		set_default_font(char *value);
+int		set_default_font_size(char *value);
+int		set_serif_font(char *value);
+int		set_sans_serif_font(char *value);
+int		set_min_font_size(char *value);
 
 int		check_allow_insecure_content(char **);
 int		check_allow_insecure_scripts(char **);
@@ -303,6 +313,11 @@ int		check_window_maximize(char **);
 int		check_window_width(char **);
 int		check_work_dir(char **);
 int		check_do_not_track(char **);
+int		check_default_font(char **tt);
+int		check_default_font_size(char **tt);
+int		check_serif_font(char **tt);
+int		check_sans_serif_font(char **tt);
+int		check_min_font_size(char **tt);
 
 void		walk_mime_type(struct settings *, void (*)(struct settings *,
 		    char *, void *), void *);
@@ -516,6 +531,8 @@ struct settings		rs[] = {
 	{ "cookie_policy",		XT_S_STR, 0, NULL, NULL,&s_cookie, NULL, set_cookie_policy_rt, check_cookie_policy, TT_COOKIE_POLICY },
 	{ "cookies_enabled",		XT_S_BOOL, 0,		&cookies_enabled, NULL, NULL, NULL, set_cookies_enabled, check_cookies_enabled, TT_COOKIES_ENABLED },
 	{ "ctrl_click_focus",		XT_S_BOOL, 0,		&ctrl_click_focus, NULL, NULL, NULL, set_ctrl_click_focus, check_ctrl_click_focus, TT_CTRL_CLICK_FOCUS },
+	{ "default_font_family",	XT_S_STR, 0, NULL,	&default_font_family, NULL, NULL, set_default_font, check_default_font, TT_DEFAULT_FONT_FAMILY},
+	{ "default_font_size",		XT_S_INT, 0,		&default_font_size, NULL, NULL, NULL, set_default_font_size, check_default_font_size, TT_DEFAULT_FONT_SIZE},
 	{ "default_script",		XT_S_STR, 1, NULL, NULL,&s_default_script, NULL, set_default_script_rt, check_default_script, TT_DEFAULT_SCRIPT },
 	{ "default_zoom_level",		XT_S_DOUBLE, 0,		NULL, NULL, NULL, &default_zoom_level, set_default_zoom_level, check_default_zoom_level, TT_DEFAULT_ZOOM_LEVEL },
 	{ "do_not_track",		XT_S_BOOL, 0,		&do_not_track, NULL, NULL, NULL, set_do_not_track, check_do_not_track, TT_DO_NOT_TRACK },
@@ -552,15 +569,18 @@ struct settings		rs[] = {
 	{ "js_auto_open_windows",	XT_S_BOOL, 1,		&js_auto_open_windows, NULL, NULL, NULL, set_js_auto_open_windows, check_js_auto_open_windows, TT_JS_AUTO_OPEN_WINDOWS },
 	{ "max_connections",		XT_S_INT, XT_SF_RESTART,&max_connections, NULL, NULL, NULL, NULL, check_max_connections, TT_MAX_CONNECTIONS },
 	{ "max_host_connections",	XT_S_INT, XT_SF_RESTART,&max_host_connections, NULL, NULL, NULL, NULL, check_max_host_connections, TT_MAX_HOST_CONNECTIONS },
+	{ "minimum_font_size",		XT_S_INT, 0,		&min_font_size, NULL, NULL, NULL, set_min_font_size, check_min_font_size, TT_MINIMUM_FONT_SIZE},
 	{ "oops_font",			XT_S_STR, 0, NULL, &oops_font_name, NULL, NULL, set_oops_font, check_oops_font, TT_OOPS_FONT },
 	{ "preload_strict_transport",	XT_S_BOOL, 0,		&preload_strict_transport, NULL, NULL, NULL, NULL, NULL, TT_PRELOAD_STRICT_TRANSPORT },
 	{ "read_only_cookies",		XT_S_BOOL, 0,		&read_only_cookies, NULL, NULL, NULL, NULL, check_read_only_cookies, TT_READ_ONLY_COOKIES },
 	{ "referer",			XT_S_STR, 0, NULL, NULL,&s_referer, NULL, set_referer_rt, check_referer, TT_REFERER },
 	{ "refresh_interval",		XT_S_INT, 0,		&refresh_interval, NULL, NULL, NULL, set_refresh_interval, check_refresh_interval, TT_REFRESH_INTERVAL },
 	{ "resource_dir",		XT_S_STR, 0, NULL,	&resource_dir, NULL, NULL, NULL, check_resource_dir, TT_RESOURCE_DIR },
+	{ "sans_serif_font_family",	XT_S_STR, 0, NULL,	&sans_serif_font_family, NULL, NULL, set_sans_serif_font, check_sans_serif_font, TT_SANS_SERIF_FONT_FAMILY},
 	{ "save_global_history",	XT_S_BOOL,XT_SF_RESTART,&save_global_history, NULL, NULL, NULL, NULL, check_save_global_history, TT_SAVE_GLOBAL_HISTORY },
 	{ "save_rejected_cookies",	XT_S_BOOL,XT_SF_RESTART,&save_rejected_cookies, NULL, NULL, NULL, NULL, check_save_rejected_cookies, TT_SAVE_REJECTED_COOKIES },
 	{ "search_string",		XT_S_STR, 0, NULL,	&search_string, NULL, NULL, set_search_string, check_search_string, TT_SEARCH_STRING },
+	{ "serif_font_family",		XT_S_STR, 0, NULL,	&serif_font_family, NULL, NULL, set_serif_font, check_serif_font, TT_SERIF_FONT_FAMILY},
 	{ "session_autosave",		XT_S_BOOL, 0,		&session_autosave, NULL, NULL, NULL, set_session_autosave, check_session_autosave, TT_SESSION_AUTOSAVE },
 	{ "session_timeout",		XT_S_INT, 0,		&session_timeout, NULL, NULL, NULL, set_session_timeout, check_session_timeout, TT_SESSION_TIMEOUT },
 	{ "show_scrollbars",		XT_S_BOOL, 0,		&show_scrollbars, NULL, NULL, NULL, set_show_scrollbars, check_show_scrollbars, TT_SHOW_SCROLLBARS },
@@ -1320,6 +1340,141 @@ check_download_dir(char **tt)
 	snprintf(buf, sizeof buf, "%s" PS "downloads", pwd->pw_dir);
 	*tt = g_strdup_printf("Default: %s", buf);
 	return (g_strcmp0(download_dir, buf));
+}
+
+int
+set_default_font(char *value)
+{
+	struct tab		*t;
+
+	if (value == NULL || strlen(value) == 0)
+		default_font_family = XT_DS_DEFAULT_FONT;
+	else {
+		if (default_font_family) {
+			g_free(default_font_family);
+		}
+		default_font_family = g_strdup(value);
+	}
+	TAILQ_FOREACH(t, &tabs, entry)
+		g_object_set(G_OBJECT(t->settings), "default-font-family",
+		    default_font_family, (char *)NULL);
+	return (0);
+}
+
+int
+check_default_font(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s", XT_DS_DEFAULT_FONT);
+	return (g_strcmp0(default_font_family, XT_DS_DEFAULT_FONT));
+}
+
+int
+set_serif_font(char *value)
+{
+	struct tab		*t;
+
+	if (value == NULL || strlen(value) == 0)
+		serif_font_family = XT_DS_SERIF_FONT;
+	else {
+		if (serif_font_family) {
+			g_free(serif_font_family);
+		}
+		serif_font_family = g_strdup(value);
+	}
+	TAILQ_FOREACH(t, &tabs, entry)
+		g_object_set(G_OBJECT(t->settings), "serif-font-family",
+		    serif_font_family, (char *)NULL);
+	return (0);
+}
+
+int
+check_serif_font(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s", XT_DS_SERIF_FONT);
+	return (g_strcmp0(serif_font_family, XT_DS_SERIF_FONT));
+}
+
+int
+set_sans_serif_font(char *value)
+{
+	struct tab		*t;
+
+	if (value == NULL || strlen(value) == 0)
+		sans_serif_font_family = XT_DS_SANS_SERIF_FONT;
+	else {
+		if (sans_serif_font_family) {
+			g_free(sans_serif_font_family);
+		}
+		sans_serif_font_family = g_strdup(value);
+	}
+	TAILQ_FOREACH(t, &tabs, entry)
+		g_object_set(G_OBJECT(t->settings), "sans-serif-font-family",
+		    sans_serif_font_family, (char *)NULL);
+	return (0);
+}
+
+int
+check_sans_serif_font(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s", XT_DS_SANS_SERIF_FONT);
+	return (g_strcmp0(sans_serif_font_family, XT_DS_SANS_SERIF_FONT));
+}
+
+int
+set_default_font_size(char *value)
+{
+	struct tab		*t;
+	int			tmp;
+	const char		*errstr;
+	
+
+	if (value == NULL || strlen(value) == 0)
+		default_font_size = XT_DS_DEFAULT_FONT_SIZE;
+	else {
+		tmp = strtonum(value, 5, INT_MAX, &errstr);
+		if (errstr)
+			return (-1);
+		default_font_size = tmp;
+	}
+	TAILQ_FOREACH(t, &tabs, entry)
+		g_object_set(G_OBJECT(t->settings), "default-font-size",
+		    default_font_size, (char *)NULL);
+	return (0);
+}
+
+int
+check_default_font_size(char **tt)
+{
+	*tt = g_strdup_printf("Default: %d", XT_DS_DEFAULT_FONT_SIZE);
+	return (default_font_size != XT_DS_DEFAULT_FONT_SIZE);
+}
+
+int
+set_min_font_size(char *value)
+{
+	struct tab		*t;
+	int			tmp;
+	const char		*errstr;
+
+	if (value == NULL || strlen(value) == 0)
+		min_font_size = XT_DS_MIN_FONT_SIZE;
+	else {
+		tmp = strtonum(value, 0, INT_MAX, &errstr);
+		if (errstr)
+			return (-1);
+		min_font_size = tmp;
+	}
+	TAILQ_FOREACH(t, &tabs, entry)
+		g_object_set(G_OBJECT(t->settings), "default-font-size",
+		    default_font_size, (char *)NULL);
+	return (0);
+}
+
+int
+check_min_font_size(char **tt)
+{
+	*tt = g_strdup_printf("Default: %d", XT_DS_MIN_FONT_SIZE);
+	return (min_font_size != XT_DS_MIN_FONT_SIZE);
 }
 
 int

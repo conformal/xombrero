@@ -1182,6 +1182,10 @@ where
 is a program that will parse the
 .Pa mailto
 URI and open your mail client.
+.It Cm default_font_family
+Set default font family used for rendering web pages.
+.It Cm default_font_size
+Set default font size used for rendering web pages.
 .It Cm default_script
 Path to the script used as the default value for the run_script
 command.
@@ -1477,6 +1481,8 @@ before the MIME handler is called.
 The special binary name "donothing" may be used to ignore a MIME type
 without displaying any warnings from being unable to execute the
 binary.
+.It Cm minimum_font_size
+Set minimum font size used for rendering web pages.
 .It Cm oops_font
 Set the font used to display error messages.
 E.g.
@@ -1525,6 +1531,8 @@ Directory that contains various
 .Nm
 resources such as icons.
 This is OS-specific and should be handled by the porter.
+.It Cm sans_serif_font_family
+Set Sans Serif font family used for rendering web pages.
 .It Cm save_global_history
 If set the global history will be saved to
 .Pa ~/.xombrero/history
@@ -1543,6 +1551,8 @@ Default search engine string.
 See the
 .Pa xombrero.conf
 file for details.
+.It Cm serif_font_family
+Set Serif font family used for rendering web pages.
 .It Cm session_autosave
 Enable session auto-saving when changing state (e.g. adding or removing a tab).
 The session name is what is currently in use and is described in the
