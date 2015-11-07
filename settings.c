@@ -131,6 +131,9 @@ char		*default_font_family = NULL;
 int		default_font_size = XT_DS_DEFAULT_FONT_SIZE;
 char		*serif_font_family = NULL;
 char		*sans_serif_font_family = NULL;
+char		*monospace_font_family = NULL;
+char		*cursive_font_family = NULL;
+char		*fantasy_font_family = NULL;
 int		min_font_size = XT_DS_MIN_FONT_SIZE;
 
 char		*get_download_dir(struct settings *);
@@ -230,6 +233,9 @@ int		set_default_font(char *value);
 int		set_default_font_size(char *value);
 int		set_serif_font(char *value);
 int		set_sans_serif_font(char *value);
+int		set_monospace_font(char *value);
+int		set_cursive_font(char *value);
+int		set_fantasy_font(char *value);
 int		set_min_font_size(char *value);
 
 int		check_allow_insecure_content(char **);
@@ -245,6 +251,9 @@ int		check_color_visited_uris(char **);
 int		check_cookie_policy(char **);
 int		check_cookies_enabled(char **);
 int		check_ctrl_click_focus(char **);
+int		check_cursive_font(char **tt);
+int		check_default_font(char **tt);
+int		check_default_font_size(char **tt);
 int		check_default_script(char **);
 int		check_default_zoom_level(char **);
 int		check_download_dir(char **);
@@ -268,6 +277,7 @@ int		check_enable_strict_transport(char **);
 int		check_encoding(char **);
 int		check_external_editor(char **);
 int		check_fancy_bar(char **);
+int		check_fantasy_font(char **tt);
 int		check_gnutls_search_string(char **);
 int		check_guess_search(char **);
 int		check_gui_mode(char **);
@@ -280,14 +290,18 @@ int		check_icon_size(char **);
 int		check_js_auto_open_windows(char **);
 int		check_max_connections(char **);
 int		check_max_host_connections(char **);
+int		check_min_font_size(char **tt);
+int		check_monospace_font(char **tt);
 int		check_oops_font(char **);
 int		check_read_only_cookies(char **);
 int		check_referer(char **);
 int		check_refresh_interval(char **);
 int		check_resource_dir(char **);
+int		check_sans_serif_font(char **tt);
 int		check_save_global_history(char **);
 int		check_save_rejected_cookies(char **);
 int		check_search_string(char **);
+int		check_serif_font(char **tt);
 int		check_session_autosave(char **);
 int		check_session_timeout(char **);
 int		check_show_scrollbars(char **);
@@ -313,11 +327,6 @@ int		check_window_maximize(char **);
 int		check_window_width(char **);
 int		check_work_dir(char **);
 int		check_do_not_track(char **);
-int		check_default_font(char **tt);
-int		check_default_font_size(char **tt);
-int		check_serif_font(char **tt);
-int		check_sans_serif_font(char **tt);
-int		check_min_font_size(char **tt);
 
 void		walk_mime_type(struct settings *, void (*)(struct settings *,
 		    char *, void *), void *);
@@ -531,6 +540,7 @@ struct settings		rs[] = {
 	{ "cookie_policy",		XT_S_STR, 0, NULL, NULL,&s_cookie, NULL, set_cookie_policy_rt, check_cookie_policy, TT_COOKIE_POLICY },
 	{ "cookies_enabled",		XT_S_BOOL, 0,		&cookies_enabled, NULL, NULL, NULL, set_cookies_enabled, check_cookies_enabled, TT_COOKIES_ENABLED },
 	{ "ctrl_click_focus",		XT_S_BOOL, 0,		&ctrl_click_focus, NULL, NULL, NULL, set_ctrl_click_focus, check_ctrl_click_focus, TT_CTRL_CLICK_FOCUS },
+	{ "cursive_font_family",	XT_S_STR, 0, NULL,	&cursive_font_family, NULL, NULL, set_cursive_font, check_cursive_font, TT_CURSIVE_FONT_FAMILY},
 	{ "default_font_family",	XT_S_STR, 0, NULL,	&default_font_family, NULL, NULL, set_default_font, check_default_font, TT_DEFAULT_FONT_FAMILY},
 	{ "default_font_size",		XT_S_INT, 0,		&default_font_size, NULL, NULL, NULL, set_default_font_size, check_default_font_size, TT_DEFAULT_FONT_SIZE},
 	{ "default_script",		XT_S_STR, 1, NULL, NULL,&s_default_script, NULL, set_default_script_rt, check_default_script, TT_DEFAULT_SCRIPT },
@@ -557,6 +567,7 @@ struct settings		rs[] = {
 	{ "encoding",			XT_S_STR, 0, NULL,	&encoding, NULL, NULL, NULL, check_encoding, TT_ENCODING },
 	{ "external_editor",		XT_S_STR,0, NULL,	&external_editor, NULL, NULL, set_external_editor, check_external_editor, TT_EXTERNAL_EDITOR },
 	{ "fancy_bar",			XT_S_BOOL,XT_SF_RESTART,&fancy_bar, NULL, NULL, NULL, set_fancy_bar, check_fancy_bar, TT_FANCY_BAR },
+	{ "fantasy_font_family",	XT_S_STR, 0, NULL,	&fantasy_font_family, NULL, NULL, set_cursive_font, check_cursive_font, TT_FANTASY_FONT_FAMILY},
 	{ "gnutls_priority_string",	XT_S_STR, 0, NULL, NULL,&s_gnutls_priority_string, NULL, NULL, check_gnutls_search_string, TT_GNUTLS_PRIORITY_STRING },
 	{ "guess_search",		XT_S_BOOL, 0,		&guess_search, NULL, NULL, NULL, set_guess_search, check_guess_search, TT_GUESS_SEARCH },
 	{ "gui_mode",			XT_S_STR, 0, NULL, NULL,&s_gui_mode, NULL, NULL, check_gui_mode, TT_GUI_MODE },
@@ -570,6 +581,7 @@ struct settings		rs[] = {
 	{ "max_connections",		XT_S_INT, XT_SF_RESTART,&max_connections, NULL, NULL, NULL, NULL, check_max_connections, TT_MAX_CONNECTIONS },
 	{ "max_host_connections",	XT_S_INT, XT_SF_RESTART,&max_host_connections, NULL, NULL, NULL, NULL, check_max_host_connections, TT_MAX_HOST_CONNECTIONS },
 	{ "minimum_font_size",		XT_S_INT, 0,		&min_font_size, NULL, NULL, NULL, set_min_font_size, check_min_font_size, TT_MINIMUM_FONT_SIZE},
+	{ "monospace_font_family",	XT_S_STR, 0, NULL,	&monospace_font_family, NULL, NULL, set_cursive_font, check_cursive_font, TT_MONOSPACE_FONT_FAMILY},
 	{ "oops_font",			XT_S_STR, 0, NULL, &oops_font_name, NULL, NULL, set_oops_font, check_oops_font, TT_OOPS_FONT },
 	{ "preload_strict_transport",	XT_S_BOOL, 0,		&preload_strict_transport, NULL, NULL, NULL, NULL, NULL, TT_PRELOAD_STRICT_TRANSPORT },
 	{ "read_only_cookies",		XT_S_BOOL, 0,		&read_only_cookies, NULL, NULL, NULL, NULL, check_read_only_cookies, TT_READ_ONLY_COOKIES },
@@ -1418,6 +1430,84 @@ check_sans_serif_font(char **tt)
 {
 	*tt = g_strdup_printf("Default: %s", XT_DS_SANS_SERIF_FONT);
 	return (g_strcmp0(sans_serif_font_family, XT_DS_SANS_SERIF_FONT));
+}
+
+int
+set_cursive_font(char *value)
+{
+	struct tab		*t;
+
+	if (value == NULL || strlen(value) == 0)
+		cursive_font_family = XT_DS_CURSIVE_FONT;
+	else {
+		if (cursive_font_family) {
+			g_free(cursive_font_family);
+		}
+		cursive_font_family = g_strdup(value);
+	}
+	TAILQ_FOREACH(t, &tabs, entry)
+		g_object_set(G_OBJECT(t->settings), "cursive-font-family",
+		    cursive_font_family, (char *)NULL);
+	return (0);
+}
+
+int
+check_cursive_font(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s", XT_DS_CURSIVE_FONT);
+	return (g_strcmp0(cursive_font_family, XT_DS_CURSIVE_FONT));
+}
+
+int
+set_fantasy_font(char *value)
+{
+	struct tab		*t;
+
+	if (value == NULL || strlen(value) == 0)
+		fantasy_font_family = XT_DS_FANTASY_FONT;
+	else {
+		if (fantasy_font_family) {
+			g_free(fantasy_font_family);
+		}
+		fantasy_font_family = g_strdup(value);
+	}
+	TAILQ_FOREACH(t, &tabs, entry)
+		g_object_set(G_OBJECT(t->settings), "fantasy-font-family",
+		    fantasy_font_family, (char *)NULL);
+	return (0);
+}
+
+int
+check_fantasy_font(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s", XT_DS_FANTASY_FONT);
+	return (g_strcmp0(fantasy_font_family, XT_DS_FANTASY_FONT));
+}
+
+int
+set_monospace_font(char *value)
+{
+	struct tab		*t;
+
+	if (value == NULL || strlen(value) == 0)
+		monospace_font_family = XT_DS_MONOSPACE_FONT;
+	else {
+		if (monospace_font_family) {
+			g_free(monospace_font_family);
+		}
+		monospace_font_family = g_strdup(value);
+	}
+	TAILQ_FOREACH(t, &tabs, entry)
+		g_object_set(G_OBJECT(t->settings), "monospace-font-family",
+		    monospace_font_family, (char *)NULL);
+	return (0);
+}
+
+int
+check_monospace_font(char **tt)
+{
+	*tt = g_strdup_printf("Default: %s", XT_DS_MONOSPACE_FONT);
+	return (g_strcmp0(monospace_font_family, XT_DS_MONOSPACE_FONT));
 }
 
 int

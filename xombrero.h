@@ -698,6 +698,9 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_DS_DEFAULT_FONT	("sans-serif")
 #define XT_DS_SERIF_FONT	("serif")
 #define XT_DS_SANS_SERIF_FONT	("sans-serif")
+#define XT_DS_CURSIVE_FONT	("serif")
+#define XT_DS_FANTASY_FONT	("serif")
+#define XT_DS_MONOSPACE_FONT	("monospace")
 #define XT_DS_DEFAULT_FONT_SIZE	(12)
 #define XT_DS_MIN_FONT_SIZE	(5)
 
@@ -978,6 +981,9 @@ extern char	*default_font_family;
 extern int	default_font_size;
 extern char	*serif_font_family;
 extern char	*sans_serif_font_family;
+extern char	*monospace_font_family;
+extern char	*cursive_font_family;
+extern char	*fantasy_font_family;
 extern int	min_font_size;
 
 /* globals */

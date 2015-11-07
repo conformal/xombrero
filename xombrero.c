@@ -6955,6 +6955,12 @@ setup_webkit(struct tab *t)
 	g_object_set(G_OBJECT(t->settings),
 	    "sans-serif-font-family", sans_serif_font_family, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
+	    "monospace-font-family", monospace_font_family, (char *)NULL);
+	g_object_set(G_OBJECT(t->settings),
+	    "cursive-font-family", cursive_font_family, (char *)NULL);
+	g_object_set(G_OBJECT(t->settings),
+	    "fantasy-font-family", fantasy_font_family, (char *)NULL);
+	g_object_set(G_OBJECT(t->settings),
 	    "default-font-size", default_font_size, (char *)NULL);
 	g_object_set(G_OBJECT(t->settings),
 	    "minimum-font-size", min_font_size, (char *)NULL);
@@ -8637,6 +8643,9 @@ main(int argc, char **argv)
 	default_font_family = g_strdup(XT_DS_DEFAULT_FONT);
 	serif_font_family = g_strdup(XT_DS_SERIF_FONT);
 	sans_serif_font_family = g_strdup(XT_DS_SANS_SERIF_FONT);
+	monospace_font_family = g_strdup(XT_DS_MONOSPACE_FONT);
+	cursive_font_family = g_strdup(XT_DS_CURSIVE_FONT);
+	cursive_font_family = g_strdup(XT_DS_FANTASY_FONT);
 
 	/* set statically allocated (struct special) settings */
 	if (strlen(default_script) == 0)
