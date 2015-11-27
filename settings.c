@@ -1555,8 +1555,8 @@ set_min_font_size(char *value)
 		min_font_size = tmp;
 	}
 	TAILQ_FOREACH(t, &tabs, entry)
-		g_object_set(G_OBJECT(t->settings), "default-font-size",
-		    default_font_size, (char *)NULL);
+		g_object_set(G_OBJECT(t->settings), "minimum-font-size",
+		    min_font_size, (char *)NULL);
 	return (0);
 }
 
