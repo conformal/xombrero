@@ -12,7 +12,7 @@ settings provide a secure environment. With simple keyboard commands,
 the user can "whitelist" specific sites, allowing cookies and scripts
 from those sites.
 
-For more information, please visit https://opensource.conformal.com/wiki/xombrero
+For more information, please visit https://github.com/conformal/xombrero/wiki
 
 ## GPG Verification Key
 

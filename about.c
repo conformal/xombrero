@@ -1257,7 +1257,7 @@ xtp_page_ab(struct tab *t, struct karg *args)
 	    "<li>David Hill &lt;dhill@mindcry.org&gt;</li>"
 	    "</ul>"
 	    "Copyrights and licenses can be found on the xombrero "
-	    "<a href=\"https://opensource.conformal.com/wiki/xombrero\">website</a>"
+	    "<a href=\"https://github.com/conformal/xombrero/wiki\">website</a>"
 	    "</p>",
 #ifdef XOMBRERO_BUILDSTR
 	    version, XOMBRERO_BUILDSTR,

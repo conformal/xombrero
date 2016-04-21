@@ -8473,7 +8473,7 @@ welcome(void)
 {
 	startpage_add("<b>Welcome to xombrero %s!</b><p>", version);
 	startpage_add("Details at "
-	    "<a href=https://opensource.conformal.com/wiki/xombrero>xombrero "
+	    "<a href=https://github.com/conformal/xombrero/wiki>xombrero "
 	    "wiki page</a><p>");
 }
 
