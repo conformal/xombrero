@@ -81,6 +81,7 @@ xombrero: xombrero.o marco.o about.o inspector.o whitelist.o settings.o \
 
 install: all
 	install -m 755 -d $(DESTDIR)$(BINDIR)
+	install -m 755 -d $(DESTDIR)$(RESDIR)
 	install -m 755 -d $(DESTDIR)$(MANDIR)/man1
 	install -m 755 -d $(DESTDIR)$(PREFIX)/share/applications
 	install -m 755 xombrero $(DESTDIR)$(BINDIR)
