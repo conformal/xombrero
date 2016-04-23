@@ -3,6 +3,7 @@
 *.orig
 *.rej
 *.rej.orig
+*.gz
 *~
 javascript.h
 xombrero
