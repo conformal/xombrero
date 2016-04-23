@@ -1,6 +1,22 @@
-PREFIX?=/usr/local
-BINDIR=${PREFIX}/bin
-CFLAGS+= -DXT_DS_RESOURCE_DIR=\"$(PREFIX)/share/xombrero/\"
+GTK_VERSION?= gtk3
+.if ${GTK_VERSION} == "gtk2"
+LIBS= gtk+-2.0 webkit-1.0
+.else
+LIBS= gtk+-3.0 webkitgtk-3.0
+.endif
+LIBS+= libsoup-2.4 gnutls
+
+LDADD= -lutil
+GTK_CFLAGS!= pkgconf --cflags $(LIBS)
+GTK_LDFLAGS!= pkgconf --libs $(LIBS)
+CFLAGS+= $(GTK_CFLAGS) -O2 -Wall -I. -I..
+LDFLAGS+= $(GTK_LDFLAGS)
+
+PREFIX?= /usr/local
+BINDIR?= $(PREFIX)/bin
+MANDIR?= $(PREFIX)/man/man
+RESDIR?= $(PREFIX)/share/xombrero
+CFLAGS+= -DXT_DS_RESOURCE_DIR=\"$(RESDIR)\"
 
 PROG=xombrero
 MAN=xombrero.1
@@ -34,8 +50,6 @@ BUILDVERSION != sh "${.CURDIR}/buildver.sh"
 CPPFLAGS+= -DXOMBRERO_BUILDSTR=\"$(BUILDVERSION)\"
 .endif
 
-MANDIR= ${PREFIX}/man/man
-
 CLEANFILES += ${.CURDIR}/javascript.h javascript.h tooltip.h xombrero.cat1 xombrero.core
 
 JSFILES += hinting.js
@@ -55,27 +69,43 @@ tooltip.h: ${MAN} ascii2txt.pl txt2tooltip.pl
 		perl ${.CURDIR}/ascii2txt.pl | \
 		perl ${.CURDIR}/txt2tooltip.pl > tooltip.h
 
-beforeinstall:
-	install -m 755 -d ${PREFIX}/bin
-	install -m 755 -d ${PREFIX}/man/man1/
-	install -m 755 -d ${PREFIX}/share/xombrero
-	install -m 755 -d ${PREFIX}/share/applications
-	install -m 644 ${.CURDIR}/xombrero.css ${PREFIX}/share/xombrero
-	install -m 644 ${.CURDIR}/xombrero.desktop ${PREFIX}/share/applications
-	install -m 644 ${.CURDIR}/xombreroicon16.png ${PREFIX}/share/xombrero
-	install -m 644 ${.CURDIR}/xombreroicon32.png ${PREFIX}/share/xombrero
-	install -m 644 ${.CURDIR}/xombreroicon48.png ${PREFIX}/share/xombrero
-	install -m 644 ${.CURDIR}/xombreroicon64.png ${PREFIX}/share/xombrero
-	install -m 644 ${.CURDIR}/xombreroicon128.png ${PREFIX}/share/xombrero
-	install -m 644 ${.CURDIR}/xombreroicon256.png ${PREFIX}/share/xombrero
-	install -m 644 ${.CURDIR}/favicon.ico ${PREFIX}/share/xombrero
-	install -m 644 ${.CURDIR}/tld-rules ${PREFIX}/share/xombrero
-	install -m 644 ${.CURDIR}/style.css ${PREFIX}/share/xombrero
-	install -m 644 ${.CURDIR}/hsts-preload ${PREFIX}/share/xombrero
-	install -m 644 ${.CURDIR}/user-agent-headers ${PREFIX}/share/xombrero
-	install -m 644 ${.CURDIR}/http-accept-headers ${PREFIX}/share/xombrero
-	install -m 644 ${.CURDIR}/torenabled.ico ${PREFIX}/share/xombrero
-	install -m 644 ${.CURDIR}/tordisabled.ico ${PREFIX}/share/xombrero
+
+CC?= cc
+
+all: javascript.h tooltip.h xombrero
+
+xombrero: xombrero.o marco.o about.o inspector.o whitelist.o settings.o \
+	cookie.o history.o completion.o inputfocus.o tldlist.o externaleditor.o \
+	unix.o platform.o
+	$(CC) $(LDFLAGS) -o $@ *.o $+ $(LDADD)
+
+install: all
+	install -m 755 -d $(DESTDIR)$(BINDIR)
+	install -m 755 -d $(DESTDIR)$(MANDIR)/man1
+	install -m 755 -d $(DESTDIR)$(PREFIX)/share/applications
+	install -m 755 xombrero $(DESTDIR)$(BINDIR)
+	install -m 644 xombrero.1 $(DESTDIR)$(MANDIR)/man1/xombrero.1
+	install -m 644 xombrero.css $(DESTDIR)$(RESDIR)
+	install -m 644 xombrero.desktop $(DESTDIR)$(PREFIX)/share/applications
+	install -m 644 xombreroicon16.png $(DESTDIR)$(RESDIR)
+	install -m 644 xombreroicon32.png $(DESTDIR)$(RESDIR)
+	install -m 644 xombreroicon48.png $(DESTDIR)$(RESDIR)
+	install -m 644 xombreroicon64.png $(DESTDIR)$(RESDIR)
+	install -m 644 xombreroicon128.png $(DESTDIR)$(RESDIR)
+	install -m 644 xombreroicon256.png $(DESTDIR)$(RESDIR)
+	install -m 644 favicon.ico $(DESTDIR)$(RESDIR)
+	install -m 644 tld-rules $(DESTDIR)$(RESDIR)
+	install -m 644 style.css $(DESTDIR)$(RESDIR)
+	install -m 644 hsts-preload $(DESTDIR)$(RESDIR)
+	install -m 644 torenabled.ico $(DESTDIR)$(RESDIR)
+	install -m 644 tordisabled.ico $(DESTDIR)$(RESDIR)
+
+clean:
+	rm -f xombrero *.o
+	rm -f javascript.h
+	rm -f tooltip.h
+
+.PHONY: all install clean
 
 ${PROG} ${OBJS} beforedepend: javascript.h tooltip.h
 
