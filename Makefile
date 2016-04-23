@@ -45,7 +45,7 @@ GTK_CFLAGS!= pkg-config --cflags $(LIBS)
 GTK_LDFLAGS!= pkg-config --libs $(LIBS)
 CFLAGS+= $(GTK_CFLAGS)
 LDFLAGS+= $(GTK_LDFLAGS)
-BUILDVERSION != sh "${.CURDIR}/buildver.sh"
+BUILDVERSION != sh "${.CURDIR}/scripts/buildver.sh"
 .if !${BUILDVERSION} == ""
 CPPFLAGS+= -DXOMBRERO_BUILDSTR=\"$(BUILDVERSION)\"
 .endif
@@ -60,14 +60,14 @@ JSFILES += autoscroll.js
 JSCURDIR += ${.CURDIR}/${_js}
 .endfor
 
-javascript.h: ${JSFILES} js-merge-helper.pl
-	perl ${.CURDIR}/js-merge-helper.pl \
+javascript.h: ${JSFILES} scripts/js-merge-helper.pl
+	perl ${.CURDIR}/scripts/js-merge-helper.pl \
 		${JSCURDIR} > javascript.h
 
-tooltip.h: ${MAN} ascii2txt.pl txt2tooltip.pl
+tooltip.h: ${MAN} scripts/ascii2txt.pl scripts/txt2tooltip.pl
 	mandoc -Tascii ${.CURDIR}/${MAN} | \
-		perl ${.CURDIR}/ascii2txt.pl | \
-		perl ${.CURDIR}/txt2tooltip.pl > tooltip.h
+		perl ${.CURDIR}/scripts/ascii2txt.pl | \
+		perl ${.CURDIR}/scripts/txt2tooltip.pl > tooltip.h
 
 
 CC?= cc
@@ -86,19 +86,19 @@ install: all
 	install -m 755 xombrero $(DESTDIR)$(BINDIR)
 	install -m 644 xombrero.1 $(DESTDIR)$(MANDIR)/man1/xombrero.1
 	install -m 644 xombrero.css $(DESTDIR)$(RESDIR)
-	install -m 644 xombrero.desktop $(DESTDIR)$(PREFIX)/share/applications
-	install -m 644 xombreroicon16.png $(DESTDIR)$(RESDIR)
-	install -m 644 xombreroicon32.png $(DESTDIR)$(RESDIR)
-	install -m 644 xombreroicon48.png $(DESTDIR)$(RESDIR)
-	install -m 644 xombreroicon64.png $(DESTDIR)$(RESDIR)
-	install -m 644 xombreroicon128.png $(DESTDIR)$(RESDIR)
-	install -m 644 xombreroicon256.png $(DESTDIR)$(RESDIR)
-	install -m 644 favicon.ico $(DESTDIR)$(RESDIR)
-	install -m 644 tld-rules $(DESTDIR)$(RESDIR)
 	install -m 644 style.css $(DESTDIR)$(RESDIR)
-	install -m 644 hsts-preload $(DESTDIR)$(RESDIR)
-	install -m 644 torenabled.ico $(DESTDIR)$(RESDIR)
-	install -m 644 tordisabled.ico $(DESTDIR)$(RESDIR)
+	install -m 644 xombrero.desktop $(DESTDIR)$(PREFIX)/share/applications
+	install -m 644 icons/xombreroicon16.png $(DESTDIR)$(RESDIR)
+	install -m 644 icons/xombreroicon32.png $(DESTDIR)$(RESDIR)
+	install -m 644 icons/xombreroicon48.png $(DESTDIR)$(RESDIR)
+	install -m 644 icons/xombreroicon64.png $(DESTDIR)$(RESDIR)
+	install -m 644 icons/xombreroicon128.png $(DESTDIR)$(RESDIR)
+	install -m 644 icons/xombreroicon256.png $(DESTDIR)$(RESDIR)
+	install -m 644 icons/favicon.ico $(DESTDIR)$(RESDIR)
+	install -m 644 icons/torenabled.ico $(DESTDIR)$(RESDIR)
+	install -m 644 icons/tordisabled.ico $(DESTDIR)$(RESDIR)
+	install -m 644 data/tld-rules $(DESTDIR)$(RESDIR)
+	install -m 644 data/hsts-preload $(DESTDIR)$(RESDIR)
 
 clean:
 	rm -f xombrero *.o
