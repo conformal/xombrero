@@ -882,6 +882,8 @@ extern int	browser_mode;
 extern int	enable_localstorage;
 extern char	*statusbar_elems;
 
+extern int	hinting_font_size;
+
 #if SOUP_CHECK_VERSION(2, 42, 2)
 extern GProxyResolver	*proxy_uri;
 extern gchar		*proxy_exclude[];

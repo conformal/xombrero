@@ -65,6 +65,7 @@ int		edit_mode = XT_EM_HYBRID;
 char		*include_config = NULL;
 int		anonymize_headers = 0;
 int		tabless = 0;	/* allow only 1 tab */
+int             hinting_font_size = 10; /* 10 px by default */
 
 /* runtime settings */
 int		show_tabs = XT_DS_SHOW_TABS;	/* show tabs on notebook */
@@ -293,6 +294,7 @@ int		check_statusbar_font(char **);
 int		check_statusbar_style(char **);
 int		check_tab_style(char **);
 int		check_tabless(char **);
+int		check_hinting_font_size(char **);
 int		check_tabbar_font(char **);
 int		check_url_regex(char **);
 int		check_userstyle(char **);
@@ -577,6 +579,7 @@ struct settings		rs[] = {
 	{ "tab_style",			XT_S_STR, 0, NULL, NULL,&s_tab_style, NULL, set_tab_style_rt, check_tab_style, TT_TAB_STYLE },
 	{ "tabbar_font",		XT_S_STR, 0, NULL, &tabbar_font_name, NULL, NULL, set_tabbar_font, check_tabbar_font, TT_TABBAR_FONT },
 	{ "tabless",			XT_S_BOOL, 0,		&tabless, NULL, NULL, NULL, NULL, check_tabless, TT_TABLESS },
+        { "hinting_font_size",          XT_S_INT, 0,            &hinting_font_size, NULL, NULL, NULL, NULL, check_hinting_font_size, TT_HINTING_FONT_SIZE },
 	{ "url_regex",			XT_S_STR, 0, NULL,	&url_regex, NULL, NULL, set_url_regex, check_url_regex, TT_URL_REGEX },
 	{ "userstyle",			XT_S_STR, 0, NULL, NULL,&s_userstyle, NULL, set_userstyle_rt, check_userstyle, TT_USERSTYLE },
 	{ "userstyle_global",		XT_S_BOOL, 0,		&userstyle_global, NULL, NULL, NULL, set_userstyle_global, check_userstyle_global, TT_USERSTYLE_GLOBAL },
@@ -3444,6 +3447,15 @@ check_window_width(char **tt)
 	return (window_width != 1024);
 }
 
+
+int
+check_hinting_font_size(char **tt)
+{
+	*tt = g_strdup_printf("Default: %d", 10);
+	return (hinting_font_size != 10);
+}
+
+ 
 int
 check_work_dir(char **tt)
 {
