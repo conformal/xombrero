@@ -25,6 +25,7 @@ DEBUG= -g
 
 SRCS= cookie.c inspector.c marco.c about.c whitelist.c settings.c inputfocus.c
 SRCS+= history.c completion.c tldlist.c externaleditor.c unix.c xombrero.c
+SRCS+= platform.c
 CFLAGS+= -O2 -Wall -Wno-format-extra-args -Wunused -Wextra -Wno-unused-parameter
 CFLAGS+= -Wno-missing-field-initializers -Wno-sign-compare
 CFLAGS+= -Wno-deprecated-declarations -Wfloat-equal ${DEBUG}
@@ -74,11 +75,6 @@ CC?= cc
 
 all: javascript.h tooltip.h xombrero
 
-xombrero: xombrero.o marco.o about.o inspector.o whitelist.o settings.o \
-	cookie.o history.o completion.o inputfocus.o tldlist.o externaleditor.o \
-	unix.o platform.o
-	$(CC) $(LDFLAGS) -o $@ *.o $+ $(LDADD)
-
 install: all
 	install -m 755 -d $(DESTDIR)$(BINDIR)
 	install -m 755 -d $(DESTDIR)$(RESDIR)
@@ -110,4 +106,5 @@ clean:
 
 ${PROG} ${OBJS} beforedepend: javascript.h tooltip.h
 
+.MAIN: all
 .include <bsd.prog.mk>
