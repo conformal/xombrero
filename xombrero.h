@@ -695,6 +695,15 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_DS_GNUTLS_PRIORITY_STRING	(NULL)
 #define XT_DS_JS_AUTO_OPEN_WINDOWS	(1)
 
+#define XT_DS_DEFAULT_FONT	("sans-serif")
+#define XT_DS_SERIF_FONT	("serif")
+#define XT_DS_SANS_SERIF_FONT	("sans-serif")
+#define XT_DS_CURSIVE_FONT	("serif")
+#define XT_DS_FANTASY_FONT	("serif")
+#define XT_DS_MONOSPACE_FONT	("monospace")
+#define XT_DS_DEFAULT_FONT_SIZE	(12)
+#define XT_DS_MIN_FONT_SIZE	(5)
+
 /* actions */
 #define XT_STYLE_CURRENT_TAB	(0)
 #define XT_STYLE_GLOBAL		(1)
@@ -967,6 +976,15 @@ extern int	preload_strict_transport;
 extern char	*gnutls_priority_string;
 extern int	anonymize_headers;
 extern int	js_auto_open_windows;
+
+extern char	*default_font_family;
+extern int	default_font_size;
+extern char	*serif_font_family;
+extern char	*sans_serif_font_family;
+extern char	*monospace_font_family;
+extern char	*cursive_font_family;
+extern char	*fantasy_font_family;
+extern int	min_font_size;
 
 /* globals */
 extern void		(*os_init)(void);
