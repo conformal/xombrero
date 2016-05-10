@@ -69,7 +69,7 @@
 				" background: #eeeeee;}\n"		\
 				"table#settings tr#modified{"		\
 				" background: #FFFFBA;}\n"		\
-				"table#settings tr#modified:nth-child(even){"	\
+				"table#settings tr#modified:nth-child(even){"\
 				" background: #ffffA0;}\n"		\
 				"</style>\n"
 
@@ -136,6 +136,7 @@ struct search_type {
 #define XT_XTP_SES_KEY_HEX_FMT  \
 	"%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8
 
+int			toplevelcount = 0;
 int			updating_fl_tabs = 0;
 int			updating_dl_tabs = 0;
 int			updating_hl_tabs = 0;
@@ -206,10 +207,14 @@ load_webkit_string(struct tab *t, const char *str, gchar *title, int nohist)
 		webkit_web_view_load_string(t->wv, str, NULL, encoding,
 		    XT_XTP_STR);
 #if GTK_CHECK_VERSION(2, 20, 0)
-		gtk_spinner_stop(GTK_SPINNER(t->spinner));
-		gtk_widget_hide(t->spinner);
+		if (t->gtktab_elems.spinner) {
+			gtk_spinner_stop(GTK_SPINNER(t->gtktab_elems.spinner));
+			gtk_widget_hide(t->gtktab_elems.spinner);
+			gtk_widget_show(t->gtktab_elems.favicon);
+		}
 #endif
-		snprintf(file, sizeof file, "%s" PS "%s", resource_dir, icons[0]);
+		snprintf(file, sizeof file, "%s" PS "%s", resource_dir, 
+		    icons[0]);
 		xt_icon_from_file(t, file);
 	}
 
@@ -782,8 +787,8 @@ xtp_handle_ab(struct tab *t, uint8_t cmd, int arg, const char *query)
 		g_strfreev(sv);
 		sv = g_strsplit_set(cmdstr, " \t", -1);
 
-		if (!g_spawn_async(NULL, sv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
-		    NULL, NULL))
+		if (!g_spawn_async(NULL, sv, NULL, G_SPAWN_SEARCH_PATH, NULL,
+		    NULL, NULL, NULL))
 			show_oops(t, "%s: could not spawn process", __func__);
 
 		g_strfreev(sv);
@@ -2130,9 +2135,12 @@ show_g_object_settings(GObject *o, char *str, int recurse)
 			if (p == NULL)
 				strspaces = XT_G_OBJECT_SPACING;
 			else
-				strspaces = strlen(tmpstr) - (strlen(p) - strlen(str)) + XT_G_OBJECT_SPACING + 5;
-			fmt = g_strdup_printf("%%s%%s    %%-%ds /* %%3d flags=0x%%08x */\n", strspaces);
-			body = g_strdup_printf(fmt, body, str, tmpstr, i, pspec->flags);
+				strspaces = strlen(tmpstr) - (strlen(p) -
+				    strlen(str)) + XT_G_OBJECT_SPACING + 5;
+			fmt = g_strdup_printf("%%s%%s    %%-%ds /* %%3d "
+			    "flags=0x%%08x */\n", strspaces);
+			body = g_strdup_printf(fmt, body, str, tmpstr, i,
+			    pspec->flags);
 			g_free(fmt);
 		}
 		g_free(tmpstr);
@@ -2178,8 +2186,6 @@ about_webkit(struct tab *t, struct karg *arg)
 	return (0);
 }
 
-static int		toplevelcount = 0;
-
 void
 xt_append_toplevel(GtkWindow *w, char **body)
 {
@@ -2199,7 +2205,8 @@ allthethings(struct tab *t, struct karg *arg)
 	body = xt_append_settings(NULL, G_OBJECT(t->wv), "t->wv", 1);
 	body = xt_append_settings(body, G_OBJECT(t->inspector),
 	    "t->inspector", 1);
-#if 0 /* not until warnings are gone */
+#if 0
+	/* not until warnings are gone */
 	body = xt_append_settings(body, G_OBJECT(session),
 	    "session", 1);
 #endif
@@ -2209,7 +2216,7 @@ allthethings(struct tab *t, struct karg *arg)
 	g_list_foreach(list, (GFunc)xt_append_toplevel, &body);
 	g_list_foreach(list, (GFunc)g_object_unref, NULL);
 	g_list_free(list);
-		
+
 	b = body;
 	body = g_strdup_printf("<pre>%scan paste clipboard = %d\n</pre>", body,
 	    webkit_web_view_can_paste_clipboard(t->wv));
