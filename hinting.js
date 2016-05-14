@@ -28,7 +28,7 @@ THE SOFTWARE.
 function Hints() {
     var config = {
         maxAllowedHints: 500,
-        hintCss: "z-index:100000;font-family:monospace;font-size:10px;"
+        hintCss: "z-index:100000;font-family:monospace;font-size:%%%HINTING_FONT_SIZE_PLACEHOLDER%%%px;"
                + "font-weight:bold;color:white;background-color:red;"
                + "padding:0px 1px;position:absolute;",
         hintClass: "hinting_mode_hint",

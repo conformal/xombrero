@@ -1079,6 +1079,9 @@ js_ref_to_string(JSContextRef context, JSValueRef ref)
 #define XT_JS_INSERT		("insert;")
 #define XT_JS_INSERT_LEN	(strlen(XT_JS_INSERT))
 
+static char *JS_HINTING_PARSED = NULL;
+#define JS_HINTING_ACTUAL (JS_HINTING_PARSED?JS_HINTING_PARSED:JS_HINTING)
+		
 int
 run_script(struct tab *t, char *s)
 {
@@ -1089,7 +1092,7 @@ run_script(struct tab *t, char *s)
 	char			*es;
 
 	DNPRINTF(XT_D_JS, "%s: tab %d %s\n", __func__,
-	    t->tab_id, s == (char *)JS_HINTING ? "JS_HINTING" : s);
+	    t->tab_id, s == (char *)JS_HINTING_ACTUAL ? "JS_HINTING" : s);
 
 	frame = webkit_web_view_get_main_frame(t->wv);
 	ctx = webkit_web_frame_get_global_context(frame);
@@ -4250,7 +4253,9 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		}
 
 		show_ca_status(t, uri);
-		run_script(t, JS_HINTING);
+                
+                
+		run_script(t, JS_HINTING_ACTUAL);
 		if (enable_autoscroll)
 			run_script(t, JS_AUTOSCROLL);
 		break;
@@ -8477,6 +8482,25 @@ welcome(void)
 	    "wiki page</a><p>");
 }
 
+
+void
+setup_hinting(void)
+{
+	const char *magic = "%%%HINTING_FONT_SIZE_PLACEHOLDER%%%";
+	size_t n_magic = strlen(magic);
+	size_t n_max = 0;
+  
+	if(!(JS_HINTING)) return;
+
+	char *magic_ptr = strstr(JS_HINTING, magic);
+	if(!magic_ptr) return;
+     
+	JS_HINTING_PARSED = malloc((n_max = strlen(JS_HINTING))+1);
+	char *rest = stpncpy(JS_HINTING_PARSED, JS_HINTING, magic_ptr-JS_HINTING);
+	snprintf(rest, n_max - (rest-JS_HINTING_PARSED), "%d%s",
+		 hinting_font_size, magic_ptr + n_magic);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -8914,6 +8938,8 @@ main(int argc, char **argv)
 	setup_css();
 #endif
 
+        setup_hinting();
+        
 	gtk_main();
 
 	gnutls_global_deinit();
