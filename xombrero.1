@@ -624,6 +624,15 @@ Enable or disable the proxy for
 Note that
 .Cm http_proxy
 must be set before it can be toggled.
+.It Cm proxy_bypass
+The
+.Cm proxy_bypass
+command is used to manipulate the currently set proxy bypass list.
+Used by itself it displays the proxy bypass list.
+.It Cm proxy_bypass save
+Adds the current domain to the proxy bypass list.
+.It Cm proxy_bypass toggle
+Adds or removes the current domain from the proxy_bypass list.
 .It Cm qa , qall , quitall
 Quit
 .Nm .
@@ -1498,6 +1507,12 @@ This list is comprised of domains chosen by the
 authors, as well as domains included in Chromium's preloaded HSTS
 list.
 Default is 1.
+.It Cm proxy_bypass
+This is a proxy_bypass item.  Use multiple times to add multiple entries.
+Valid entries are for example domain.com, 192.168.1.1, and fc00::/7.
+Entries in the proxy_bypass list will still be accessed directly when the
+proxy server is enabled.  This option is only applicable when using
+libsoup 2.42.2 or newer.
 .It Cm read_only_cookies
 Mark cookies file read-only and discard all cookies once the session is
 terminated.

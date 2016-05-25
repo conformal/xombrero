@@ -3467,6 +3467,12 @@ struct cmd {
 	{ "show",		1,	proxy_cmd,		XT_PRXY_SHOW,		0 },
 	{ "toggle",		1,	proxy_cmd,		XT_PRXY_TOGGLE,		0 },
 
+	/* proxy_bpass */
+	{ "proxy_bypass",	0,	proxy_bypass_cmd,	XT_PRXY_BYPASS_SHOW,	0 },
+	{ "save",		1,	proxy_bypass_cmd,	XT_PRXY_BYPASS_SAVE,	0 },
+	{ "show",		1,	proxy_bypass_cmd,	XT_PRXY_BYPASS_SHOW,	0 },
+	{ "toggle",		1,	proxy_bypass_cmd,	XT_PRXY_BYPASS_TOGGLE,	0 },
+
 	/* url mod */
 	{ "urlmod",		0,	urlmod_cmd,		XT_URL,			0 },
 	{ "plus",		1,	urlmod_cmd,		XT_URL_PLUS,		0 },

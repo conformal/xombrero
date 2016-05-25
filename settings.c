@@ -27,10 +27,11 @@
 /* globals */
 #if SOUP_CHECK_VERSION(2, 42, 2)
 GProxyResolver	*proxy_uri = NULL;
-gchar		*proxy_exclude[] = { "fc00::/7", "::1", "127.0.0.1", NULL };
 #else
 SoupURI		*proxy_uri = NULL;
 #endif
+gchar           **proxy_exclude = NULL;
+GArray		*proxy_bypass = NULL;
 
 PangoFontDescription	*cmd_font;
 PangoFontDescription	*oops_font;
@@ -149,6 +150,7 @@ int		add_alias(struct settings *, char *);
 int		add_kb(struct settings *, char *);
 int		add_ua(struct settings *, char *);
 int		add_http_accept(struct settings *, char *);
+int		add_proxy_bypass(struct settings *, char *);
 int		add_cmd_alias(struct settings *, char *);
 int		add_custom_uri(struct settings *, char *);
 int		add_force_https(struct settings *, char *);
@@ -495,6 +497,13 @@ struct special		s_force_https = {
 	{ NULL }
 };
 
+struct special		s_proxy_bypass = {
+	add_proxy_bypass,
+	NULL,
+	NULL,
+	{ NULL }
+};
+
 struct special		s_gnutls_priority_string = {
 	set_gnutls_priority_string,
 	get_gnutls_priority_string,
@@ -598,6 +607,7 @@ struct settings		rs[] = {
 	{ "mime_type",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_mime, NULL, NULL },
 	{ "pl_wl",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_pl, NULL, NULL },
 	{ "user_agent",			XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_ua, NULL, NULL },
+	{ "proxy_bypass",		XT_S_STR, XT_SF_RUNTIME, NULL, NULL, &s_proxy_bypass, NULL, NULL },
 };
 
 int
@@ -1904,6 +1914,84 @@ walk_http_accept(struct settings *s,
 
 	RB_FOREACH(ha, http_accept_list, &ha_list)
 		cb(s, ha->value, cb_args);
+}
+
+int
+proxy_bypass_work(const char *value, int option)
+{
+	gchar		*host, *entry;
+	gchar		**exclude;
+	int		i, found;
+
+	if (value == NULL)
+		return (0);
+
+	if (proxy_bypass == NULL) {
+		DNPRINTF(XT_D_CMD, "initializing proxy_bypass array\n");
+		proxy_bypass = g_array_sized_new(TRUE, TRUE, sizeof(gchar *), 10);
+	}
+
+	if (option & XT_PRXY_BYPASS_TOGGLE) {
+		for (i = found = 0; (entry = g_array_index(proxy_bypass, gchar *, i)) != NULL; i++) {
+			if (g_strcmp0(value, entry) == 0) {
+				DNPRINTF(XT_D_CMD, "removing host to proxy_bypass: %s\n", value);
+				g_array_remove_index(proxy_bypass, i);
+				g_free(entry);
+				goto done;
+			}
+		}
+	}
+
+	DNPRINTF(XT_D_CMD, "adding host to proxy_bypass: %s\n", value);
+	host = g_strdup(value);
+	g_array_append_val(proxy_bypass, host);
+
+done:
+        /* get number of entries */
+        for (i = 0; g_array_index(proxy_bypass, gchar *, i) != NULL; i++)
+                ;
+
+	exclude = g_malloc0((i+1) * sizeof(gchar *));
+	for (i = 0; (entry = g_array_index(proxy_bypass, gchar *, i)) != NULL; i++)
+		exclude[i] = entry;
+	exclude[i] = NULL;
+
+#if SOUP_CHECK_VERSION(2, 42, 2)
+	if (proxy_uri != NULL)
+		g_simple_proxy_resolver_set_ignore_hosts(G_SIMPLE_PROXY_RESOLVER(proxy_uri), exclude);
+	if (proxy_exclude != NULL)
+		g_free(proxy_exclude);
+	proxy_exclude = exclude;
+#endif
+
+	return (0);
+}
+
+int
+proxy_bypass_cmd(struct tab *t, struct karg *args)
+{
+	const gchar		*uri;
+	char			*dom;
+	int			rv = 0;
+
+	if (args->i & XT_PRXY_BYPASS_SHOW) {
+		rv = xtp_page_proxy(t, args);
+	} else {
+		uri = get_uri(t);
+		dom = find_domain(uri, args->i);
+
+		rv = proxy_bypass_work(dom, XT_PRXY_BYPASS_TOGGLE);
+
+		free(dom);
+	}
+
+	return (rv);
+}
+
+int
+add_proxy_bypass(struct settings *s, char *value)
+{
+	return proxy_bypass_work(value, XT_PRXY_BYPASS_SAVE);
 }
 
 int

@@ -106,6 +106,7 @@ struct about_type about_list[] = {
 	{ XT_URI_ABOUT_MARCO,		marco },
 	{ XT_URI_ABOUT_STARTPAGE,	startpage },
 	{ XT_URI_ABOUT_PLUGINWL,	pl_show_wl },
+	{ XT_URI_ABOUT_PROXY,		xtp_page_proxy },
 	{ XT_URI_ABOUT_HTTPS,		https_show_wl },
 	{ XT_URI_ABOUT_WEBKIT,		about_webkit },
 	{ XT_URI_ABOUT_SEARCH,		xtp_page_sl },
@@ -1788,6 +1789,43 @@ xtp_page_dl(struct tab *t, struct karg *args)
 	load_webkit_string(t, page, XT_URI_ABOUT_DOWNLOADS, 0);
 	g_free(page);
 
+	return (0);
+}
+
+int
+xtp_page_proxy(struct tab *t, struct karg *args)
+{
+	gchar		*page, *body, *tmp, *entry;
+	int		i;
+
+	if (t == NULL) {
+		show_oops(NULL, "about invalid paramenters");
+		return (-1);
+	}
+
+	generate_xtp_session_key(&t->session_key);
+
+	body = g_strdup_printf("<p>\n"
+			"Proxy Status: %s<br />\n"
+			"</p>"
+			"<h3>Proxy Bypass List</h3>"
+			"<p>\n",
+			http_proxy == NULL ? "off" : "on");
+
+	for (i = 0; (entry = g_array_index(proxy_bypass, gchar *, i)) != NULL; i++) {
+		tmp = body;
+		body = g_strdup_printf("%s&middot; %s<br />\n", tmp, entry);
+		g_free(tmp);
+	}
+	tmp = body;
+	body = g_strdup_printf("%s</p>\n", tmp);
+	g_free(tmp);
+
+	page = get_html_page("Proxy Information", body, "", 1);
+	load_webkit_string(t, page, XT_URI_ABOUT_PROXY, 0);
+
+	g_free(page);
+	g_free(body);
 	return (0);
 }
 

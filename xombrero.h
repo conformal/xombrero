@@ -410,6 +410,7 @@ int			valid_url_type(const char *);
 void			expand_tilde(char *, size_t, const char *);
 gchar			*html_escape(const char *val);
 void			set_status(struct tab *t, gchar *fmt, ...);
+gchar			*find_domain(const gchar *, int);
 
 void			load_webkit_string(struct tab *, const char *, gchar *, int);
 void			button_set_icon_name(GtkWidget *, char *);
@@ -444,6 +445,11 @@ int			edit_element(struct tab *t, struct karg *a);
 /* proxy */
 #define XT_PRXY_SHOW		(1<<0)
 #define XT_PRXY_TOGGLE		(1<<1)
+
+/* proxy_bypass */
+#define XT_PRXY_BYPASS_SAVE	(1<<0)
+#define XT_PRXY_BYPASS_SHOW	(1<<1)
+#define XT_PRXY_BYPASS_TOGGLE	(1<<2)
 
 /* url modify */
 #define XT_URL			(1<<0)
@@ -481,6 +487,7 @@ char			*tld_get_suffix(const char *);
 #define XT_URI_ABOUT_HISTORY	("history")
 #define XT_URI_ABOUT_JSWL	("jswl")
 #define XT_URI_ABOUT_PLUGINWL	("plwl")
+#define XT_URI_ABOUT_PROXY	("proxy")
 #define XT_URI_ABOUT_HTTPS	("https")
 #define XT_URI_ABOUT_SET	("set")
 #define XT_URI_ABOUT_STATS	("stats")
@@ -516,6 +523,7 @@ int			xtp_page_fl(struct tab *, struct karg *);
 int			xtp_page_hl(struct tab *, struct karg *);
 int			xtp_page_sl(struct tab *, struct karg *);
 int			xtp_page_sv(struct tab *, struct karg *);
+int			xtp_page_proxy(struct tab *, struct karg *);
 int			parse_xtp_url(struct tab *, const char *);
 int			add_favorite(struct tab *, struct karg *);
 void			update_favorite_tabs(struct tab *);
@@ -835,6 +843,7 @@ size_t		get_settings_size(void);
 int		settings_add(char *, char *);
 int		setup_proxy(const char *);
 int		proxy_cmd(struct tab *, struct karg *);
+int		proxy_bypass_cmd(struct tab *, struct karg *);
 int		set_browser_mode(struct settings *, char *);
 int		set_encoding(struct tab *, struct karg *);
 int		set_gui_mode(struct settings *, char *);
@@ -884,10 +893,10 @@ extern char	*statusbar_elems;
 
 #if SOUP_CHECK_VERSION(2, 42, 2)
 extern GProxyResolver	*proxy_uri;
-extern gchar		*proxy_exclude[];
 #else
 extern SoupURI		*proxy_uri;
 #endif
+extern gchar		**proxy_exclude;
 
 extern int	show_tabs;
 extern int	tab_style;
@@ -983,6 +992,7 @@ extern GtkNotebook	*notebook;
 extern GtkListStore	*completion_model;
 extern uint64_t		blocked_cookies;
 extern SoupSession	*session;
+extern GArray		*proxy_bypass;
 
 extern void	(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 extern void	(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
