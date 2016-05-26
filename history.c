@@ -19,6 +19,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+/* This module contains generic code for lists of web pages, as well
+as special handling for history and favorites. 
+
+The page lists are actually managed as red-black trees, but that's
+an implementation detail. */
+
+
 #include <xombrero.h>
 
 #define XT_HISTORY_FILE		("history")
@@ -28,10 +35,62 @@
 					* than MAX_HISTORY_AGE. */
 #define XT_MAX_HISTORY_AGE	(60.0 * 60.0 * 24 * 14) /* 14 days */
 
+/* remove what's pointed to by item from list.
+*/
+void 
+remove_pagelist_entry(struct pagelist *list, struct pagelist_entry *item)
+{
+	RB_REMOVE(pagelist, list, item);
+	g_free((gpointer) item->title);
+	g_free((gpointer) item->uri);
+	g_free(item);
+}
+
+/* remove the n-th item from a pagelist, counted from the end.
+
+Returns 0 on success, 1 if the list is too short.
+*/
+int 
+remove_pagelist_entry_by_count(struct pagelist *list,
+	int count)
+{
+	int 			i = 0;
+	struct pagelist_entry	*item, *next;
+
+	/* walk backwards, as listed in reverse */
+	for (item = RB_MAX(pagelist, list); item != NULL; item = next) {
+		next = RB_PREV(pagelist, list, item);
+		if (count == i) {
+			remove_pagelist_entry(list, item);
+			return 0;
+		}
+		i++;
+	}
+	return 1;
+}
+
+/* remove the first item with uri from a pagelist.
+
+It is not an error for no such entry to exist.
+*/
+void
+remove_pagelist_entry_by_uri(struct pagelist *list,
+	const gchar *uri)
+{
+	struct pagelist_entry *item;
+
+	RB_FOREACH(item, pagelist, list) {
+		if (item->uri==uri) {
+			remove_pagelist_entry(list, item);
+			break;
+		}
+	}
+}
+
 int
 purge_history(void)
 {
-	struct history		*h, *next;
+	struct pagelist_entry		*h, *next;
 	double			age = 0.0;
 
 	DNPRINTF(XT_D_HISTORY, "%s: hl_purge_count = %d (%d is max)\n",
@@ -40,9 +99,9 @@ purge_history(void)
 	if (hl_purge_count == XT_MAX_HL_PURGE_COUNT) {
 		hl_purge_count = 0;
 
-		for (h = RB_MIN(history_list, &hl); h != NULL; h = next) {
+		for (h = RB_MIN(pagelist, &hl); h != NULL; h = next) {
 
-			next = RB_NEXT(history_list, &hl, h);
+			next = RB_NEXT(pagelist, &hl, h);
 
 			age = difftime(time(NULL), h->time);
 
@@ -50,7 +109,7 @@ purge_history(void)
 				DNPRINTF(XT_D_HISTORY, "%s: removing %s (age %.1f)\n",
 				    __func__, h->uri, age);
 
-				RB_REMOVE(history_list, &hl, h);
+				RB_REMOVE(pagelist, &hl, h);
 				g_free(h->uri);
 				g_free(h->title);
 				g_free(h);
@@ -65,32 +124,46 @@ purge_history(void)
 }
 
 int
-insert_history_item(const gchar *uri, const gchar *title, time_t time)
+insert_pagelist_entry(struct pagelist *list,
+	const gchar *uri, const gchar *title, time_t time)
 {
-	struct history		*h;
+	struct pagelist_entry		*h;
 
 	if (!(uri && strlen(uri) && title && strlen(title)))
 		return (1);
 
-	h = g_malloc(sizeof(struct history));
+	h = g_malloc(sizeof(struct pagelist_entry));
 	h->uri = g_strdup(uri);
 	h->title = g_strdup(title);
 	h->time = time;
 
 	DNPRINTF(XT_D_HISTORY, "%s: adding %s\n", __func__, h->uri);
 
-	RB_INSERT(history_list, &hl, h);
-	completion_add_uri(h->uri);
-	hl_purge_count++;
-
-	purge_history();
-	update_history_tabs(NULL);
-
+	RB_INSERT(pagelist, list, h);
+	
 	return (0);
 }
 
+/* delete all items in a pagelist */
+void
+empty_pagelist(struct pagelist *list)
+{
+	struct pagelist_entry *item;
+
+	RB_FOREACH(item, pagelist, list) {
+		RB_REMOVE(pagelist, list, item);
+		g_free(item->uri);
+		g_free(item->title);
+		g_free(item);
+	}
+}
+
+
+/* This function reads old-style (up to 1.6.4) history files.
+It should go once we can reasonably assume all those have been
+updated */
 int
-restore_global_history(void)
+load_pagelist_from_disk_legacy(struct pagelist *list, char *file_name)
 {
 	char			file[PATH_MAX];
 	FILE			*f;
@@ -99,7 +172,7 @@ restore_global_history(void)
 	struct tm		tm;
 	const char		delim[3] = {'\\', '\\', '\0'};
 
-	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_HISTORY_FILE);
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, file_name);
 
 	if ((f = fopen(file, "r")) == NULL) {
 		warnx("%s: fopen", __func__);
@@ -123,14 +196,16 @@ restore_global_history(void)
 				goto done;
 			}
 
-		if (strptime(stime, "%a %b %d %H:%M:%S %Y", &tm) == NULL) {
+		/* TODO: This is locale-dependent and breaks in non-C */
+		if (strptime(stime, "%a %b %d %H:%M:%S %Y", &tm) 
+				== NULL) {
 			err = "strptime failed to parse time";
 			goto done;
 		}
 
 		time = mktime(&tm);
 
-		if (insert_history_item(uri, title, time)) {
+		if (insert_pagelist_entry(list, uri, title, time)) {
 			err = "failed to insert item";
 			goto done;
 		}
@@ -156,25 +231,138 @@ done:
 	return (0);
 }
 
+/* load a list of url/title pairs from disk into memory.
+
+
+This returns 0 if all went well, 2 if the magic wasn't found, 1 for
+all other errors.
+*/
 int
-save_global_history_to_disk(struct tab *t)
+load_pagelist_from_disk(struct pagelist *list, char *file_name)
 {
 	char			file[PATH_MAX];
 	FILE			*f;
-	struct history		*h;
+	gchar			*uri, *title = NULL, *stime = NULL, *err = NULL;
+	gchar			*magic;
+	time_t			time;
+	struct tm		tm;
+	const char		delim[3] = {'\\', '\\', '\0'};
 
-	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_HISTORY_FILE);
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, file_name);
 
-	if ((f = fopen(file, "w")) == NULL) {
-		show_oops(t, "%s: global history file: %s",
-		    __func__, strerror(errno));
+	if ((f = fopen(file, "r")) == NULL) {
+		warnx("%s: fopen", __func__);
 		return (1);
 	}
 
-	RB_FOREACH_REVERSE(h, history_list, &hl) {
-		if (h->uri && h->title && h->time)
-			fprintf(f, "%s\n%s\n%s", h->uri, h->title,
-			    ctime(&h->time));
+	if ((magic = fparseln(f, NULL, NULL, delim, 0)) == NULL) {
+		return 2;
+	} else {
+		if (0!=strncmp(XT_PAGELIST_MAGIC, magic, 
+			strlen(XT_PAGELIST_MAGIC))) {
+			return 2;
+		}
+	}
+
+	for (;;) {
+		if ((uri = fparseln(f, NULL, NULL, delim, 0)) == NULL)
+			if (feof(f) || ferror(f))
+				break;
+
+		if ((title = fparseln(f, NULL, NULL, delim, 0)) == NULL)
+			if (feof(f) || ferror(f)) {
+				err = "broken history file (title)";
+				goto done;
+			}
+
+		if ((stime = fparseln(f, NULL, NULL, delim, 0)) == NULL)
+			if (feof(f) || ferror(f)) {
+				err = "broken history file (time)";
+				goto done;
+			}
+
+		if (strptime(stime, XT_PAGELIST_DATEFMT, &tm) 
+				== NULL) {
+			err = "strptime failed to parse time";
+			goto done;
+		}
+
+		time = mktime(&tm);
+
+		if (insert_pagelist_entry(list, uri, title, time)) {
+			err = "failed to insert item";
+			goto done;
+		}
+
+		free(uri);
+		free(title);
+		free(stime);
+		uri = NULL;
+		title = NULL;
+		stime = NULL;
+	}
+
+done:
+	if (err && strlen(err)) {
+		warnx("%s: %s\n", __func__, err);
+		free(uri);
+		free(title);
+		free(stime);
+
+		return (1);
+	}
+
+	return (0);
+}
+
+
+/* format and write a single pagelist entry to f 
+
+Returns 0 on success, 1 if formatting failed; in the latter case,
+the entry is not written.
+*/
+int
+write_pagelist_entry(FILE *f, struct pagelist_entry *entry)
+{
+	char		formatted_time[XT_PAGELIST_DATELENGTH];
+	struct tm	*timestamp = gmtime(&(entry->time));
+
+	if (timestamp == NULL
+		|| !strftime(formatted_time, XT_PAGELIST_DATELENGTH,
+			XT_PAGELIST_DATEFMT, timestamp)) {
+		warnx("%s: date formatting failed",
+		__func__);
+		return (1);
+	}
+	if (entry->uri && entry->title) {
+		fprintf(f, "%s\n%s\n%s\n", entry->uri, entry->title,
+		    formatted_time);
+	} else {
+		return 1;
+	}
+	return 0;
+}
+
+
+int
+save_pagelist_to_disk(struct pagelist *list, char *file_name)
+{
+	char			file[PATH_MAX];
+	FILE			*f;
+	struct pagelist_entry	*h;
+
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, file_name);
+
+	if ((f = fopen(file, "w")) == NULL) {
+		warnx("%s: global history file: %s",
+		    __func__, strerror(errno));
+		return (1);
+	}
+	fprintf(f, "%s\n", XT_PAGELIST_MAGIC);
+	
+
+	RB_FOREACH_REVERSE(h, pagelist, list) {
+		write_pagelist_entry(f, h);
 	}
 
 	fclose(f);
@@ -190,9 +378,9 @@ char *
 color_visited_helper(void)
 {
 	char			*d, *s = NULL, *t;
-	struct history		*h;
+	struct pagelist_entry		*h;
 
-	RB_FOREACH_REVERSE(h, history_list, &hl) {
+	RB_FOREACH_REVERSE(h, pagelist, &hl) {
 		if (s == NULL)
 			s = g_strdup_printf("'%s':'dummy'", h->uri);
 		else {
@@ -244,4 +432,44 @@ color_visited(struct tab *t, char *visited)
 	g_free(visited);
 
 	return (0);
+}
+
+int
+insert_history_item(const gchar *uri, const gchar *title, time_t time)
+{
+	int retval;
+
+	retval = (insert_pagelist_entry(&hl, uri, title, time));
+
+	if (retval==0) {
+		completion_add_uri(uri);
+		hl_purge_count++;
+	}
+
+	purge_history();
+	update_history_tabs(NULL);
+
+	return (retval);
+}
+
+int
+restore_global_history(void)
+{
+	int retval;
+
+	if (2 == (retval = load_pagelist_from_disk(
+		&hl, XT_HISTORY_FILE))) {
+		retval = load_pagelist_from_disk_legacy(
+			&hl, XT_HISTORY_FILE);
+	}
+	return retval;
+}
+
+int
+save_global_history_to_disk(struct tab *t)
+{
+	/* tab was passed for error messaging; we're now using warnx 
+	in save_pagelist and hence don't need that any more.  Do we? */
+	return (save_pagelist_to_disk(
+		&hl, XT_HISTORY_FILE));
 }

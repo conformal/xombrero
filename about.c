@@ -562,27 +562,15 @@ xtp_handle_dl(struct tab *t, uint8_t cmd, int id, const char *query)
 void
 xtp_handle_hl(struct tab *t, uint8_t cmd, int id, const char *query)
 {
-	struct history		*h, *next, *ht;
-	int			i = 1;
+	struct pagelist_entry	*h, *ht;
 
 	switch (cmd) {
 	case XT_XTP_HL_REMOVE:
-		/* walk backwards, as listed in reverse */
-		for (h = RB_MAX(history_list, &hl); h != NULL; h = next) {
-			next = RB_PREV(history_list, &hl, h);
-			if (id == i) {
-				RB_REMOVE(history_list, &hl, h);
-				g_free((gpointer) h->title);
-				g_free((gpointer) h->uri);
-				g_free(h);
-				break;
-			}
-			i++;
-		}
+		remove_pagelist_entry_by_count(&hl, 1);
 		break;
 	case XT_XTP_HL_REMOVE_ALL:
-		RB_FOREACH_SAFE(h, history_list, &hl, ht)
-			RB_REMOVE(history_list, &hl, h);
+		RB_FOREACH_SAFE(h, pagelist, &hl, ht)
+			remove_pagelist_entry(&hl, h);
 		break;
 	case XT_XTP_HL_LIST:
 		/* Nothing - just xtp_page_hl() below */
@@ -595,95 +583,32 @@ xtp_handle_hl(struct tab *t, uint8_t cmd, int id, const char *query)
 	xtp_page_hl(t, NULL);
 }
 
-/* remove a favorite */
 void
 remove_favorite(struct tab *t, int index)
 {
-	char			file[PATH_MAX], *title, *uri = NULL;
-	char			*new_favs, *tmp;
-	FILE			*f;
-	int			i;
-	size_t			len, lineno;
-
-	/* open favorites */
-	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_FAVS_FILE);
-
-	if ((f = fopen(file, "r")) == NULL) {
-		show_oops(t, "%s: can't open favorites: %s",
-		    __func__, strerror(errno));
+	/* Load before manipulation in case other processes have changed
+	the file beneath us */
+	if (restore_favorites()) {
+		show_oops(t, "Error reading favorites file: %s",
+		    strerror(errno));
 		return;
 	}
+	
+	remove_pagelist_entry_by_count(&favs, index);
 
-	/* build a string which will become the new favorites file */
-	new_favs = g_strdup("");
-
-	for (i = 1;;) {
-		if ((title = fparseln(f, &len, &lineno, NULL, 0)) == NULL)
-			if (feof(f) || ferror(f))
-				break;
-		/* XXX THIS IS NOT THE RIGHT HEURISTIC */
-		if (len == 0) {
-			free(title);
-			title = NULL;
-			continue;
-		}
-
-		if ((uri = fparseln(f, &len, &lineno, NULL, 0)) == NULL) {
-			if (feof(f) || ferror(f)) {
-				show_oops(t, "%s: can't parse favorites %s",
-				    __func__, strerror(errno));
-				goto clean;
-			}
-		}
-
-		/* as long as this isn't the one we are deleting add to file */
-		if (i != index) {
-			tmp = new_favs;
-			new_favs = g_strdup_printf("%s%s\n%s\n",
-			    new_favs, title, uri);
-			g_free(tmp);
-		}
-
-		free(uri);
-		uri = NULL;
-		free(title);
-		title = NULL;
-		i++;
+	if (save_pagelist_to_disk(&favs, XT_FAVS_FILE)) {
+		update_favorite_tabs(NULL);
 	}
-	fclose(f);
-
-	/* write back new favorites file */
-	if ((f = fopen(file, "w")) == NULL) {
-		show_oops(t, "%s: can't open favorites: %s",
-		    __func__, strerror(errno));
-		goto clean;
-	}
-
-	if (fwrite(new_favs, strlen(new_favs), 1, f) != 1)
-		show_oops(t, "%s: can't fwrite", __func__);
-	fclose(f);
-
-clean:
-	if (uri)
-		free(uri);
-	if (title)
-		free(title);
-
-	g_free(new_favs);
+	/* TODO: We should remove the URI from the list of completions here,
+	too */
 }
 
 int
 add_favorite(struct tab *t, struct karg *args)
 {
-	char			file[PATH_MAX];
-	FILE			*f;
-	char			*line = NULL;
-	size_t			urilen, linelen;
-	gchar			*argtitle = NULL;
 	const gchar		*uri, *title;
-
-	if (t == NULL)
-		return (1);
+	gchar			*argtitle = NULL;
+	int 			retval;
 
 	/* don't allow adding of xtp pages to favorites */
 	if (t->xtp_meaning != XT_XTP_TAB_MEANING_NORMAL) {
@@ -691,55 +616,98 @@ add_favorite(struct tab *t, struct karg *args)
 		return (1);
 	}
 
-	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_FAVS_FILE);
-	if ((f = fopen(file, "r+")) == NULL) {
-		show_oops(t, "Can't open favorites file: %s", strerror(errno));
-		return (1);
+	/* Load before manipulation in case other processes have changed
+	the file beneath us */
+	if (restore_favorites()) {
+		show_oops(t, "Error reading favorites file: %s",
+		    strerror(errno));
+		return 1;
 	}
 
 	if (args->s && strlen(g_strstrip(args->s)))
 		argtitle = html_escape(g_strstrip(args->s));
-
+	
 	title = argtitle ? argtitle : get_title(t, FALSE);
 	uri = get_uri(t);
+	insert_pagelist_entry(&favs, uri, title, 0);
+	completion_add_uri(uri);
 
-	if (title == NULL || uri == NULL) {
-		show_oops(t, "can't add page to favorites");
-		goto done;
+	if ((retval = save_pagelist_to_disk(&favs, XT_FAVS_FILE))) {
+
+		update_favorite_tabs(NULL);
+	}
+	if (argtitle) 
+		g_free(argtitle);
+
+	return (retval);
+}
+
+/* read legacy (up to 1.6.4) favorites 
+
+We don't write these any more, so this function should be removed once
+we're satisfied all old files have been updated.
+*/
+static int
+load_legacy_favorites(char *file_name)
+{
+	char                    *uri = NULL, *title = NULL;
+	size_t                  len, lineno;
+	int                     failed = 0;
+	const char              delim[3] = {'\\', '\\', '\0'};
+	char			file[PATH_MAX];
+	FILE 			*f;
+	
+	snprintf(file, sizeof file, "%s" PS "%s", work_dir, file_name);
+	f = fopen(file, "r");
+	if (!f) {
+		return 1;
 	}
 
-	urilen = strlen(uri);
+	for (lineno = 1;;) {
+		if ((title = fparseln(f, &len, &lineno, delim, 0)) == NULL)
+			break;
+		if (strlen(title) == 0) {
+			free(title);
+			title = NULL;
+			continue;
+		}
 
-	for (;;) {
-		if ((line = fparseln(f, &linelen, NULL, NULL, 0)) == NULL) {
-			if (feof(f))
+		if ((uri = fparseln(f, &len, &lineno, delim, 0)) == NULL) {
+			if (feof(f) || ferror(f)) {
+				failed = 1;
 				break;
-			else {
-				show_oops(t, "Error reading favorites file: %s",
-				    strerror(errno));
-				goto done;
 			}
 		}
 
-		if (linelen == urilen && !strcmp(line, uri))
-			goto done;
-
-		free(line);
-		line = NULL;
+		insert_pagelist_entry(&favs, uri, title, 0);
+		free(title);
+		free(uri);
+		lineno += 1;
 	}
 
-	fprintf(f, "\n%s\n%s", title, uri);
-done:
-	if (argtitle)
-		g_free(argtitle);
-	if (line)
-		free(line);
 	fclose(f);
-
-	update_favorite_tabs(NULL);
-
-	return (0);
+	return failed;
 }
+
+/* Pull the list of favorites into memory.  
+
+This supports loading old-style favorite lists (title/url) in addition
+to the new standard pagelist format.
+*/
+int
+restore_favorites(void)
+{
+	int			retval;
+
+	empty_pagelist(&favs);
+
+	if (2 == (retval = load_pagelist_from_disk(&favs, XT_FAVS_FILE))) {
+		retval = load_legacy_favorites(XT_FAVS_FILE);
+	}
+	
+	return retval;
+}
+
 
 char *
 search_engine_add(char *body, const char *name, const char *url,
@@ -1291,13 +1259,9 @@ xtp_page_ab(struct tab *t, struct karg *args)
 int
 xtp_page_fl(struct tab *t, struct karg *args)
 {
-	char			file[PATH_MAX];
-	FILE			*f;
-	char			*uri = NULL, *title = NULL;
-	size_t			len, lineno = 0;
-	int			i, failed = 0;
+	int			row = 0, failed = 0;
 	char			*body, *tmp, *page = NULL;
-	const char		delim[3] = {'\\', '\\', '\0'};
+	struct pagelist_entry	*item;
 
 	DNPRINTF(XT_D_FAVORITE, "%s:", __func__);
 
@@ -1308,13 +1272,6 @@ xtp_page_fl(struct tab *t, struct karg *args)
 
 	generate_xtp_session_key(&t->session_key);
 
-	/* open favorites */
-	snprintf(file, sizeof file, "%s" PS "%s", work_dir, XT_FAVS_FILE);
-	if ((f = fopen(file, "r")) == NULL) {
-		show_oops(t, "Can't open favorites file: %s", strerror(errno));
-		return (1);
-	}
-
 	/* body */
 	if (args && args->i & XT_DELETE)
 		body = g_strdup_printf("<table style='table-layout:fixed'><tr>"
@@ -1324,22 +1281,7 @@ xtp_page_fl(struct tab *t, struct karg *args)
 		body = g_strdup_printf("<table style='table-layout:fixed'><tr>"
 		    "<th style='width: 40px'>&#35;</th><th>Link</th></tr>\n");
 
-	for (i = 1;;) {
-		if ((title = fparseln(f, &len, &lineno, delim, 0)) == NULL)
-			break;
-		if (strlen(title) == 0) {
-			free(title);
-			title = NULL;
-			continue;
-		}
-
-		if ((uri = fparseln(f, &len, &lineno, delim, 0)) == NULL)
-			if (feof(f) || ferror(f)) {
-				show_oops(t, "favorites file corrupt");
-				failed = 1;
-				break;
-			}
-
+	RB_FOREACH_REVERSE(item, pagelist, &favs) {
 		tmp = body;
 		if (args && args->i & XT_DELETE)
 			body = g_strdup_printf("%s<tr>"
@@ -1348,28 +1290,23 @@ xtp_page_fl(struct tab *t, struct karg *args)
 			    "<td style='text-align: center'>"
 			    "<a href='%s%d/%s/%d/%d'>X</a></td>"
 			    "</tr>\n",
-			    body, i, uri, title,
+			    body, row, item->uri, item->title,
 			    XT_XTP_STR, XT_XTP_FL,
 			    t->session_key ? t->session_key : "",
-			    XT_XTP_FL_REMOVE, i);
+			    XT_XTP_FL_REMOVE, row);
 		else
 			body = g_strdup_printf("%s<tr>"
 			    "<td>%d</td>"
 			    "<td><a href='%s'>%s</a></td>"
 			    "</tr>\n",
-			    body, i, uri, title);
+			    body, row, item->uri, item->title);
 		g_free(tmp);
 
-		free(uri);
-		uri = NULL;
-		free(title);
-		title = NULL;
-		i++;
+		row++;
 	}
-	fclose(f);
 
 	/* if none, say so */
-	if (i == 1) {
+	if (row == 1) {
 		tmp = body;
 		body = g_strdup_printf("%s<tr>"
 		    "<td colspan='%d' style='text-align: center'>"
@@ -1381,11 +1318,6 @@ xtp_page_fl(struct tab *t, struct karg *args)
 	tmp = body;
 	body = g_strdup_printf("%s</table>", body);
 	g_free(tmp);
-
-	if (uri)
-		free(uri);
-	if (title)
-		free(title);
 
 	/* render */
 	if (!failed) {
@@ -1652,7 +1584,7 @@ int
 xtp_page_hl(struct tab *t, struct karg *args)
 {
 	char			*body, *page, *tmp;
-	struct history		*h;
+	struct pagelist_entry		*h;
 	int			i = 1; /* all ids start 1 */
 
 	DNPRINTF(XT_D_CMD, "%s", __func__);
@@ -1672,7 +1604,7 @@ xtp_page_hl(struct tab *t, struct karg *args)
 	    "<th style='width: 40px'>Rm</th></tr>\n",
 	    XT_XTP_STR, XT_XTP_HL, t->session_key, XT_XTP_HL_REMOVE_ALL);
 
-	RB_FOREACH_REVERSE(h, history_list, &hl) {
+	RB_FOREACH_REVERSE(h, pagelist, &hl) {
 		tmp = body;
 		body = g_strdup_printf(
 		    "%s\n<tr>"

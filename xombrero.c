@@ -208,8 +208,9 @@ GtkWidget		*tab_bar_box;
 GtkWidget		*arrow, *abtn;
 GdkEvent		*fevent = NULL;
 struct tab_list		tabs;
-struct history_list	hl;
+struct pagelist		hl;
 int			hl_purge_count = 0;
+struct pagelist		favs;
 struct session_list	sessions;
 struct wl_list		c_wl;
 struct wl_list		js_wl;
@@ -689,11 +690,11 @@ int			download_rb_cmp(struct download *, struct download *);
 gboolean		cmd_execute(struct tab *t, char *str);
 
 int
-history_rb_cmp(struct history *h1, struct history *h2)
+pagelist_rb_cmp(struct pagelist_entry *h1, struct pagelist_entry *h2)
 {
 	return (strcmp(h1->uri, h2->uri));
 }
-RB_GENERATE(history_list, history, entry, history_rb_cmp);
+RB_GENERATE(pagelist, pagelist_entry, entry, pagelist_rb_cmp);
 
 int
 download_rb_cmp(struct download *e1, struct download *e2)
@@ -4150,7 +4151,7 @@ void
 notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 {
 	const gchar		*uri = NULL;
-	struct history		*h, find;
+	struct pagelist_entry		*h, find;
 	struct karg		a;
 #if !GTK_CHECK_VERSION(3, 0, 0)
 	gchar			*text, *base;
@@ -4285,7 +4286,7 @@ notify_load_status_cb(WebKitWebView* wview, GParamSpec* pspec, struct tab *t)
 		    !strncmp(uri, "https://", strlen("https://")) ||
 		    !strncmp(uri, "file://", strlen("file://"))) {
 			find.uri = (gchar *)uri;
-			h = RB_FIND(history_list, &hl, &find);
+			h = RB_FIND(pagelist, &hl, &find);
 			if (!h)
 				insert_history_item(uri,
 				    get_title(t, FALSE), time(NULL));
@@ -6142,13 +6143,17 @@ match_uri(const gchar *uri, const gchar *key) {
 	if (!strncmp(key, uri, len))
 		match = TRUE;
 	else {
-		voffset = strstr(uri, "/") + 2;
-		if (!strncmp(key, voffset, len))
-			match = TRUE;
-		else if (g_str_has_prefix(voffset, "www.")) {
+		if (complete_uri_anywhere) {
+			match = !! strstr(uri, key);
+		} else {
+		  voffset = strstr(uri, "/") + 2;
+		  if (!strncmp(key, voffset, len))
+			  match = TRUE;
+		  else if (g_str_has_prefix(voffset, "www.")) {
 			voffset = voffset + strlen("www.");
 			if (!strncmp(key, voffset, len))
 				match = TRUE;
+			}
 		}
 	}
 
@@ -6168,7 +6173,7 @@ void
 cmd_getlist(int id, char *key)
 {
 	int			i,  dep, c = 0;
-	struct history		*h;
+	struct pagelist_entry		*h;
 	struct session		*s;
 
 	if (key == NULL)
@@ -6176,7 +6181,22 @@ cmd_getlist(int id, char *key)
 
 	if (id >= 0) {
 		if (cmds[id].type & XT_URLARG) {
-			RB_FOREACH_REVERSE(h, history_list, &hl)
+			/* It'd be great if we could use the 
+			completion_model here.  Alas, GtkTreeModel apparently
+			has no API to access the char * in there; it seems
+			you only can get copies from there, which would
+			then have to be freed by the calling function.
+			Hence, we manually to through history and favourites
+			for now. */
+
+			RB_FOREACH_REVERSE(h, pagelist, &favs)
+				if (match_uri(h->uri, key)) {
+					cmd_status.list[c] = (char *)h->uri;
+					if (++c > 255)
+						break;
+				}
+
+			RB_FOREACH_REVERSE(h, pagelist, &hl)
 				if (match_uri(h->uri, key)) {
 					cmd_status.list[c] = (char *)h->uri;
 					if (++c > 255)
@@ -8874,6 +8894,14 @@ main(int argc, char **argv)
 
 	if (save_global_history)
 		restore_global_history();
+
+	/* pull favorites into memory */
+	if (!restore_favorites()) {
+		struct pagelist_entry	*item;
+		RB_FOREACH(item, pagelist, &favs) {
+			completion_add_uri(item->uri);
+		}
+	}
 
 	/* restore session list */
 	restore_sessions_list();
