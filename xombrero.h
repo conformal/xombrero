@@ -325,14 +325,14 @@ struct download {
 RB_HEAD(download_list, download);
 RB_PROTOTYPE(download_list, download, entry, download_rb_cmp);
 
-struct history {
-	RB_ENTRY(history)	entry;
-	gchar			*uri;
-	gchar			*title;
-	time_t			time; /* When the item was added. */
+struct pagelist_entry {
+	RB_ENTRY(pagelist_entry)	entry;
+	gchar				*uri;
+	gchar				*title;
+	time_t	 			time; /* When the item was added. */
 };
-RB_HEAD(history_list, history);
-RB_PROTOTYPE(history_list, history, entry, history_rb_cmp);
+RB_HEAD(pagelist, pagelist_entry);
+RB_PROTOTYPE(pagelist, pagelist_entry, entry, pagelist_rb_cmp);
 
 #define XT_STS_FLAGS_INCLUDE_SUBDOMAINS		(1)
 #define XT_STS_FLAGS_EXPAND			(2)
@@ -425,12 +425,22 @@ void	setup_cookies(void);
 void	soup_cookie_jar_add_cookie(SoupCookieJar *, SoupCookie *);
 void	soup_cookie_jar_delete_cookie(SoupCookieJar *, SoupCookie *);
 
-/* history */
+/* page lists */
 int			insert_history_item(const gchar *uri, const gchar *title, time_t time);
 int			save_global_history_to_disk(struct tab *t);
 int			restore_global_history(void);
 char			*color_visited_helper(void);
 int			color_visited(struct tab *t, char *visited);
+int 			remove_pagelist_entry_by_count(struct pagelist *list, int count);
+void 			remove_pagelist_entry_by_uri(struct pagelist *list, const gchar *uri);
+void 			remove_pagelist_entry(struct pagelist *list, struct pagelist_entry *item);
+int			load_pagelist_from_disk(struct pagelist *list, char *file_name);
+int			save_pagelist_to_disk(struct pagelist *list, char *file_name);
+int			insert_pagelist_entry(struct pagelist *list, const gchar *uri, const gchar *title, time_t time);
+void			empty_pagelist(struct pagelist *list);
+
+
+
 
 /* completion */
 void			completion_add(struct tab *);
@@ -518,6 +528,7 @@ int			xtp_page_sl(struct tab *, struct karg *);
 int			xtp_page_sv(struct tab *, struct karg *);
 int			parse_xtp_url(struct tab *, const char *);
 int			add_favorite(struct tab *, struct karg *);
+int			restore_favorites(void);
 void			update_favorite_tabs(struct tab *);
 void			update_history_tabs(struct tab *);
 void			update_download_tabs(struct tab *);
@@ -647,6 +658,7 @@ int		command_mode(struct tab *, struct karg *);
 #define XT_DS_SHOW_STATUSBAR	(0)
 #define XT_DS_CTRL_CLICK_FOCUS	(0)
 #define XT_DS_COOKIES_ENABLED	(1)
+#define XT_DS_COMPLETE_URI_ANYWHERE	(0)
 #define XT_DS_READ_ONLY_COOKIES	(0)
 #define XT_DS_ENABLE_SCRIPTS	(1)
 #define XT_DS_ENABLE_PLUGINS	(1)
@@ -897,6 +909,7 @@ extern int	show_scrollbars;
 extern int	show_statusbar;
 extern int	ctrl_click_focus;
 extern int	cookies_enabled;
+extern int	complete_uri_anywhere;
 extern int	read_only_cookies;
 extern int	enable_cache;
 extern int	enable_scripts;
@@ -988,7 +1001,8 @@ extern void	(*_soup_cookie_jar_add_cookie)(SoupCookieJar *, SoupCookie *);
 extern void	(*_soup_cookie_jar_delete_cookie)(SoupCookieJar *,
 		    SoupCookie *);
 
-extern struct history_list	hl;
+extern struct pagelist		hl;
+extern struct pagelist		favs;
 extern int			hl_purge_count;
 extern struct download_list	downloads;
 extern struct tab_list		tabs;
