@@ -1459,23 +1459,24 @@ walk_mime_type(struct settings *s,
 
 /* inherent to GTK not all keys will be caught at all times */
 /* XXX sort key bindings */
+/* command, mod, binding available in insert mode, key */
 struct key_binding	keys[] = {
 	{ "command_mode",	0,	1,	GDK_Escape	},
 	{ "insert_mode",	0,	0,	GDK_i		},
-	{ "cookiejar",		MOD1,	1,	GDK_j		},
+	{ "cookiejar",		CTRL,	1,	GDK_j		},
 	{ "downloadmgr",	MOD1,	1,	GDK_d		},
 	{ "history",		MOD1,	1,	GDK_h		},
 	{ "print",		CTRL,	1,	GDK_p		},
 	{ "search",		0,	0,	GDK_slash	},
 	{ "searchb",		0,	0,	GDK_question	},
-	{ "statustoggle",	CTRL,	1,	GDK_n		},
+	{ "statustoggle",	MOD1,	1,	GDK_n		},
 	{ "command",		0,	0,	GDK_colon	},
 	{ "qa",			CTRL,	1,	GDK_q		},
 	{ "restart",		MOD1,	1,	GDK_q		},
-	{ "js toggle",		CTRL,	1,	GDK_j		},
+	{ "js toggle",		MOD1,	1,	GDK_j		},
 	{ "plugin toggle",	MOD1,	1,	GDK_p		},
 	{ "cookie toggle",	MOD1,	1,	GDK_c		},
-	{ "togglesrc",		CTRL,	1,	GDK_s		},
+	{ "togglesrc",		MOD1,	1,	GDK_s		},
 	{ "yankuri",		0,	0,	GDK_y		},
 	{ "pasteuricur",	0,	0,	GDK_p		},
 	{ "pasteurinew",	0,	0,	GDK_P		},

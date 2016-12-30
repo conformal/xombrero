@@ -5708,7 +5708,7 @@ struct buffercmd {
 	{ "^go[a-zA-Z0-9]$",	XT_PRE_NO,	"go",	qmark,		XT_QMARK_OPEN },
 	{ "^gn[a-zA-Z0-9]$",	XT_PRE_NO,	"gn",	qmark,		XT_QMARK_TAB },
 	{ "^ZR$",		XT_PRE_NO,	"ZR",	restart,	0 },
-	{ "^ZZ$",		XT_PRE_NO,	"ZZ",	quit,		0 },
+	{ "^ZZ$",		XT_PRE_NO,	"ZZ",	save_tabs_and_quit,		0 },
 	{ "^zi$",		XT_PRE_NO,	"zi",	resizetab,	XT_ZOOM_IN },
 	{ "^zo$",		XT_PRE_NO,	"zo",	resizetab,	XT_ZOOM_OUT },
 	{ "^z0$",		XT_PRE_NO,	"z0",	resizetab,	XT_ZOOM_NORMAL },
